@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Self-Modeling Machines, in Language (VEX V5 Premise)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  @page { size: Letter; margin: 0.5in 0.62in; }
+  * { box-sizing: border-box; }
+  html {
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    background: #f6f7f9; color: #0b0b0d;
+    font-feature-settings: "ss01","cv11","cv02";
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    font-family: "Inter Tight", ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: -0.011em; font-size: 9.7pt; line-height: 1.34; margin: 0;
+    background: #f6f7f9;
+  }
+  .mono { font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace; }
+
+  /* masthead */
+  .kicker { font-size: 7.6pt; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase;
+            color: #4f5a78; }
+  h1 { font-size: 21pt; line-height: 1.04; font-weight: 600; letter-spacing: -0.02em;
+       margin: 5px 0 3px; color: #0b0b0d; }
+  .subtitle { font-size: 11.2pt; color: #1a1a1e; margin: 0 0 9px; font-weight: 500; line-height: 1.28; }
+  .rule { height: 1px; background: #e7e8ea; margin: 9px 0 11px; }
+  .rule.accent { height: 2px; background: #4f5a78; width: 44px; margin: 8px 0 12px; }
+
+  /* section labels */
+  h2 { font-size: 8.4pt; font-weight: 600; letter-spacing: 0.085em; text-transform: uppercase;
+       color: #4f5a78; margin: 9px 0 4px; display: flex; align-items: center; gap: 7px; }
+  h2::before { content: ""; width: 12px; height: 2px; background: #4f5a78; display: inline-block; flex: none; }
+
+  p { margin: 0 0 5px; }
+  .lead { font-size: 10pt; color: #1a1a1e; }
+  strong { font-weight: 600; color: #0b0b0d; }
+  em { font-style: italic; color: #33353b; }
+  .muted { color: #6b6e76; }
+
+  /* cards */
+  .card { background: #ffffff; border: 1px solid #e7e8ea; border-radius: 12px;
+          padding: 9px 12px; margin: 5px 0 7px; }
+  .card.accent { border-left: 2.5px solid #4f5a78; }
+
+  .loop { font-size: 8.3pt; line-height: 1.7; color: #1a1a1e; }
+  .loop b { color: #4f5a78; font-weight: 600; }
+  .loop .ar { color: #9a9da5; }
+
+  /* two loops */
+  .loops { display: flex; gap: 10px; margin: 6px 0 8px; }
+  .loops .card { flex: 1; margin: 0; padding: 9px 12px; }
+  .loops .tag { font-size: 7.4pt; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase;
+                color: #4f5a78; }
+  .loops .tag.stretch { color: #9a9da5; }
+  .loops h3 { font-size: 10pt; font-weight: 600; margin: 2px 0 4px; letter-spacing: -0.01em; }
+  .loops p { font-size: 8.7pt; line-height: 1.4; color: #33353b; margin: 0; }
+
+  /* tables */
+  table { width: 100%; border-collapse: collapse; margin: 4px 0 8px; }
+  .cap td, .cap th { text-align: left; vertical-align: top; padding: 6px 8px; border-bottom: 1px solid #e7e8ea; }
+  .cap th { font-size: 7.4pt; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: #6b6e76; }
+  .cap td.k { font-weight: 600; font-size: 9.3pt; width: 17%; }
+  .cap td .pred { font-size: 8.4pt; }
+  .cap td.role { width: 38%; color: #33353b; font-size: 8.7pt; }
+
+  .gap td { vertical-align: top; padding: 6px 8px; border-bottom: 1px solid #e7e8ea; }
+  .gap td.who { width: 33%; }
+  .gap .nm { font-weight: 600; font-size: 9pt; }
+  .gap .src { font-size: 7.7pt; color: #9a9da5; }
+  .gap td.txt { font-size: 8.8pt; color: #33353b; }
+
+  .hyp { font-size: 8.9pt; line-height: 1.5; }
+  .hyp b { color: #4f5a78; font-weight: 600; }
+
+  .risklist { font-size: 8.6pt; line-height: 1.44; color: #33353b; margin: 3px 0 7px; }
+  .risklist p { margin: 0 0 4px; }
+  .risklist b { color: #0b0b0d; font-weight: 600; }
+  .demo { font-size: 8.7pt; line-height: 1.46; }
+  .demo b { color: #4f5a78; font-weight: 600; }
+
+  .pb { break-before: page; }
+  .refs { font-size: 7.5pt; line-height: 1.45; color: #6b6e76; border-top: 1px solid #e7e8ea;
+          padding-top: 6px; margin-top: 8px; }
+  .refs b { color: #4f5a78; font-weight: 600; }
+  .foot { font-size: 7.3pt; color: #9a9da5; margin-top: 7px; }
+</style>
+</head>
+<body>
+
+  <div class="kicker">Gauntlet Capstone · Premise Brief · 2026-06-15</div>
+  <h1>Self-Modeling Machines, in Language</h1>
+  <p class="subtitle">An LLM orchestrator that designs a real robot to grab, pull, and throw, then corrects its own model of it.</p>
+  <div class="rule accent"></div>
+
+  <h2>Premise</h2>
+  <p class="lead">Since Bongard, Zykov &amp; Lipson (2006), a robot's <em>self-model</em>, its internal account of what its
+  body is and can do, has been learned numerically from motor-babbling. It works, but a human cannot read it, and nobody can
+  inspect it before the robot acts. We make the self-model linguistic. A <strong>generator</strong> LLM writes a structured,
+  readable self-model of a VEX&nbsp;V5 manipulator from a finite, typed parts vocabulary: a morphology graph, a capability
+  envelope (grip force, tractive load, release velocity), and a predicted score on a target task. A panel of
+  <strong>critic</strong> LLMs attacks that self-model before a bolt is turned. Then comes the step that earns the word
+  <em>self</em>. Once built, the robot reads its own body (VEX auto-detected devices, smart-motor encoders, the brain's IMU)
+  and reconciles its <strong>measured</strong> self against the <strong>imagined</strong> one, revising the model in prose a
+  human can audit. The body that models and the body modeled are the same object, exactly as in Lipson's work. What differs is
+  that the representation is language, and it improves without retraining.</p>
+
+  <h2>The Loop</h2>
+  <div class="card accent loop mono">
+    <b>generator&nbsp;LLM</b> <span class="ar">→</span> self-model {structure&nbsp;· capability&nbsp;· prediction}
+    <span class="ar">→</span> <b>critic&nbsp;panel</b> attacks pre-build <span class="ar">→</span> build
+    <span class="ar">→</span> <b>robot&nbsp;reads&nbsp;its&nbsp;own&nbsp;body</b> (devices&nbsp;· encoders&nbsp;· IMU&nbsp;· vision)
+    <span class="ar">→</span> <b>reconcile</b> predicted&nbsp;vs&nbsp;measured <span class="ar">→</span> residual&nbsp;model&nbsp;corrects <span class="ar">→</span> repeat
+  </div>
+
+  <h2>Two Loops</h2>
+  <div class="loops">
+    <div class="card accent">
+      <div class="tag">Loop 1 · Calibration · the core</div>
+      <h3>One body, many cycles</h3>
+      <p>Each task attempt yields proprioceptive and outcome data, and the self-model's predicted capabilities converge on the
+      measured ones. It runs dozens of times a day without a rebuild, which is where the thesis is proven.</p>
+    </div>
+    <div class="card">
+      <div class="tag stretch">Loop 2 · Morphology · stretch, cut first</div>
+      <h3>A few new shapes</h3>
+      <p>We reconfigure the body two or three times, and each shape is re-authored and re-reconciled. This adds a cross-body
+      story, though the result does not depend on it.</p>
+    </div>
+  </div>
+
+  <h2>Grab, Pull, and Throw</h2>
+  <table class="cap">
+    <tr><th>Primitive</th><th>Self-model predicts</th><th>Role</th></tr>
+    <tr><td class="k">Grab</td><td class="pred">max secure-hold (grip force)</td><td class="role">prerequisite &amp; safety net</td></tr>
+    <tr><td class="k">Pull</td><td class="pred">max tractive work (load&nbsp;×&nbsp;distance)</td><td class="role"><strong>calibration spine</strong>, the primitive that moves things</td></tr>
+    <tr><td class="k">Throw</td><td class="pred">launch velocity&nbsp;→&nbsp;range</td><td class="role">hero demo, sharpest physics</td></tr>
+  </table>
+  <p><strong>Pull is the spine</strong> because it carries low build-risk, stays continuously measurable, and does real
+  mechanical work. Throw is the showpiece, and grab is the safety net. The three also compose one arc: grab the object, pull it
+  into position, then throw it to a target, which gives three capability predictions on a single object.</p>
+
+  <h2>Hard Parts and Risks</h2>
+  <div class="risklist">
+    <p><b>Signal quality.</b> The LLM can only revise the self-model if VEX encoder and IMU telemetry separates model error from hardware variance. We log raw traces from the first build and verify SNR on pull force before scaling the loop.</p>
+    <p><b>Throw reliability.</b> Precise release needs sub-10ms motor timing and a structure that survives repeated launches. If it slips, pull carries the calibration spine alone and throw becomes a recorded stretch goal.</p>
+    <p><b>Critic tuning.</b> A panel that rejects everything stalls progress, and one that approves everything adds nothing, so calibrating critic strictness becomes its own tracked deliverable.</p>
+    <p><b>Throughput.</b> Single-body trials run fast, but a plateau that only a rebuild can break costs hours, so one mid-project reconfiguration checkpoint tests for it early.</p>
+  </div>
+
+  <h2 class="pb">Why VEX V5</h2>
+  <p>Reconciliation needs a body that can report itself, and VEX V5 can: 21 Smart Ports auto-detect every device, smart motors
+  close the loop on encoders, the brain carries an IMU, and a native AI Vision Sensor reads AprilTags and objects. Its metal
+  structure also survives the forces grab, pull, and throw demand. LEGO SPIKE's friction fits come apart under those loads, and
+  RoFICoM only docks modules together, so it cannot manipulate a separate object. Among the surveyed platforms, VEX is the only
+  one that is both a credible manipulator and a credible proprioceptor.</p>
+
+  <h2>The ML and LLM Split</h2>
+  <p>The <strong>LLM</strong> does the symbolic work: authoring the self-model, reconciling imagined against measured in
+  language, and reasoning about why a prediction missed. A classical-ML <strong>residual regressor</strong> does the numeric
+  work, learning from accumulating telemetry the systematic gap between predicted and actual as a function of commanded action,
+  load, and battery voltage. The LLM cannot reliably know that the gripper loses force at low charge, but a regression over a
+  few hundred trials learns exactly that. Because the two are separable, removing the regressor gives a clean ablation.</p>
+
+  <h2>Why It Is Novel</h2>
+  <table class="gap">
+    <tr>
+      <td class="who"><span class="nm">Numerical self-modeling</span><br><span class="src">Bongard 2006; Kwiatkowski &amp; Lipson 2019</span></td>
+      <td class="txt">Builds self-models from proprioception, but they stay sub-symbolic, illegible, and never critiqued before the robot acts.</td>
+    </tr>
+    <tr>
+      <td class="who"><span class="nm">LLM morphology generation</span><br><span class="src">RoboMorph, 2024</span></td>
+      <td class="txt">An LLM works over a structured grammar, but it generates <strong>designs rather than self-models</strong>, runs <strong>only in simulation</strong>, and has <strong>no critic loop</strong>.</td>
+    </tr>
+    <tr>
+      <td class="who"><span class="nm">LLM self-improvement</span><br><span class="src">SAS-Prompt, ICRA 2025</span></td>
+      <td class="txt">Optimizes <strong>control parameters</strong> on real hardware, but it carries <strong>no morphology and no self-model</strong>.</td>
+    </tr>
+  </table>
+  <p>No prior work reconciles an LLM-authored, language-grounded self-model against a robot's own proprioception, with
+  adversarial critique before fabrication and numeric correction after it. <strong>The contribution is that reconciliation
+  step, where the imagined self is checked against the measured self in auditable language.</strong></p>
+
+  <h2>The Experiment</h2>
+  <div class="card accent hyp">
+    <b>Hypothesis.</b> Self-model calibration error (predicted&nbsp;−&nbsp;measured capability) shrinks across Loop&nbsp;1
+    cycles; the critics and the residual regressor each reduce it.<br>
+    <b>Conditions.</b> (A) full loop · (B) no critics · (C) no residual regressor (LLM-only) · (D) human-designed control.<br>
+    <b>Metrics.</b> calibration error per cycle (primary) · task success rate · failed predictions caught pre-build · cycles-to-target.<br>
+    <b>Primary result.</b> the calibration curve, which is the robot's self-knowledge made measurable.
+  </div>
+  <p class="muted" style="font-size:8.7pt;">It satisfies two of the brief's directions at once: classical <strong>ML combined
+  with an LLM</strong>, and <strong>a different kind of agent</strong> that models itself and explains its own failures in
+  language.</p>
+
+  <h2>The Jun 29 Demo</h2>
+  <div class="card accent demo">
+    A VEX&nbsp;V5 manipulator on a table, with a screen beside it showing the live self-model: predicted pull force, predicted
+    throw range, grip confidence. Three beats.<br>
+    <b>Pull.</b> The robot drags a known mass; predicted force and the encoder reading sit side by side; the LLM revises the
+    model out loud as the gap closes.<br>
+    <b>Throw.</b> Predicted range shows before release; the object lands; the model updates with the measured distance, and the
+    critic rejection log explains any catch.<br>
+    <b>The curve.</b> Predicted-versus-actual error across every Loop&nbsp;1 trial, trending down. That is the result: the
+    robot's self-knowledge, measured.
+  </div>
+
+  <div class="refs">
+    <b>References.</b>
+    [1] Bongard, Zykov &amp; Lipson. Resilient Machines Through Continuous Self-Modeling. <i>Science</i> 314(5802):1118–1121 (2006). DOI&nbsp;10.1126/science.1133687.
+    [2] Kwiatkowski &amp; Lipson. Task-Agnostic Self-Modeling Machines. <i>Science Robotics</i> 4(26):eaau9354 (2019). DOI&nbsp;10.1126/scirobotics.aau9354.
+    [3] Lipson &amp; Pollack. Automatic Design and Manufacture of Robotic Lifeforms. <i>Nature</i> 406:974–978 (2000).
+    [4] Qiu et&nbsp;al. RoboMorph: Evolving Robot Morphology using Large Language Models. arXiv:2407.08626 (2024).
+    [5] Ben&nbsp;Amor et&nbsp;al. SAS-Prompt: LLMs as Numerical Optimizers for Robot Self-Improvement. ICRA 2025. arXiv:2504.20459.
+    [6] Eye-in-Finger: Smart Fingers for Delicate Assembly and Disassembly of LEGO. arXiv:2503.06848 (2025).
+  </div>
+  <div class="foot">Premise brief. Content locked via Socratic review: self = reconciliation · Loop 1 core · ML = residual regressor · pull spine / throw hero / grab fallback.</div>
+
+</body>
+</html>
