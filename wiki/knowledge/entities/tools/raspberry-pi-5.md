@@ -8,6 +8,7 @@ sources:
   - ../../../raw/research/rpi5-camera-module-3-cost/index.md
   - ../../../raw/research/rpi-complete-kits/index.md
   - ../../../raw/research/rpi-complete-kits/index-2.md
+  - ../../../raw/research/vex-v5-rpi-coprocessor-opensource/index.md
 
 tags: [tool, hardware, raspberry-pi, coprocessor, vision, ai]
 ---
@@ -76,16 +77,43 @@ JSONL (newline-delimited JSON) is the storage format for incoming task contracts
 
 ## Power
 
-Pi 5's rated peak is 5V/5A (25W), but the **actual capstone workload (YOLO + AprilTags + serial bridge, no USB peripherals except the V5 cable) draws only ~3–5W**. A standard **10,000 mAh USB-C PD power bank at 5V/3A** runs 12–15 hours at this workload — no high-wattage bank required. The Pi 5 will log a "low voltage" OS warning when powered from a 3A supply; this is cosmetic and does not affect stability at these power levels.
+Pi 5's rated peak is 5V/5A (25W), but the **actual capstone workload (YOLO + AprilTags + serial bridge, no USB peripherals except the V5 cable) draws only ~3–5W**. A standard **10,000 mAh USB-C PD power bank at 5V/3A** runs 12–15 hours at this workload — no high-wattage bank required.
 
-If full USB peripheral current is needed, the **52Pi PD Expansion Board (~$20)** steps down a 30W+ PD bank to clean 5V/8A and eliminates the warning.
+**The "low voltage / supply not 5A" warning** is triggered by a failed PD negotiation (no 5V/5A PDO found — 5V/5A is non-standard USB PD; no commodity bank offers it). Its only functional effect is capping aggregate USB port current at **600 mA**. This does NOT throttle the CPU; actual CPU throttle requires the rail to sag below ~4.63 V. For the capstone (Camera Module 3 on CSI, V5 serial cable at ~50 mA), the 600 mA cap is irrelevant — USB draw is 12× below the cap. The warning is genuinely cosmetic at this peripheral set.
+
+**Free software fix** (if the boot overlay is visually distracting):
+```
+# /boot/firmware/config.txt
+usb_max_current_enable=1
+```
+For full warning suppression: `PSU_MAX_CURRENT=5000` via `rpi-eeprom-config --edit`.
+
+**Hardware fix** (needed only if adding USB SSDs, multiple webcams, or USB hubs): the **52Pi PD Expansion Board (~$20)** negotiates a higher PD voltage and steps down to clean 5V/8A. Alternatives: Pichondria board (~$25) or a DIY PD-trigger+buck converter (~$8–15).
 
 **Do not power from the V5 battery** — the V5 1100mAh Li-Ion is motor-rated, not safe for the Pi's peak draw.
 
-See derives_from::[[rpi-complete-kits-mobile-power]] for full mobile-power option comparison.
+See derives_from::[[rpi-complete-kits-mobile-power]] and relates_to::[[rpi5-usb-pd-power]] for full options.
+
+## Coprocessor Prior Art (from [[vex-v5-rpi-coprocessor-opensource]])
+
+No public repo combines RPi5 + VEX V5 Brain as of June 2026 — the capstone's pairing is novel. The closest open-source prior art uses Jetson Nano (official relates_to::[[vaic-reference-architecture]]) or generic Linux hosts (UTAH rosserial). **The serial interface, device path, and pyserial code are identical** whether the host is a Jetson Nano or RPi5: `/dev/ttyACM0`, 115 200 baud, newline-delimited JSON. The relates_to::[[vex-coprocessor-pattern]] page catalogs all confirmed implementations.
+
+## Comparison with Jetson Nano / Orin (from [[jetson-nano-vs-rpi5]])
+
+Research (2026-06-17) confirmed Pi 5 is the correct choice over both Jetson Nano (EOL) and Jetson Orin Nano Super ($249):
+- Pi 5 Cortex-A76 is **~3× faster** than Jetson Nano's A57 on CPU/Python/serial tasks
+- 8–10 FPS YOLO11n NCNN is sufficient for 0.5–2 Hz manipulation tasks; the Jetson's 30+ FPS GPU advantage is irrelevant
+- **Jetson Orin Nano Super cannot run from a USB-C power bank** (needs 7–20V DC jack); Pi 5 runs 12–15 hrs on a standard USB-C bank
+- Pi OS setup: ~15 min; JetPack 4.6 setup: 2–4 hrs + x86 Ubuntu host + Python 3.6 patching
+- Pi 5 4GB + Camera Module 3 = $135 total; Orin Nano Super + Intel RealSense = ~$430
+
+See compared_against::[[jetson-nano]] and compared_against::[[jetson-orin-nano-super]].
 
 relates_to::[[vex-v5]]
 relates_to::[[pi-camera-module-3]]
 relates_to::[[raspberry-pi-build-hat]]
 used_by::[[physical-robot-software-factory]]
 extends::[[task-telemetry-contract]]
+implements::[[vex-coprocessor-pattern]]
+compared_against::[[jetson-nano]]
+compared_against::[[jetson-orin-nano-super]]

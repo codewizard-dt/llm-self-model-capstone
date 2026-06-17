@@ -51,6 +51,17 @@ The **52Pi PD Power Expansion Board** negotiates a higher PD voltage from the ba
 
 Pi 4 only needs **5V/3A (15W)** natively — no voltage warning, no adapter. One remaining advantage of Pi 4 over Pi 5 for robot mounting: simpler mobile power.
 
+### Option E: Free Software Fix (Recommended First Step)
+
+**For the capstone as configured** (CSI camera + USB serial only), the 600 mA USB cap from the PD negotiation miss is irrelevant — total USB draw is ~50 mA. If the boot overlay warning is distracting, a one-line config.txt change removes the only functional consequence:
+
+```
+# /boot/firmware/config.txt
+usb_max_current_enable=1
+```
+
+For full warning suppression (no boot overlay, USB unlocked to 1.6A): add `PSU_MAX_CURRENT=5000` via `sudo rpi-eeprom-config --edit`. Safe at capstone loads; do not use with a genuinely marginal supply. See relates_to::[[rpi5-usb-pd-power]] for the full two-warning distinction and context.
+
 ## Recommended Mobile Setup for Capstone
 
 1. Pi 5 4GB in official case + fan: ~110g

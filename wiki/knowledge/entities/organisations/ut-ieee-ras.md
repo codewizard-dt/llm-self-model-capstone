@@ -34,7 +34,9 @@ Won the **2025 VEX AI World Championship** in Houston TX. Nine members:
 - [[Maxx Wilson]] (ASE PhD) — **outreach target: hardware access**
 - Michael Portillo, Johnny Shen (ECE '28), Richard Aguilar (ASE '28), Jake Wendling (COE '25), Joseph Weiss (ME/ACC '27), Joseph Romero (ME '26)
 
-**Tech stack**: VEX V5 Brain + Nvidia Jetson + LIDAR + Intel Realsense + ROS + C++. Awards also won: Best Engineering Documentation, Sportsmanship.
+**Tech stack**: VEX V5 Brain + Nvidia Jetson + LIDAR + Intel Realsense + ROS2 Humble (Ubuntu 22.04) + C++. Awards also won: Best Engineering Documentation, Sportsmanship.
+
+**Open-source framework**: `github.com/VEXU-GHOST/VEXU_GHOST` — full V5 + Jetson ROS2 stack for path planning, localization, sensor fusion, motion control. Runs unchanged on Raspberry Pi 5 with Ubuntu 22.04 (ROS2 Humble official ARM64 support). relates_to::[[vaic-reference-architecture]] relates_to::[[vex-coprocessor-pattern]]
 
 ## Faculty Advisor
 

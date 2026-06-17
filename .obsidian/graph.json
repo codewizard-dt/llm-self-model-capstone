@@ -1,22 +1,58 @@
 {
   "collapse-filter": false,
-  "search": "typed-assembly-grammar",
+  "search": "path:wiki/knowledge",
   "showTags": false,
   "showAttachments": false,
   "hideUnresolved": false,
   "showOrphans": true,
-  "collapse-color-groups": true,
-  "colorGroups": [],
-  "collapse-display": true,
+  "collapse-color-groups": false,
+  "colorGroups": [
+    {
+      "query": "tag:source",
+      "color": {
+        "a": 1,
+        "rgb": 15965202
+      }
+    },
+    {
+      "query": "tag:concept",
+      "color": {
+        "a": 1,
+        "rgb": 10181046
+      }
+    },
+    {
+      "query": "tag:tool",
+      "color": {
+        "a": 1,
+        "rgb": 1752220
+      }
+    },
+    {
+      "query": "tag:person",
+      "color": {
+        "a": 1,
+        "rgb": 3447003
+      }
+    },
+    {
+      "query": "tag:organisation",
+      "color": {
+        "a": 1,
+        "rgb": 15158332
+      }
+    }
+  ],
+  "collapse-display": false,
   "showArrow": false,
   "textFadeMultiplier": 0,
-  "nodeSizeMultiplier": 1,
+  "nodeSizeMultiplier": 1.12827690972222,
   "lineSizeMultiplier": 1,
-  "collapse-forces": true,
+  "collapse-forces": false,
   "centerStrength": 0.518713248970312,
-  "repelStrength": 10,
+  "repelStrength": 8.64583333333333,
   "linkStrength": 1,
-  "linkDistance": 250,
-  "scale": 2.9709419445636165,
-  "close": false
+  "linkDistance": 123,
+  "scale": 1.217637249105869,
+  "close": true
 }

@@ -49,6 +49,9 @@ The wiki is split into two domains with opposite organizing laws:
 - [Addendum: Raspberry Pi 5 Weight & Mobile Power for Robot Use](knowledge/sources/rpi-complete-kits-mobile-power.md) — Pi 5 bare PCB ~47g; full system ~280–350g; actual workload ~3–5W; standard 5V/3A power bank gives 12–15 hours; mount via M2.5 standoffs on rear chassis plate
 - [Research: Non-VEX Add-Ons for LLM Robot Self-Expression](knowledge/sources/robot-flair-addons.md) — 5 cost tiers from free (cardboard/foil) to $25 (NeoPixel); EVA foam top $1–5 pick; Coroplast best rigid panel; aesthetic choices encode hypotheses; Pi 5 NeoPixel requires SPI workaround
 - [Research: ENPIRE + Hyperfamila — Agentic Physical Autoresearch](knowledge/sources/enpire-hyperfamila-agentic-physical-autoresearch.md) — NVIDIA ENPIRE framework + HackRome 2026 hobbyist proof-of-concept; SO101 + ACT + Codex + Flywheel; anchors independent experiment track (NOT VEX)
+- [Research: VEX V5 + RPi Coprocessor Open-Source Repos, Telemetry Feedback & LLM Behavior Modeling](knowledge/sources/vex-v5-rpi-coprocessor-opensource.md) — 13 repos catalogued; RPi5+V5 combination is novel; VAIC_24_25 is the canonical reference; zero LLM+VEX V5 projects exist; USB serial at 115200 baud confirmed path
+- [Research: Jetson Nano / JetPack vs Raspberry Pi 5 for the Capstone Architecture](knowledge/sources/jetson-nano-vs-rpi5.md) — Pi 5 confirmed correct vs Jetson Nano (EOL) and Orin Nano Super ($430+): 3× CPU advantage, USB-C power bank compatible, 10-min setup, $135 total system cost
+- [Research: Raspberry Pi 5 Low Voltage Warning — Real Consequences & All Fixes](knowledge/sources/rpi5-low-voltage-warning.md) — warning is two distinct alerts (PD miss vs. actual voltage sag); USB 600mA cap irrelevant at capstone load; free config.txt fixes; 52Pi not required
 
 ### Concepts
 - [Agent Evolution Factory](knowledge/concepts/agent-evolution-factory.md) — evolving AI-agent architectures via ML+LLM; the recommended capstone pitch
@@ -70,6 +73,8 @@ The wiki is split into two domains with opposite organizing laws:
 - [Aesthetic Vocabulary](knowledge/concepts/aesthetic-vocabulary.md) — non-functional grammar extension for LLM visual self-expression; body panels, surface markings, appendages, accent lighting; aesthetic choices encode hypotheses; free–$25 material tiers
 - [Agentic Physical Autoresearch](knowledge/concepts/agentic-physical-autoresearch.md) — coding agent + repeatable physical feedback loop (reset → execute → verify → refine) on real hardware; ENPIRE at research scale, hyperfamila at hobbyist scale
 - [Imitation Learning — ACT](knowledge/concepts/imitation-learning-act.md) — train robot policies from teleop demos; ACT (Action Chunking with Transformers) at 100 eps / 5M params via LeRobot; proven at hackathon scale
+- [VEX Coprocessor Pattern](knowledge/concepts/vex-coprocessor-pattern.md) — V5 Brain + external Linux host over USB serial/RS-485; canonical two-computer split; 13 confirmed open-source implementations; RPi5 is a novel drop-in for Jetson Nano
+- [Raspberry Pi 5 USB PD Power](knowledge/concepts/rpi5-usb-pd-power.md) — Pi 5 PD negotiation behavior: two-alert distinction (PD miss vs. voltage sag), free config.txt fixes, hardware alternatives to 52Pi board
 
 ### Entities
 - People — [knowledge/entities/people/](knowledge/entities/people/)
@@ -116,6 +121,10 @@ The wiki is split into two domains with opposite organizing laws:
   - [WS2812B NeoPixel LED Strip](knowledge/entities/tools/ws2812b-neopixel.md) — individually addressable RGB LEDs, 5V, $8–15/1m strip; Pi 5 requires SPI method (GPIO 10) or Arduino Nano co-controller; highest visual-impact flair option
   - [LeRobot](knowledge/entities/tools/lerobot.md) — HuggingFace imitation learning framework; leader/follower teleoperation + ACT training + HF dataset publishing; used in hyperfamila
   - [SO101 Arm](knowledge/entities/tools/so101-arm.md) — consumer 6-DOF leader/follower arm; LeRobot-native; ~$200–400/arm; validated in hyperfamila with syringe end-effector
+  - [VEX AI Competition (VAIC) Reference Architecture](knowledge/entities/tools/vaic-reference-architecture.md) — official VEX open-source V5+Jetson coprocessor repos (VAIC_23_24, VAIC_24_25); V5Comm.py serial class; directly portable to RPi5
+  - [NVIDIA Jetson Nano](knowledge/entities/tools/jetson-nano.md) — VAIC reference coprocessor; EOL (dev kit discontinued); replaced by Pi 5 in capstone; serial protocol identical (/dev/ttyACM0, 115200 baud)
+  - [NVIDIA Jetson Orin Nano Super](knowledge/entities/tools/jetson-orin-nano-super.md) — current Jetson entry-level ($249); 67 TOPS; rejected for capstone (7-20V DC power, $430+ total, overkill for 8-FPS tasks)
+  - [NVIDIA JetPack SDK](knowledge/entities/tools/nvidia-jetpack.md) — mandatory Jetson OS stack; Ubuntu 18.04 + Python 3.6 (Nano/JetPack 4.6); 2-4hr setup; library compatibility friction
 - Components — [knowledge/entities/components/](knowledge/entities/components/) (this project's own modules, services, scripts)
 
 ---

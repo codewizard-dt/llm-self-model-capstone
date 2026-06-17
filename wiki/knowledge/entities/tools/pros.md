@@ -5,6 +5,7 @@ aliases: [PROS, Purdue Robotics OS, PROS 3]
 updated: 2026-06-16
 sources:
   - ../../../raw/research/vex-v5-advanced-toolchains/index.md
+  - ../../../raw/research/vex-v5-rpi-coprocessor-opensource/index.md
 tags: [tool, software, vex, programming, rtos, competition, open-source]
 ---
 
@@ -44,6 +45,10 @@ PROS projects are standard C++ with `include/` and `src/` directories — arbitr
 - PROS CLI for project creation, building, uploading
 - Works with VS Code (community extension) or any editor
 - The PROS kernel depends on VEX's proprietary SDK (not fully open at the OS layer)
+
+## Community RS-485 Coprocessor Examples (from [[vex-v5-rpi-coprocessor-opensource]])
+
+The RS-485 Smart Port path is confirmed by two open-source community references: **`Maotechh/VEX_communication`** (wiring diagram + PROS `vexGenericSerial*()` API, Chinese/English tutorial) and **`UTAH-VEXU-Robotics/ros_lib`** (rosserial bridge over USB that makes the V5 Brain a ROS node at 100 Hz). Both are confirmed working with external Linux hosts. The PROS `pros::Serial` Smart Port API is the only officially documented path to exceed the USB user port's fixed 115 200 baud ceiling. relates_to::[[vex-coprocessor-pattern]]
 
 relates_to::[[vexcode]]  
 relates_to::[[vex-v5]]  
