@@ -116,6 +116,25 @@ Product research (2026-06-16) — see derived_from::[[vex-v5-booster-kit]]:
 - **Motor bottleneck unchanged** — actuation still capped at 4 Smart Motors. Pair with 2–4 additional Smart Motors (~$53 each) to lift the real constraint.
 - **EDR-era caveat**: Motor Clutch and Intake Roller designed for legacy 3-wire motors; verify V5 Smart Motor mounting on receipt before relying on those two parts.
 
+## CAD Ecosystem (from [[vex-v5-cad-designs]])
+
+**Official per-part STEP:** Every VEX V5 part has a downloadable `.step` file on its vexrobotics.com product listing — the authoritative geometry source, compatible with SolidWorks, Inventor, Fusion 360, Onshape, and Solid Edge.
+
+**Onshape VEX V5 Parts Library** (relates_to::[[onshape]]): 100+ V5 parts with correct appearances, materials, weights, and part numbers. Free for educators. Parts placed 500,000+ times. Best starting point for building any configuration as an editable assembly. Access: Onshape Education account → App Store → "VEX Library".
+
+**GrabCAD community libraries:**
+- [VEX Robotics V5 Clawbot](https://grabcad.com/library/vex-robotics-v5-clawbot-1) (Michael Mohn, 2018) — 61 SolidWorks files from official STEP, fully mated for motion; 1,537 downloads
+- [Vex Super Kit CAD Files](https://grabcad.com/library/vex-super-kit-cad-files-1) (Erdem Karayel, 2020) — 120 files, Competition + Classroom Super Kit parts
+- [RBE1001 VEX V5](https://grabcad.com/library/rbe1001-vex-v5-1) (WPI, 2022) — 262 files, robot + field
+
+**SJTU VEX Open Source** (`sjtu-vex.github.io/open-source/`): SolidWorks 2020+ library updated through May 2026, covering V5RC parts, VEX PRO, pneumatics, and field elements.
+
+**No full-assembly Hero Bot CAD is published by VEX.** To get a Hero Bot as editable CAD: reconstruct it in Onshape from its `instructions.online` 3D build + Parts List. All Hero Bots (Flex, Dex, Axel, Striker, Disco, Moby…) require the Competition Starter Kit — they are outside the Classroom Starter Kit grammar.
+
+**3D printable integration spec:** 0.500" hole spacing / #8-32 screws (shared by all V5, IQ, EDR structural parts). Community printable parts on Thingiverse (claw kits, part replicas) and Printables (vectored intake wheels `model/1293156`, rover wheel `model/698733`, hub inserts `model/1303938`). Fully legal for capstone use; banned in VRC competition (allowed in VEX U).
+
+derives_from::[[vex-v5-cad-designs]]
+
 ## External AI Integration via USB Serial
 
 The V5 Brain exposes two USB serial ports when connected to a host computer. The *user port* (stdio) lets user programs emit telemetry and receive commands from an external process — this is the integration path for the LLM self-model loop. VEX's official VEX AI demo uses a Jetson Nano connected via USB serial to a V5 Brain for exactly this purpose.
@@ -179,3 +198,18 @@ relates_to::[[stem-labs]]
 relates_to::[[research-vexcode-v5]]
 relates_to::[[raspberry-pi-5]]
 relates_to::[[pi-camera-module-3]]
+
+## Rubber Bands — Passive Elastic Components (from [[vex-rubber-band-sizes]])
+
+VEX sells rubber bands in two standard sizes — both legal for VRC competition and for the capstone:
+
+| Size | Dimensions | Primary role |
+|------|-----------|-------------|
+| **#32** | 3" × 1/8" (76 × 3.2 mm) | Precision: triggers, latches, light return springs |
+| **#64** | 3.5" × 1/4" (89 × 6.4 mm) | Power: lift assist, catapults, intake rollers |
+
+Three material variants: **Synthetic/EPDM** for energy storage (high elongation); **Silicone** for intake rollers (higher friction against plastic → grips game pieces). The Clawbot Gen 0 already uses a rubber-band claw return (passive-close force, port 3 motor does active-open only). The slow-catapult throw primitive uses `#32 rubber bands + arm motor 7:1`.
+
+Well-tuned rubber band counterbalancing reduces motor load ~30% — enabling a 1-motor lift to compete with a naive 2-motor design. Adding #64 bands to the arm is a likely Gen 1→2 mutation in the self-model evolution loop.
+
+See relates_to::[[rubber-band-mechanisms]] for full mechanism taxonomy.

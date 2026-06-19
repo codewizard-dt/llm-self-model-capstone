@@ -2,12 +2,14 @@
 id: vex-v5-starter-kit-configurations
 title: "Research: VEX V5 Classroom Starter Kit — Configuration Space"
 aliases: [VEX V5 Starter Kit Configurations, Starter Kit Design Space]
-updated: 2026-06-16
+updated: 2026-06-17
 sources_secondary:
   - ../../raw/research/vex-v5-booster-kit/index.md
 sources:
   - ../../raw/research/vex-v5-starter-kit-configurations/index.md
   - ../../raw/research/vex-v5-starter-kit-configurations/sources.md
+  - ../../raw/research/vex-v5-starter-kit-configurations/index-2.md
+  - ../../raw/research/vex-v5-starter-kit-configurations/sources-2.md
 tags: [research, vex-v5, configuration, design-space, typed-grammar, clawbot, speedbot]
 ---
 
@@ -36,6 +38,8 @@ The Starter Kit's steel inventory (2× C-Channel 15-hole, 2× C-Channel 25-hole,
 
 Six free parameters define all valid configurations:
 
+> **Contradiction:** The vocabulary below (from the 2026-06-16 research) contains three fields that include options requiring additional purchases. A 2026-06-17 audit (`index-2.md`) corrected these. See the **Corrected Vocabulary** section below for the authoritative starter-kit-only spec. The stale entries are: `cartridge: ["100rpm", "600rpm"]` (cartridges sold separately), `wheel_config: ["all_standard", "all_omni"]` (kit has only 2 of each type), `end_effector: ["roller_intake"]` (Intake Roller 276-1499 is a Booster Kit part).
+
 ```json
 {
   "vocabulary": {
@@ -49,6 +53,38 @@ Six free parameters define all valid configurations:
   "valid_configurations": "~15–30 (many combinatorial slots are mechanically invalid)"
 }
 ```
+
+### Corrected Vocabulary (Starter Kit 276-7010 Only) — 2026-06-17
+
+Three corrections from the 2026-06-17 audit (`index-2.md`):
+
+| Field | Removed | Reason |
+|---|---|---|
+| `cartridge` | "100rpm", "600rpm" | 36:1 and 6:1 cartridges are sold separately; motors ship with 18:1 (200 RPM) only |
+| `wheel_config` | "all_standard", "all_omni" | Kit has 2 omni + 2 standard wheels; 4 of one type is impossible |
+| `end_effector` | "roller_intake" | Intake Roller 276-1499 is a Booster Kit (276-2232) part, not in starter kit |
+
+```json
+{
+  "platform": "vex_v5_classroom_starter_kit_276-7010",
+  "vocabulary": {
+    "motor_allocation": ["2drive+2free", "2drive+1arm+1claw", "4drive", "3drive+1manip"],
+    "arm_position":     ["front", "rear", "side", "absent"],
+    "end_effector":     ["claw_grasper", "bare_arm", "none"],
+    "wheel_config":     ["front_omni+rear_standard"],
+    "arm_gear_ratio":   ["7:1", "1:1"],
+    "cartridge":        ["200rpm"]
+  },
+  "constraints": {
+    "max_motors": 4,
+    "wheels": {"omni_4in": 2, "standard_4in": 2},
+    "cartridge_installed": "18:1_200rpm",
+    "sensors_included": ["bumper_switch_x2"]
+  }
+}
+```
+
+**Combinatorial impact:** raw slots drop from 1,152 to 96; after validity filtering, **~10–15 meaningful configurations** (not the ~15–30 previously stated).
 
 What the kit **cannot** produce without add-ons: tank treads, pneumatics, 4-bar linkage arm, scissor lift, flywheel shooter, vision-based autonomy, holonomic X-drive, aluminum structure.
 
@@ -64,14 +100,14 @@ Remaining free variables with claw locked (Starter Kit only, 4 motors):
 
 | Parameter | Remaining options | Count |
 |-----------|-------------------|-------|
-| Wheel config | front_omni+rear_standard / all_standard / all_omni | **3** |
+| Wheel config | front_omni+rear_standard only *(corrected 2026-06-17: "all_standard" and "all_omni" removed — kit has 2 omni + 2 standard, not 4 of either)* | **1** |
 | Arm position | front / rear / side | **3** |
 | Arm gear ratio | 7:1 / 1:1 | **2** |
 | Motor cartridge | 200rpm only (one cartridge included in kit) | **1** |
 | End effector | locked: claw_grasper | **1** |
 | Motor allocation | locked: 2drive+1arm+1claw | **1** |
 
-**3 × 3 × 2 = 18 combinatorial slots → ~12–18 meaningful configurations** with claw locked on the Starter Kit alone. This is nearly the same as the unconstrained count (~15–30) because claw+arm was already the dominant motor allocation.
+**1 × 3 × 2 = 6 combinatorial slots → ~4–6 meaningful configurations** with claw locked on the Starter Kit alone. *(Prior count of 18 was inflated by the now-corrected wheel_config field.)*
 
 > **Chassis note:** even within these 18 slots, chassis shape is essentially fixed — the steel is exactly consumed by the Clawbot frame. "Arm position" variants (front/rear/side) represent where the arm uprights bolt onto the same chassis, not a different chassis form.
 
