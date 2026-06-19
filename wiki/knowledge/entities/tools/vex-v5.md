@@ -97,6 +97,44 @@ Three swappable gear cartridges: **6:1 (600 RPM)**, **18:1 (200 RPM, default —
 
 Task contracts (predicted + observed + gap JSON) for each task primitive: see [[task-telemetry-contract]].
 
+## Launch-Disc Configuration — Individual Parts (from [[vex-launch-disc-parts]])
+
+A flywheel disc launcher adds `launch_disc` to the task-primitive vocabulary. It is an **exclusive morphology swap** on the Clawbot (arm motor repurposed; grab/throw arm removed). Minimum 3 individual purchases from vexrobotics.com:
+
+| SKU | Part | Purpose | Required? |
+|-----|------|---------|-----------|
+| **276-5842** | V5 Motor 6:1 Cartridge (600 RPM) | Speed upgrade for flywheel motor | **Yes** (if reusing arm motor) |
+| **276-4840** | V5 Smart Motor & Gear Cartridges | Full motor; alt. if adding dedicated motor | Alt. to above |
+| **217-6449** | Straight Flex Wheel 3" OD 60A | Flywheel contact wheel | **Yes** (1 min.) |
+| **217-7947** | VersaHex Adapters v2 1/4" Sq. 8-pack | Mounts flex wheel on V5 HS shaft | **Yes** |
+| **217-8079** | Plastic VersaHub v2 (1/2" hex bore) | Required for 3" or 4" flex wheels | Yes if using 3"+ |
+| **276-8402** | HS Shaft Ball Bearings (11-pack) | Halves friction vs bearing flats | Strongly recommended |
+| **276-8794** | V5 Flywheel Weight 2-pack | RPM stability between shots | Optional |
+
+**Adapter rule:** 2" flex wheels (217-6354) need only VersaHex adapters (217-7947). 3" and 4" flex wheels additionally need VersaHub (217-8079). See [[vex-flywheel-disc-launcher]] for full mechanism and task-telemetry contract.
+
+## Flywheel Structural Frame (from [[vex-flywheel-structure-parts]])
+
+Structural companion to the Launch-Disc section above. **The Starter Kit's standard Bearing Flats (1/8" bore) and shaft collars (1/8" square) cannot support the V5 Smart Motor's 1/4" HS shaft.** When the arm is disassembled for the `launch_disc` morphology swap, its C-channels are reused directly as flywheel side plates. Only 3 additional purchases are needed:
+
+| SKU | Part | Why required |
+|-----|------|-------------|
+| **276-3521** | HS Shaft Bearing (10-pack) | Only VEX part that supports 1/4" HS shaft through structure |
+| **276-6102** | HS Clamping Shaft Collar | Only collar sized for 1/4" HS shaft |
+| **276-3440** | HS Shaft 2" Long (4-pack) | Flywheel axle; 1mm shorter than 2" standoffs — sits in bearings without drilling |
+
+All screws, standoffs, keps/nylock nuts are in the Starter Kit. Motor mounts directly to C-channel with 4× standard #8-32 screws; no special motor bracket needed. Backplate = any existing steel plate from kit.
+
+derived_from::[[vex-flywheel-structure-parts]]
+
+## Flywheel Indexer (from [[vex-flywheel-indexer]])
+
+The indexer sub-mechanism holds a game piece in staging and fires it on command. Motor budget determines the design:
+
+- **1-motor flywheel**: claw motor (Port 3, 18:1, already in kit) → roller indexer. Hold = `stop(HOLD)`. Fire = 100% for 400ms. Zero new purchases.
+- **2-motor flywheel**: no free motor → ratchet indexer using Motor Clutch 276-1098 (Booster Kit); brief flywheel motor reverse (~150ms) triggers feed. Or add 5th motor (276-4840, ~$53).
+- Pneumatic indexer requires ~$200 add-on kit not in Starter Kit.
+
 ## Booster Kit (276-2232) — Morphology Search Space Expansion
 
 Product research (2026-06-16) — see derived_from::[[vex-v5-booster-kit]]:
