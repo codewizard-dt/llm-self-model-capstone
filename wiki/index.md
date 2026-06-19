@@ -31,7 +31,7 @@ The wiki is split into two domains with opposite organizing laws:
 - [VEX V5 Classroom Starter Kit (Product Research)](knowledge/sources/vex-v5-classroom-starter-kit.md) — full scrape of the 276-7010 kit ($849.49): contents, kit family, VEXcode/STEM Labs ecosystem, ~70 links
 - [VEX V5 Clawbot Build Instructions (276-6009-750 Rev6)](knowledge/sources/vex-v5-clawbot-build-instructions.md) — 41-step official build guide; Gen 0 morphology; 4-motor typed config; seed for Stage-2 parts catalog
 - [Research: VEX V5 Grab/Pull/Throw Capability & Quantification](knowledge/sources/vex-v5-customization-grab-pull-throw.md) — grab/pull achievable with base kit; motor API gives torque/current/velocity/position; task telemetry contracts defined
-- [Research: VEX V5 Starter Kit Configuration Space](knowledge/sources/vex-v5-starter-kit-configurations.md) — 2 base topologies (Speedbot + Clawbot); ~15–30 valid configs; Speedbot=Gen 0, Clawbot=Gen 1
+- [Research: VEX V5 Starter Kit Configuration Space](knowledge/sources/vex-v5-starter-kit-configurations.md) — 2 base topologies (Speedbot + Clawbot); ~10–15 valid configs (corrected 2026-06-17: only "200rpm" cartridge, only "front_omni+rear_standard" wheels, no roller end-effector); Speedbot=Gen 0, Clawbot=Gen 1
 - [Research: VEXcode V5 — Functionality, Implementation, and Limitations](knowledge/sources/research-vexcode-v5.md) — MicroPython on Xilinx ZYNQ; USB serial user port is the LLM integration path; no pip, no WiFi on Brain; VS Code Extension replaced Pro V5
 - [VEX V5 Booster Kit (Product Research)](knowledge/sources/vex-v5-booster-kit.md) — Booster Kit (276-2232, $214.49): ~600 passive parts, 4 new typed primitives (linear_actuator, intake, long_arm, slip_release); recommend pairing with additional Smart Motors
 - [PicoBricks REX Evolution vs VEX V5 (Platform Comparison)](knowledge/sources/picobricks-rex-vs-vex-v5.md) — REX ($164.99, ESP32) rejected as V5 alternative: no motor encoders/telemetry → cannot populate Task Telemetry Contract observed block
@@ -52,6 +52,10 @@ The wiki is split into two domains with opposite organizing laws:
 - [Research: VEX V5 + RPi Coprocessor Open-Source Repos, Telemetry Feedback & LLM Behavior Modeling](knowledge/sources/vex-v5-rpi-coprocessor-opensource.md) — 13 repos catalogued; RPi5+V5 combination is novel; VAIC_24_25 is the canonical reference; zero LLM+VEX V5 projects exist; USB serial at 115200 baud confirmed path
 - [Research: Jetson Nano / JetPack vs Raspberry Pi 5 for the Capstone Architecture](knowledge/sources/jetson-nano-vs-rpi5.md) — Pi 5 confirmed correct vs Jetson Nano (EOL) and Orin Nano Super ($430+): 3× CPU advantage, USB-C power bank compatible, 10-min setup, $135 total system cost
 - [Research: Raspberry Pi 5 Low Voltage Warning — Real Consequences & All Fixes](knowledge/sources/rpi5-low-voltage-warning.md) — warning is two distinct alerts (PD miss vs. actual voltage sag); USB 600mA cap irrelevant at capstone load; free config.txt fixes; 52Pi not required
+- [Research: VEX V5 CAD Designs — Starter Kit Builds, Purchasable Expansions & 3D-Printable Parts](knowledge/sources/vex-v5-cad-designs.md) — CMFDesign TinkerCAD (conceptual, 869 remixes); GrabCAD SolidWorks (61 files, engineering-grade); Onshape 100+ part library (free); 4 Starter Kit builds; full official build map; 3D print spec: 0.500"/1/8" sq shaft; three-tier expansion strategy
+- [Research: Connecting to a Raspberry Pi 5 from an M5 Mac (CanaKit, Headless)](knowledge/sources/rpi5-mac-connection.md) — CanaKit SD has SSH disabled by default; re-flash with Pi Imager (Bookworm, not Trixie) + SSH+WiFi → `ssh user@mypi.local`; Bluetooth peripherals unusable before network access; add Raspberry Pi Connect for browser-based GUI
+- [Research: 3D Printer File Formats](knowledge/sources/3d-printer-file-formats.md) — two-file-type model (model files + G-code); STL universal standard; 3MF modern standard (2015 consortium); slicer is mandatory bridge; STEP preferred for engineering CAD; format-by-printer-technology table
+- [Research: VEX Rubber Bands #32 and #64 — Sizes, Materials, and Robotics Uses](knowledge/sources/vex-rubber-band-sizes.md) — Alliance industry size codes decoded; #32=3"×1/8" (precision), #64=3.5"×1/4" (power/grip); 3 material variants; VRC legal sizes; passive-energy use cases
 
 ### Concepts
 - [Agent Evolution Factory](knowledge/concepts/agent-evolution-factory.md) — evolving AI-agent architectures via ML+LLM; the recommended capstone pitch
@@ -63,6 +67,7 @@ The wiki is split into two domains with opposite organizing laws:
 - [Persona vs. ICP](knowledge/concepts/persona-vs-icp.md) — who uses the product vs. who pays; conflating them ships a product nobody buys
 - [Physical-Robot Software Factory](knowledge/concepts/physical-robot-software-factory.md) — CI/CD pipeline of versioned robot artifacts; the hardware sibling of the Agent Evolution Factory
 - [Typed Assembly Grammar](knowledge/concepts/typed-assembly-grammar.md) — morphology search over typed modules, not free-form CAD; what makes the concept implementable
+- [VEX V5 Motor Gear Cartridges](knowledge/concepts/vex-v5-motor-cartridges.md) — 6:1/18:1/36:1 swappable cartridges (276-4840); 6:1 (600 RPM) is the add-on for flywheel/launcher throws; 36:1 for high-torque lift; 18:1 default for drive
 - [The Reality Gap](knowledge/concepts/reality-gap.md) — sim-to-real mismatch; the dominant technical risk for physical robot factories
 - [Connector-First Hardware](knowledge/concepts/connector-first-hardware.md) — blind-mate power+data connectors (RoFICoM/Cubelets) collapse the hardest assembly steps
 - [Human-in-the-Loop Replication](knowledge/concepts/human-in-the-loop-replication.md) — "robot designs, human builds, system learns" — the realistic near-term framing
@@ -75,6 +80,9 @@ The wiki is split into two domains with opposite organizing laws:
 - [Imitation Learning — ACT](knowledge/concepts/imitation-learning-act.md) — train robot policies from teleop demos; ACT (Action Chunking with Transformers) at 100 eps / 5M params via LeRobot; proven at hackathon scale
 - [VEX Coprocessor Pattern](knowledge/concepts/vex-coprocessor-pattern.md) — V5 Brain + external Linux host over USB serial/RS-485; canonical two-computer split; 13 confirmed open-source implementations; RPi5 is a novel drop-in for Jetson Nano
 - [Raspberry Pi 5 USB PD Power](knowledge/concepts/rpi5-usb-pd-power.md) — Pi 5 PD negotiation behavior: two-alert distinction (PD miss vs. voltage sag), free config.txt fixes, hardware alternatives to 52Pi board
+- [3D Printing File Formats](knowledge/concepts/3d-printing-file-formats.md) — STL (universal, no color), 3MF (modern standard, color+metadata), STEP (engineering B-Rep), IGES (legacy); G-code is the machine instruction output, not a model format
+- [Slicer Workflow](knowledge/concepts/slicer-workflow.md) — mandatory three-stage pipeline: model file → slicer software → G-code → printer; slicer configures layer height, infill, supports, temperatures; resin and FDM slicers are not interchangeable
+- [Rubber Band Mechanisms (Passive Elastic Energy)](knowledge/concepts/rubber-band-mechanisms.md) — #32 for precision (triggers/latches/springs), #64 for power (lift assist/catapult/intake rollers); silicone for grip; ~30% motor-load reduction from counterbalancing; "free energy" in VEX community
 
 ### Entities
 - People — [knowledge/entities/people/](knowledge/entities/people/)
@@ -122,6 +130,7 @@ The wiki is split into two domains with opposite organizing laws:
   - [LeRobot](knowledge/entities/tools/lerobot.md) — HuggingFace imitation learning framework; leader/follower teleoperation + ACT training + HF dataset publishing; used in hyperfamila
   - [SO101 Arm](knowledge/entities/tools/so101-arm.md) — consumer 6-DOF leader/follower arm; LeRobot-native; ~$200–400/arm; validated in hyperfamila with syringe end-effector
   - [VEX AI Competition (VAIC) Reference Architecture](knowledge/entities/tools/vaic-reference-architecture.md) — official VEX open-source V5+Jetson coprocessor repos (VAIC_23_24, VAIC_24_25); V5Comm.py serial class; directly portable to RPi5
+  - [Onshape](knowledge/entities/tools/onshape.md) — cloud-native CAD; free education account; VEX V5 Parts Library with 100+ parts, 500k+ placements; best tool for building Hero Bot / custom robot assemblies from VEX STEP geometry
   - [NVIDIA Jetson Nano](knowledge/entities/tools/jetson-nano.md) — VAIC reference coprocessor; EOL (dev kit discontinued); replaced by Pi 5 in capstone; serial protocol identical (/dev/ttyACM0, 115200 baud)
   - [NVIDIA Jetson Orin Nano Super](knowledge/entities/tools/jetson-orin-nano-super.md) — current Jetson entry-level ($249); 67 TOPS; rejected for capstone (7-20V DC power, $430+ total, overkill for 8-FPS tasks)
   - [NVIDIA JetPack SDK](knowledge/entities/tools/nvidia-jetpack.md) — mandatory Jetson OS stack; Ubuntu 18.04 + Python 3.6 (Nano/JetPack 4.6); 2-4hr setup; library compatibility friction
