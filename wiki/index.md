@@ -1,6 +1,6 @@
 ---
 title: Wiki Index
-updated: 2026-06-16
+updated: 2026-06-19
 ---
 
 # Wiki Index — Home Map
@@ -56,6 +56,9 @@ The wiki is split into two domains with opposite organizing laws:
 - [Research: Connecting to a Raspberry Pi 5 from an M5 Mac (CanaKit, Headless)](knowledge/sources/rpi5-mac-connection.md) — CanaKit SD has SSH disabled by default; re-flash with Pi Imager (Bookworm, not Trixie) + SSH+WiFi → `ssh user@mypi.local`; Bluetooth peripherals unusable before network access; add Raspberry Pi Connect for browser-based GUI
 - [Research: 3D Printer File Formats](knowledge/sources/3d-printer-file-formats.md) — two-file-type model (model files + G-code); STL universal standard; 3MF modern standard (2015 consortium); slicer is mandatory bridge; STEP preferred for engineering CAD; format-by-printer-technology table
 - [Research: VEX Rubber Bands #32 and #64 — Sizes, Materials, and Robotics Uses](knowledge/sources/vex-rubber-band-sizes.md) — Alliance industry size codes decoded; #32=3"×1/8" (precision), #64=3.5"×1/4" (power/grip); 3 material variants; VRC legal sizes; passive-energy use cases
+- [Research: VEX V5 Minimum Parts for a Launch-Disc Configuration](knowledge/sources/vex-launch-disc-parts.md) — 3 minimum SKUs: 276-5842 (6:1 cartridge), 217-6449 (3" 60A flex wheel), 217-7947 (VersaHex adapters); adds `launch_disc` to the morphology vocabulary as exclusive arm-motor swap
+- [Research: VEX V5 Minimal Structural Parts for a Flywheel Setup](knowledge/sources/vex-flywheel-structure-parts.md) — structural companion to vex-launch-disc-parts; 3 purchase lines (276-3521 HS bearing, 276-6102 HS collar, 276-3440 2" HS shaft); arm C-channels reused; standoff sandwich trick avoids drilling
+- [Research: VEX V5 Flywheel Indexer Mechanisms](knowledge/sources/vex-flywheel-indexer.md) — holds piece in staging, fires on command; 1-motor flywheel frees claw motor → roller indexer, zero new parts; 2-motor flywheel → ratchet (Motor Clutch 276-1098) or 5th motor
 
 ### Concepts
 - [Agent Evolution Factory](knowledge/concepts/agent-evolution-factory.md) — evolving AI-agent architectures via ML+LLM; the recommended capstone pitch
@@ -83,6 +86,10 @@ The wiki is split into two domains with opposite organizing laws:
 - [3D Printing File Formats](knowledge/concepts/3d-printing-file-formats.md) — STL (universal, no color), 3MF (modern standard, color+metadata), STEP (engineering B-Rep), IGES (legacy); G-code is the machine instruction output, not a model format
 - [Slicer Workflow](knowledge/concepts/slicer-workflow.md) — mandatory three-stage pipeline: model file → slicer software → G-code → printer; slicer configures layer height, infill, supports, temperatures; resin and FDM slicers are not interchangeable
 - [Rubber Band Mechanisms (Passive Elastic Energy)](knowledge/concepts/rubber-band-mechanisms.md) — #32 for precision (triggers/latches/springs), #64 for power (lift assist/catapult/intake rollers); silicone for grip; ~30% motor-load reduction from counterbalancing; "free energy" in VEX community
+- [Camera Module 3 — Setup, Packages, and Verification](knowledge/concepts/camera-module-3-setup.md) — cable connection, OS enablement, picamera2/YOLO/AprilTag package installs, and verification scripts for Pi 5 + Camera Module 3
+- [Simulation & Prediction — What's Spec'd vs. What's Missing](knowledge/concepts/simulation-prediction-gap.md) — prediction schemas are solid (contract formulas + PID gap table); simulation step is a named placeholder with no tool, pipeline, or prompt design
+- [VEX Flywheel Disc Launcher](knowledge/concepts/vex-flywheel-disc-launcher.md) — single/double flywheel mechanism; `launch_disc` morphology primitive; minimum 3 SKUs; 276-8402 ball bearings halve current draw; exclusive arm-motor swap on Clawbot
+- [VEX Flywheel Indexer](knowledge/concepts/vex-flywheel-indexer.md) — holds game piece in staging then fires on command; motor budget determines type (roller vs ratchet vs pneumatic); 1-motor flywheel enables zero-purchase roller indexer via freed claw motor
 
 ### Entities
 - People — [knowledge/entities/people/](knowledge/entities/people/)

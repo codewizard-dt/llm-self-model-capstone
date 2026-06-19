@@ -6,6 +6,7 @@ updated: 2026-06-18
 sources:
   - ../../raw/research/vex-v5-customization-grab-pull-throw/index.md
   - ../../raw/research/vex-v5-starter-kit-configurations/index.md
+  - ../../raw/research/vex-launch-disc-parts/index.md
 tags: [vex-v5, motor, cartridge, gear-ratio, throw, flywheel, drivetrain]
 ---
 
@@ -32,6 +33,8 @@ This is the decisive choice for improved launching/throwing capability ([[vex-v5
 
 The wiki explicitly identifies the 6:1 cartridge as the required add-on to move from "slow catapult" to "fast flywheel" throwing.
 
+**Individual cartridge SKU (from [[vex-launch-disc-parts]]):** The 6:1 cartridge can be purchased alone as **276-5842** (~$12–20) to swap into an existing motor without buying a new motor unit. The full motor package (276-4840) ships with all three cartridge types installed.
+
 ## The Other Two
 
 - **36:1 (100 RPM, Red — high-torque):** maximum torque at the cost of speed. Best for lifting heavy arms near the motor's load limit, driving a winch, or maximum-force drivetrain pull. At 100 RPM through a 7:1 arm train, the arm tip turns ~14 RPM — very slow, very strong.
@@ -46,3 +49,4 @@ relates_to::[[typed-assembly-grammar]]
 derived_from::[[vex-v5-customization-grab-pull-throw]]
 relates_to::[[vex-v5-starter-kit-configurations]]
 relates_to::[[task-telemetry-contract]]
+enables::[[vex-flywheel-disc-launcher]]

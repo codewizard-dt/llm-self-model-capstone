@@ -88,6 +88,36 @@ The Booster Kit (276-2232) is a concrete example of **vocabulary expansion** —
 
 The existing Clawbot vocabulary (`claw_grab`, `drive_pull`, `arm_throw`) remains; the Booster Kit adds branches without removing any. Each new type brings physical parameters (rack pitch, roller diameter, shaft length, clutch torque limit) the self-model's capability layer must encode in `vex_v5_catalog.json`.
 
+## Launch-Disc Vocabulary Expansion (from [[vex-launch-disc-parts]])
+
+A **flywheel disc launcher** is a new end-effector node type that extends the grammar without changing its rules. It is an exclusive swap: `flywheel_launcher` replaces `claw_grasper` / `bare_arm` and requires the `cartridge: 600rpm` constraint. Three individual part purchases are the minimum to add this node type:
+
+| SKU | Part | Grammar role |
+|-----|------|-------------|
+| 276-5842 | V5 Motor 6:1 Cartridge (600 RPM) | Sets `cartridge: 600rpm` on the arm motor |
+| 217-6449 | Straight Flex Wheel 3" OD 60A | Flywheel contact surface at end-effector |
+| 217-7947 | VersaHex Adapters v2 1/4" Sq. 8-pack | Shaft adapter to mount flex wheel on V5 HS shaft |
+
+The corrected grammar end-effector field now becomes:
+
+```json
+{
+  "end_effector": ["claw_grasper", "bare_arm", "none", "flywheel_launcher"]
+}
+```
+
+With the constraint:
+
+```json
+{
+  "constraints": {
+    "flywheel_launcher_requires_cartridge": "600rpm"
+  }
+}
+```
+
+Because all 4 Starter Kit motors are in use on the Clawbot, `flywheel_launcher` forces `motor_allocation` to reassign the arm motor — making it a morphologically exclusive choice. An additional Smart Motor (276-4840) lifts this exclusivity by adding a 5th motor. See full mechanism detail: [[vex-flywheel-disc-launcher]].
+
 ## Aesthetic Vocabulary Extension (from [[aesthetic-vocabulary]])
 
 The functional grammar covers motor allocation, arm position, wheel config, gear ratio, and end effector. A separate non-functional layer extends it with **visual self-expression** parameters the LLM can author independently of functional choices:
@@ -140,3 +170,4 @@ base_sentence::[[speedbot]]
 expanded_by::[[vex-v5-booster-kit]]  
 extended_by::[[aesthetic-vocabulary]]  
 references::[[vex-v5-cad-designs]]
+expanded_by::[[vex-flywheel-disc-launcher]]
