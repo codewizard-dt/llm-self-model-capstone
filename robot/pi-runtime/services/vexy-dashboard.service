@@ -1,0 +1,15 @@
+[Unit]
+Description=Vexy System 2 dashboard
+
+[Service]
+Type=simple
+WorkingDirectory=%h/llm-self-model-capstone/robot/pi-runtime
+EnvironmentFile=%h/llm-self-model-capstone/robot/pi-runtime/config/defaults
+EnvironmentFile=-%h/.config/vexy-system2/local
+Environment=PYTHONPATH=%h/llm-self-model-capstone/robot/pi-runtime/src
+ExecStart=/usr/bin/python3 -m vexy_system2.dashboard
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target
