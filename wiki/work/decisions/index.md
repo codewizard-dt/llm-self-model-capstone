@@ -9,4 +9,4 @@ Lists **only active** Decision Groups — a group stays listed while at least on
 
 Entry format: `- [DEC-NNNN — Title](DEC-NNNN-slug.md) — one-line summary · D1 proposed, D2 accepted, …`
 
-_(none yet)_
+- [DEC-0001 — DevOps Branching And Device Runtime Layout](DEC-0001-devops-branching-and-device-runtime.md) — keep runtime code on main while using deploy/vexy-pi as a reviewed device pointer · D1 proposed
