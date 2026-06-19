@@ -94,6 +94,24 @@ For full warning suppression: `PSU_MAX_CURRENT=5000` via `rpi-eeprom-config --ed
 
 See derives_from::[[rpi-complete-kits-mobile-power]] and relates_to::[[rpi5-usb-pd-power]] for full options.
 
+## Initial Setup from Mac — CanaKit Headless (from [[rpi5-mac-connection]])
+
+The CanaKit RPi 5 Starter Kit ships with an SD pre-loaded with Raspberry Pi OS, but **SSH is NOT enabled on the pre-installed image** — first-boot SSH attempts will fail. The kit includes a **USB card reader dongle** to fix this.
+
+**Fastest path (no monitor required):**
+1. Remove SD → insert into CanaKit USB card reader → plug into Mac
+2. Download Raspberry Pi Imager (free) → choose **Bookworm 64-bit** (not Trixie — Dec 2025 Trixie images have known headless WiFi bugs)
+3. OS Customization before writing: set hostname, username/password, **enable SSH**, enter WiFi SSID+password
+4. Write → insert SD → power Pi → wait 90s → `ssh youruser@mypi.local` from Mac Terminal
+
+**After initial SSH**: install `rpi-connect` for browser-based screen-sharing from any device (no VNC client). Pair Bluetooth keyboard/mouse via `bluetoothctl` over SSH once on network.
+
+**USB-C gadget mode caveat**: works on Trixie+, but Pi 5's USB-C power draw can cause instability with M5 Mac USB-C PD — skip for initial setup; use WiFi SSH instead.
+
+**mDNS fallback** if `.local` doesn't resolve: `arp -a` on Mac, or check router DHCP leases.
+
+derives_from::[[rpi5-mac-connection]]
+
 ## Coprocessor Prior Art (from [[vex-v5-rpi-coprocessor-opensource]])
 
 No public repo combines RPi5 + VEX V5 Brain as of June 2026 — the capstone's pairing is novel. The closest open-source prior art uses Jetson Nano (official relates_to::[[vaic-reference-architecture]]) or generic Linux hosts (UTAH rosserial). **The serial interface, device path, and pyserial code are identical** whether the host is a Jetson Nano or RPi5: `/dev/ttyACM0`, 115 200 baud, newline-delimited JSON. The relates_to::[[vex-coprocessor-pattern]] page catalogs all confirmed implementations.
