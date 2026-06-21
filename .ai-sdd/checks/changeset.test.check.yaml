@@ -1,0 +1,8 @@
+apiVersion: ai-sdd/v1
+kind: Check
+metadata: { name: changeset.test }
+spec:
+  # Explicit command (Verification & Reviewer Runbook). Blocking.
+  checkKind: deterministic
+  command: "make test"
+  required: true

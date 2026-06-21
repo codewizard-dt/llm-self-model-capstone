@@ -1,0 +1,12 @@
+apiVersion: ai-sdd/v1
+kind: Worker
+metadata: { name: planner }
+spec:
+  workerKind: transform
+  produces: [{ schema: feature-plan.v1 }]
+  task: { skill: plan-feature }
+  model: deep-reasoning
+  reasoning: high
+  # The slice node supplies `stack` (one of: contracts | operator | coprocessor | brain); the skill
+  # reads .ai-sdd/conventions/<stack>.md. Checks compiled from feature-plan.schema.yaml.
+  checks: [feature-plan.structure]

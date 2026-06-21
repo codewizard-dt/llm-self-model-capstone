@@ -1,0 +1,32 @@
+apiVersion: ai-sdd/v1
+kind: Schema
+metadata: { name: validation-result, version: 1 }
+spec:
+  # A milestone's verdict, captured structurally so the Tier-1 check IS the gate (ADR-0028).
+  # Provided so the m1–m5 milestones declared in MASTER_REQUIREMENTS → Milestones can be wired by
+  # the later program plan (ai-sdd-plan-program). `outcome` (not `verdict`) so a failed checkpoint
+  # self-re-validates rather than routing upstream rework.
+  handle: file
+  format: yaml
+  scope: internal
+  fields:
+    milestone:
+      type: string
+      required: true
+      invariants: [{ nonEmpty: true }]
+    outcome:
+      type: string
+      required: true
+      invariants:
+        - { matches: "^(pass|fail)$" }
+        - { eq: pass }
+    criteria:
+      type: list
+      required: true
+      invariants:
+        - { nonEmpty: true }
+        - { all: { field: id, nonEmpty: true } }
+        - { all: { field: status, matches: "^(pass|fail)$" } }
+        - { all: { field: status, eq: pass } }
+    evidence:
+      type: string

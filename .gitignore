@@ -135,3 +135,28 @@ checkpoints/
 # *.csv
 # *.parquet
 # *.tfrecord
+
+# ai-sdd:begin — managed by ai-sdd-bootstrap; edits between these markers are overwritten on re-bootstrap
+# Software factory runtime (the rest of .ai-sdd/ is committed)
+.ai-sdd/runs/
+.ai-sdd/artifacts/
+# Agent-local state (NOT .agents/skills/ — that's the committed Codex repo-level skill surface).
+# NOTE: .claude/ is intentionally COMMITTED in this repo (team wiki/research skills) — a maintainer
+# decision overriding the bootstrap default — so it is deliberately NOT listed here.
+.codex/
+# Per-vertical ignore_folders (MASTER_REQUIREMENTS → Tech stacks). __pycache__/, .venv/, dist/,
+# build/, out/, .pytest_cache/ are already covered by the global Python/Node sections above; the
+# scoped entries below cover the vertical-specific folders not otherwise ignored.
+# Verticals map: contracts/ + operator/ + pilot/ (new dirs) · coprocessor=robot/pi-runtime · brain=robot/v5-brain
+# contracts: captures
+contracts/captures/
+# operator: .claude out
+operator/.claude/
+operator/out/
+# pilot (online-control harness): captures
+pilot/captures/
+# coprocessor (robot/pi-runtime): models captures
+robot/pi-runtime/models/
+robot/pi-runtime/captures/
+# brain (robot/v5-brain): PROS build artifacts are handled by robot/v5-brain/v5-test/.gitignore
+# ai-sdd:end

@@ -1,0 +1,37 @@
+apiVersion: ai-sdd/v1
+kind: Schema
+metadata: { name: parts-catalog, version: 1 }
+spec:
+  # FROZEN CONTRACT — Parts Catalog Grammar. Transcribed verbatim from
+  # MASTER_REQUIREMENTS.md → Constraints → Frozen Contracts. Requirement-level freeze; canonical
+  # runtime copy is parts_catalog.json + a pydantic-v2 model in `contracts/` (ADR-06/14). The finite
+  # typed design vocabulary (~10–15 valid configs, Starter Kit only). Validated continuously by
+  # parts-catalog.structure against examples/parts-catalog.example.json.
+  handle: file
+  format: yaml
+  scope: shared
+  fields:
+    motor_allocation:
+      type: list
+      required: true
+      invariants: [{ nonEmpty: true }, { all: { nonEmpty: true } }]
+    arm_position:
+      type: list
+      required: true
+      invariants: [{ nonEmpty: true }, { all: { nonEmpty: true } }]
+    end_effector:
+      type: list
+      required: true
+      invariants: [{ nonEmpty: true }, { all: { nonEmpty: true } }]
+    wheel_config:
+      type: list
+      required: true
+      invariants: [{ nonEmpty: true }, { all: { nonEmpty: true } }]
+    arm_gear_ratio:
+      type: list
+      required: true
+      invariants: [{ nonEmpty: true }, { all: { nonEmpty: true } }]
+    cartridge:
+      type: list
+      required: true
+      invariants: [{ nonEmpty: true }, { all: { nonEmpty: true } }]

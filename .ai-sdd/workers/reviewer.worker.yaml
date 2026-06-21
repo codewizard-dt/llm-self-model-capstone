@@ -1,0 +1,15 @@
+apiVersion: ai-sdd/v1
+kind: Worker
+metadata: { name: reviewer }
+spec:
+  workerKind: transform
+  consumes:
+    - { schema: feature-plan.v1, required: true }
+    - { schema: changeset.v1, required: true }
+  produces: [{ schema: review.v1 }]
+  task: { skill: review-feature }
+  model: deep-reasoning
+  reasoning: high
+  # review.structure IS the blocking verdict gate (all items pass + verdict approve); review.coverage
+  # enforces that the review judges every plan acceptance id.
+  checks: [review.structure, review.coverage]

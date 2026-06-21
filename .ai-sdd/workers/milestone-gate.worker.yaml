@@ -1,0 +1,17 @@
+apiVersion: ai-sdd/v1
+kind: Worker
+metadata: { name: milestone-gate }
+spec:
+  # Provided for the m1–m5 milestones declared in MASTER_REQUIREMENTS → Milestones, wired by the
+  # program plan (ai-sdd-plan-program), not by this per-slice pattern. MANUAL variant: a human
+  # validates and records a validation-result.v1; the structural check enforces `outcome == pass`.
+  #
+  # To AUTOMATE an automated milestone (m1, m1b, m2, m3 are "automated"), swap this node's kind/checks:
+  # set `workerKind: transform` with a skill that runs the harness + a deterministic check, e.g.
+  #     command: "make demo"          # m2-loop-closes-synthetic
+  #     command: "make validate"      # m1-contracts-frozen
+  # gated on exit code. Inputs/outputs are unchanged.
+  workerKind: human
+  produces: [{ schema: validation-result.v1 }]
+  task: { skill: validate-milestone }
+  checks: [validation-result.structure]

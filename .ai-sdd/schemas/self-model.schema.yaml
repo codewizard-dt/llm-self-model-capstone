@@ -1,0 +1,49 @@
+apiVersion: ai-sdd/v1
+kind: Schema
+metadata: { name: self-model, version: 1 }
+spec:
+  # FROZEN CONTRACT — Self-Model Schema. Transcribed verbatim from
+  # MASTER_REQUIREMENTS.md → Constraints → Frozen Contracts. Requirement-level freeze; canonical
+  # runtime copy is a pydantic-v2 model in `contracts/` (ADR-06). Versioned JSON, one document per
+  # generation; the first-class `reasoning` field keeps every generation human-inspectable.
+  # `parent_generation` is nullable (Gen 0 = null). Validated continuously by self-model.structure
+  # against examples/self-model.example.json.
+  handle: file
+  format: yaml
+  scope: shared
+  fields:
+    schema_version:
+      type: string
+      required: true
+      invariants: [{ matches: "^[0-9]+\\.[0-9]+$" }]
+    generation:
+      type: number
+      required: true
+      invariants: [{ matches: "^[0-9]+$" }]
+    parent_generation:
+      type: number
+      required: false        # null for Gen 0
+    config:
+      type: object
+      required: true
+      invariants: [{ nonEmpty: true }]
+    structural:
+      type: object
+      required: true
+      invariants: [{ nonEmpty: true }]
+    capability:
+      type: object
+      required: true
+      invariants: [{ nonEmpty: true }]
+    predictive:
+      type: object
+      required: true
+      invariants: [{ nonEmpty: true }]
+    gap_model:
+      type: object
+      required: true
+      invariants: [{ nonEmpty: true }]
+    reasoning:
+      type: string
+      required: true
+      invariants: [{ nonEmpty: true }]

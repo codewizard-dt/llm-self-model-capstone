@@ -1,0 +1,8 @@
+apiVersion: ai-sdd/v1
+kind: Check
+metadata: { name: changeset.validate }
+spec:
+  # Explicit command (Verification & Reviewer Runbook; ADR-06): pydantic fixtures vs frozen schemas.
+  checkKind: deterministic
+  command: "make validate"
+  required: true

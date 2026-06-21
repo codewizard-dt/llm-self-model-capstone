@@ -51,6 +51,11 @@ By the demo, the system closes the generational self-model loop **in software** 
 
 *(Stack Registry — every component/feature belongs to exactly one vertical. `ignore_folders` are captured so `/prepare-sdd-slice <feature_slug>` can generate valid `requirements.md` front matter.)*
 
+> **Layout note (2026-06-21).** The logical verticals map onto the repo as **`contracts/` ·
+> `operator/` · `coprocessor` → `robot/pi-runtime/` · `brain` → `robot/v5-brain/`** (DEC-0001's
+> deployable surface). `brain` is **PROS C++** (ADR-05). A new vertical **`pilot/`** is added for the
+> online real-time control loop (ADR-19).
+
 **Shared tooling (non-negotiable, all verticals).** Python dependencies and virtualenvs are managed with **`uv`** (`uv sync` / `uv add` / `uv run`); linting and formatting use **`ruff`** (`ruff check` / `ruff format`). No `pip`, `poetry`, `pip-tools`, `black`, `isort`, or `flake8`. The `brain` vertical lints with `ruff` but ships as a single VEXcode Python file with no runtime package manager, so `uv` governs its dev tooling only.
 
 **Hardware-access split (non-negotiable).** Erick is the only member with no robot access and works entirely off the hardware (system design, contracts, synthetic oracle). David, Jake, and Grace all touch hardware. David leads the `operator` LLM software; Jake leads the `coprocessor` runtime; Grace owns the `brain` firmware and the vision pipeline and takes the presentation features off David. The software telemetry sources (`Synthetic` oracle, `Replay` reader) live in the `contracts` vertical so they stay off the hardware critical path. Per-feature owners are listed in *Sub-features*; the workload is balanced to **8 effort-points each** (see *Sub-features → Workload balance*).
@@ -370,13 +375,26 @@ The minimum-duration chain to the **grounded** demo runs through hardware captur
 
 Closed decisions use definitive language — no "if needed / or / prefer / may be."
 
+> **Additions 2026-06-21.** New research + hands-on bringup add to the decisions above:
+>
+> - **Vertical roots.** `coprocessor` → `robot/pi-runtime/`, `brain` → `robot/v5-brain/`
+>   (DEC-0001 deployable surface); `contracts/`, `operator/`, `pilot/` are repo-root dirs.
+> - **ADR-19 (new) — online real-time control loop is first-class.** Beyond the offline generational
+>   self-model loop, the project includes a second loop: an online LLM on the Pi (`pilot` vertical)
+>   reads live telemetry + vision and issues **fixed control-grammar** commands to perform an
+>   open-ended task in real time, bounded by iteration/time limits + a human interrupt, informed by
+>   the offline analysis. Adds a `control-command` contract (draft) owned by `contracts`. **Revisit
+>   ADR-03/ADR-08:** on-device online inference likely needs an API key + network (contradicting "no
+>   keys"); the runtime + secret posture for `pilot` is an open decision. Rejected: leaving real-time
+>   control as V2-only (the maintainer scoped it in now).
+
 | # | Decision | Chosen | Rationale | Rejected |
 |---|---|---|---|---|
 | ADR-01 | HW strategy | **Software-first loop behind `TelemetrySource`/`VisionSource` adapters** | Guarantees a demoable loop; expands to full physical loop by swapping adapter implementation only | Full-physical-as-MVP (deadline-gated on wiring); pure-simulation (weakens thesis) |
 | ADR-02 | Vision | **In MVP, source-abstracted** | Honors the multi-modal claim; recorded/synthetic frames keep it off the hardware critical path | Defer vision; AprilTag-only |
 | ADR-03 | Reviewer reproduction | **Claude Code interactive + scripted `make demo` replay** | Reviewer reproduces gap analysis over recorded JSONL without robot or subscription | Claude-Code-only (not reproducible); scripted API harness (reopens ADR-08) |
 | ADR-04 | Presentation | **Markdown/terminal renderer** | Zero UI build cost; carries the narrative through diffs + tables | Web dashboard; raw-JSON-only |
-| ADR-05 | Language | **Python across all verticals** | VEXcode and Pi are Python; one toolchain | Mixed-language |
+| ADR-05 | Language | **Python on `contracts`/`operator`/`coprocessor`/`pilot`; PROS C++ on `brain`** | One Python toolchain for the dev/Pi verticals; the Brain needs C++ for real-time + bidirectional serial (MicroPython too slow for tight loops; serial-receive on the Brain unconfirmed) | Python on the Brain |
 | ADR-06 | Contract validation | **pydantic v2 models, JSON-Schema export** | Single definition validates and documents the contract | Hand-rolled validation |
 | ADR-07 | Critic count | **3 critics: physics · torque · CoM/geometry** | Matches the failure modes a pre-build review must catch | Single critic; >3 |
 | ADR-08 | LLM runtime | Claude Code subscription *(inherited, PLAN §7)* | Reads files directly; no key/billing/latency infra | Scripted API |

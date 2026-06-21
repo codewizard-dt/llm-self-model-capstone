@@ -1,0 +1,25 @@
+apiVersion: ai-sdd/v1
+kind: Worker
+metadata: { name: implementer }
+spec:
+  workerKind: transform
+  consumes: [{ schema: feature-plan.v1, required: true }]
+  produces: [{ schema: changeset.v1 }]
+  task: { skill: implement-feature }
+  model: deep-reasoning
+  reasoning: high
+  # Compiled from changeset.schema.yaml (structure + rules: build/test/validate/lint/diff-in-scope).
+  # Plus the three FROZEN-CONTRACT structure gates (task-telemetry / self-model / parts-catalog):
+  # these keep the frozen schemas valid against their committed fixtures on every slice for the whole
+  # project. `make demo` is intentionally NOT here — it is the m2 milestone step.
+  checks:
+    - changeset.structure
+    - changeset.build
+    - changeset.test
+    - changeset.validate
+    - changeset.lint
+    - changeset.diff-in-scope
+    - task-telemetry.structure
+    - self-model.structure
+    - parts-catalog.structure
+    - control-command.structure
