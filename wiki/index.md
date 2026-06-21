@@ -94,6 +94,7 @@ The wiki is split into two domains with opposite organizing laws:
 - [Simulation & Prediction — What's Spec'd vs. What's Missing](knowledge/concepts/simulation-prediction-gap.md) — prediction schemas are solid (contract formulas + PID gap table); simulation step is a named placeholder with no tool, pipeline, or prompt design
 - [VEX Flywheel Disc Launcher](knowledge/concepts/vex-flywheel-disc-launcher.md) — single/double flywheel mechanism; `launch_disc` morphology primitive; minimum 3 SKUs; 276-8402 ball bearings halve current draw; exclusive arm-motor swap on Clawbot
 - [VEX Flywheel Indexer](knowledge/concepts/vex-flywheel-indexer.md) — holds game piece in staging then fires on command; motor budget determines type (roller vs ratchet vs pneumatic); 1-motor flywheel enables zero-purchase roller indexer via freed claw motor
+- [PROS Dependency & Build Compatibility](knowledge/concepts/pros-dependency-compatibility.md) — rules for adding ANY PROS library on this Brain: pin kernel-4.x, build as monolith (`USE_PACKAGE:=0`); hot/cold split is silently broken (program runs but display + serial no-op)
 
 ### Entities
 - People — [knowledge/entities/people/](knowledge/entities/people/)

@@ -2,7 +2,7 @@
 id: pros
 title: PROS (Purdue Robotics OS)
 aliases: [PROS, Purdue Robotics OS, PROS 3]
-updated: 2026-06-20
+updated: 2026-06-21
 sources:
   - ../../../raw/research/vex-v5-advanced-toolchains/index.md
   - ../../../raw/research/vex-v5-rpi-coprocessor-opensource/index.md
@@ -41,6 +41,11 @@ PROS projects are standard C++ with `include/` and `src/` directories — arbitr
 - uses::[[lemlib]] — odometry, PID, pure pursuit path following, Monte Carlo Localization
 - OkapiLib — older motion profiling library (largely superseded by LemLib)
 
+> **Adding any library:** follow relates_to::[[pros-dependency-compatibility]] — pin a
+> kernel-4.x release and build as a monolith (`USE_PACKAGE:=0`). On the capstone Brain
+> the default hot/cold split is silently broken (program runs but display + serial
+> no-op); the monolith build is the verified-working configuration.
+
 ## Toolchain
 
 - PROS CLI for project creation, building, uploading
@@ -50,7 +55,7 @@ PROS projects are standard C++ with `include/` and `src/` directories — arbitr
 ### PROS CLI — Exact Commands (from derives_from::[[pros-cli-brain-bridge]])
 
 ```bash
-pip3 install pros-cli                    # install (pip3 or pip; adds `pros` command)
+uv add pros-cli && uv sync               # install (project uses uv, never pip; adds `pros` command)
 # Linux only: sudo usermod -a -G dialout $USER  (then log out/in for USB upload permission)
 pros conduct new-project ./my-project    # create a new PROS project with latest kernel
 pros make                                # compile only

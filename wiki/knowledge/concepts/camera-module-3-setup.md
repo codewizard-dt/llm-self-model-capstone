@@ -37,8 +37,8 @@ This opens a 5-second preview window. If it shows a live image, the driver, ribb
 |---|---|---|
 | `picamera2` | pre-installed (Bookworm) | Camera capture → numpy array |
 | `opencv-python` | pre-installed (Bookworm) | Frame processing, color detection, ArUco fallback |
-| `ultralytics` | `pip install ultralytics` | YOLO11n object detection |
-| `apriltag` | `pip install apriltag` | Workspace localization via printed fiducial tags |
+| `ultralytics` | `uv pip install ultralytics` | YOLO11n object detection |
+| `apriltag` | `uv pip install apriltag` | Workspace localization via printed fiducial tags |
 
 After installing `ultralytics`, export the model to Pi-optimized NCNN format:
 ```bash

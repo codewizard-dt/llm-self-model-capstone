@@ -16,7 +16,7 @@ Research conducted 2026-06-21. Full report: `raw/research/pros-cli-brain-bridge/
 **Install, create, build, and upload with four commands** (all on a laptop; the Pi never builds C++):
 
 ```bash
-pip3 install pros-cli                    # install; Linux needs: sudo usermod -a -G dialout $USER
+uv add pros-cli && uv sync               # install (project uses uv, never pip); Linux needs: sudo usermod -a -G dialout $USER
 pros conduct new-project ./vexy-brain    # scaffold project with latest kernel
 pros mu --slot 1                         # make + upload to slot 1 (most common shortcut)
 pros terminal                            # stream printf output from the running program

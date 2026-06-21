@@ -2,7 +2,7 @@
 id: lemlib
 title: LemLib
 aliases: [LemLib, Lem Library]
-updated: 2026-06-16
+updated: 2026-06-21
 sources:
   - ../../../raw/research/vex-v5-advanced-toolchains/index.md
 tags: [tool, software, vex, library, odometry, pid, competition, open-source]
@@ -31,7 +31,11 @@ This is a materially richer relates_to::[[task-telemetry-contract]] than encoder
 
 ## Setup Requirements
 
-- Requires PROS environment
+- Requires PROS environment — and must follow the project-wide rules in
+  relates_to::[[pros-dependency-compatibility]]: pin a LemLib release that targets
+  **PROS kernel 4.x**, install via `pros conductor apply`, and rely on the monolith
+  build (`USE_PACKAGE:=0`) so it links into `monolith.bin` rather than a separate
+  (broken-on-this-Brain) cold package. Re-verify display + serial after adding it.
 - **V5 Inertial Sensor (IMU) required** — not included in the base Starter Kit; add ~$40
 - Calibration: physical wheel diameter and chassis track width measurements (millimeter precision)
 - IMU calibration on first boot

@@ -11,7 +11,7 @@ tags: [tool, vision, fiducial, localization, python, raspberry-pi]
 
 # AprilTag Library
 
-The `apriltag` Python package (`pip install apriltag`) wraps the official C library from the APRIL Robotics Lab at the University of Michigan (Edwin Olson, ICRA 2011). It is the primary localization tool in the capstone's Raspberry Pi 5 vision stack.
+The `apriltag` Python package (`uv pip install apriltag`) wraps the official C library from the APRIL Robotics Lab at the University of Michigan (Edwin Olson, ICRA 2011). It is the primary localization tool in the capstone's Raspberry Pi 5 vision stack.
 
 **What it does**: given a grayscale camera frame, `detector.detect(gray_frame)` returns a list of detected AprilTag fiducial markers, each with: integer `tag_id`, center pixel coordinates, corner pixels, and a 3D pose estimate (rotation matrix + translation vector relative to the camera). From the pose and known tag placement geometry, the robot's workspace position `{x_mm, y_mm, heading_deg}` is computable without odometry calibration.
 

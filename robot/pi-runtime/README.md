@@ -83,7 +83,22 @@ The broker writes:
 - `/tmp/vexy-system2/latest.jpg`
 - `/tmp/vexy-system2/camera.json`
 
-## Tomorrow With The V5 Brain
+## V5 Brain Interface (telemetry + commands)
+
+The full Pi↔Brain interface — physical ports, receiving telemetry (verified), and
+sending commands (designed, not yet attempted) — is documented in
+[`docs/BRAIN_INTERFACE.md`](docs/BRAIN_INTERFACE.md). Quick facts:
+
+- **User (telemetry) port** = `/dev/serial/by-id/…-if02` = `/dev/ttyACM1`. The `…-if00` /
+  `ttyACM0` port is the system/upload port and carries no program output.
+- **Receive telemetry** with no repo or packages: `cat /dev/ttyACM1` (add
+  `| grep -a --line-buffered '^{'` to drop the boot banner). Trigger the run from the
+  Brain touchscreen.
+- **Sending commands** is not yet wired — see `BRAIN_INTERFACE.md` §3 for the protocol,
+  the `bridge.py serial` path, and the telemetry-vs-ack multiplexing problem to solve
+  first.
+
+### Original first-contact checklist
 
 1. Connect the V5 Brain Micro-USB to the Pi.
 2. Run `scripts/find_v5_serial.sh`.
@@ -91,7 +106,7 @@ The broker writes:
 4. Switch `VEXY_BRIDGE_MODE=serial` and set `VEXY_SERIAL_PORT`.
 5. Run `scripts/serial_ping_test.sh`.
 
-See `docs/TOMORROW_BRINGUP.md`.
+See `docs/TOMORROW_BRINGUP.md` and `docs/BRAIN_INTERFACE.md`.
 
 ## Device Config
 
