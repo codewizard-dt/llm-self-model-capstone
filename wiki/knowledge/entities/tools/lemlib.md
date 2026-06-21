@@ -32,9 +32,15 @@ This is a materially richer relates_to::[[task-telemetry-contract]] than encoder
 ## Setup Requirements
 
 - Requires PROS environment
+- **V5 Inertial Sensor (IMU) required** — not included in the base Starter Kit; add ~$40
 - Calibration: physical wheel diameter and chassis track width measurements (millimeter precision)
 - IMU calibration on first boot
+- PID gains must be empirically re-tuned whenever robot morphology changes (new arm, end-effector, added mass)
 - Testing recommended on physical robot before competition/demo
+
+## Thin-Executor Scope Note
+
+LemLib is **out of scope for the capstone's thin-executor architecture** as of 2026-06-21. The thin executor sends motor velocity setpoints from the Pi; LemLib requires the Pi to send *goal poses* instead, which demands a protocol redesign. The Task Telemetry Contract already captures per-motor `position/velocity/torque/current` from the hardware inner PID — the LLM self-model loop has the gap residuals it needs without LemLib. Revisit if the capstone adds navigation tasks requiring repeatable field positioning. See derives_from::[[v5-brain-python-vs-pros]].
 
 ## PID as the Core Mechanism
 

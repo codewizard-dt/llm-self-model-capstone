@@ -71,6 +71,9 @@ Data logging to **SD card** (CSV via standard file I/O) is supported.
 - **SD card required** for persistent file storage; no onboard user flash.
 - **Web version requires Chrome** — Safari, Firefox, Edge not supported.
 - **No pip**: cannot install third-party MicroPython packages through VEXcode.
+- **`input()` does not work** in VEXcode Python — confirmed on VEX forum.
+- **Python stdin receiving from Pi is unconfirmed**: No community example shows Python code running *on the Brain* receiving data from a coprocessor via `sys.stdin.readline()`. A VEX forum thread about `std::cin/scanf()` in VEXcode C++ reports "The brain supports it but I suspect the VEXcode console does not" — the same concern applies to Python. See derives_from::[[v5-brain-python-vs-pros]].
+- **Cooperative scheduler + blocking readline = watchdog risk**: If a Python `sys.stdin.readline()` call blocks while the Pi is disconnected, a watchdog `Thread` won't tick (cooperative means the blocked thread holds the scheduler). `uselect.poll()` could mitigate this, but its availability on VEX's custom MicroPython 1.13 port is unconfirmed.
 
 ## Toolchain Landscape
 

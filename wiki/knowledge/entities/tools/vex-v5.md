@@ -2,11 +2,12 @@
 id: vex-v5
 title: VEX V5
 aliases: [VEX V5, VEX]
-updated: 2026-06-16
+updated: 2026-06-21
 sources:
   - ../../../raw/Feasibility of a Human-Built Generational Robot Software Factory.pdf
   - ../../../raw/Feasibility of a Software-Factory Approach to Learning Robots That Assemble Additional Robots from M.pdf
   - ../../../raw/research/vex-v5-classroom-starter-kit/index.md
+  - ../../../raw/research/vex-v5-classroom-starter-kit/index-2.md
   - ../../../raw/276-6009-750-Rev6.pdf
 tags: [tool, hardware, vex, platform, robotics]
 ---
@@ -177,7 +178,11 @@ derives_from::[[vex-v5-cad-designs]]
 
 The V5 Brain exposes two USB serial ports when connected to a host computer. The *user port* (stdio) lets user programs emit telemetry and receive commands from an external process — this is the integration path for the LLM self-model loop. VEX's official VEX AI demo uses a Jetson Nano connected via USB serial to a V5 Brain for exactly this purpose.
 
-**Recommended capstone pattern**: a lightweight Python stub on the Brain emits JSON motor telemetry over the user port; the LLM + self-model runs on a host machine with full CPython and library access. See derived_from::[[research-vexcode-v5]].
+**A user program is mandatory — the RPi cannot bypass it.** V5 Smart Motors use a proprietary RS-485 protocol that the RPi cannot speak; the Brain loads motor firmware onto each motor at boot. The user port carries stdio from a *running* user program only — without a program running, sending data through the user port produces silence. The system port (used by VEXcode/PROS CLI) only handles program upload and management, not real-time motor commands. See derives_from::[[v5-user-programs]].
+
+**The minimum user program is ~50–100 lines**: a serial-read loop that parses JSON commands, calls motor velocity APIs, sends JSON acks, and stops motors if no command arrives for >250ms. No competition structure (autonomous/teleop split) is needed for the capstone — without a Competition Switch, `opcontrol()` runs immediately after `initialize()`.
+
+**Recommended capstone pattern**: a lightweight Brain program (Python or PROS C++) on the Brain relays Pi commands to motors and returns acks + telemetry; the LLM + self-model runs on the Pi with full CPython and library access. See derived_from::[[research-vexcode-v5]], derived_from::[[v5-brain-python-vs-pros]].
 
 ## PROS Smart Port RS-485 — Second Coprocessor Channel
 
@@ -251,3 +256,44 @@ Three material variants: **Synthetic/EPDM** for energy storage (high elongation)
 Well-tuned rubber band counterbalancing reduces motor load ~30% — enabling a 1-motor lift to compete with a naive 2-motor design. Adding #64 bands to the arm is a likely Gen 1→2 mutation in the self-model evolution loop.
 
 See relates_to::[[rubber-band-mechanisms]] for full mechanism taxonomy.
+
+## Per-Part Specification & CAD Library (from [[vex-v5-classroom-starter-kit]] index-2)
+
+A complete part-isolation reference (2026-06-21) provides **dimensions, weight, and STEP CAD** for every line item in the Classroom Starter Kit. 30 STEP files (~319 MB) are saved locally at `raw/research/vex-v5-classroom-starter-kit/cad/`. Weight methodology: **published** (from VEX Weight tab via browser), **calc** (geometry+calibration), **est** (no VEX data), all labeled in the table.
+
+**VEX structural convention:** hole pitch = **0.500″ (12.7 mm)**, hole diameter = **0.182″ square**. Structural member length ≈ hole-count × 0.5″. Square steel shaft density: **0.00435 lb/in** calibrated from published 12″ 4-pack weight.
+
+**Selected published weights (per piece):**
+
+| Part | SKU | Dimensions | Weight |
+|------|-----|-----------|--------|
+| V5 Robot Brain | 276-4810 | 101.6×139.7×33.0 mm | **285 g** |
+| V5 Robot Battery | 276-4811 | 46.45×160.45×30.33 mm | **350 g** |
+| V5 Controller | 276-4820 | see CAD | **350 g** |
+| V5 Robot Radio | 276-4831 | see CAD | **25 g** |
+| V5 Smart Motor | 276-4840 | see CAD | **160 g** + 50 g/cartridge |
+| Battery Charger | 276-4812 | see CAD | **100 g** |
+| Bumper Switch v2 | 276-4858 | 1.26″×1.21″×0.5″ | **≈ 7.5 g** |
+| 4″ Omni Wheel | 276-2185 | 101.6 mm dia | **105 g** |
+| 4″ Traction Wheel | 276-1497 | 101.6 mm dia | **90 g** |
+| 84T HS Spur Gear | 276-3438 | ~3.5″ pitch dia | **35 g** |
+| 12T HS Pinion | 276-2251 | ~0.5″ pitch dia | **0.9 g** |
+| Flat Bearing | 276-1209 | 0.125″ bore | **2.27 g** |
+| Rubber Shaft Collar | 228-3510 | 0.125″ bore | **≈ 0.45 g** |
+| #8-32 Hex Nut | 275-1028 | 0.344″ AF × 0.105″ | **1.18 g** |
+| V5 Battery Clip | 276-6020 | — | **≈ 5.7 g** |
+
+**CAD files available** (all STEP, `kebab-name_SKU.step`):
+- Electronics: `v5-robot-brain_276-4810`, `v5-controller_276-4820`, `v5-robot-radio_276-4831`, `v5-robot-battery_276-4811`, `v5-smart-motor_276-4840`, `bumper-switch-v2_276-4858`, `v5-battery-clip_276-6020`
+- Wheels/shafts/gears: `wheel-4in_276-1497`, `wheel-4in-omni_276-8107`, `shaft-2in_276-2011-001`, `shaft-3in_276-2011-002`, `shaft-12in-stock_276-1149`, `pinion-12t-hs-metal_276-2251`, `gear-84t-hs_276-3438`, `hs-metal-shaft-inserts_276-3881-002`, `v5-claw-kit_276-6010`
+- Hardware: `hex-nut-8-32_275-1028`, `1-post-hex-nut-retainer-w-bearing_276-6481`, `1-post-hex-nut-retainer_276-6482`, `4-post-hex-nut-retainer_276-6483`, `flat-bearing_276-1209`, `rubber-shaft-collar_228-3510`, screws ×4 lengths
+- Structure proxies: `u-channel-2x2x2x20-alu_276-7285`, `c-channel-1x2x1x35-steel_276-2906`, `angle-2x2x25-steel_275-1142`
+- Assembly: `v5-clawbot-assembly_276-6009`
+
+**Steel structure cut-length weights** (*calc* from per-hole rate, not published by VEX):
+- 2×2×2×20 U-Channel (3 pcs): ≈ 157 g each (alu × 2.3 ratio)
+- 1×2×1×15 C-Channel (2 pcs): ≈ 70 g each (0.01031 lb/hole × 15)
+- 1×2×1×25 C-Channel (2 pcs): ≈ 117 g each
+- 2×2×14×20 Angle (2 pcs): ≈ 92 g each (0.0101 lb/hole × 20)
+
+derived_from::[[vex-v5-classroom-starter-kit]]
