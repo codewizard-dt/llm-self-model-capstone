@@ -32,7 +32,9 @@ We build a generational self-model loop that runs on real hardware:
 
 The self-model is a versioned JSON document with a `reasoning` field where the LLM explains why it made each structural choice and what evidence led to each revision. Every generation stays human-inspectable.
 
-**Build strategy.** The loop is built software-first: telemetry and vision sources sit behind swap-in adapters, and early milestones run on a parametric **synthetic oracle** — a hidden-ground-truth model whose true parameters the Generator never sees — grounded by one real baseline capture once the hardware is up. This keeps the team unblocked on day one and lets the full physical loop drop in by swapping an adapter, with no contract change. The code is organized into four verticals (`contracts`, `operator`, `coprocessor`, `brain`); Python dependencies use `uv` and linting uses `ruff`.
+**Build strategy.** The loop is built software-first: telemetry and vision sources sit behind swap-in adapters, and early milestones run on a parametric **synthetic oracle** — a hidden-ground-truth model whose true parameters the Generator never sees — grounded by one real baseline capture once the hardware is up. This keeps the team unblocked on day one and lets the full physical loop drop in by swapping an adapter, with no contract change. The code is organized into five verticals — `contracts`, `operator`, and `pilot` at the repo root, with `coprocessor` → `robot/pi-runtime/` and `brain` → `robot/v5-brain/`. The Python verticals use `uv` + `ruff`; the `brain` is **PROS C++** (PROS CLI + `arm-none-eabi` cross-compiler), chosen because a real-time, bidirectional serial executor needs C++ (VEXcode MicroPython is too slow for tight loops and cannot be confirmed to receive serial on the Brain).
+
+**Two loops.** Beyond this *offline self-model loop* (revise a readable design across generations), the project includes an *online control loop*: the `pilot` vertical puts an LLM on the Pi that reads live telemetry + vision and issues fixed **control-grammar** commands to drive the robot through an open-ended task in real time — bounded by iteration/time limits with a human interrupt, and informed by the offline analysis.
 
 ---
 
@@ -186,7 +188,7 @@ The base kit yields about 10 to 15 valid configurations. That count is small eno
 ### 3. Telemetry Pipeline
 
 ```
-VEX V5 Brain  (brain_main.py, 20 ms tick)
+VEX V5 Brain  (PROS C++ main.cpp, 20 ms tick)
 │
 │   per task execution, emit to stdout:
 │   { "task": "grab",
@@ -371,30 +373,37 @@ The aesthetic layer gives the generator a way to make each generation visually d
  Synthetic data ──►   Hidden-ground-truth   ✗  hand-authored telemetry (rigged)
                       parametric oracle     ✗  physics simulator (too heavy)
 
- Tooling        ──►   uv + ruff             ✗  pip / poetry / black / isort
-                      Python all verticals
+ Tooling        ──►   uv + ruff (Python)    ✗  pip / poetry / black / isort
+                      brain = PROS C++          (VEXcode MicroPython too slow,
+                      (PROS CLI + arm-gcc)       serial-receive unconfirmed)
+
+ Online loop    ──►   on-Pi LLM control     ─  fixed control grammar; bounded +
+                      (pilot vertical)          interruptible; informed by the
+                                                offline analysis (ADR-19)
 ```
 
 ---
 
 ## How the Work Is Divided
 
-The system decomposes into four code verticals (`contracts`, `operator`, `coprocessor`, `brain`) and eighteen feature slices. Ownership and execution sequencing are **authoritative in [MASTER_REQUIREMENTS.md](MASTER_REQUIREMENTS.md)**; the work is balanced to ~8 effort-points per person:
+The system decomposes into five code verticals — `contracts`, `operator`, and `pilot` at the repo root, with `coprocessor` → `robot/pi-runtime/` and `brain` → `robot/v5-brain/` — across the task list in [MASTER_REQUIREMENTS.md](MASTER_REQUIREMENTS.md), which is authoritative for scope, sequencing, and ownership. **Ownership is TBD** for every vertical except Erick's contracts + oracle work:
 
-| Owner | Owns | Verticals |
-|-------|------|-----------|
+| Owner | Owns | Vertical |
+|-------|------|----------|
 | **Erick Andrade** | telemetry + self-model contracts, synthetic oracle, oracle recalibration (no robot access) | contracts |
-| **David Taylor** | adapter interfaces, Generator, Critic panel, gap analyzer | operator (+ contracts) |
-| **Jake Kinchen** | parts-catalog grammar, serial-bridge merge, replay source, live HW sources, baseline capture | coprocessor (+ contracts) |
-| **Grace Huang** | vision pipeline, brain firmware, markdown presenter, demo replay, aesthetic (V2) | coprocessor + brain + operator |
+| **TBD** | parts-catalog grammar, control grammar, adapter interfaces, replay source | contracts |
+| **TBD** | Generator, critic panel, gap analyzer, presenter, demo replay | operator |
+| **TBD** | vision pipeline, serial-bridge merge, live HW sources, baseline capture | coprocessor (`robot/pi-runtime`) |
+| **TBD** | brain telemetry firmware + command bridge (PROS C++) | brain (`robot/v5-brain`) |
+| **TBD** | online-control harness (on-Pi LLM real-time loop) | pilot |
 
-Critical-path note: the chain to the grounded demo runs through hardware capture (vision → merge → capture → oracle grounding), where Grace sits twice (vision + brain). See [MASTER_REQUIREMENTS.md → Critical path](MASTER_REQUIREMENTS.md).
+Critical-path note: the chain to the grounded demo runs through hardware capture (vision → merge → capture → oracle grounding). Keep the vision pipeline and the brain firmware on different owners so they don't serialize. See [MASTER_REQUIREMENTS.md → Critical Path](MASTER_REQUIREMENTS.md).
 
 The seven component chunks below remain the **interface reference** — each with clear inputs and outputs so the verticals can build in parallel against frozen contracts. The Generational Loop is shared across everyone, since it is the integration spec rather than one person's piece.
 
 | # | Chunk | What you own | Interface in | Interface out |
 |---|-------|-------------|-------------|--------------|
-| 1 | **VEX V5 Brain** | `brain_main.py`, motor wiring, port assignments, bumper switch config | Task commands from operator | Contract JSON lines on USB serial |
+| 1 | **VEX V5 Brain** | PROS C++ firmware (telemetry emit + command bridge), motor wiring, port assignments, bumper switch config | Control-grammar commands from the Pi | Contract JSON lines on USB serial |
 | 2 | **Pi 5 Coprocessor** | `vision_loop.py`, camera setup, YOLO11n NCNN, AprilTag detection | USB serial from V5; CSI from camera | `session_*.jsonl` on Pi filesystem |
 | 3 | **Robot Configuration** | `parts_catalog.json`, typed grammar vocabulary, valid-config rules, optional expansion decisions | Physical kit BOM | Grammar spec that Generator and Critic both read |
 | 4 | **Telemetry Pipeline** | JSON schema (`predicted`/`observed`/`gap`/`vision` field names), `serial_bridge.py` merge logic, JSONL format | Contract lines from V5; vision state from Pi | `session_*.jsonl` consumable by Claude |
