@@ -2,10 +2,11 @@
 id: vexcode
 title: VEXcode
 aliases: [VEXcode V5, VEXcode V5 Python, VEXcode Blocks, VEXcode Text]
-updated: 2026-06-16
+updated: 2026-06-20
 sources:
   - ../../../raw/research/vex-v5-classroom-starter-kit/index.md
   - ../../../raw/research/vexcode-v5/index.md
+  - ../../../raw/research/vexcode-python-vs-cpp/index.md
 tags: [tool, software, vex, programming, education]
 ---
 
@@ -70,6 +71,9 @@ Data logging to **SD card** (CSV via standard file I/O) is supported.
 - **SD card required** for persistent file storage; no onboard user flash.
 - **Web version requires Chrome** — Safari, Firefox, Edge not supported.
 - **No pip**: cannot install third-party MicroPython packages through VEXcode.
+- **`input()` does not work** in VEXcode Python — confirmed on VEX forum.
+- **Python stdin receiving from Pi is unconfirmed**: No community example shows Python code running *on the Brain* receiving data from a coprocessor via `sys.stdin.readline()`. A VEX forum thread about `std::cin/scanf()` in VEXcode C++ reports "The brain supports it but I suspect the VEXcode console does not" — the same concern applies to Python. See derives_from::[[v5-brain-python-vs-pros]].
+- **Cooperative scheduler + blocking readline = watchdog risk**: If a Python `sys.stdin.readline()` call blocks while the Pi is disconnected, a watchdog `Thread` won't tick (cooperative means the blocked thread holds the scheduler). `uselect.poll()` could mitigate this, but its availability on VEX's custom MicroPython 1.13 port is unconfirmed.
 
 ## Toolchain Landscape
 
@@ -80,6 +84,30 @@ Data logging to **SD card** (CSV via standard file I/O) is supported.
 | **PROS** (Purdue) | C/C++ | FreeRTOS preemptive; community-maintained; competition-level |
 
 **VEXcode Pro V5 is EOL** — it has been replaced by the VS Code Extension. Do not build new workflows around it.
+
+## Python vs C++ API Comparison (VEXcode V5)
+
+Full reference: <https://api.vex.com/v5/home/> · Python: <https://api.vex.com/v5/home/python/> · C++: <https://api.vex.com/v5/home/cpp/>
+
+**Functional parity is essentially complete** — both languages bind the same underlying VEX V5 SDK. Every device (motors, sensors, brain, vision, VEXlink, pneumatics, arm, competition template) is reachable from either language. The Motor page confirms: `position`, `velocity`, `current`, `power`, `torque`, `efficiency`, `temperature` are in both.
+
+**Naming convention:** Python uses `snake_case`; C++ uses `camelCase` and `vex::` namespace. Example: `spin_to_position()` (Py) ↔ `spinToPosition()` (C++). Small per-page method divergences exist — always verify on the device's specific doc page rather than assuming mechanical case-conversion works.
+
+**Doc taxonomy differs structurally:**
+
+| Capability | Python location | C++ location |
+|---|---|---|
+| Smart motors | `Motion/` | `Motors_and_MotorControllers/` |
+| IMU / Inertial | `Inertial.html` (top-level) | under `Smart_Port_Devices/` |
+| Vision + AI Vision | `Vision/` (top-level) | under `Smart_Port_Devices/` |
+| Distance/Optical/Rotation/GPS | `Sensing/` (top-level) | under `Smart_Port_Devices/` |
+| Brain screen / SD card | `Screen.html`, `SDcard.html` (top-level) | under `Brain/` |
+| 6-axis arm / pneumatics / magnet | top-level pages | under `CTE_Workcell/` |
+| Std-library reference | `MicroPython_libraries.html` | *(none — pre-loaded stdlib)* |
+
+**Runtime:** MicroPython (Python) is ~10–300× slower than compiled C++ for tight loops. Both run the **same cooperative VEXcode scheduler**. PID/real-time control is the C++ norm in the competition community. Python is appropriate for high-level logic, sensor orchestration, screen UI, and non-time-critical scripts.
+
+> **Contradiction (on-Brain language):** Prior research (`vexcode-v5`) recommended **VEXcode V5 Python** for the on-Brain layer. The actual codebase (`robot/v5-brain/pros_bridge/src/main.cpp`) uses **PROS C++** with `pros::apix.h` and FreeRTOS. The PROS choice is defensible (better real-time, preemptive scheduler), but it should be recorded as a formal decision. See derives_from::[[research-vexcode-python-vs-cpp]].
 
 ## Recent Updates (v4.0, 2024)
 

@@ -2,10 +2,12 @@
 id: vex-v5-classroom-starter-kit
 title: VEX V5 Classroom Starter Kit (Product Research)
 aliases: [276-7010, V5 Classroom Starter Kit]
-updated: 2026-06-16
+updated: 2026-06-21
 sources:
   - ../../../raw/research/vex-v5-classroom-starter-kit/index.md
   - ../../../raw/research/vex-v5-classroom-starter-kit/sources.md
+  - ../../../raw/research/vex-v5-classroom-starter-kit/index-2.md
+  - ../../../raw/research/vex-v5-classroom-starter-kit/sources-2.md
 tags: [source, research, vex, hardware, robotics, education]
 ---
 
@@ -30,3 +32,39 @@ The kit anchors a four-tier **classroom product family**: Starter Kit → Super 
 - **PD+ / Certifications**: https://pd.vex.com/ · https://certifications.vex.com/educator
 
 See the [raw research report](../../../raw/research/vex-v5-classroom-starter-kit/index.md) for the complete kit bill-of-materials and the full ~70-link catalogue.
+
+## Per-Part Specs, Dimensions, Weights & CAD (2026-06-21)
+
+A complete part-isolation reference was added in `index-2.md` (derived_from::[[vex-v5-classroom-starter-kit]] index-2). For **every kit line item** it gives SKU, dimensions, weight, and electrical/mechanical specs, with **30 STEP CAD files (~319 MB)** downloaded to `raw/research/vex-v5-classroom-starter-kit/cad/`.
+
+**Weight/dimension methodology** — three precision tiers, all labeled in the table:
+- **Published** — read from VEX product-page Weight/Specs tabs via authenticated browser (site 403s plain fetches). Pack weights divided by count: e.g. hex nut 100-pk 0.26 lb → **1.18 g each**.
+- **Calc** — geometry + calibration. Square steel shaft calibrated against published 12″ 4-pack (276-1149 = 0.21 lb) → **0.00435 lb/in**. Steel structure cut-lengths from published per-hole rate (1x2x1x35 = 0.361 lb, 0.01031 lb/hole).
+- **Est** — no VEX data; engineering approximation (screws, pins, cables, zip ties).
+
+**Key published weights:**
+
+| Part | SKU | Weight |
+|------|-----|--------|
+| V5 Robot Brain | 276-4810 | **285 g** (101.6×139.7×33.0 mm) |
+| V5 Controller | 276-4820 | **350 g** |
+| V5 Robot Battery | 276-4811 | **350 g** (46.45×160.45×30.33 mm) |
+| V5 Robot Radio | 276-4831 | **25 g** |
+| V5 Smart Motor (11 W) | 276-4840 | **160 g** motor; **50 g** cartridge |
+| Battery Charger | 276-4812 | **100 g** |
+| Bumper Switch v2 (each) | 276-4858 | **≈ 7.5 g** |
+| 4″ Omni Wheel | 276-2185 | **105 g** |
+| 4″ Traction Wheel | 276-1497 | **90 g** |
+| 84T HS Spur Gear | 276-3438 | **35 g** |
+| 12T HS Metal Pinion | 276-2251 | **0.9 g** |
+| Flat Bearing | 276-1209 | **2.27 g** |
+| Rubber Shaft Collar | 228-3510 | **≈ 0.45 g** |
+| #8-32 Hex Nut | 275-1028 | **1.18 g** |
+| V5 Battery Clip (each) | 276-6020 | **≈ 5.7 g** |
+
+**CAD files saved** — `kebab-name_SKU.step` naming, all STEP format. Electronics: brain, controller, radio, battery, motor, bumper, battery clip. Motion/gears: both 4″ wheels, 2″+3″+12″ shafts, 12T pinion, 84T gear, HS shaft inserts, claw kit. Hardware: hex nut, all three nut retainers, flat bearing, rubber collar, four screw sizes. Structure proxies: alu u-channel (276-7285), steel c-channel (276-2906), steel angle (275-1142). Assembly: full Clawbot (276-6009).
+
+**Structural notes:** VEX hole pitch = **0.500″ (12.7 mm); hole size = 0.182″ square**. The kit's exact steel cut-lengths have no standalone SKU; their geometry is represented by the nearest published steel part (same cross-section, longer stock). The 2×2×2×20 steel U-channel weight is estimated from the aluminum 276-7285 (0.15 lb) × empirical steel/alu ratio 2.3.
+
+relates_to::[[vex-v5]]  
+relates_to::[[vex-v5-cad-designs]]

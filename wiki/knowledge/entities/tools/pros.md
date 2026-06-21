@@ -2,10 +2,11 @@
 id: pros
 title: PROS (Purdue Robotics OS)
 aliases: [PROS, Purdue Robotics OS, PROS 3]
-updated: 2026-06-16
+updated: 2026-06-21
 sources:
   - ../../../raw/research/vex-v5-advanced-toolchains/index.md
   - ../../../raw/research/vex-v5-rpi-coprocessor-opensource/index.md
+  - ../../../raw/research/vexcode-python-vs-cpp/index.md
 tags: [tool, software, vex, programming, rtos, competition, open-source]
 ---
 
@@ -40,11 +41,72 @@ PROS projects are standard C++ with `include/` and `src/` directories — arbitr
 - uses::[[lemlib]] — odometry, PID, pure pursuit path following, Monte Carlo Localization
 - OkapiLib — older motion profiling library (largely superseded by LemLib)
 
+> **Adding any library:** follow relates_to::[[pros-dependency-compatibility]] — pin a
+> kernel-4.x release and build as a monolith (`USE_PACKAGE:=0`). On the capstone Brain
+> the default hot/cold split is silently broken (program runs but display + serial
+> no-op); the monolith build is the verified-working configuration.
+
 ## Toolchain
 
 - PROS CLI for project creation, building, uploading
 - Works with VS Code (community extension) or any editor
 - The PROS kernel depends on VEX's proprietary SDK (not fully open at the OS layer)
+
+### PROS CLI — Exact Commands (from derives_from::[[pros-cli-brain-bridge]])
+
+```bash
+uv add pros-cli && uv sync               # install (project uses uv, never pip; adds `pros` command)
+# Linux only: sudo usermod -a -G dialout $USER  (then log out/in for USB upload permission)
+pros conduct new-project ./my-project    # create a new PROS project with latest kernel
+pros make                                # compile only
+pros upload --slot 1                     # upload to Brain slot 1 (1–8)
+pros mu --slot 1                         # make + upload in one command (most common)
+pros mu                                  # same; no --slot → defaults to slot 1
+pros terminal                            # stream printf output from running program (user port)
+```
+
+`pros` and `prosv5` are interchangeable aliases. Pin a default slot in `project.pros` under `upload_options: {"slot": 1}`.
+
+**⚠️ Terminal conflict:** `pros terminal` and the Pi's pyserial cannot simultaneously hold the USB user serial port. Close the PROS terminal (and VS Code's VEX Integrated Terminal) before running the Pi bridge. This is a frequent operational gotcha.
+
+### PROS Motor API (for Brain bridge program)
+
+```cpp
+pros::Motor m(port);                       // port 1–21; use true as 2nd arg to reverse
+m.set_brake_mode(E_MOTOR_BRAKE_BRAKE);     // brake/coast/hold on zero velocity
+m.move_velocity(rpm);                      // closed-loop PID; cap: ±200 (18:1), ±600 (6:1), ±100 (36:1)
+m.move(value);                             // open-loop "joystick" value ±127
+m.brake();                                 // stop per brake mode
+m.get_actual_velocity();                   // double; achieved RPM
+m.get_temperature();                       // double; °C
+m.get_current_draw();                      // int32_t; mA
+```
+
+`move_velocity()` feeds the motor's internal Cortex M0 PID — the Brain does not run its own control loop. The RPM ceiling is gearset-dependent (200 for the stock 18:1 Clawbot drive). Telemetry fields (`get_actual_velocity`, `get_temperature`, `get_current_draw`) can piggyback on JSON acks to the Pi.
+
+### JSON Parsing on the Brain
+
+PROS has no stdlib JSON. **ArduinoJson** (header-only; copy `ArduinoJson.h` into `include/`) is the recommended parser:
+
+```cpp
+StaticJsonDocument<256> doc;              // stack-allocated; no heap churn at 50 Hz
+if (deserializeJson(doc, line)) return;   // skip malformed packets
+double vx = doc["vx"] | 0.0;             // with default fallback
+```
+
+Use `StaticJsonDocument`, never `DynamicJsonDocument`, in a tight loop to avoid heap fragmentation.
+
+## Community RS-485 Coprocessor Examples (from [[vex-v5-rpi-coprocessor-opensource]])
+
+## Capstone Implementation Status (2026-06-21)
+
+**The PROS Brain bridge is a starter sketch, not yet proven on physical hardware.** `robot/v5-brain/pros_bridge/src/main.cpp` is a PROS sketch using `pros/apix.h`, `pros::millis()`, `pros::delay()`, and `serctl(SERCTL_DISABLE_COBS, nullptr)`. It implements `initialize()` / `opcontrol()` PROS lifecycle entry points, reads newline-delimited JSON from the V5 USB user/console serial port via `std::getchar()`, and acks over `stdout`. A 250 ms watchdog calls `stop_drive()` on packet timeout. Motor port assignments and vx/omega JSON parsing are still TODOs as of this writing.
+
+**Community confirmation of the pattern:** Multiple VEX AI competition teams use `SERCTL_DISABLE_COBS` + `printf()`/`getchar()` for bidirectional JSON over the USB user port (aadishv.dev "Robotics 5", VEX Forum `v5-brain-to-raspberry-pi-communication`). The official VAIC reference architecture (VEX-Robotics/VAIC_23_24 and VAIC_24_25) uses PROS C++ on the Brain with this exact approach.
+
+**Two-task pattern required in practice:** Real-world teams that combined send and receive into a single PROS task hit deadlocks (blocked on `getchar()` while needing to send). The correct pattern is two separate FreeRTOS tasks — one for commands-in (`getchar()` loop), one for telemetry-out — exploiting the preemptive scheduler to run both concurrently. The current single-loop sketch is a stepping stone; splitting is a known TODO before physical demo.
+
+**PROS C++ vs VEXcode Python (as research, not decision):** PROS C++ bidirectional serial is community-confirmed; VEXcode Python stdin receiving on the Brain is unconfirmed (no community example exists of Python on the Brain receiving from a Pi). See derives_from::[[v5-brain-python-vs-pros]].
 
 ## Community RS-485 Coprocessor Examples (from [[vex-v5-rpi-coprocessor-opensource]])
 

@@ -1,0 +1,272 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e3]:
+    - generic [ref=e4]:
+      - list [ref=e5]:
+        - listitem [ref=e6]:
+          - link "VEXcode Robotics Logo" [ref=e7] [cursor=pointer]:
+            - /url: https://vex.com
+            - img "VEXcode Robotics Logo" [ref=e8]
+      - list [ref=e9]:
+        - listitem [ref=e10]:
+          - link "VEX API Home Button" [ref=e11] [cursor=pointer]:
+            - /url: https://api.vex.com
+            - img "VEX API Home Button" [ref=e12]
+        - generic [ref=e13]: "|"
+        - listitem [ref=e14]:
+          - link "VEX 123 logo in purple" [ref=e15] [cursor=pointer]:
+            - /url: /123/home
+            - img "VEX 123 logo in purple" [ref=e16]
+        - listitem [ref=e17]:
+          - link "VEX GO logo in lime green" [ref=e18] [cursor=pointer]:
+            - /url: /go/home
+            - img "VEX GO logo in lime green" [ref=e19]
+        - listitem [ref=e20]:
+          - link "VEXcode AIM logo in blue" [ref=e21] [cursor=pointer]:
+            - /url: /aim/home
+            - img "VEXcode AIM logo in blue" [ref=e22]
+        - listitem [ref=e23]:
+          - link "VEX IQ logo in blue" [ref=e24] [cursor=pointer]:
+            - /url: "#"
+            - img "VEX IQ logo in blue" [ref=e25]
+        - listitem [ref=e26]:
+          - link "VEX EXP logo in red" [ref=e27] [cursor=pointer]:
+            - /url: /exp/home
+            - img "VEX EXP logo in red" [ref=e28]
+        - listitem [ref=e29]:
+          - link "VEX V5 logo in white" [ref=e30] [cursor=pointer]:
+            - /url: /v5/home
+            - img "VEX V5 logo in white" [ref=e31]
+        - listitem [ref=e32]:
+          - link "VEX CTE logo in green" [ref=e33] [cursor=pointer]:
+            - /url: /cte/home
+            - img "VEX CTE logo in green" [ref=e34]
+        - listitem [ref=e35]:
+          - link "VEX AIR logo in orange" [ref=e36] [cursor=pointer]:
+            - /url: /air/home
+            - img "VEX AIR logo in orange" [ref=e37]
+        - listitem [ref=e38]:
+          - link "VEXcode VR logo in gold" [ref=e39] [cursor=pointer]:
+            - /url: /vr/home
+            - img "VEXcode VR logo in gold" [ref=e40]
+      - list [ref=e41]:
+        - button "Feedback" [ref=e42] [cursor=pointer]
+  - link "Skip to main content" [ref=e43] [cursor=pointer]:
+    - /url: "#main-content"
+  - text: 
+  - generic: 
+  - generic [ref=e44]:
+    - text:   
+    - generic [ref=e48]:
+      - generic [ref=e52]:
+        - navigation "Breadcrumb" [ref=e54]:
+          - list [ref=e55]:
+            - listitem [ref=e56]:
+              - text: 
+              - link "VEX V5" [ref=e57] [cursor=pointer]:
+                - /url: ../../../index.html
+            - listitem [ref=e58]:
+              - text: 
+              - link "VEX V5 API Reference" [ref=e59] [cursor=pointer]:
+                - /url: ../../index.html
+            - listitem [ref=e60]:
+              - text: 
+              - link "Python" [ref=e61] [cursor=pointer]:
+                - /url: ../index.html
+            - listitem [ref=e62]:  Motion
+        - generic [ref=e63]:
+          - button "Search" [ref=e65] [cursor=pointer]:
+            - img [ref=e66]: 
+            - generic [ref=e68]: Search
+            - generic [ref=e69]:
+              - generic [ref=e70]: ⌘
+              - text: +
+              - generic [ref=e71]: K
+          - button "light/dark" [ref=e73] [cursor=pointer]:
+            - text: 
+            - img [ref=e75]: 
+      - generic "Language Switcher" [ref=e78]:
+        - button "English" [ref=e79] [cursor=pointer]:
+          - generic [ref=e80]: English
+  - generic [ref=e82]:
+    - generic [ref=e83]:
+      - text:   
+      - navigation "Section Navigation" [ref=e86]:
+        - heading "Section Navigation" [level=1] [ref=e87]
+        - list [ref=e89]:
+          - listitem [ref=e90]:
+            - link "Blocks" [ref=e91] [cursor=pointer]:
+              - /url: ../../blocks/index.html
+          - listitem [ref=e92]:
+            - link "Python" [ref=e93] [cursor=pointer]:
+              - /url: ../index.html
+            - img [ref=e95] [cursor=pointer]: 
+            - list [ref=e97]:
+              - listitem [ref=e98]:
+                - link "Drivetrain" [ref=e99] [cursor=pointer]:
+                  - /url: ../Drivetrain.html
+              - listitem [ref=e100]:
+                - link "Motion" [ref=e101] [cursor=pointer]:
+                  - /url: "#"
+                - img [ref=e103] [cursor=pointer]: 
+                - list [ref=e105]:
+                  - listitem [ref=e106]:
+                    - link "Motor and Motor Group" [ref=e107] [cursor=pointer]:
+                      - /url: motor_and_motor_group.html
+                  - listitem [ref=e108]:
+                    - link "Motor Controller 55" [ref=e109] [cursor=pointer]:
+                      - /url: mc55.html
+                  - listitem [ref=e110]:
+                    - link "Motor 393" [ref=e111] [cursor=pointer]:
+                      - /url: motor_393.html
+                  - listitem [ref=e112]:
+                    - link "Victor Motor" [ref=e113] [cursor=pointer]:
+                      - /url: victor_motor.html
+                  - listitem [ref=e114]:
+                    - link "Servo Motor" [ref=e115] [cursor=pointer]:
+                      - /url: servo_motor.html
+              - listitem [ref=e116]:
+                - link "Vision" [ref=e117] [cursor=pointer]:
+                  - /url: ../Vision/index.html
+              - listitem [ref=e118]:
+                - link "Screen" [ref=e119] [cursor=pointer]:
+                  - /url: ../Screen.html
+              - listitem [ref=e120]:
+                - link "Controller" [ref=e121] [cursor=pointer]:
+                  - /url: ../Controller.html
+              - listitem [ref=e122]:
+                - link "Sensing" [ref=e123] [cursor=pointer]:
+                  - /url: ../Sensing/index.html
+              - listitem [ref=e124]:
+                - link "Inertial" [ref=e125] [cursor=pointer]:
+                  - /url: ../Inertial.html
+              - listitem [ref=e126]:
+                - link "3-Wire Devices" [ref=e127] [cursor=pointer]:
+                  - /url: ../3-wire/index.html
+              - listitem [ref=e128]:
+                - link "Pneumatics" [ref=e129] [cursor=pointer]:
+                  - /url: ../Pneumatics/index.html
+              - listitem [ref=e130]:
+                - link "Brain" [ref=e131] [cursor=pointer]:
+                  - /url: ../Brain.html
+              - listitem [ref=e132]:
+                - link "SD Card" [ref=e133] [cursor=pointer]:
+                  - /url: ../SDcard.html
+              - listitem [ref=e134]:
+                - link "VEXlink" [ref=e135] [cursor=pointer]:
+                  - /url: ../VEXlink/index.html
+              - listitem [ref=e136]:
+                - link "Console" [ref=e137] [cursor=pointer]:
+                  - /url: ../Console.html
+              - listitem [ref=e138]:
+                - link "Logic" [ref=e139] [cursor=pointer]:
+                  - /url: ../Logic/index.html
+              - listitem [ref=e140]:
+                - link "6-Axis Arm" [ref=e141] [cursor=pointer]:
+                  - /url: ../Arm.html
+              - listitem [ref=e142]:
+                - link "Magnet" [ref=e143] [cursor=pointer]:
+                  - /url: ../Magnet.html
+              - listitem [ref=e144]:
+                - link "Competition" [ref=e145] [cursor=pointer]:
+                  - /url: ../Competition.html
+              - listitem [ref=e146]:
+                - link "MicroPython Libraries" [ref=e147] [cursor=pointer]:
+                  - /url: ../Micropython_libraries.html
+          - listitem [ref=e148]:
+            - link "C++" [ref=e149] [cursor=pointer]:
+              - /url: ../../cpp/index.html
+          - listitem [ref=e150]:
+            - link "VEXcode Tutorials" [ref=e151] [cursor=pointer]:
+              - /url: ../../vexcode_tutorials/index.html
+      - img [ref=e153]: 
+    - main [ref=e154]:
+      - generic [ref=e156]:
+        - article [ref=e157]:
+          - generic [ref=e158]:
+            - heading "Motion" [level=1] [ref=e159]
+            - paragraph [ref=e160]: Motion methods allow the V5 Brain to control different types of motors and motion devices by adjusting their speed, direction, and rotation.
+            - paragraph [ref=e161]: Each device type rotates according to its configuration in the Devices window.
+            - paragraph [ref=e162]: "Below is a list of available devices:"
+            - list [ref=e163]:
+              - listitem [ref=e164]:
+                - paragraph [ref=e165]:
+                  - link "Motor and Motor Group" [ref=e166] [cursor=pointer]:
+                    - /url: motor_and_motor_group.html
+                    - strong [ref=e168]: Motor and Motor Group
+                  - text: "- V5 Smart Motors that provides precise control with built-in encoders, velocity tracking, and advanced motion features."
+              - listitem [ref=e169]:
+                - paragraph [ref=e170]:
+                  - link "Motor Controller 55" [ref=e171] [cursor=pointer]:
+                    - /url: mc55.html
+                    - strong [ref=e173]: Motor Controller 55
+                  - text: "- Controls DC motors using variable voltage."
+              - listitem [ref=e174]:
+                - paragraph [ref=e175]:
+                  - link "Motor 393" [ref=e176] [cursor=pointer]:
+                    - /url: motor_393.html
+                    - strong [ref=e178]: Motor 393
+                  - text: "- A 2-wire DC motor controlled via a VEX 3-Wire Motor Controller 29."
+              - listitem [ref=e179]:
+                - paragraph [ref=e180]:
+                  - link "Victor 883" [ref=e181] [cursor=pointer]:
+                    - /url: victor_motor.html
+                    - strong [ref=e183]: Victor 883
+                  - text: "- A legacy motor controller that takes a 3-Wire PWM signal from the Brain to control VEXpro/EDR DC motors that can’t plug directly into Smart Ports."
+              - listitem [ref=e184]:
+                - paragraph [ref=e185]:
+                  - link "Servo Motor" [ref=e186] [cursor=pointer]:
+                    - /url: servo_motor.html
+                    - strong [ref=e188]: Servo Motor
+                  - text: "- A position-controlled 3-wire motor that rotates within a fixed range."
+        - generic [ref=e189]:
+          - generic:
+            - link "previous Drivetrain" [ref=e190] [cursor=pointer]:
+              - /url: ../Drivetrain.html
+              - img [ref=e191]: 
+              - generic [ref=e193]:
+                - paragraph [ref=e194]: previous
+                - paragraph [ref=e195]: Drivetrain
+            - link "next Motor and Motor Group" [ref=e196] [cursor=pointer]:
+              - /url: motor_and_motor_group.html
+              - generic [ref=e197]:
+                - paragraph [ref=e198]: next
+                - paragraph [ref=e199]: Motor and Motor Group
+              - img [ref=e200]: 
+  - contentinfo [ref=e203]:
+    - contentinfo [ref=e204]:
+      - contentinfo [ref=e207]:
+        - generic [ref=e209]:
+          - link "Innovation First, International" [ref=e211] [cursor=pointer]:
+            - /url: https://www.innovationfirst.com
+            - img "Innovation First, International" [ref=e212]
+          - paragraph [ref=e214]:
+            - text: VEX and VEX Robotics are trademarks or service marks of Innovation First, Inc.
+            - link "Copyright ©2026" [ref=e215] [cursor=pointer]:
+              - /url: https://www.vexrobotics.com/copyright-notice
+            - text: . All Rights Reserved. VEX Robotics, Inc. is a subsidiary of Innovation First International, Inc. All other product names / marks of others are the property of their respective owners. Patents and / or Patents Pending -
+            - link "innovationfirst.com/patents" [ref=e216] [cursor=pointer]:
+              - /url: https://www.innovationfirst.com/patents
+            - link "Site Privacy Policy" [ref=e217] [cursor=pointer]:
+              - /url: https://api.vex.com/privacy-policy.html
+            - text: /
+            - link "Site Terms of Use" [ref=e218] [cursor=pointer]:
+              - /url: https://api.vex.com/terms-and-conditions.html
+            - text: /
+            - link "Cookie Policy" [ref=e219] [cursor=pointer]:
+              - /url: https://api.vex.com/cookie-policy.html
+            - text: /
+            - link "Software Privacy Policy" [ref=e220] [cursor=pointer]:
+              - /url: https://www.vexrobotics.com/software-privacy-policy
+          - generic [ref=e222]:
+            - button "Visit the VEX Robotics Facebook Page" [ref=e223] [cursor=pointer]:
+              - img "Visit the VEX Robotics Facebook Page" [ref=e224]
+            - button "Visit the VEX Robotics Twitter Page" [ref=e227] [cursor=pointer]:
+              - img "Visit the VEX Robotics Twitter Page" [ref=e228]
+            - button "Visit the VEX Robotics Instagram Page" [ref=e231] [cursor=pointer]:
+              - img "Visit the VEX Robotics Instagram Page" [ref=e232]
+            - button "Visit the VEX Robotics YouTube Page" [ref=e235] [cursor=pointer]:
+              - img "Visit the VEX Robotics YouTube Page" [ref=e236]
+  - generic [ref=e241]:
+    - link "Notice at collection" [ref=e242] [cursor=pointer]:
+      - /url: https://www.iubenda.com/privacy-policy/71234363/cookie-policy?an=no&s_ck=false&newmarkup=yes
+    - button "Your Privacy Choices" [ref=e243] [cursor=pointer]

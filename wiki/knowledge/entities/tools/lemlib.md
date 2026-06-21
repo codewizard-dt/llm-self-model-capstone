@@ -2,7 +2,7 @@
 id: lemlib
 title: LemLib
 aliases: [LemLib, Lem Library]
-updated: 2026-06-16
+updated: 2026-06-21
 sources:
   - ../../../raw/research/vex-v5-advanced-toolchains/index.md
 tags: [tool, software, vex, library, odometry, pid, competition, open-source]
@@ -31,10 +31,20 @@ This is a materially richer relates_to::[[task-telemetry-contract]] than encoder
 
 ## Setup Requirements
 
-- Requires PROS environment
+- Requires PROS environment — and must follow the project-wide rules in
+  relates_to::[[pros-dependency-compatibility]]: pin a LemLib release that targets
+  **PROS kernel 4.x**, install via `pros conductor apply`, and rely on the monolith
+  build (`USE_PACKAGE:=0`) so it links into `monolith.bin` rather than a separate
+  (broken-on-this-Brain) cold package. Re-verify display + serial after adding it.
+- **V5 Inertial Sensor (IMU) required** — not included in the base Starter Kit; add ~$40
 - Calibration: physical wheel diameter and chassis track width measurements (millimeter precision)
 - IMU calibration on first boot
+- PID gains must be empirically re-tuned whenever robot morphology changes (new arm, end-effector, added mass)
 - Testing recommended on physical robot before competition/demo
+
+## Thin-Executor Scope Note
+
+LemLib is **out of scope for the capstone's thin-executor architecture** as of 2026-06-21. The thin executor sends motor velocity setpoints from the Pi; LemLib requires the Pi to send *goal poses* instead, which demands a protocol redesign. The Task Telemetry Contract already captures per-motor `position/velocity/torque/current` from the hardware inner PID — the LLM self-model loop has the gap residuals it needs without LemLib. Revisit if the capstone adds navigation tasks requiring repeatable field positioning. See derives_from::[[v5-brain-python-vs-pros]].
 
 ## PID as the Core Mechanism
 

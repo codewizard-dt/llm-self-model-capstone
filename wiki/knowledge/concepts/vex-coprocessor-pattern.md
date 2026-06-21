@@ -18,6 +18,10 @@ This pattern is validated by the official VAIC competition, the UT Austin GHOST 
 
 **V5 Smart Motors cannot be driven directly from a Raspberry Pi or any external board.** The Smart Port (RS-485) requires the V5 Brain to load motor firmware on boot and encrypt the control channel. Any attempt to drive V5 motors without the Brain would require reverse-engineering encrypted firmware — not practical. The V5 Brain is therefore a mandatory component; the coprocessor augments it, never replaces it. (Note: older VEX EDR motors are PWM-controllable and can be driven from RPi GPIO directly — the CUNY academic paper does this — but V5 Smart Motors are fundamentally different.)
 
+**A user program must be running on the Brain for the user port to carry any data.** The Brain's system USB port handles program upload/management only (not motor commands); the user port is inert without a running program. This means the capstone always requires a Brain-side program — but that program can be minimal (~50–100 lines: read serial JSON → call motor API → send ack → watchdog). See derives_from::[[v5-user-programs]].
+
+**No competition infrastructure required for non-competition use.** Without a Competition Switch or Field Management System connected, `opcontrol()` (PROS) / the main loop runs immediately after `initialize()`. The capstone does not need a competition switch, field controller, or autonomous/teleop split.
+
 ## Communication Paths
 
 ### Path 1 — USB Serial (user port) — Stage 1 / Recommended
@@ -26,7 +30,8 @@ This pattern is validated by the official VAIC competition, the UT Austin GHOST 
 Pi USB-A ──── microUSB cable ──── V5 Brain user port
 /dev/ttyACM0 (user port) | /dev/ttyACM1 (system port)
 115,200 baud, 8N1 | pyserial | newline-delimited JSON
-Stable bidirectional: V5 print() → Pi; Pi writes → V5 stdin
+Stable bidirectional for PROS C++: V5 printf()/fflush(stdout) → Pi; Pi writes → V5 getchar()/fgets(stdin)
+> Note: "Pi writes → V5 stdin" is confirmed in PROS C++ (SERCTL_DISABLE_COBS + getchar()). Whether VEXcode Python sys.stdin.readline() receives from Pi is **unconfirmed** as of 2026-06-21 — no community example exists. See derives_from::[[v5-brain-python-vs-pros]].
 Throughput: ~11,500 B/s; 300-byte contract in ~35ms
 ```
 
@@ -65,9 +70,44 @@ Makes V5 Brain a ROS node: publish sensor data, subscribe to motor commands
 | `Maotechh/VEX_communication` | Arduino/RPi | RS-485 Smart Port | Wiring + PROS API; PCB design |
 | `Jordon-Notts/VEX-V5-Brain-External-Comm` | RPi | USB serial | String-based serial; PWM too noisy |
 
+## Two-Task PROS Pattern (Brain side)
+
+Community experience from VEX AI teams shows that combining command-receive and telemetry-send into a **single PROS task** deadlocks: blocked on `getchar()` for commands-in, unable to send telemetry-out. More critically, a single loop cannot guarantee the safety watchdog fires when the Pi disconnects mid-read. The correct PROS pattern is **two separate FreeRTOS tasks** (derives_from::[[pros-cli-brain-bridge]]):
+
+```cpp
+void receive_task(void*) {
+    std::string line;
+    while (true) {
+        int ch = getchar();
+        if (ch != EOF) {
+            if (ch == '\n') { handle(line); line.clear(); }
+            else if (line.size() < 512) line.push_back((char)ch);
+            else line.clear();
+        } else { pros::delay(2); }
+    }
+}
+
+void watchdog_task(void*) {
+    while (true) {
+        if (pros::millis() - last_packet_ms > WATCHDOG_MS) all_stop();
+        pros::delay(10);
+    }
+}
+
+void opcontrol() {
+    pros::Task r(receive_task,  nullptr, "rx");
+    pros::Task w(watchdog_task, nullptr, "watchdog");
+    while (true) pros::delay(1000);
+}
+```
+
+FreeRTOS preemptive scheduling (1ms tick) lets the watchdog task run even when `getchar()` is blocked — the Pi disconnect → motors stop guarantee holds regardless of the receive task's state.
+
 ## For the Capstone
 
 The capstone's RPi5 + V5 Brain + Pi Camera + Claude API stack follows this pattern with one addition: the LLM inference leg. The proven USB serial path (Stage 1) maps directly to `raw/research/vex-v5-telemetry-pipeline/index.md` Mode A real-time pipeline. No existing open-source project closes the LLM loop on this architecture — that is the novelty.
+
+The current Brain sketch (`robot/v5-brain/pros_bridge/src/main.cpp`) uses a single combined loop (starter sketch, not yet hardware-tested). Two-task split is a known next step. See derives_from::[[v5-brain-python-vs-pros]].
 
 implements::[[llm-authored-self-model]]
 transports::[[task-telemetry-contract]]
