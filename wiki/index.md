@@ -59,6 +59,7 @@ The wiki is split into two domains with opposite organizing laws:
 - [Research: VEX V5 Minimum Parts for a Launch-Disc Configuration](knowledge/sources/vex-launch-disc-parts.md) — 3 minimum SKUs: 276-5842 (6:1 cartridge), 217-6449 (3" 60A flex wheel), 217-7947 (VersaHex adapters); adds `launch_disc` to the morphology vocabulary as exclusive arm-motor swap
 - [Research: VEX V5 Minimal Structural Parts for a Flywheel Setup](knowledge/sources/vex-flywheel-structure-parts.md) — structural companion to vex-launch-disc-parts; 3 purchase lines (276-3521 HS bearing, 276-6102 HS collar, 276-3440 2" HS shaft); arm C-channels reused; standoff sandwich trick avoids drilling
 - [Research: VEX V5 Flywheel Indexer Mechanisms](knowledge/sources/vex-flywheel-indexer.md) — holds piece in staging, fires on command; 1-motor flywheel frees claw motor → roller indexer, zero new parts; 2-motor flywheel → ratchet (Motor Clutch 276-1098) or 5th motor
+- [Research: VEXcode V5 Python vs C++ API — Thorough Comparison](knowledge/sources/research-vexcode-python-vs-cpp.md) — Python/C++ functionally equivalent bindings; MicroPython ~10–300× slower for tight loops; codebase uses PROS C++ (contradicts prior Python-on-Brain recommendation); full linked doc-tree reference
 
 ### Concepts
 - [Agent Evolution Factory](knowledge/concepts/agent-evolution-factory.md) — evolving AI-agent architectures via ML+LLM; the recommended capstone pitch

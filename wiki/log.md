@@ -150,3 +150,6 @@ Ingested from raw/research/vex-launch-disc-parts/index.md (13 primary sources: v
 
 ## [2026-06-19] decision | DevOps branching and device runtime layout
 Added DEC-0001 proposing the team workflow: runtime code and contracts land through main, while deploy/vexy-pi acts only as a reviewed device pointer for the Raspberry Pi. Added robot/pi-runtime and robot/v5-brain as the deployable implementation surface, plus DEVOPS.md and GitHub PR/CODEOWNERS guardrails.
+
+## [2026-06-20] ingest | Research: VEXcode V5 Python vs C++ API — Thorough Comparison
+Ingested from raw/research/vexcode-python-vs-cpp/index.md. Key claims: (1) Python and C++ are functionally equivalent VEXcode V5 bindings — all V5 devices accessible from both, telemetry fields (position/velocity/current/torque/efficiency/temperature) confirmed in both Motor pages; (2) MicroPython is ~10–300× slower for tight loops, making C++ the competition norm for PID; (3) the codebase already uses PROS C++ for the Brain bridge (contradiction with prior vexcode-v5 Python recommendation). 2 entity pages touched (vexcode.md, pros.md), 1 source page created. Contradiction callout added to vexcode.md entity.

@@ -2,10 +2,11 @@
 id: pros
 title: PROS (Purdue Robotics OS)
 aliases: [PROS, Purdue Robotics OS, PROS 3]
-updated: 2026-06-16
+updated: 2026-06-20
 sources:
   - ../../../raw/research/vex-v5-advanced-toolchains/index.md
   - ../../../raw/research/vex-v5-rpi-coprocessor-opensource/index.md
+  - ../../../raw/research/vexcode-python-vs-cpp/index.md
 tags: [tool, software, vex, programming, rtos, competition, open-source]
 ---
 
@@ -45,6 +46,14 @@ PROS projects are standard C++ with `include/` and `src/` directories — arbitr
 - PROS CLI for project creation, building, uploading
 - Works with VS Code (community extension) or any editor
 - The PROS kernel depends on VEX's proprietary SDK (not fully open at the OS layer)
+
+## Community RS-485 Coprocessor Examples (from [[vex-v5-rpi-coprocessor-opensource]])
+
+## Capstone Implementation Status (2026-06-20)
+
+**The PROS Brain bridge is implemented.** `robot/v5-brain/pros_bridge/src/main.cpp` is a PROS sketch using `pros/apix.h`, `pros::millis()`, `pros::delay()`, and `serctl(SERCTL_DISABLE_COBS, nullptr)`. It implements `initialize()` / `opcontrol()` PROS lifecycle entry points, reads newline-delimited JSON from the V5 USB user/console serial port via `std::getchar()`, and acks over `stdout`. A 250 ms watchdog calls `stop_drive()` on packet timeout. Motor port assignments and vx/omega JSON parsing are still TODOs as of this writing.
+
+This represents the codebase choosing **PROS C++ over VEXcode Python** for the on-Brain layer — see the Contradiction callout on relates_to::[[vexcode]].
 
 ## Community RS-485 Coprocessor Examples (from [[vex-v5-rpi-coprocessor-opensource]])
 
