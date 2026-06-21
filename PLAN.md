@@ -4,6 +4,8 @@ A physical robot that reads its own telemetry, reasons about the difference betw
 
 **Team:** David Taylor, Jake Kinchen, Grace Huang, Erick Andrade
 
+> **Requirements authority.** Scope, ownership, milestones, and verification are defined in [MASTER_REQUIREMENTS.md](MASTER_REQUIREMENTS.md). This document is the capstone narrative; where the two disagree, the requirements doc wins.
+
 ---
 
 ## The Problem
@@ -29,6 +31,8 @@ We build a generational self-model loop that runs on real hardware:
 5. The revised model shapes the next generation's design. A human builds it, and the loop repeats.
 
 The self-model is a versioned JSON document with a `reasoning` field where the LLM explains why it made each structural choice and what evidence led to each revision. Every generation stays human-inspectable.
+
+**Build strategy.** The loop is built software-first: telemetry and vision sources sit behind swap-in adapters, and early milestones run on a parametric **synthetic oracle** — a hidden-ground-truth model whose true parameters the Generator never sees — grounded by one real baseline capture once the hardware is up. This keeps the team unblocked on day one and lets the full physical loop drop in by swapping an adapter, with no contract change. The code is organized into four verticals (`contracts`, `operator`, `coprocessor`, `brain`); Python dependencies use `uv` and linting uses `ruff`.
 
 ---
 
@@ -359,13 +363,34 @@ The aesthetic layer gives the generator a way to make each generation visually d
  LLM runtime    ──►   Claude Code           ✗  Scripted API   (key mgmt,
                       subscription               per-call billing, latency
                       reads files directly        engineering)
+
+ Build strategy ──►   Software-first        ─  full physical loop is a
+                      TelemetrySource /         drop-in adapter swap,
+                      VisionSource adapters     not a rewrite
+
+ Synthetic data ──►   Hidden-ground-truth   ✗  hand-authored telemetry (rigged)
+                      parametric oracle     ✗  physics simulator (too heavy)
+
+ Tooling        ──►   uv + ruff             ✗  pip / poetry / black / isort
+                      Python all verticals
 ```
 
 ---
 
 ## How the Work Is Divided
 
-The project breaks into seven independently ownable work chunks, each with clear inputs and outputs so the team can build in parallel. The Generational Loop is shared across everyone, since it works as the integration spec rather than one person's piece. With four people and seven chunks, each person picks up more than one.
+The system decomposes into four code verticals (`contracts`, `operator`, `coprocessor`, `brain`) and eighteen feature slices. Ownership and execution sequencing are **authoritative in [MASTER_REQUIREMENTS.md](MASTER_REQUIREMENTS.md)**; the work is balanced to ~8 effort-points per person:
+
+| Owner | Owns | Verticals |
+|-------|------|-----------|
+| **Erick Andrade** | telemetry + self-model contracts, synthetic oracle, oracle recalibration (no robot access) | contracts |
+| **David Taylor** | adapter interfaces, Generator, Critic panel, gap analyzer | operator (+ contracts) |
+| **Jake Kinchen** | parts-catalog grammar, serial-bridge merge, replay source, live HW sources, baseline capture | coprocessor (+ contracts) |
+| **Grace Huang** | vision pipeline, brain firmware, markdown presenter, demo replay, aesthetic (V2) | coprocessor + brain + operator |
+
+Critical-path note: the chain to the grounded demo runs through hardware capture (vision → merge → capture → oracle grounding), where Grace sits twice (vision + brain). See [MASTER_REQUIREMENTS.md → Critical path](MASTER_REQUIREMENTS.md).
+
+The seven component chunks below remain the **interface reference** — each with clear inputs and outputs so the verticals can build in parallel against frozen contracts. The Generational Loop is shared across everyone, since it is the integration spec rather than one person's piece.
 
 | # | Chunk | What you own | Interface in | Interface out |
 |---|-------|-------------|-------------|--------------|

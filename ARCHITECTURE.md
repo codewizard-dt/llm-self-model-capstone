@@ -4,6 +4,10 @@ A **Physical-Robot Software Factory** driven by LLM-authored self-models. Given 
 
 **Novelty claim**: No published work combines language-authored self-models + multi-LLM adversarial critique + reality correction via per-actuator telemetry in a single generational loop. Lipson proved numerical self-models work; RoboMorph used LLMs for design in simulation only; Hart & Scassellati built symbolic self-models pre-LLM. The unoccupied position is this system.
 
+> **Requirements authority.** [MASTER_REQUIREMENTS.md](MASTER_REQUIREMENTS.md) is the decision-closed source for scope, ownership, milestones, and verification. This document is the design narrative; where the two disagree, the requirements doc wins.
+
+**Build strategy (software-first).** The MVP closes the loop in software: every telemetry and vision source sits behind a `TelemetrySource` / `VisionSource` adapter, so the same loop runs on recorded or synthetic data and expands to the full physical loop by swapping the adapter implementation — no contract change. Early milestones run on a parametric **synthetic oracle** — a hidden-ground-truth forward model whose true parameters are withheld from the Generator, so a tightening gap reflects the model actually converging on reality, not steering. The oracle is grounded by one real baseline capture once hardware is up. Code is organized into four verticals — `contracts`, `operator`, `coprocessor`, `brain` — with Python deps managed by `uv` and lint/format by `ruff`.
+
 ```
 ┌─────────────────────────────────────────────────────┐
 │  OPERATOR (Claude Code — subscription)              │
@@ -166,12 +170,12 @@ The orchestration that ties all other chunks together. Not independently ownable
 | 4. Execute | V5 + Pi (autonomous) | Robot + task description | `session_*.jsonl` |
 | 5. Analyze | Operator + Claude Code | `session_*.jsonl` gap blocks | Revised self-model vN+1 |
 
-**Minimum Viable Demo (June 29):**
-1. Gen 0 Clawbot — LLM authors self-model from specs; run grab, pull, and throw tasks; collect telemetry
+**Minimum Viable Demo (June 29):** The loop closes in software first (synthetic oracle, then grounded by a real baseline capture); the live Gen-2 segment runs on hardware with a recorded fallback ready.
+1. Gen 0 Clawbot — LLM authors self-model from specs; run grab, pull, and throw tasks; collect telemetry (synthetic oracle, then real capture)
 2. Show gap JSON — LLM explains residuals in plain language, revises self-model
-3. Repeat grab/pull/throw — show self-model correction converging across multiple rounds
-4. Gen 1 novel configuration — LLM proposes a new morphology from the grammar; human builds; runs same task suite
-5. Compare Gen 0 vs. Gen 1 telemetry — show design hypothesis confirmed or refuted by real data
+3. Repeat grab/pull/throw — self-model correction converges across rounds; the oracle's hidden parameter is recovered within tolerance
+4. Gen 1 / Gen 2 novel configuration — LLM proposes a new morphology from the grammar; human builds; runs same task suite
+5. Compare generations — gap residuals tighten; design hypothesis confirmed or refuted by data
 
 ---
 
@@ -205,3 +209,8 @@ All materials attach via existing VEX 0.5" square holes — velcro, zip ties, or
 | Assembly | Human-in-the-loop | Full autonomy is low-feasibility at capstone scale; human is a formal manufacturing station, not ad-hoc |
 | Localization | AprilTags over odometry | Wheel slip + snap-fit tolerances make pure odometry unreliable at this scale |
 | Design space | Starter Kit only (~10–15 configs) | Small enough to exhaust in 3–5 gens; large enough to show real mutations |
+| Build strategy | Software-first behind `TelemetrySource`/`VisionSource` adapters | Demoable loop in 4 days; full physical loop is a drop-in adapter swap, no contract change |
+| Synthetic telemetry | Parametric hidden-ground-truth oracle | Honest gap — the LLM recovers parameters it never sees; not hand-authored, not a physics sim |
+| Tooling | `uv` (deps) + `ruff` (lint/format); Python all verticals | One fast, lockfile-reproducible toolchain; replaces pip/poetry/black/isort/flake8 |
+
+> Full decision log (ADR-01 … ADR-18) with rationale and rejected options: [MASTER_REQUIREMENTS.md → Closed Decisions](MASTER_REQUIREMENTS.md).
