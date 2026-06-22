@@ -63,6 +63,7 @@ The wiki is split into two domains with opposite organizing laws:
 - [Research: V5 Brain Program — Python vs PROS C++ (Both Sides)](knowledge/sources/v5-brain-python-vs-pros.md) — thin-executor architecture already settled; VEXcode Python stdin receiving unconfirmed; PROS C++ bidirectional serial community-confirmed; LemLib out of scope; 10-line empirical test resolves the question on first bringup
 - [Research: V5 User Programs — Why They're Mandatory and How Simple They Can Be](knowledge/sources/v5-user-programs.md) — RPi cannot bypass user program (proprietary RS-485, inert user port); no competition infrastructure needed; minimum Brain program is ~50–100 lines; upload once, tap slot to run
 - [Research: PROS CLI Workflow + The Exact Brain-Side C++ Bridge Program](knowledge/sources/pros-cli-brain-bridge.md) — 4-command CLI workflow; two-FreeRTOS-task architecture (receive + watchdog); move_velocity() API; ArduinoJson for JSON parsing; `pros terminal` conflicts with Pi's pyserial; full reference program with Clawbot port map
+- [Research: VEX V5 3-Wire Port Spec — Connector, Pinout, and Servo Compatibility](knowledge/sources/vex-3wire-port-spec.md) — 2.54 mm keyed male-pin port; GND→+5V→Signal pin order; 5 V @ 2 A shared; JR-style RC servos plug directly in; `Servo` or `pwm_out` API
 
 ### Concepts
 - [Agent Evolution Factory](knowledge/concepts/agent-evolution-factory.md) — evolving AI-agent architectures via ML+LLM; the recommended capstone pitch
@@ -95,6 +96,7 @@ The wiki is split into two domains with opposite organizing laws:
 - [VEX Flywheel Disc Launcher](knowledge/concepts/vex-flywheel-disc-launcher.md) — single/double flywheel mechanism; `launch_disc` morphology primitive; minimum 3 SKUs; 276-8402 ball bearings halve current draw; exclusive arm-motor swap on Clawbot
 - [VEX Flywheel Indexer](knowledge/concepts/vex-flywheel-indexer.md) — holds game piece in staging then fires on command; motor budget determines type (roller vs ratchet vs pneumatic); 1-motor flywheel enables zero-purchase roller indexer via freed claw motor
 - [PROS Dependency & Build Compatibility](knowledge/concepts/pros-dependency-compatibility.md) — rules for adding ANY PROS library on this Brain: pin kernel-4.x, build as monolith (`USE_PACKAGE:=0`); hot/cold split is silently broken (program runs but display + serial no-op)
+- [VEX V5 3-Wire Servo Port](knowledge/concepts/vex-v5-3wire-servo.md) — 2.54 mm keyed connector; GND·+5V·Signal pinout; 5 V @ 2 A shared; JR RC servos direct-fit; no encoder feedback (use Smart Motors for telemetered axes)
 
 ### Entities
 - People — [knowledge/entities/people/](knowledge/entities/people/)

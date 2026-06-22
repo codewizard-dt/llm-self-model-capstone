@@ -9,6 +9,7 @@ sources:
   - ../../../raw/research/vex-v5-classroom-starter-kit/index.md
   - ../../../raw/research/vex-v5-classroom-starter-kit/index-2.md
   - ../../../raw/276-6009-750-Rev6.pdf
+  - ../../../raw/research/vex-3wire-port-spec/index.md
 tags: [tool, hardware, vex, platform, robotics]
 ---
 
@@ -297,3 +298,22 @@ A complete part-isolation reference (2026-06-21) provides **dimensions, weight, 
 - 2×2×14×20 Angle (2 pcs): ≈ 92 g each (0.0101 lb/hole × 20)
 
 derived_from::[[vex-v5-classroom-starter-kit]]
+
+## 3-Wire Port Connector Spec (from [[vex-3wire-port-spec]])
+
+The V5 Brain's 8 × 3-wire ports (A–H) use a **standard 2.54 mm (0.1") pitch keyed connector** — same family as RC hobby servo cables (TJC8 / JR / Futaba J). Brain-side ports have **male pins**; all VEX cables have **female housings**.
+
+**Pin order** (left → right, facing Brain): `GND (black) → +5 V (red) → Signal (white)`
+
+The centre pin is always power — the standard RC servo polarity-safety convention. Swapping the outer pins (GND ↔ Signal) will not reverse power; the device just won't respond.
+
+**Electrical budget**: 5 V regulated, **2 A shared across all 8 ports total**.
+
+**Non-VEX RC servo compatibility**: electrically fully compatible (4.8–6 V, 1–2 ms PWM). JR-style (unkeyed) connectors plug directly in. Futaba J connectors may need the polarising tab trimmed. Always verify pin order before powering. Use 276-1424 female-female extension as a safe breadboard breakout adapter.
+
+**API**: `Servo(brain.three_wire_port.a)` in VEXcode Python (100° travel); `vex::pwm_out finger(Brain.ThreeWirePort.A)` for raw PWM with non-VEX servos (full travel, e.g. 180°).
+
+**Telemetry caveat**: 3-wire servos have no encoder feedback — cannot populate the relates_to::[[task-telemetry-contract]] `observed` block. Use Smart Motors for any self-model-loop axis.
+
+derived_from::[[vex-3wire-port-spec]]
+relates_to::[[vex-v5-3wire-servo]]
