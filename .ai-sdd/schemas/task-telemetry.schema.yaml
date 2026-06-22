@@ -1,0 +1,51 @@
+apiVersion: ai-sdd/v1
+kind: Schema
+metadata: { name: task-telemetry, version: 1 }
+spec:
+  # FROZEN CONTRACT — Task Telemetry Contract. Transcribed verbatim from
+  # MASTER_REQUIREMENTS.md → Constraints → Frozen Contracts. This is the REQUIREMENT-level freeze;
+  # the canonical runtime copy is a pydantic-v2 model in the `contracts/` vertical (ADR-06, Authority
+  # note). One line per task in session_*.jsonl. `task ∈ {grab,pull,throw}`; `vision` is
+  # present-but-optional so a motor-only run still validates; the `gap` block is the only signal the
+  # Generator consumes. Validated continuously by task-telemetry.structure against the committed
+  # fixture at examples/task-telemetry.example.json (so the contract stays valid for the whole project).
+  handle: file
+  format: yaml
+  scope: shared
+  fields:
+    schema_version:
+      type: string
+      required: true
+      invariants: [{ matches: "^[0-9]+\\.[0-9]+$" }]
+    session_id:
+      type: string
+      required: true
+      invariants: [{ nonEmpty: true }]
+    generation:
+      type: number
+      required: true
+      invariants: [{ matches: "^[0-9]+$" }]
+    round:
+      type: number
+      required: true
+      invariants: [{ matches: "^[0-9]+$" }]
+    task:
+      type: enum
+      required: true
+      invariants: [{ matches: "^(grab|pull|throw)$" }]
+    predicted:
+      type: object
+      required: true
+      invariants: [{ nonEmpty: true }]
+    observed:
+      type: object
+      required: true
+      invariants: [{ nonEmpty: true }]
+    gap:
+      type: object
+      required: true
+      invariants: [{ nonEmpty: true }]
+    vision:
+      type: object
+      required: false        # present-but-optional: a motor-only run still validates
+      invariants: [{ nonEmpty: true }]

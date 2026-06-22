@@ -1,0 +1,39 @@
+apiVersion: ai-sdd/v1
+kind: Schema
+metadata: { name: control-command, version: 1 }
+spec:
+  # CONTROL GRAMMAR (DRAFT — not yet frozen). The fixed command vocabulary + command/ack envelope the
+  # online `pilot` LLM uses to drive the robot. Grounded in robot/pi-runtime/docs/PROTOCOL.md +
+  # BRAIN_INTERFACE.md. Requirement-level shape; canonical runtime copy is a pydantic-v2 model in
+  # contracts/. The envelope below is stable; OPEN (do not treat as frozen): the full `cmd` vocabulary
+  # (arm/manipulation beyond drive/turn/stop) and the telemetry-vs-ack multiplex strategy
+  # (BRAIN_INTERFACE §3.3/§5). Validated continuously by control-command.structure against the
+  # committed fixture at examples/control-command.example.json.
+  handle: file
+  format: yaml
+  scope: shared
+  fields:
+    v:
+      type: number
+      required: true
+      invariants: [{ matches: "^[0-9]+$" }]
+    seq:
+      type: number
+      required: true
+      invariants: [{ matches: "^[0-9]+$" }]
+    type:
+      type: enum
+      required: true
+      invariants: [{ matches: "^(cmd|heartbeat)$" }]
+    cmd:
+      type: enum
+      required: false        # absent for heartbeat; DRAFT vocabulary (arm/manipulation TBD)
+      invariants: [{ matches: "^(stop|drive|turn|arm)$" }]
+    sent_ms:
+      type: number
+      required: true
+      invariants: [{ matches: "^[0-9]+$" }]
+    ttl_ms:
+      type: number
+      required: true
+      invariants: [{ matches: "^[0-9]+$" }]

@@ -1,0 +1,44 @@
+apiVersion: ai-sdd/v1
+kind: Schema
+metadata: { name: feature-plan, version: 1 }
+spec:
+  handle: file
+  format: yaml
+  scope: internal
+  # The planner's artifact. `acceptance` is the verifiable checklist threaded through the three
+  # roles (implementer.satisfies, review.items). `files` is the implementation's allowed manifest,
+  # scoped to this repo's four verticals + the factory/shared surfaces (seed mode; greenfield).
+  fields:
+    summary:
+      type: string
+      required: true
+      invariants: [{ nonEmpty: true }]
+    scope:
+      type: object
+      required: true
+      invariants: [{ nonEmpty: true }]
+    acceptance:
+      type: list
+      required: true
+      invariants:
+        - { nonEmpty: true }
+        - { all: { field: id, nonEmpty: true } }
+        - { all: { field: description, nonEmpty: true } }
+    decisions:
+      type: list
+      required: true
+      invariants:
+        - { nonEmpty: true }
+        - { all: { field: status, eq: closed } }
+    files:
+      type: list
+      required: true
+      invariants:
+        - { nonEmpty: true }
+        - { all: { matches: "^(contracts|operator|pilot|robot|tests|docs|skills|\\.ai-sdd|\\.agents|\\.github|AGENTS\\.md|README\\.md|DEVOPS\\.md|Makefile|pyproject\\.toml|uv\\.lock|\\.gitignore)(/|$)" } }
+    tests:
+      type: list
+      required: true
+      invariants:
+        - { nonEmpty: true }
+        - { all: { nonEmpty: true } }

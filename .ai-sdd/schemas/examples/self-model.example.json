@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "generation": 0,
+  "parent_generation": null,
+  "config": { "motor_allocation": "2drive+1arm+1claw", "arm_position": "front", "end_effector": "claw_grasper", "wheel_config": "front_omni+rear_standard", "arm_gear_ratio": "7:1", "cartridge": "200rpm" },
+  "structural": { "parts": [], "connections": [] },
+  "capability": { "reach_mm": 0, "max_grip_force_N": 0, "max_pull_force_N": 0, "com_height_mm": 0 },
+  "predictive": { "grab": {}, "pull": {}, "throw": {} },
+  "gap_model": { "grab": {}, "pull": {}, "throw": {} },
+  "reasoning": "Why each structural choice was made and what gap evidence drove each parameter change."
+}

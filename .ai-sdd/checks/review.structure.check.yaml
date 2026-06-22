@@ -1,0 +1,9 @@
+apiVersion: ai-sdd/v1
+kind: Check
+metadata: { name: review.structure }
+spec:
+  # THE VERDICT GATE. Schema invariants encode accept/reject (all items pass AND verdict approve).
+  # A reject or any failed item fails the gate → engine routes rework to the indicted producer.
+  checkKind: deterministic
+  command: "ai-sdd check .ai-sdd/schemas/review.schema.yaml .ai-sdd/artifacts/review.v1.yaml"
+  required: true

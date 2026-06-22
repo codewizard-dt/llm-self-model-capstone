@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "session_id": "session_20260624_141200",
+  "generation": 0,
+  "round": 1,
+  "task": "grab",
+  "predicted": { "grip_force_N": 14.7, "duration_s": 1.2, "success": true },
+  "observed": { "torque_Nm": 0.9, "current_A": 1.8, "velocity_RPM": 2.3, "position_deg": 95.0, "duration_s": 1.4 },
+  "gap": { "force_error_N": -3.4, "duration_error_s": 0.2 },
+  "vision": { "object_detected": true, "object_bbox": [310, 220, 64, 58], "apriltag_pose": { "x": 487, "y": -12, "heading": 2 }, "bbox_iou": 0.71 }
+}

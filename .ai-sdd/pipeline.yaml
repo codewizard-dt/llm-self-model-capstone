@@ -1,0 +1,17 @@
+apiVersion: ai-sdd/v1
+kind: Pipeline
+metadata: { name: self-model-feature, version: 1 }
+# The per-slice build pattern for this repo: planner → implementer → reviewer (reviewer required).
+# A feature/program graph's slice nodes descend into this pattern (pipeline: ../..). The acceptance
+# checklist is threaded: planner.acceptance → implementer.satisfies → reviewer.items (one verdict
+# per acceptance id). The reviewer's structural verdict is the blocking gate.
+spec:
+  semantics: enabler
+  nodes:
+    - { id: planner, worker: planner }
+    - { id: implementer, worker: implementer }
+    - { id: reviewer, worker: reviewer, required: true }
+  edges:
+    - { from: planner, to: implementer, artifact: feature-plan.v1 }
+    - { from: planner, to: reviewer, artifact: feature-plan.v1 }
+    - { from: implementer, to: reviewer, artifact: changeset.v1 }

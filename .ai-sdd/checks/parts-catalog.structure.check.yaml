@@ -1,0 +1,9 @@
+apiVersion: ai-sdd/v1
+kind: Check
+metadata: { name: parts-catalog.structure }
+spec:
+  # FROZEN-CONTRACT gate. Validates the committed canonical fixture against the frozen schema so the
+  # contract stays valid for the whole project (your call on FLAG 2). Trusted executor; blocking.
+  checkKind: deterministic
+  command: "ai-sdd check .ai-sdd/schemas/parts-catalog.schema.yaml .ai-sdd/schemas/examples/parts-catalog.example.json"
+  required: true

@@ -1,0 +1,41 @@
+apiVersion: ai-sdd/v1
+kind: Schema
+metadata: { name: changeset, version: 1 }
+spec:
+  handle: files
+  format: yaml
+  scope: internal
+  # The implementer's artifact. `satisfies` records the acceptance ids covered (the thread from the
+  # plan's acceptance checklist). The `rules` below compile to the implementer's deterministic gates
+  # (see ai-sdd-compile-schema). Gate commands are transcribed from
+  # MASTER_REQUIREMENTS → Verification & Reviewer Runbook (uv sync / make test|validate|lint) and
+  # the diff-in-scope intent (→ trusted executor `ai-sdd scope`).
+  # NOTE: `make demo` is deliberately NOT a per-slice rule here — it is the m2 milestone step
+  # ("m2-loop-closes-synthetic"), wired at program-plan time, not on every slice.
+  fields:
+    summary:
+      type: string
+      required: true
+      invariants: [{ nonEmpty: true }]
+    satisfies:
+      type: list
+      required: true
+      invariants:
+        - { nonEmpty: true }
+        - { all: { nonEmpty: true } }
+  rules:
+    - id: build
+      severity: blocking
+      command: "uv sync"            # install pinned deps per vertical (ADR-15; no pip)
+    - id: test
+      severity: blocking
+      command: "make test"          # unit tests (Verification & Reviewer Runbook)
+    - id: validate
+      severity: blocking
+      command: "make validate"      # pydantic fixtures vs frozen schemas (ADR-06)
+    - id: lint
+      severity: blocking
+      command: "make lint"          # ruff check + ruff format --check (ADR-16)
+    - id: diff-in-scope
+      severity: blocking
+      intent: "changed files ⊆ feature-plan.files"   # → ai-sdd scope (trusted executor)
