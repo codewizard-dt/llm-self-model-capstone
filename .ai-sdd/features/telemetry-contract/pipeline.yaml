@@ -1,0 +1,12 @@
+apiVersion: ai-sdd/v1
+kind: Pipeline
+metadata: { name: telemetry-contract, version: 1 }
+spec:
+  semantics: enabler
+  nodes:
+    - { id: package-scaffold, kind: pipeline, pipeline: ../.., stack: contracts }
+    - { id: pydantic-models,  kind: pipeline, pipeline: ../.., stack: contracts }
+    - { id: fixtures-and-gates, kind: pipeline, pipeline: ../.., stack: contracts }
+  edges:
+    - { from: package-scaffold,  to: pydantic-models }
+    - { from: pydantic-models,   to: fixtures-and-gates }
