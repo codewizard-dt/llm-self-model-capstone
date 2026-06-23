@@ -148,6 +148,9 @@ checkpoints/
 # Agent-local state (NOT .agents/skills/ — that's the committed Codex repo-level skill surface).
 # NOTE: .claude/ is intentionally COMMITTED in this repo (team wiki/research skills) — a maintainer
 # decision overriding the bootstrap default — so it is deliberately NOT listed here.
+# EXCEPTION: .claude/projects/ is per-session agent state + memory (named after the abs cwd path),
+# not a team skill surface — keep it agent-local.
+.claude/projects/
 .codex/
 # Per-vertical ignore_folders (MASTER_REQUIREMENTS → Tech stacks). __pycache__/, .venv/, dist/,
 # build/, out/, .pytest_cache/ are already covered by the global Python/Node sections above; the
