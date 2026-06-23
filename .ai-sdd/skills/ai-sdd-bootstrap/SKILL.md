@@ -21,19 +21,30 @@ to a three-step contract so the output is **grounded, not guessed**:
 2. **Synthesize the convention (AI).** Generalize each change-type's pattern **from that evidence** —
    abstract the pattern from a real exemplar. Faithful abstraction is fine; introducing a step **no
    exemplar supports** is not.
-3. **Verify groundedness, flag the rest.** Every convention must **cite its evidence** (a file, a
-   commit, a manifest entry). Check citations mechanically where possible (the path exists, the
-   command exits 0). Any change-type with **no evidence**, or any claim not traceable to evidence, is
-   **flagged and confirmed with the user** (or filled from ecosystem priors) — never silently
-   written. "No clear convention found" is a valid, expected outcome — surface it, don't guess.
+3. **Verify groundedness, flag the rest.** Every convention must **cite its evidence** as **typed,
+   machine-readable tokens** so drift can re-check it later with **zero heuristics**. Record citations
+   in the Evidence cell as backticked tokens whose content begins with a known prefix immediately
+   followed by a colon — `` `path:<concrete-repo-relative-path>` `` (drift checks the path exists) and
+   `` `cmd:<command>` `` (drift checks the command exits 0). A parser collects **only** known-prefix
+   tokens; every other backticked token is convention **vocabulary** (e.g. `@Test`, `swiftlint`,
+   `env:`) and is ignored, as is all surrounding prose. Use **concrete paths only — no globs** (a glob
+   is not existence-checkable; name one concrete existing file instead). Commit SHAs and any other
+   evidence stay **ordinary prose** — not tokenized, not drift-checked (a historical SHA existing is
+   not a staleness signal). Check tokens mechanically (the path exists, the command exits 0). Any
+   change-type with **no evidence**, or any claim not traceable to evidence, is **flagged and confirmed
+   with the user** (or filled from ecosystem priors) — never silently written. "No clear convention
+   found" is a valid, expected outcome — surface it, don't guess.
 
 Cover this **checklist** of change-types — don't skip one for lack of an obvious example; flag it:
 build / test / lint / run commands · add a **module/feature** · a **model/entity** · a **migration**
 · a **test** · an **endpoint** · **config/secrets** · **a dependency / new package** (read the
 manifest + any existing local packages) · naming + layering · CI/release.
 
-Record, per change-type: the **evidence**, the **convention**, and whether it was **confirmed** or
-left an **open gap**. That record seeds the discovery eval set (see *Discovery quality* below).
+Record, per change-type, a Discovery Record table row: the **evidence** (as typed `path:`/`cmd:`
+tokens in the Evidence cell), the **convention**, and whether it was **confirmed** or left an **open
+gap**. A confirmed row carries at least one `path:`/`cmd:` token; an **open-gap row carries no typed
+token** (zero tokens ⇒ nothing to verify ⇒ drift skips it) — it keeps its descriptive prose and `open
+gap` status. That record seeds the discovery eval set (see *Discovery quality* below).
 
 ## 2. Scaffold the `.ai-sdd/` home
 
@@ -86,21 +97,26 @@ For each schema, run **ai-sdd-compile-schema**: it emits `.ai-sdd/checks/*.check
 the ids onto the worker that produces that schema. Eval-gate any authored (intent/judge) checks
 before promoting them to blocking.
 
-## 6. Wire provider-neutral surfacing  ← the symlink-into-each-agent's-skill-dir step
+## 6. Surface the skills to every agent — `ai-sdd surface`
 
-The factory must be drivable by any agent, so the *framework* skills a human/agent invokes
-(`ai-sdd-plan`, `ai-sdd-plan-program`, `ai-sdd-run`, `ai-sdd-compile-schema`, `ai-sdd-bootstrap`) are surfaced through each
-agent's **native skill mechanism** — symlinks into the agent's skill dir, **not** prose in AGENTS.md.
-Skill *discovery* must not depend on a human writing the right pointer; it's the agent's own
-convention. Each agent reads `SKILL.md` frontmatter (`name` + `description`) for matching.
+The factory must be drivable by any agent, so the *framework* skills a human/agent invokes (`ai-sdd-*`:
+`ai-sdd-bootstrap`, `ai-sdd-plan`, `ai-sdd-plan-program`, `ai-sdd-run`, `ai-sdd-compile-schema`) are
+surfaced through each agent's **native skill mechanism** — a symlink into the agent's skill dir, **not**
+prose in AGENTS.md (each agent matches on `SKILL.md` frontmatter). Surfacing is purely mechanical, so it
+is a **deterministic command**, never a step to hand-follow:
 
-- **Codex** (repo-level, committed): `.agents/skills/<name>` → `../../.ai-sdd/skills/<name>`. This is
-  Codex's documented repo skill scope (`$REPO_ROOT/.agents/skills`, symlinks followed); it's the
-  **committed, team-shared** surface, so a fresh clone has the skills with no re-bootstrap. Invoked
-  with `$<name>` or `/skills`.
-- **Claude Code** (local): `.claude/skills/<name>` → `../../.ai-sdd/skills/<name>`. Recreated by
-  re-bootstrap; `.claude/` stays gitignored (local state — §7).
-- add other agents the same way as supported, each into its own native skill dir.
+```sh
+ai-sdd surface           # idempotently reconcile every agent's skill dir — re-run anytime
+ai-sdd surface --check   # report drift without writing (exit 1 if any link is missing) — for CI / drift
+```
+
+`surface` symlinks every `ai-sdd-*` skill into each configured agent dir. The **agent→dir map is data**
+in the engine (`.agents/skills` for Codex, `.claude/skills` for Claude, …) — adding an agent is a
+one-line data edit, not new prose. The symlink target is uniformly `../../.ai-sdd/skills/<name>` (each
+agent dir sits two levels below the repo root), so the operation is identical for every agent — only the
+parent folder differs. **Both surfaces are committed and team-shared** (§7), so a fresh clone has the
+skills/slash-commands with no re-bootstrap, and re-running `surface` reconciles the *full* set so they
+can't drift.
 
 - **`AGENTS.md`** stays a **general repo guide** (what the project is, how to build/test, the
   `ai-sdd-run` loop) — useful context, but it is **not** the skill-discovery mechanism. Still upsert
@@ -126,15 +142,19 @@ The engine itself is already neutral: `ai-sdd` is a CLI any agent calls over a s
 
 The `.gitignore` is the **one place** that declares what stays out of git — so a commit never has to
 *ask* what to include. The managed block ignores the factory runtime and each agent's **local** state
-folder — but **not** `.agents/skills/`, which is the committed repo-level skill surface (§6):
+folder — but **not** each agent's `skills/` subfolder (`.agents/skills/`, `.claude/skills/`), the
+committed repo-level skill surfaces (§6). Ignore `.claude/`'s contents but **re-include**
+`.claude/skills/` (a parent-dir exclude can't be undone, so exclude `.claude/*` and negate the
+subfolder):
 
 ```gitignore
 # ai-sdd:begin — managed by ai-sdd-bootstrap; edits between these markers are overwritten on re-bootstrap
 # Software factory runtime (the rest of .ai-sdd/ is committed)
 .ai-sdd/runs/
 .ai-sdd/artifacts/
-# Agent-local state (NOT .agents/skills/ — that's the committed Codex repo-level skill surface)
-.claude/
+# Agent-local state — EXCEPT each agent's committed repo-level skill surface (.agents/skills/, .claude/skills/)
+.claude/*
+!.claude/skills/
 .codex/
 # ai-sdd:end
 ```
@@ -142,8 +162,8 @@ folder — but **not** `.agents/skills/`, which is the committed repo-level skil
 - Write this with the **same marker upsert** as AGENTS.md (`# ai-sdd:begin` / `# ai-sdd:end`,
   `#` comments) so an existing `.gitignore` is extended, not clobbered, and a re-run doesn't
   duplicate the block. The committed set is therefore `.ai-sdd/` (minus runtime) + `.agents/skills/`
-  + `AGENTS.md` + `.gitignore` + any tool config a gate needs — decided by `.gitignore`, not by
-  prompting per commit.
+  + `.claude/skills/` + `AGENTS.md` + `.gitignore` + any tool config a gate needs — decided by
+  `.gitignore`, not by prompting per commit.
 - Run `ai-sdd validate .ai-sdd` — referential + edge-type + acyclicity must pass before any run.
 
 ## Discovery quality — evals + observability
@@ -163,8 +183,10 @@ contract (deterministic evidence → AI synthesis → grounded-or-flagged) is th
 
 ## Notes
 
-- **Symlinks**: the per-agent surfacing symlinks are local (gitignored, §7) and recreated by
-  re-bootstrap; clean on macOS/Linux, Windows needs `core.symlinks=true`.
+- **Symlinks**: the per-agent surfacing symlinks are committed (`.agents/skills/`, `.claude/skills/`)
+  and created/reconciled by **`ai-sdd surface`** (which re-bootstrap runs) over the full
+  framework-skill set — so a newly-added framework skill reaches *every* agent, not just the one that
+  authored it. Clean on macOS/Linux, Windows needs `core.symlinks=true`.
 - **Re-bootstrap** is how conventions stay fresh (architecture §8): re-run to refresh
   `conventions/` + `schemas/` from the evolved codebase, then recompile gates. Mechanical output is
   stable, so a no-change re-run produces no diff — this holds for the generated `.ai-sdd/` specs
