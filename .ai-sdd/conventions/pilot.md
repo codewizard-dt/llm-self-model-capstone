@@ -9,7 +9,7 @@
 > proposal — confirm or rename.**
 
 **Vertical.** `pilot` — the real-time autonomy harness. Root: `pilot/` (greenfield; deployed onto the
-Pi host, `robot/pi-runtime`). Owner: **TBD** (propose: David, with Jake on the Pi integration).
+Pi host, `robot/pi-runtime`). Owner: **TBD** (per O1; slices inherit the vertical lead once assigned, ADR-0027).
 
 ## The loop
 

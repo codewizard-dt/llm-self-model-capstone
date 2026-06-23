@@ -1,0 +1,100 @@
+apiVersion: ai-sdd/v1
+kind: Pipeline
+metadata: { name: self-model-loop, version: 1 }
+# MASTER graph for the LLM self-model program (ADR-0028 recursive Pipeline composition).
+# Nodes are whole sub-features (kind: pipeline → ../../features/<slug>) and 7 MANUAL milestone gates
+# (worker: milestone-gate, workerKind human). Owners: Erick is fixed (ADR-18); all other owners inherit
+# the vertical lead at runtime (ADR-0027). All milestones are human merge checkpoints (D1).
+#
+# ORGANIZED BY MILESTONE PHASE so it reads sequentially m1 → m1b → m2 → m3 → m4 → m5 → m6 (the team
+# works one milestone at a time). Execution semantics are UNCHANGED vs the prior revision: same nodes,
+# max parallelism preserved. Redundant edges were removed by transitive reduction only — every dropped
+# edge still has an alternate path to the same target through a milestone gate or feature, so no node's
+# ready-time changes. Specifically, a per-contract edge into a post-gate feature is omitted because the
+# milestone gate already represents "those contracts are frozen and available" (e.g. telemetry-contract
+# → gap-analyzer is implied by telemetry-contract → m1 → gap-analyzer).
+spec:
+  semantics: enabler
+  nodes:
+    # ===== Phase 0 — contracts freeze (→ m1) =====
+    - { id: telemetry-contract,       kind: pipeline, pipeline: ../../features/telemetry-contract,       stack: contracts, owner: [Erick] }
+    - { id: self-model-schema,        kind: pipeline, pipeline: ../../features/self-model-schema,        stack: contracts, owner: [Erick] }
+    - { id: parts-catalog-grammar,    kind: pipeline, pipeline: ../../features/parts-catalog-grammar,    stack: contracts }
+    - { id: adapter-interfaces,       kind: pipeline, pipeline: ../../features/adapter-interfaces,       stack: contracts }
+    - { id: control-grammar,          kind: pipeline, pipeline: ../../features/control-grammar,          stack: contracts }
+    - { id: m1,  worker: milestone-gate, owner: [Erick] }   # contracts-frozen — gates all downstream
+    # ===== Phase 1 — oracle ready (→ m1b) =====
+    - { id: synthetic-oracle,         kind: pipeline, pipeline: ../../features/synthetic-oracle,         stack: contracts, owner: [Erick] }
+    - { id: m1b, worker: milestone-gate, owner: [Erick] }   # oracle-ready — gates the demo loop
+    # ===== Phase 2 — offline self-model loop (→ m2) =====
+    - { id: replay-source,            kind: pipeline, pipeline: ../../features/replay-source,            stack: contracts }
+    - { id: gap-analyzer,             kind: pipeline, pipeline: ../../features/gap-analyzer,             stack: operator }
+    - { id: critic-panel,             kind: pipeline, pipeline: ../../features/critic-panel,             stack: operator }
+    - { id: generator,                kind: pipeline, pipeline: ../../features/generator,                stack: operator }
+    - { id: markdown-presenter,       kind: pipeline, pipeline: ../../features/markdown-presenter,       stack: operator }
+    - { id: demo-replay,              kind: pipeline, pipeline: ../../features/demo-replay,              stack: operator }
+    - { id: m2,  worker: milestone-gate }                   # loop-closes-synthetic — gates hw integration
+    # ===== Phase 3 — vision integration (→ m3) =====
+    - { id: vision-pipeline,          kind: pipeline, pipeline: ../../features/vision-pipeline,          stack: coprocessor }
+    - { id: serial-bridge-merge,      kind: pipeline, pipeline: ../../features/serial-bridge-merge,      stack: coprocessor }
+    - { id: live-hw-sources,          kind: pipeline, pipeline: ../../features/live-hw-sources,          stack: coprocessor }
+    - { id: m3,  worker: milestone-gate }                   # vision-integrated — gates hw integration
+    # ===== Phase 4 — hardware capture + grounding (→ m4) =====
+    - { id: brain-telemetry-firmware, kind: pipeline, pipeline: ../../features/brain-telemetry-firmware, stack: brain }
+    - { id: hw-baseline-capture,      kind: pipeline, pipeline: ../../features/hw-baseline-capture,      stack: coprocessor }
+    - { id: oracle-baseline-request,  kind: pipeline, pipeline: ../../features/oracle-baseline-request,  stack: contracts }
+    - { id: m4,  worker: milestone-gate }                   # hw-capture + grounding — gates demo signoff
+    # ===== Phase 5 — demo signoff (→ m5) =====
+    - { id: m5,  worker: milestone-gate }   # demo-signoff — gates online control
+    # ===== Phase 6 — online control loop (required, ADR-19) (→ m6) =====
+    - { id: brain-command-bridge,     kind: pipeline, pipeline: ../../features/brain-command-bridge,     stack: brain }
+    - { id: online-control-harness,   kind: pipeline, pipeline: ../../features/online-control-harness,   stack: pilot }
+    - { id: m6,  worker: milestone-gate }                   # online-control (required, ADR-19)
+  edges:
+    # ===== Phase 0 → m1 (contracts freeze) =====
+    - { from: telemetry-contract,    to: m1 }
+    - { from: self-model-schema,     to: m1 }
+    - { from: parts-catalog-grammar, to: m1 }
+    - { from: adapter-interfaces,    to: m1 }
+    - { from: control-grammar,       to: m1 }
+    # ===== Phase 1 — oracle (m1 → synthetic-oracle → m1b) =====
+    - { from: m1,               to: synthetic-oracle }
+    - { from: synthetic-oracle, to: m1b }
+    # ===== Phase 2 — offline loop (m1 unblocks → demo-replay → m2) =====
+    - { from: m1, to: replay-source }
+    - { from: m1, to: gap-analyzer }
+    - { from: m1, to: critic-panel }
+    - { from: gap-analyzer,       to: generator }
+    - { from: gap-analyzer,       to: markdown-presenter }
+    - { from: generator,          to: demo-replay }
+    - { from: critic-panel,       to: demo-replay }
+    - { from: markdown-presenter, to: demo-replay }
+    - { from: replay-source,      to: demo-replay }
+    - { from: m1b,                to: demo-replay }
+    - { from: demo-replay,        to: m2 }
+    # ===== Phase 3 — vision (m1 unblocks → serial merge → m3) =====
+    - { from: m1, to: vision-pipeline }
+    - { from: m1, to: live-hw-sources }
+    - { from: vision-pipeline,     to: serial-bridge-merge }
+    - { from: live-hw-sources,     to: serial-bridge-merge }
+    - { from: serial-bridge-merge, to: m3 }
+    # ===== Phase 4 — hardware capture + grounding (→ m4) =====
+    - { from: m1, to: brain-telemetry-firmware }
+    - { from: brain-telemetry-firmware, to: hw-baseline-capture }
+    - { from: serial-bridge-merge,      to: hw-baseline-capture }
+    - { from: live-hw-sources,          to: hw-baseline-capture }
+    - { from: hw-baseline-capture,      to: oracle-baseline-request }
+    - { from: synthetic-oracle,         to: oracle-baseline-request }
+    - { from: oracle-baseline-request,  to: m4 }
+    - { from: m2, to: m4 }
+    - { from: m3, to: m4 }
+    # ===== Phase 5 — demo signoff (grounded; O3) (→ m5) =====
+    - { from: demo-replay, to: m5 }
+    - { from: m4,          to: m5 }
+    # ===== Phase 6 — online control (required; ADR-19) (→ m6) =====
+    - { from: control-grammar,          to: brain-command-bridge }
+    - { from: brain-telemetry-firmware, to: brain-command-bridge }
+    - { from: brain-command-bridge,     to: online-control-harness }
+    - { from: serial-bridge-merge,      to: online-control-harness }
+    - { from: m5,                       to: m6 }
+    - { from: online-control-harness,   to: m6 }
