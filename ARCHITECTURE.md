@@ -6,7 +6,7 @@ A **Physical-Robot Software Factory** driven by LLM-authored self-models. Given 
 
 > **Requirements authority.** [MASTER_REQUIREMENTS.md](MASTER_REQUIREMENTS.md) is the decision-closed source for scope, ownership, milestones, and verification. This document is the design narrative; where the two disagree, the requirements doc wins.
 
-**Build strategy (software-first).** The MVP closes the loop in software: every telemetry and vision source sits behind a `TelemetrySource` / `VisionSource` adapter, so the same loop runs on recorded or synthetic data and expands to the full physical loop by swapping the adapter implementation — no contract change. Early milestones run on a parametric **synthetic oracle** — a hidden-ground-truth forward model whose true parameters are withheld from the Generator, so a tightening gap reflects the model actually converging on reality, not steering. The oracle is grounded by one real baseline capture once hardware is up. Code is organized into five verticals — `contracts`, `operator`, and `pilot` at the repo root, with `coprocessor` → `robot/pi-runtime/` and `brain` → `robot/v5-brain/`. The Python verticals use `uv` + `ruff`; `brain` is **PROS C++** (PROS CLI + `arm-none-eabi`). Two loops run on this base: the **offline self-model loop** (`operator`, revising a readable design across generations) and the **online control loop** (`pilot`, an on-Pi LLM driving the robot in real time via a fixed control grammar).
+**Build strategy (software-first, reactive).** The MVP closes the loop in software: every telemetry and vision source sits behind a `TelemetrySource` / `VisionSource` adapter that returns a `reactivex.Observable` stream, so the same pipeline runs on recorded or synthetic data and expands to the full physical loop by swapping the adapter implementation — no pipeline change. Cold observables (`Replay`/`Synthetic`) emit on subscribe; hot observables (`Serial`/`Camera`) push frames in real time via a `Subject`. `serial_bridge.py` merges both streams with `rx.zip`; the `pilot` online loop uses `flat_map` + `take_until` for bounded real-time control (ADR-20). Early milestones run on a parametric **synthetic oracle** — a hidden-ground-truth forward model whose true parameters are withheld from the Generator, so a tightening gap reflects the model actually converging on reality, not steering. The oracle is grounded by one real baseline capture once hardware is up. Code is organized into five verticals — `contracts`, `operator`, and `pilot` at the repo root, with `coprocessor` → `robot/pi-runtime/` and `brain` → `robot/v5-brain/`. The Python verticals use `uv` + `ruff`; `brain` is **PROS C++** (PROS CLI + `arm-none-eabi`). Two loops run on this base: the **offline self-model loop** (`operator`, revising a readable design across generations) and the **online control loop** (`pilot`, an on-Pi LLM driving the robot in real time via a fixed control grammar).
 
 ## System Components
 
@@ -19,7 +19,7 @@ flowchart TB
   end
   subgraph contracts["contracts (Python · pydantic v2)"]
     SCH["Frozen schemas<br/>task-telemetry · self-model · parts-catalog · control-command"]
-    ADP["Adapter interfaces<br/>TelemetrySource · VisionSource"]
+    ADP["Adapter interfaces (reactivex)<br/>TelemetrySource.observe() → Observable[ContractLine]<br/>VisionSource.observe() → Observable[VisionBlock]"]
     ORC["Synthetic oracle · Replay sources"]
   end
   subgraph pi["Raspberry Pi 5"]
@@ -53,7 +53,7 @@ Who produces what, how it is transformed, and how it moves. The two loops share 
 flowchart LR
   MOT["Motors<br/>torque/current/vel/pos"] -->|motor API · 20 ms| BR["Brain (PROS C++)<br/>build telemetry line"]
   CAM["Camera"] -->|CSI frames| VL["vision_loop<br/>YOLO11n + AprilTag"]
-  BR -->|telemetry JSON · USB serial 115200| MG["serial_bridge<br/>merge by round/timestamp"]
+  BR -->|telemetry JSON · USB serial 115200| MG["serial_bridge<br/>rx.zip(telemetry.observe(), vision.observe())<br/>→ ContractLine stream → session_*.jsonl"]
   VL -->|VisionBlock| MG
   MG -->|append| JL[("session_*.jsonl<br/>predicted · observed · gap · vision")]
   JL -->|read offline| GEN["operator Generator<br/>compute gap → revise self-model"]
@@ -63,7 +63,7 @@ flowchart LR
   PIL -->|control-command · USB serial| BR
 ```
 
-> Transmission mechanisms: motor API (in-Brain), **USB serial 115,200** (Brain ↔ Pi, newline-delimited JSON, COBS off), **CSI** (camera → Pi), and the **append-only `session_*.jsonl`** file (Pi → operator). On the MVP path the `TelemetrySource`/`VisionSource` adapters resolve to `Replay`/`Synthetic`; on hardware they resolve to `Serial`/`Camera` — the merge and consumers are unchanged.
+> Transmission mechanisms: motor API (in-Brain), **USB serial 115,200** (Brain ↔ Pi, newline-delimited JSON, COBS off), **CSI** (camera → Pi), and the **append-only `session_*.jsonl`** file (Pi → operator). On the MVP path the `TelemetrySource`/`VisionSource` adapters resolve to cold `Replay`/`Synthetic` Observables; on hardware they resolve to hot `Serial`/`Camera` Observables — the `rx.zip` merge pipeline and all consumers are unchanged (ADR-20).
 
 ---
 
@@ -255,6 +255,7 @@ All materials attach via existing VEX 0.5" square holes — velcro, zip ties, or
 | Localization | AprilTags over odometry | Wheel slip + snap-fit tolerances make pure odometry unreliable at this scale |
 | Design space | Starter Kit only (~10–15 configs) | Small enough to exhaust in 3–5 gens; large enough to show real mutations |
 | Build strategy | Software-first behind `TelemetrySource`/`VisionSource` adapters | Demoable loop in 4 days; full physical loop is a drop-in adapter swap, no contract change |
+| Adapter pipeline model | `reactivex` Observable streams — `observe() -> Observable[T]` on both protocols; `rx.zip` merge in `serial_bridge`; `flat_map`/`take_until` in `pilot` | The whole pipeline is reactive: 20 ms hot motor ticks, hot camera frames, `rx.zip` merge, real-time LLM fan-out. Using Observable as the protocol return type makes `zip`, `buffer`, `retry`, and `take_until` first-class primitives rather than hand-rolled loops. Cold/hot split enforced at the concrete-source boundary (ADR-20) |
 | Synthetic telemetry | Parametric hidden-ground-truth oracle | Honest gap — the LLM recovers parameters it never sees; not hand-authored, not a physics sim |
 | Tooling | `uv` + `ruff` on the Python verticals; **PROS C++** on `brain` | One fast Python toolchain (replaces pip/poetry/black/isort/flake8); the Brain compiles via the PROS CLI + `arm-none-eabi` |
 | Brain language | PROS C++ over VEXcode Python | MicroPython too slow for tight loops; Python serial-receive on the Brain unconfirmed; PROS bidirectional JSON is community-confirmed |
