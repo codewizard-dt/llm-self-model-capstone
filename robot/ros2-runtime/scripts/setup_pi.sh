@@ -20,7 +20,14 @@ sudo apt-get install -y \
     libdw-dev libudev-dev \
     libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
     libcamera-dev libyaml-dev \
-    python3-rosdep
+    python3-rosdep python3-serial \
+    ros-jazzy-foxglove-bridge
+
+sudo usermod -aG video,render,dialout "$USER"
+sudo tee /etc/udev/rules.d/99-vex-v5-brain.rules >/dev/null <<'RULE'
+SUBSYSTEM=="tty", ATTRS{idVendor}=="2888", ATTRS{idProduct}=="0501", GROUP="dialout", MODE="0666", TAG+="uaccess"
+RULE
+sudo udevadm control --reload-rules
 
 echo "=== [2/6] Installing colcon-meson ==="
 pip install colcon-meson --break-system-packages
@@ -47,7 +54,21 @@ fi
 
 # Symlink vexy_ros package from this repo
 REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
-if [ ! -L vexy_ros ]; then
+if [ -L vexy_ros ]; then
+    current_target="$(readlink vexy_ros)"
+    if [ "$current_target" != "$REPO_ROOT/robot/ros2-runtime" ]; then
+        rm vexy_ros
+        ln -s "$REPO_ROOT/robot/ros2-runtime" vexy_ros
+        echo "  Relinked vexy_ros → $REPO_ROOT/robot/ros2-runtime"
+    else
+        echo "  vexy_ros already linked"
+    fi
+elif [ -e vexy_ros ]; then
+    backup="vexy_ros.backup.$(date +%Y%m%d_%H%M%S)"
+    mv vexy_ros "$backup"
+    ln -s "$REPO_ROOT/robot/ros2-runtime" vexy_ros
+    echo "  Moved existing vexy_ros to $backup and linked repo package"
+else
     ln -s "$REPO_ROOT/robot/ros2-runtime" vexy_ros
     echo "  Linked vexy_ros → $REPO_ROOT/robot/ros2-runtime"
 fi

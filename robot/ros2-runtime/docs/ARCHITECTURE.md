@@ -21,7 +21,7 @@ The wire protocol to the V5 Brain is intentionally unchanged (protocol version 1
 ```
 ┌─────────────────────────────────────┐     USB-A ↔ USB-C      ┌─────────────────────────┐
 │         Raspberry Pi 5              │ ←─────────────────────→ │      VEX V5 Brain        │
-│         Ubuntu 24.04 LTS            │    /dev/ttyACM0          │   PROS C++ / FreeRTOS    │
+│         Ubuntu 24.04 LTS            │    V5 user serial        │   PROS C++ / FreeRTOS    │
 │         ROS 2 Jazzy                 │    115200 baud           │                          │
 │                                     │    newline-delimited JSON│  Motor controllers       │
 │  ┌─────────────┐  ┌──────────────┐  │                          │  IMU / sensors           │
@@ -74,7 +74,7 @@ vex_bridge_node
     │  assigns seq number
     │  writes to serial @ 115200 baud
     ▼
-/dev/ttyACM0 ──USB──▶ V5 Brain
+auto-detected V5 user serial ──USB──▶ V5 Brain
     ◀──────────────── ack JSON
     │
     ▼

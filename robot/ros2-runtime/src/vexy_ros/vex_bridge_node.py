@@ -20,6 +20,7 @@ Wire protocol is identical to the Bookworm bridge (vexy_system2):
 """
 
 import json
+import glob
 import threading
 import time
 
@@ -51,11 +52,12 @@ class VexBridgeNode(Node):
     def __init__(self) -> None:
         super().__init__("vex_bridge")
 
-        self.declare_parameter("serial_port", "/dev/ttyACM0")
+        self.declare_parameter("serial_port", "")
         self.declare_parameter("baud_rate", 115200)
         self.declare_parameter("serial_timeout", 0.4)
 
-        port = self.get_parameter("serial_port").get_parameter_value().string_value
+        configured_port = self.get_parameter("serial_port").get_parameter_value().string_value
+        port = self._resolve_serial_port(configured_port)
         baud = self.get_parameter("baud_rate").get_parameter_value().integer_value
         timeout = self.get_parameter("serial_timeout").get_parameter_value().double_value
 
@@ -73,6 +75,27 @@ class VexBridgeNode(Node):
         self._telem_pub = self.create_publisher(String, "/vex/telemetry", 10)
         self._cmd_sub = self.create_subscription(String, "/vex/cmd", self._on_cmd, 10)
         self._heartbeat_timer = self.create_timer(HEARTBEAT_INTERVAL_S, self._maybe_heartbeat)
+
+    def _resolve_serial_port(self, configured_port: str) -> str:
+        if configured_port and configured_port.lower() != "auto":
+            return configured_port
+
+        candidates = []
+        for pattern in (
+            "/dev/serial/by-id/*VEX*if02",
+            "/dev/serial/by-id/*VEX*if02*",
+            "/dev/ttyACM1",
+            "/dev/ttyACM0",
+        ):
+            candidates.extend(glob.glob(pattern))
+
+        if candidates:
+            port = sorted(candidates)[0]
+            self.get_logger().info(f"auto-selected V5 serial port {port}")
+            return port
+
+        self.get_logger().warn("no V5 serial device found during auto-discovery")
+        return "/dev/ttyACM1"
 
     # ------------------------------------------------------------------
     # Command subscriber

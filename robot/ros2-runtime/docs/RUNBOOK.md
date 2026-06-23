@@ -68,7 +68,7 @@ Default launch parameters:
 
 | Parameter | Default | Notes |
 |-----------|---------|-------|
-| `serial_port` | `/dev/ttyACM0` | VEX V5 Brain USB |
+| `serial_port` | `auto` | VEX V5 Brain user/program serial; prefers the `if02` by-id device |
 | `baud_rate` | `115200` | Do not change |
 | `camera_width` | `640` | |
 | `camera_height` | `480` | |
@@ -91,7 +91,7 @@ ros2 run camera_ros camera_node \
 ```bash
 ros2 run vexy_ros vex_bridge_node \
   --ros-args \
-  -p serial_port:=/dev/ttyACM0 -p baud_rate:=115200
+  -p serial_port:=auto -p baud_rate:=115200
 ```
 
 **Foxglove bridge only:**
@@ -295,7 +295,7 @@ awk -F',' 'NR>1 {gsub(/^"|"$/, "", $2); print $2}' raw.csv > telemetry.jsonl
 | `Permission denied /dev/media*` | `video` group not applied | See §4.3 |
 | Foxglove "Connection failed" | mDNS issue or bridge not running | See §4.4 |
 | Foxglove "Waiting for image messages" | Wrong topic name selected | See §4.5 |
-| `/dev/ttyACM0: No such file` | Brain not connected or different port | See §4.6 |
+| `cannot open ... ttyACM...` | Brain not connected, permissions missing, or different port | See §4.6 |
 | Heartbeat timeout from Brain | `vex_bridge_node` crashed | See §4.7 |
 
 ---
@@ -443,9 +443,9 @@ ros2 topic hz /camera/image_raw
 
 ---
 
-### 4.6 /dev/ttyACM0 not found
+### 4.6 V5 serial port not found
 
-**Symptom:** `vex_bridge_node` logs `cannot open /dev/ttyACM0` or the device file is absent.
+**Symptom:** `vex_bridge_node` logs `cannot open ...` or the device file is absent.
 
 **Step 1 — Check if Brain is connected:**
 
@@ -458,7 +458,7 @@ ls /dev/ttyACM*
 
 ```bash
 ls /dev/ttyACM*
-# Common: /dev/ttyACM0 or /dev/ttyACM1
+# Common: /dev/ttyACM0 and /dev/ttyACM1, with the user/program port usually on if02
 dmesg | tail -20 | grep tty
 ```
 
@@ -503,7 +503,7 @@ If running standalone:
 ```bash
 pkill -f vex_bridge_node
 ros2 run vexy_ros vex_bridge_node \
-  --ros-args -p serial_port:=/dev/ttyACM0 -p baud_rate:=115200
+  --ros-args -p serial_port:=auto -p baud_rate:=115200
 ```
 
 **If the Brain itself is at fault** (watchdog tripped, program not running):

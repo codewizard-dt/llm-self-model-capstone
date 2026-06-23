@@ -28,7 +28,7 @@ def generate_launch_description():
             # ----------------------------------------------------------
             # Launch arguments
             # ----------------------------------------------------------
-            DeclareLaunchArgument("serial_port", default_value="/dev/ttyACM0"),
+            DeclareLaunchArgument("serial_port", default_value="auto"),
             DeclareLaunchArgument("baud_rate", default_value="115200"),
             DeclareLaunchArgument("camera_width", default_value="640"),
             DeclareLaunchArgument("camera_height", default_value="480"),

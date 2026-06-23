@@ -14,7 +14,7 @@ setup(
         ("share/" + package_name, ["package.xml"]),
         (os.path.join("share", package_name, "launch"), glob("launch/*.py")),
     ],
-    install_requires=["setuptools", "pyserial"],
+    install_requires=["setuptools"],
     zip_safe=True,
     maintainer="David Taylor",
     maintainer_email="dt@davidtaylor.codes",

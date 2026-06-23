@@ -9,9 +9,9 @@ This guide covers the practical operations you will run repeatedly when working 
 ### SSH
 
 ```bash
-ssh ubuntu@vexy.local
+ssh vexy@vexy.local
 # or by IP if mDNS is not resolving
-ssh ubuntu@<pi-ip-address>
+ssh vexy@<pi-ip-address>
 ```
 
 If the hostname `vexy.local` does not resolve, check that `avahi-daemon` is running on the Pi:
@@ -97,7 +97,7 @@ VEX bridge only (camera not needed):
 ```bash
 ros2 run vexy_ros vex_bridge_node \
   --ros-args \
-  -p serial_port:=/dev/ttyACM0 \
+  -p serial_port:=auto \
   -p baud_rate:=115200
 ```
 
@@ -356,7 +356,7 @@ Click the layout name at the top → **Save layout** → give it a name (e.g. `v
 
 | Parameter | Default | Description |
 |---|---|---|
-| `serial_port` | `/dev/ttyACM0` | USB serial device for V5 Brain |
+| `serial_port` | `auto` | USB serial device for V5 Brain; prefers the user/program `if02` device |
 | `baud_rate` | `115200` | Serial baud rate — must match PROS firmware |
 | `camera_width` | `640` | Camera capture width in pixels |
 | `camera_height` | `480` | Camera capture height in pixels |
@@ -366,7 +366,7 @@ Click the layout name at the top → **Save layout** → give it a name (e.g. `v
 
 | Parameter | Default | Description |
 |---|---|---|
-| `serial_port` | `/dev/ttyACM0` | Passed through from launch arg |
+| `serial_port` | `auto` | Passed through from launch arg |
 | `baud_rate` | `115200` | Passed through from launch arg |
 | `serial_timeout` | `0.4` | Serial read/write timeout in seconds |
 

@@ -12,7 +12,7 @@ ROS 2 Jazzy coprocessor stack for the Raspberry Pi 5 (`vexy`). Replaces `robot/p
 |-----------|--------|
 | SBC | Raspberry Pi 5 (hostname `vexy`, reachable as `vexy.local`) |
 | Camera | Raspberry Pi Camera Module 3 Wide (IMX708 sensor, detected as `imx708_wide`) |
-| Robot brain | VEX V5 Brain connected via USB (appears as `/dev/ttyACM0`) |
+| Robot brain | VEX V5 Brain connected via USB (auto-detected, prefers the user serial interface `if02`) |
 | OS | Ubuntu 24.04 LTS (not Raspberry Pi OS — ROS 2 Jazzy requires Ubuntu) |
 
 ---
@@ -210,7 +210,7 @@ Supported `cmd` values: `stop`, `drive`, `turn`, `set_goal`
 ## Launch File
 
 ```bash
-# Default launch (640×480 @ 15 Hz, /dev/ttyACM0 @ 115200)
+# Default launch (640×480 @ 15 Hz, auto-detected V5 user serial @ 115200)
 ros2 launch vexy_ros vexy.launch.py
 
 # Override serial port (e.g. if Brain appears on ACM1)
@@ -224,7 +224,7 @@ ros2 launch vexy_ros vexy.launch.py camera_fps:=30
 
 # Combined
 ros2 launch vexy_ros vexy.launch.py \
-    serial_port:=/dev/ttyACM0 \
+    serial_port:=auto \
     baud_rate:=115200 \
     camera_width:=1280 camera_height:=720 camera_fps:=30
 ```
@@ -233,7 +233,7 @@ ros2 launch vexy_ros vexy.launch.py \
 
 | Argument | Default | Description |
 |----------|---------|-------------|
-| `serial_port` | `/dev/ttyACM0` | Serial device for V5 Brain |
+| `serial_port` | `auto` | Serial device for V5 Brain; prefers `/dev/serial/by-id/*VEX*if02` |
 | `baud_rate` | `115200` | Serial baud rate |
 | `camera_width` | `640` | Frame width in pixels |
 | `camera_height` | `480` | Frame height in pixels |
@@ -304,7 +304,7 @@ The **upstream** `libcamera` package (`apt install libcamera-dev`) does **not** 
 
 ### Serial port enumeration
 
-The V5 Brain typically appears as `/dev/ttyACM0`, but if another USB CDC device is connected first it may enumerate as `ttyACM1` or higher. Check with:
+The V5 Brain exposes multiple USB CDC interfaces. The program/user serial interface is usually the `if02` by-id symlink, and may map to `/dev/ttyACM1`. Check with:
 
 ```bash
 ls /dev/ttyACM*
@@ -312,7 +312,7 @@ ls /dev/ttyACM*
 dmesg | grep tty | tail -20
 ```
 
-Pass the correct port with `serial_port:=/dev/ttyACM1` to the launch file.
+The launch file auto-detects the user interface by default. Pass an explicit port such as `serial_port:=/dev/ttyACM1` only when debugging.
 
 ### colcon build artifacts are stale after vexy_ros edits
 
