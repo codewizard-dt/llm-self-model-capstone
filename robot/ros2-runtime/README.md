@@ -1,0 +1,362 @@
+# vexy_ros — ROS 2 Jazzy Runtime
+
+ROS 2 Jazzy coprocessor stack for the Raspberry Pi 5 (`vexy`). Replaces `robot/pi-runtime` (Bookworm + picamera2).
+
+**What it does:** Runs two nodes on the Pi — a camera pipeline publishing raw frames from the Camera Module 3, and a serial bridge forwarding JSON command packets to the VEX V5 Brain and relaying telemetry back. Foxglove Studio connects over WebSocket for real-time visualization, and `ros2 bag` captures sessions for the LLM feedback loop.
+
+---
+
+## Hardware Requirements
+
+| Component | Detail |
+|-----------|--------|
+| SBC | Raspberry Pi 5 (hostname `vexy`, reachable as `vexy.local`) |
+| Camera | Raspberry Pi Camera Module 3 Wide (IMX708 sensor, detected as `imx708_wide`) |
+| Robot brain | VEX V5 Brain connected via USB (appears as `/dev/ttyACM0`) |
+| OS | Ubuntu 24.04 LTS (not Raspberry Pi OS — ROS 2 Jazzy requires Ubuntu) |
+
+---
+
+## Prerequisites
+
+### OS & ROS 2
+
+Ubuntu 24.04 LTS with ROS 2 Jazzy installed:
+
+```bash
+# Add ROS 2 apt repo (one-time)
+sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+    -o /usr/share/keyrings/ros-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] \
+    http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" \
+    | sudo tee /etc/apt/sources.list.d/ros2.list
+
+sudo apt update
+sudo apt install -y ros-jazzy-ros-base ros-dev-tools
+```
+
+### noble-updates repo (required — do not skip)
+
+Without the `noble-updates` apt repo, `bzip2` has a version conflict that blocks `build-essential` from installing. This is a known Ubuntu 24.04 packaging issue on the Pi 5.
+
+```bash
+# Verify it is enabled (should already be present on fresh Ubuntu 24.04 images)
+grep -r noble-updates /etc/apt/sources.list /etc/apt/sources.list.d/
+# If missing, add it:
+sudo add-apt-repository "deb http://ports.ubuntu.com/ubuntu-ports noble-updates main restricted universe multiverse"
+sudo apt update
+```
+
+### User groups
+
+The user running ROS nodes must be in the `video` and `render` groups for libcamera hardware access:
+
+```bash
+sudo usermod -aG video,render $USER
+# Log out and back in (or reboot) for the groups to take effect
+groups  # should include video and render
+```
+
+---
+
+## Quick Start
+
+### Option A — automated bootstrap (recommended)
+
+Run the setup script once after Ubuntu 24.04 + ROS 2 Jazzy are installed. It clones dependencies, builds the workspace, and links `vexy_ros` from this repo:
+
+```bash
+# On the Pi, after cloning the capstone repo
+bash robot/ros2-runtime/scripts/setup_pi.sh
+```
+
+Then launch the full stack:
+
+```bash
+source ~/ros2_ws/install/setup.bash
+ros2 launch vexy_ros vexy.launch.py
+```
+
+### Option B — one-liner verify after setup
+
+```bash
+source ~/ros2_ws/install/setup.bash
+ros2 topic hz /camera/image_raw   # should show ~15 Hz (default) or ~30 Hz (configured)
+ros2 topic echo /vex/telemetry    # should show heartbeat acks from Brain
+```
+
+---
+
+## Manual Step-by-Step Setup
+
+Use this when the script is not available or you need to rebuild selectively.
+
+### 1. Install system dependencies
+
+```bash
+sudo apt-get install -y \
+    meson ninja-build \
+    libssl-dev libgnutls28-dev libboost-dev \
+    libglib2.0-dev libpython3-dev pybind11-dev \
+    python3-yaml python3-ply \
+    libevent-dev libdrm-dev libjpeg-dev \
+    libdw-dev libudev-dev \
+    libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+    libcamera-dev libyaml-dev \
+    python3-rosdep
+```
+
+### 2. Install colcon-meson
+
+Required to build the libcamera meson project inside a colcon workspace:
+
+```bash
+pip install colcon-meson --break-system-packages
+```
+
+### 3. Create workspace and clone sources
+
+```bash
+mkdir -p ~/ros2_ws/src
+cd ~/ros2_ws/src
+
+# RPi libcamera fork — upstream does NOT support IMX708 (Camera Module 3)
+git clone --depth=1 https://github.com/raspberrypi/libcamera.git
+
+# camera_ros — thin ROS 2 wrapper around libcamera
+git clone --depth=1 https://github.com/christianrauch/camera_ros.git
+
+# vexy_ros — symlink from this repo (avoids duplicating sources)
+ln -s /path/to/capstone/robot/ros2-runtime vexy_ros
+```
+
+### 4. Run rosdep
+
+```bash
+cd ~/ros2_ws
+source /opt/ros/jazzy/setup.bash
+
+sudo rosdep init   # skip if already done
+rosdep update --include-eol-distros -q
+rosdep install --from-paths src --ignore-src -y --skip-keys=libcamera
+```
+
+### 5. Build
+
+```bash
+colcon build \
+    --packages-select libcamera camera_ros vexy_ros \
+    --cmake-args -DCMAKE_BUILD_TYPE=Release \
+    --event-handlers console_direct+
+```
+
+Build time on Pi 5: ~8–12 min (libcamera dominates).
+
+### 6. Source and verify
+
+```bash
+source ~/ros2_ws/install/setup.bash
+
+# Smoke-test camera
+ros2 run camera_ros camera_node &
+ros2 topic hz /camera/image_raw
+# expect: average rate: ~15.000 Hz
+```
+
+---
+
+## Node Reference
+
+### Launched by `vexy.launch.py`
+
+| Node name | Package | Role |
+|-----------|---------|------|
+| `camera` | `camera_ros` | Camera Module 3 → /camera/image_raw |
+| `vex_bridge` | `vexy_ros` | USB serial ↔ /vex/cmd + /vex/telemetry |
+| `foxglove_bridge` | `foxglove_bridge` | WebSocket bridge at port 8765 for Foxglove Studio |
+
+### Topics
+
+| Topic | Type | Direction | Description |
+|-------|------|-----------|-------------|
+| `/camera/image_raw` | `sensor_msgs/Image` | pub (camera) | Raw frames at configured FPS |
+| `/camera/camera_info` | `sensor_msgs/CameraInfo` | pub (camera) | Intrinsics (uncalibrated by default) |
+| `/vex/cmd` | `std_msgs/String` | sub (vex_bridge) | JSON command packet to Brain |
+| `/vex/telemetry` | `std_msgs/String` | pub (vex_bridge) | JSON ack/state from Brain |
+
+### Wire protocol (v1)
+
+**Command** (`/vex/cmd`):
+```json
+{"v":1,"seq":1,"type":"cmd","cmd":"drive","sent_ms":123,"ttl_ms":200,"vx":0.1,"vy":0.0,"omega":0.0}
+```
+
+Supported `cmd` values: `stop`, `drive`, `turn`, `set_goal`
+
+**Telemetry** (`/vex/telemetry`):
+```json
+{"v":1,"ack":1,"type":"ack","state":"ok","recv_ms":124,"battery_mv":12300,"heading_deg":0.0,"fault":null}
+```
+
+**Heartbeat:** `vex_bridge_node` automatically sends a heartbeat every 150 ms when no command arrives. This keeps the V5 Brain's watchdog alive and prevents an automatic motor stop. You do not need to send heartbeats from your controller.
+
+**Velocity limits (enforced in node):**
+- Linear (`vx`, `vy`): ±0.35 m/s
+- Angular (`omega`): ±0.6 rad/s
+- `ttl_ms` clamped to [1, 5000]
+
+---
+
+## Launch File
+
+```bash
+# Default launch (640×480 @ 15 Hz, /dev/ttyACM0 @ 115200)
+ros2 launch vexy_ros vexy.launch.py
+
+# Override serial port (e.g. if Brain appears on ACM1)
+ros2 launch vexy_ros vexy.launch.py serial_port:=/dev/ttyACM1
+
+# Higher resolution
+ros2 launch vexy_ros vexy.launch.py camera_width:=1280 camera_height:=720
+
+# Higher frame rate (30 Hz match for IMX708 native)
+ros2 launch vexy_ros vexy.launch.py camera_fps:=30
+
+# Combined
+ros2 launch vexy_ros vexy.launch.py \
+    serial_port:=/dev/ttyACM0 \
+    baud_rate:=115200 \
+    camera_width:=1280 camera_height:=720 camera_fps:=30
+```
+
+### All launch arguments
+
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `serial_port` | `/dev/ttyACM0` | Serial device for V5 Brain |
+| `baud_rate` | `115200` | Serial baud rate |
+| `camera_width` | `640` | Frame width in pixels |
+| `camera_height` | `480` | Frame height in pixels |
+| `camera_fps` | `15` | Target frame rate |
+
+---
+
+## Foxglove Studio Debugging
+
+Foxglove provides a browser-based ROS 2 visualizer — useful for inspecting camera frames and telemetry without a desktop environment on the Pi.
+
+```bash
+# Install bridge on the Pi (one-time)
+sudo apt install -y ros-jazzy-foxglove-bridge
+```
+
+Then open **https://app.foxglove.dev** in a browser and connect:
+
+| mDNS available | URL |
+|----------------|-----|
+| Yes (default) | `ws://vexy.local:8765` |
+| No (mDNS fails on some networks) | `ws://10.10.3.4:8765` |
+
+Useful panels: **Image** (subscribe `/camera/image_raw`), **Raw Messages** (subscribe `/vex/telemetry`), **Topic Graph**.
+
+---
+
+## Recording Sessions for the LLM Feedback Loop
+
+`ros2 bag` records all topics to a self-describing MCAP file for offline replay and ingestion:
+
+```bash
+# Record everything
+ros2 bag record -a -o session_$(date +%Y%m%d_%H%M%S)
+
+# Record only camera + telemetry (smaller files)
+ros2 bag record /camera/image_raw /vex/telemetry /vex/cmd \
+    -o session_$(date +%Y%m%d_%H%M%S)
+
+# Inspect a recorded bag
+ros2 bag info session_20260623_143000/
+
+# Replay a bag (useful for offline debugging)
+ros2 bag play session_20260623_143000/
+```
+
+Bags are written to the current directory. Transfer them off the Pi via `scp` or mount a USB drive beforehand.
+
+---
+
+## Common Gotchas
+
+### noble-updates must be enabled
+
+The `bzip2` package in the base `noble` apt repo has a version that conflicts with `build-essential` on the Pi 5. Without `noble-updates`, the entire C/C++ build toolchain fails to install. Always verify this repo is active before troubleshooting build failures.
+
+### User must be in `video` and `render` groups
+
+libcamera opens DRM/V4L2 devices that require group membership. The symptom of missing groups is `camera_node` failing at startup with a permission error on `/dev/video*` or `/dev/dri/*`. Adding groups requires a logout/login or reboot — `newgrp` works for a single shell but is not inherited by the ROS launch process.
+
+### RPi libcamera fork, not upstream
+
+The **upstream** `libcamera` package (`apt install libcamera-dev`) does **not** include the IMX708 IPA (Image Processing Algorithm) needed by Camera Module 3. Using upstream libcamera will result in `camera_node` failing to enumerate any cameras or producing a black stream. The setup script and workspace explicitly clone `https://github.com/raspberrypi/libcamera.git` (the RPi fork) to the workspace so colcon builds it with IMX708 support. Do not `apt install libcamera-dev` and expect it to work with Camera Module 3.
+
+### mDNS vs IP address
+
+`vexy.local` resolves via mDNS for SSH, but **browser-based WebSocket connections (Foxglove) commonly fail with mDNS even when SSH works fine**. If Foxglove shows "Connection failed" with `ws://vexy.local:8765`, switch to the IP address — this was the observed behavior during setup. Check the Pi's current IP with `ip addr show wlan0` and use `ws://<IP>:8765` directly (e.g. `ws://10.10.3.4:8765`).
+
+### Serial port enumeration
+
+The V5 Brain typically appears as `/dev/ttyACM0`, but if another USB CDC device is connected first it may enumerate as `ttyACM1` or higher. Check with:
+
+```bash
+ls /dev/ttyACM*
+# or
+dmesg | grep tty | tail -20
+```
+
+Pass the correct port with `serial_port:=/dev/ttyACM1` to the launch file.
+
+### colcon build artifacts are stale after vexy_ros edits
+
+`vexy_ros` is symlinked into the workspace. Colcon does not always detect changes to Python source files via the symlink. If node changes are not taking effect, force a rebuild:
+
+```bash
+colcon build --packages-select vexy_ros --event-handlers console_direct+
+```
+
+---
+
+## Fallback: picam_ros2
+
+If the RPi libcamera fork fails to build (e.g., meson version incompatibility, missing kernel headers), `picam_ros2` is an alternative camera node that uses the Pi's V4L2 interface directly:
+
+```bash
+sudo apt install -y ros-jazzy-v4l2-camera
+ros2 run v4l2_camera v4l2_camera_node --ros-args \
+    -p video_device:=/dev/video0 \
+    -p image_size:=[640,480]
+```
+
+Limitations: no hardware ISP, no auto-exposure tuning, lower image quality than the libcamera pipeline. Use only as a debugging fallback.
+
+---
+
+## Repository Layout
+
+```
+robot/ros2-runtime/
+├── package.xml              # ament_python package descriptor (vexy_ros v0.1.0)
+├── setup.py                 # entry point: vex_bridge_node = vexy_ros.vex_bridge_node:main
+├── setup.cfg
+├── resource/vexy_ros        # ament package marker
+├── src/vexy_ros/
+│   ├── __init__.py
+│   └── vex_bridge_node.py   # serial bridge ROS 2 node
+├── launch/
+│   └── vexy.launch.py       # launches camera_node + vex_bridge_node
+└── scripts/
+    └── setup_pi.sh          # one-shot bootstrap (build workspace + deps)
+```
+
+## Related
+
+- `robot/pi-runtime/` — legacy Bookworm/picamera2 stack (superseded by this package)
+- V5 Brain firmware protocol: see `robot/pi-runtime/` serial protocol documentation

@@ -7,9 +7,7 @@ name = "v5-brain"
 version = "0.2.1"
 description = "Host-side Python tooling for the VEX V5 Brain serial bridge"
 requires-python = ">=3.11"
-dependencies = [
-    "pros-cli>=3.5.6",
-]
+dependencies = ["pros-cli>=3.5.6"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
