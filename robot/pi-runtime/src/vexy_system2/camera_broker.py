@@ -20,8 +20,8 @@ def parse_args() -> argparse.Namespace:
 
 def write_synthetic(path: Path, width: int, height: int, message: str) -> None:
     try:
-        import cv2
-        import numpy as np
+        import cv2  # type: ignore[import-not-found]
+        import numpy as np  # type: ignore[import-not-found]
 
         frame = np.zeros((height, width, 3), dtype=np.uint8)
         frame[:, :] = (28, 34, 38)
@@ -39,8 +39,8 @@ def main() -> None:
     interval = 1.0 / max(args.fps, 0.1)
 
     try:
-        import cv2
-        from picamera2 import Picamera2
+        import cv2  # type: ignore[import-not-found]
+        from picamera2 import Picamera2  # type: ignore[import-not-found]
 
         cam = Picamera2()
         cam.configure(cam.create_video_configuration(main={"size": (args.width, args.height), "format": "RGB888"}))
@@ -59,7 +59,8 @@ def main() -> None:
             updated = protocol.now_ms()
             if cam is not None:
                 frame = cam.capture_array()
-                cv2.imwrite(str(latest), frame)
+                bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)  # type: ignore[union-attr]
+                cv2.imwrite(str(latest), bgr)  # type: ignore[union-attr]
             else:
                 write_synthetic(latest, args.width, args.height, error or "camera unavailable")
 

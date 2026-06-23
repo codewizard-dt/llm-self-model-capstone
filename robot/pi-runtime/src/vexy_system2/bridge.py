@@ -40,7 +40,7 @@ class FakeV5Brain:
 
 class SerialV5Brain:
     def __init__(self, port: str, baud: int, timeout: float) -> None:
-        import serial
+        import serial  # type: ignore[import-untyped]
 
         self.serial = serial.Serial(port=port, baudrate=baud, timeout=timeout, write_timeout=timeout)
 
