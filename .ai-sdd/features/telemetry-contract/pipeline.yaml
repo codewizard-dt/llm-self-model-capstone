@@ -7,6 +7,8 @@ spec:
     - { id: package-scaffold, kind: pipeline, pipeline: ../.., stack: contracts }
     - { id: pydantic-models,  kind: pipeline, pipeline: ../.., stack: contracts }
     - { id: fixtures-and-gates, kind: pipeline, pipeline: ../.., stack: contracts }
+    - { id: per-stack-venv, kind: pipeline, pipeline: ../.., stack: contracts }
   edges:
     - { from: package-scaffold,  to: pydantic-models }
     - { from: pydantic-models,   to: fixtures-and-gates }
+    - { from: fixtures-and-gates, to: per-stack-venv }
