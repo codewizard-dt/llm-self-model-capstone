@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>self-model-feature — ai-sdd dashboard</title>
+<style>
+:root {
+    --status-done: #2e7d32;
+    --status-in-progress: #1565c0;
+    --status-rework: #f9a825;
+    --status-escalated: #c62828;
+    --status-runnable: #616161;
+    --status-pending: #9e9e9e;
+  --text: #1f2328;
+  --muted: #59636e;
+  --line: #d0d7de;
+  --panel: #f6f8fa;
+  --background: #ffffff;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--background); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.45; }
+.dashboard-page { max-width: 1180px; margin: 0 auto; padding: 32px 20px 48px; }
+.dashboard-header { border-bottom: 1px solid var(--line); padding-bottom: 24px; }
+.dashboard-kicker { color: var(--muted); font-size: 0.82rem; font-weight: 700; letter-spacing: 0; margin: 0 0 8px; text-transform: uppercase; }
+h1 { font-size: 2rem; margin: 0 0 20px; }
+h2 { font-size: 1.2rem; margin: 0; }
+.summary-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: 20px; }
+.summary-grid > div { border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
+.summary-value { display: block; font-size: 1.55rem; font-weight: 700; }
+.summary-label { color: var(--muted); font-size: 0.86rem; }
+.progress-wrap p { color: var(--muted); margin: 8px 0 0; }
+.progress-track { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; height: 14px; overflow: hidden; }
+.progress-fill { background: var(--status-done); height: 100%; }
+.status-legend ul { display: flex; flex-wrap: wrap; gap: 10px 18px; justify-content: center; list-style: none; margin: 22px 0; padding: 0; }
+.status-legend li { align-items: center; color: var(--muted); display: flex; gap: 8px; font-size: 0.92rem; }
+.legend-swatch { border-radius: 999px; display: inline-block; height: 10px; width: 10px; }
+.dashboard-charts { align-items: start; display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); margin-bottom: 28px; }
+.dashboard-chart { max-width: 100%; }
+.dashboard-status-donut { justify-self: center; max-width: 360px; }
+.dashboard-grouped-bars { width: 100%; }
+.dashboard-section { border-top: 1px solid var(--line); padding: 26px 0; }
+.dashboard-section > header { align-items: baseline; display: flex; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.dashboard-section > header p { color: var(--muted); margin: 0; }
+.dashboard-mermaid-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; margin-bottom: 18px; overflow-x: auto; padding: 16px; }
+.dashboard-mermaid { margin: 0; min-width: 640px; text-align: center; }
+.dashboard-graph { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr) minmax(220px, 0.45fr); margin-bottom: 18px; }
+.dashboard-nodes { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); list-style: none; margin: 0; padding: 0; }
+.dashboard-node { border: 1px solid var(--line); border-left: 5px solid currentColor; border-radius: 8px; color: var(--muted); min-height: 70px; padding: 12px; }
+.node-id { color: var(--text); display: block; font-weight: 700; overflow-wrap: anywhere; }
+.node-status { display: block; font-size: 0.82rem; margin-top: 6px; }
+.dashboard-edges { background: var(--panel); border-radius: 8px; list-style: none; margin: 0; padding: 12px; }
+.dashboard-edges li { align-items: center; display: flex; gap: 8px; min-height: 26px; overflow-wrap: anywhere; }
+.slice-table { border-collapse: collapse; font-size: 0.92rem; width: 100%; }
+.slice-table th, .slice-table td { border-bottom: 1px solid var(--line); padding: 10px 8px; text-align: left; vertical-align: top; }
+.slice-table th { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; }
+.status-done { color: var(--status-done); }
+.status-in-progress { color: var(--status-in-progress); }
+.status-rework { color: var(--status-rework); }
+.status-escalated { color: var(--status-escalated); }
+.status-runnable { color: var(--status-runnable); }
+.status-pending { color: var(--status-pending); }
+.legend-swatch.status-done { background: var(--status-done); }
+.legend-swatch.status-in-progress { background: var(--status-in-progress); }
+.legend-swatch.status-rework { background: var(--status-rework); }
+.legend-swatch.status-escalated { background: var(--status-escalated); }
+.legend-swatch.status-runnable { background: var(--status-runnable); }
+.legend-swatch.status-pending { background: var(--status-pending); }
+@media (max-width: 760px) {
+  .dashboard-graph { grid-template-columns: 1fr; }
+  .slice-table { display: block; overflow-x: auto; }
+}
+</style>
+</head>
+<body>
+  <main class="dashboard-page">
+    <header class="dashboard-header">
+      <p class="dashboard-kicker">ai-sdd project status</p>
+      <h1>self-model-feature</h1>
+      <div class="summary-grid" aria-label="Dashboard summary">
+        <div><span class="summary-value">1</span><span class="summary-label">features</span></div>
+        <div><span class="summary-value">3</span><span class="summary-label">slices</span></div>
+        <div><span class="summary-value">0/3</span><span class="summary-label">done</span></div>
+        <div><span class="summary-value">0%</span><span class="summary-label">progress</span></div>
+      </div>
+      <div class="progress-wrap" aria-label="0 of 3 slices done">
+        <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="progress-fill" style="width: 0.0%"></div></div>
+        <p>0/3 done</p>
+      </div>
+    </header>
+        <nav class="status-legend" aria-label="Status legend">
+      <ul>
+        <li><span class="legend-swatch status-done"></span>done</li>
+        <li><span class="legend-swatch status-in-progress"></span>in-progress</li>
+        <li><span class="legend-swatch status-rework"></span>rework</li>
+        <li><span class="legend-swatch status-escalated"></span>escalated</li>
+        <li><span class="legend-swatch status-runnable"></span>runnable</li>
+        <li><span class="legend-swatch status-pending"></span>pending</li>
+      </ul>
+    </nav>
+    <section class="dashboard-charts" aria-label="Dashboard charts">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" role="img" aria-label="Status distribution: done 0, in-progress 0, rework 0, escalated 0, runnable 1, pending 2" class="dashboard-chart dashboard-status-donut">
+  <g transform="translate(78 72) rotate(-90)">
+    <circle cx="0" cy="0" r="48" fill="none" stroke="#eceff1" stroke-width="18"/>
+    <circle class="status-segment status-done" data-status="done" data-count="0" cx="0" cy="0" r="48" fill="none" stroke="#2e7d32" stroke-width="18" pathLength="3" stroke-dasharray="0 3" stroke-dashoffset="-0"><title>done: 0</title></circle>
+    <circle class="status-segment status-in-progress" data-status="in-progress" data-count="0" cx="0" cy="0" r="48" fill="none" stroke="#1565c0" stroke-width="18" pathLength="3" stroke-dasharray="0 3" stroke-dashoffset="-0"><title>in-progress: 0</title></circle>
+    <circle class="status-segment status-rework" data-status="rework" data-count="0" cx="0" cy="0" r="48" fill="none" stroke="#f9a825" stroke-width="18" pathLength="3" stroke-dasharray="0 3" stroke-dashoffset="-0"><title>rework: 0</title></circle>
+    <circle class="status-segment status-escalated" data-status="escalated" data-count="0" cx="0" cy="0" r="48" fill="none" stroke="#c62828" stroke-width="18" pathLength="3" stroke-dasharray="0 3" stroke-dashoffset="-0"><title>escalated: 0</title></circle>
+    <circle class="status-segment status-runnable" data-status="runnable" data-count="1" cx="0" cy="0" r="48" fill="none" stroke="#616161" stroke-width="18" pathLength="3" stroke-dasharray="1 2" stroke-dashoffset="-0"><title>runnable: 1</title></circle>
+    <circle class="status-segment status-pending" data-status="pending" data-count="2" cx="0" cy="0" r="48" fill="none" stroke="#9e9e9e" stroke-width="18" pathLength="3" stroke-dasharray="2 1" stroke-dashoffset="-1"><title>pending: 2</title></circle>
+  </g>
+  <text x="78" y="77" text-anchor="middle" class="chart-total">3</text>
+  <g class="chart-legend">
+    <rect x="160" y="10" width="12" height="12" fill="#2e7d32"/>
+    <text x="180" y="20" class="legend-label">done 0</text>
+    <rect x="160" y="36" width="12" height="12" fill="#1565c0"/>
+    <text x="180" y="46" class="legend-label">in-progress 0</text>
+    <rect x="160" y="62" width="12" height="12" fill="#f9a825"/>
+    <text x="180" y="72" class="legend-label">rework 0</text>
+    <rect x="160" y="88" width="12" height="12" fill="#c62828"/>
+    <text x="180" y="98" class="legend-label">escalated 0</text>
+    <rect x="160" y="114" width="12" height="12" fill="#616161"/>
+    <text x="180" y="124" class="legend-label">runnable 1</text>
+    <rect x="160" y="140" width="12" height="12" fill="#9e9e9e"/>
+    <text x="180" y="150" class="legend-label">pending 2</text>
+  </g>
+</svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 110" role="img" aria-label="Status by owner: self-model-feature 3" class="dashboard-chart dashboard-grouped-bars">
+  <g class="bar-groups">
+    <g class="bar-group" data-group="self-model-feature" data-total="3">
+      <text x="0" y="45" class="group-label">self-model-feature</text>
+      <rect x="260" y="32" width="420" height="16" fill="#eceff1"/>
+      <rect class="status-bar status-done" data-status="done" data-count="0" x="260" y="32" width="0" height="16" fill="#2e7d32"><title>self-model-feature done: 0</title></rect>
+      <rect class="status-bar status-in-progress" data-status="in-progress" data-count="0" x="260" y="32" width="0" height="16" fill="#1565c0"><title>self-model-feature in-progress: 0</title></rect>
+      <rect class="status-bar status-rework" data-status="rework" data-count="0" x="260" y="32" width="0" height="16" fill="#f9a825"><title>self-model-feature rework: 0</title></rect>
+      <rect class="status-bar status-escalated" data-status="escalated" data-count="0" x="260" y="32" width="0" height="16" fill="#c62828"><title>self-model-feature escalated: 0</title></rect>
+      <rect class="status-bar status-runnable" data-status="runnable" data-count="1" x="260" y="32" width="140" height="16" fill="#616161"><title>self-model-feature runnable: 1</title></rect>
+      <rect class="status-bar status-pending" data-status="pending" data-count="2" x="400" y="32" width="280" height="16" fill="#9e9e9e"><title>self-model-feature pending: 2</title></rect>
+      <text x="696" y="45" class="group-total">3</text>
+    </g>
+  </g>
+</svg>
+    </section>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' });
+      await mermaid.run({ querySelector: '.dashboard-mermaid' });
+    </script>
+    <section class="dashboard-section">
+      <header>
+        <h2>Build pattern · self-model-feature</h2>
+        <p>0/3 done</p>
+      </header>
+      <div class="dashboard-mermaid-wrap" aria-label="Dependency graph">
+        <pre class="mermaid dashboard-mermaid">
+flowchart TD
+    planner[&quot;planner&lt;br/&gt;runnable&quot;]:::status_runnable
+    implementer[&quot;implementer&lt;br/&gt;pending&quot;]:::status_pending
+    reviewer[&quot;reviewer&lt;br/&gt;pending&quot;]:::status_pending
+    planner --&gt;|feature-plan.v1| implementer
+    planner --&gt;|feature-plan.v1| reviewer
+    implementer --&gt;|changeset.v1| reviewer
+    classDef status_done fill:#ffffff,stroke:#2e7d32,stroke-width:3px,color:#1f2328
+    classDef status_in_progress fill:#ffffff,stroke:#1565c0,stroke-width:3px,color:#1f2328
+    classDef status_rework fill:#ffffff,stroke:#f9a825,stroke-width:3px,color:#1f2328
+    classDef status_escalated fill:#ffffff,stroke:#c62828,stroke-width:3px,color:#1f2328
+    classDef status_runnable fill:#ffffff,stroke:#616161,stroke-width:3px,color:#1f2328
+    classDef status_pending fill:#ffffff,stroke:#9e9e9e,stroke-width:3px,color:#1f2328
+        </pre>
+      </div>
+      <table class="slice-table">
+        <thead>
+          <tr><th>Node</th><th>Status</th><th>Owner</th><th>Stack</th><th>Lane</th><th>Milestone</th><th>Dependencies</th><th>Next action</th></tr>
+        </thead>
+        <tbody>
+          <tr class="status-runnable">
+            <td>planner</td>
+            <td>runnable</td>
+            <td>self-model-feature</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td>0</td>
+            <td>start-work</td>
+          </tr>
+          <tr class="status-pending">
+            <td>implementer</td>
+            <td>pending</td>
+            <td>self-model-feature</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td>1</td>
+            <td>waiting-on-dependencies</td>
+          </tr>
+          <tr class="status-pending">
+            <td>reviewer</td>
+            <td>pending</td>
+            <td>self-model-feature</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td>2</td>
+            <td>waiting-on-dependencies</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html><!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>self-model-loop — dependency graph — ai-sdd graph</title>
+<style>
+  body{font-family:-apple-system,system-ui,sans-serif;max-width:980px;margin:2rem auto;padding:0 1rem;line-height:1.5;color:#1f2328}
+  h2{border-bottom:1px solid #d0d7de;padding-bottom:.3em;margin-top:2rem}
+  code{background:#f6f8fa;padding:.15em .3em;border-radius:4px}
+  pre.mermaid{background:#f6f8fa;border-radius:6px;padding:1rem;text-align:center}
+  a{color:#0969da;text-decoration:none}
+</style></head><body>
+<div id="content">Rendering…</div>
+<script type="text/markdown" id="md">
+# self-model-loop — dependency graph
+
+_Generated by `ai-sdd graph` from the pipeline spec (ADR-0027). Renders in any Markdown viewer._
+
+```mermaid
+flowchart TD
+    telemetry_contract["telemetry-contract<br/>slice [contracts] @Erick"]
+    self_model_schema["self-model-schema<br/>slice [contracts] @Erick"]
+    parts_catalog_grammar["parts-catalog-grammar<br/>slice [contracts]"]
+    adapter_interfaces["adapter-interfaces<br/>slice [contracts]"]
+    control_grammar["control-grammar<br/>slice [contracts]"]
+    m1["m1<br/>milestone-gate @Erick"]
+    synthetic_oracle["synthetic-oracle<br/>slice [contracts] @Erick"]
+    m1b["m1b<br/>milestone-gate @Erick"]
+    replay_source["replay-source<br/>slice [contracts]"]
+    gap_analyzer["gap-analyzer<br/>slice [operator]"]
+    critic_panel["critic-panel<br/>slice [operator]"]
+    generator["generator<br/>slice [operator]"]
+    markdown_presenter["markdown-presenter<br/>slice [operator]"]
+    demo_replay["demo-replay<br/>slice [operator]"]
+    m2["m2<br/>milestone-gate"]
+    vision_pipeline["vision-pipeline<br/>slice [coprocessor]"]
+    serial_bridge_merge["serial-bridge-merge<br/>slice [coprocessor]"]
+    live_hw_sources["live-hw-sources<br/>slice [coprocessor]"]
+    m3["m3<br/>milestone-gate"]
+    brain_telemetry_firmware["brain-telemetry-firmware<br/>slice [brain]"]
+    hw_baseline_capture["hw-baseline-capture<br/>slice [coprocessor]"]
+    oracle_baseline_request["oracle-baseline-request<br/>slice [contracts] @Erick"]
+    m4["m4<br/>milestone-gate"]
+    m5["m5<br/>milestone-gate @Erick"]
+    brain_command_bridge["brain-command-bridge<br/>slice [brain]"]
+    online_control_harness["online-control-harness<br/>slice [pilot]"]
+    m6["m6<br/>milestone-gate"]
+    telemetry_contract --> m1
+    self_model_schema --> m1
+    parts_catalog_grammar --> m1
+    adapter_interfaces --> m1
+    control_grammar --> m1
+    m1 --> synthetic_oracle
+    synthetic_oracle --> m1b
+    m1 --> replay_source
+    m1 --> gap_analyzer
+    m1 --> critic_panel
+    gap_analyzer --> generator
+    gap_analyzer --> markdown_presenter
+    generator --> demo_replay
+    critic_panel --> demo_replay
+    markdown_presenter --> demo_replay
+    replay_source --> demo_replay
+    m1b --> demo_replay
+    demo_replay --> m2
+    m1 --> vision_pipeline
+    m1 --> live_hw_sources
+    vision_pipeline --> serial_bridge_merge
+    live_hw_sources --> serial_bridge_merge
+    serial_bridge_merge --> m3
+    m1 --> brain_telemetry_firmware
+    brain_telemetry_firmware --> hw_baseline_capture
+    serial_bridge_merge --> hw_baseline_capture
+    live_hw_sources --> hw_baseline_capture
+    hw_baseline_capture --> oracle_baseline_request
+    synthetic_oracle --> oracle_baseline_request
+    oracle_baseline_request --> m4
+    m2 --> m4
+    m3 --> m4
+    demo_replay --> m5
+    m4 --> m5
+    control_grammar --> brain_command_bridge
+    brain_telemetry_firmware --> brain_command_bridge
+    brain_command_bridge --> online_control_harness
+    serial_bridge_merge --> online_control_harness
+    m5 --> m6
+    online_control_harness --> m6
+```
+
+</script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  document.getElementById('content').innerHTML = marked.parse(document.getElementById('md').textContent);
+  document.querySelectorAll('code.language-mermaid').forEach(c => {
+    const pre = document.createElement('pre'); pre.className = 'mermaid';
+    pre.textContent = c.textContent; c.closest('pre').replaceWith(pre); });
+  mermaid.initialize({ startOnLoad: false }); await mermaid.run();
+</script></body></html>
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>self-model-loop — dependency graph — ai-sdd graph</title>
+<style>
+  body{font-family:-apple-system,system-ui,sans-serif;max-width:980px;margin:2rem auto;padding:0 1rem;line-height:1.5;color:#1f2328}
+  h2{border-bottom:1px solid #d0d7de;padding-bottom:.3em;margin-top:2rem}
+  code{background:#f6f8fa;padding:.15em .3em;border-radius:4px}
+  pre.mermaid{background:#f6f8fa;border-radius:6px;padding:1rem;text-align:center}
+  a{color:#0969da;text-decoration:none}
+</style></head><body>
+<div id="content">Rendering…</div>
+<script type="text/markdown" id="md">
+# self-model-loop — dependency graph
+
+_Generated by `ai-sdd graph` from the pipeline spec (ADR-0027). Renders in any Markdown viewer._
+
+```mermaid
+flowchart TD
+    telemetry_contract["telemetry-contract<br/>slice [contracts] @Erick"]
+    self_model_schema["self-model-schema<br/>slice [contracts] @Erick"]
+    parts_catalog_grammar["parts-catalog-grammar<br/>slice [contracts]"]
+    adapter_interfaces["adapter-interfaces<br/>slice [contracts]"]
+    control_grammar["control-grammar<br/>slice [contracts]"]
+    m1["m1<br/>milestone-gate @Erick"]
+    synthetic_oracle["synthetic-oracle<br/>slice [contracts] @Erick"]
+    m1b["m1b<br/>milestone-gate @Erick"]
+    replay_source["replay-source<br/>slice [contracts]"]
+    gap_analyzer["gap-analyzer<br/>slice [operator]"]
+    critic_panel["critic-panel<br/>slice [operator]"]
+    generator["generator<br/>slice [operator]"]
+    markdown_presenter["markdown-presenter<br/>slice [operator]"]
+    demo_replay["demo-replay<br/>slice [operator]"]
+    m2["m2<br/>milestone-gate"]
+    vision_pipeline["vision-pipeline<br/>slice [coprocessor]"]
+    serial_bridge_merge["serial-bridge-merge<br/>slice [coprocessor]"]
+    live_hw_sources["live-hw-sources<br/>slice [coprocessor]"]
+    m3["m3<br/>milestone-gate"]
+    brain_telemetry_firmware["brain-telemetry-firmware<br/>slice [brain]"]
+    hw_baseline_capture["hw-baseline-capture<br/>slice [coprocessor]"]
+    oracle_baseline_request["oracle-baseline-request<br/>slice [contracts]"]
+    m4["m4<br/>milestone-gate"]
+    m5["m5<br/>milestone-gate"]
+    brain_command_bridge["brain-command-bridge<br/>slice [brain]"]
+    online_control_harness["online-control-harness<br/>slice [pilot]"]
+    m6["m6<br/>milestone-gate"]
+    telemetry_contract --> m1
+    self_model_schema --> m1
+    parts_catalog_grammar --> m1
+    adapter_interfaces --> m1
+    control_grammar --> m1
+    m1 --> synthetic_oracle
+    synthetic_oracle --> m1b
+    m1 --> replay_source
+    m1 --> gap_analyzer
+    m1 --> critic_panel
+    gap_analyzer --> generator
+    gap_analyzer --> markdown_presenter
+    generator --> demo_replay
+    critic_panel --> demo_replay
+    markdown_presenter --> demo_replay
+    replay_source --> demo_replay
+    m1b --> demo_replay
+    demo_replay --> m2
+    m1 --> vision_pipeline
+    m1 --> live_hw_sources
+    vision_pipeline --> serial_bridge_merge
+    live_hw_sources --> serial_bridge_merge
+    serial_bridge_merge --> m3
+    m1 --> brain_telemetry_firmware
+    brain_telemetry_firmware --> hw_baseline_capture
+    serial_bridge_merge --> hw_baseline_capture
+    live_hw_sources --> hw_baseline_capture
+    hw_baseline_capture --> oracle_baseline_request
+    synthetic_oracle --> oracle_baseline_request
+    oracle_baseline_request --> m4
+    m2 --> m4
+    m3 --> m4
+    demo_replay --> m5
+    m4 --> m5
+    control_grammar --> brain_command_bridge
+    brain_telemetry_firmware --> brain_command_bridge
+    brain_command_bridge --> online_control_harness
+    serial_bridge_merge --> online_control_harness
+    m5 --> m6
+    online_control_harness --> m6
+```
+
+</script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  document.getElementById('content').innerHTML = marked.parse(document.getElementById('md').textContent);
+  document.querySelectorAll('code.language-mermaid').forEach(c => {
+    const pre = document.createElement('pre'); pre.className = 'mermaid';
+    pre.textContent = c.textContent; c.closest('pre').replaceWith(pre); });
+  mermaid.initialize({ startOnLoad: false }); await mermaid.run();
+</script></body></html>

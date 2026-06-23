@@ -4,7 +4,7 @@
 > research, so discovery was run evidence-first. **Root:** `robot/v5-brain/` (the team's deployable
 > Brain surface, DEC-0001 — the spec's logical `brain` vertical maps here; see
 > [`MASTER_REQUIREMENTS.md`](../../MASTER_REQUIREMENTS.md) Authority/roots reconciliation). Rows cite
-> **REQ** (MASTER_REQUIREMENTS), **REPO** (code in tree), or **WIKI** (ingested research). Owner: **Grace**.
+> **REQ** (MASTER_REQUIREMENTS), **REPO** (code in tree), or **WIKI** (ingested research). Owner: **TBD** (per O1; slices inherit the vertical lead once assigned, ADR-0027).
 
 > **Brain language: PROS C++ (ADR-05).** MicroPython is 10–300× slower for tight loops and
 > VEXcode-Python *receiving* serial from the Pi is community-unconfirmed (blocking `readline` stalls

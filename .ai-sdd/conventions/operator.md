@@ -6,8 +6,8 @@
 
 **Vertical.** `operator` — the **offline self-model loop** (LLM authoring/critique/replay/
 presentation): the Generator, the 3-critic panel, the gap analyzer, the markdown presenter, the demo
-replay. Its own Stack/Factory (ADR-0024/0012). Root: `operator/`. Owner: **David** (Grace: presenter,
-demo-replay, aesthetic). *(Evidence: Tech stacks · Components · Sub-features.)*
+replay. Its own Stack/Factory (ADR-0024/0012). Root: `operator/`. Owner: **TBD** (per O1; slices
+inherit the vertical lead once assigned, ADR-0027). *(Evidence: Tech stacks · Components · Sub-features.)*
 
 > **Scope boundary vs `pilot`.** `operator` is the **offline, generational** loop — it revises a
 > readable self-model/design over recorded/synthetic data (`make demo`). The **online, real-time**

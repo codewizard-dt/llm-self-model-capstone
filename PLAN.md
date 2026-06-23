@@ -390,7 +390,7 @@ The system decomposes into five code verticals — `contracts`, `operator`, and 
 
 | Owner | Owns | Vertical |
 |-------|------|----------|
-| **Erick Andrade** | telemetry + self-model contracts, synthetic oracle, oracle recalibration (no robot access) | contracts |
+| **Erick Andrade** | telemetry + self-model contracts, synthetic oracle, oracle recalibration | contracts |
 | **TBD** | parts-catalog grammar, control grammar, adapter interfaces, replay source | contracts |
 | **TBD** | Generator, critic panel, gap analyzer, presenter, demo replay | operator |
 | **TBD** | vision pipeline, serial-bridge merge, live HW sources, baseline capture | coprocessor (`robot/pi-runtime`) |

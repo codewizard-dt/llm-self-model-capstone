@@ -8,8 +8,8 @@
 
 **Vertical.** `contracts` — the cross-vertical source of truth: the three frozen schemas, the
 adapter interfaces, the `Synthetic` oracle, and the `Replay` sources. This vertical is its own
-Stack/Factory (ADR-0024/0012). Root: `contracts/`. Owner: **Erick** (Jake: parts-grammar,
-replay-source; David: adapter-interfaces).
+Stack/Factory (ADR-0024/0012). Root: `contracts/`. Owner: **Erick** (per ADR-18; contracts +
+oracle). Remaining contracts sub-feature owners **TBD** (slices inherit the vertical lead, ADR-0027).
 *(Evidence: Tech stacks · Components · Sub-features.)*
 
 ## Discovery Record

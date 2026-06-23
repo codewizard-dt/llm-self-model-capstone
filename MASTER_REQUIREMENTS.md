@@ -29,7 +29,7 @@
 - **Phase 3 · Product** — User: robotics/ML engineer; JTBD: self-revising model without hand-tuning; smallest proof: one grab primitive improving across rounds.
 - **Phase 4 · System shape** — Verticals: contracts · operator · coprocessor · brain. Freeze first: the three contracts (Constraints → Frozen Contracts).
 - **Phase 5 · Integration** — High-risk: live VEX+Pi+camera, on-device YOLO, live Claude in demo. Mockable behind one adapter: telemetry + vision sources. Swap path documented in Constraints.
-- **Phase 6 · MVP cut** — Software loop on frozen contracts; V1 motor+vision over recorded/synthetic; V1.5 live hardware; V2 aesthetic/Gen-3. Fallback: recorded JSONL replay if live robot fails mid-demo.
+- **Phase 6 · MVP cut** — Software loop on frozen contracts; V1 motor+vision over recorded/synthetic; V1.5 live hardware; V2 Gen-3. Fallback: recorded JSONL replay if live robot fails mid-demo.
 - **Phase 7 · Verification** — Test gap math, revision-consumes-residuals, critic catches a planted torque error. Reviewer runs `make demo`. Proof: video, gap-JSON screenshots, self-model diffs.
 - **Phase 8 · Execution** — Parallel after contract freeze; first-unblock = `contracts`; drift prevented by schemas living only in `contracts`.
 
@@ -42,7 +42,7 @@ By the demo, the system closes the generational self-model loop **in software** 
 **Scope cut**
 - **MVP (V1) — required:** frozen contracts with validating models + fixtures; Generator authoring Gen 0 and revising Gen 1/Gen 2 from gap residuals; 3-critic panel; telemetry pipeline on a `TelemetrySource` adapter (Replay + Synthetic implemented); vision pipeline (YOLO11n + AprilTag) behind a `VisionSource` adapter merged into the JSONL `vision` block; gap analyzer + `make demo` deterministic replay; markdown/terminal presenter.
 - **V1.5 — integration window (post-4-day):** `SerialTelemetrySource` reading a real V5 over `/dev/ttyACM0` @115,200; `CameraVisionSource` live on the Pi 5; one real Gen-0 capture replacing a synthetic fixture.
-- **V2 — stretch (deadline-safe only):** aesthetic vocabulary; live Gen-3 revision on-stage; RS-485 Smart-Port transport.
+- **V2 — stretch (deadline-safe only):** live Gen-3 revision on-stage; RS-485 Smart-Port transport.
 - **OUT of scope:** autonomous robotic assembly; Booster Kit / extra cartridges / custom 3D-printed end-effectors as MVP; scripted Anthropic API runtime; any web UI; a physics simulation engine.
 
 ---
@@ -53,10 +53,10 @@ By the demo, the system closes the generational self-model loop **in software** 
 
 **Shared tooling (non-negotiable, all Python verticals).** Python dependencies and virtualenvs are managed with **`uv`** (`uv sync` / `uv add` / `uv run`); linting and formatting use **`ruff`** (`ruff check` / `ruff format`). No `pip`, `poetry`, `pip-tools`, `black`, `isort`, or `flake8`. The `brain` vertical is **PROS C++** (not Python): it compiles with the PROS CLI + the `arm-none-eabi` toolchain, and `uv` manages only its dev tooling (the `pros-cli`, pinned in `robot/v5-brain/`). See *Verification & Reviewer Runbook → Brain (PROS C++)*.
 
-**Hardware-access split (non-negotiable).** Erick is the only member with no robot access and works entirely off the hardware (system design, contracts, synthetic oracle). The software telemetry sources (`Synthetic` oracle, `Replay` reader) live in the `contracts` vertical so they stay off the hardware critical path. Per-feature owners are **TBD** (see *Sub-features*), with the exception of Erick's contracts + oracle work.
+**Hardware-access split .** Erick is the only member with no robot access and works entirely off the hardware (system design, contracts, synthetic oracle). The software telemetry sources (`Synthetic` oracle, `Replay` reader) live in the `contracts` vertical so they stay off the hardware critical path. Per-feature owners are **TBD** (see *Sub-features*), with the exception of Erick's contracts + oracle work.
 
 - `contracts` — Python 3.12 · uv · ruff · pydantic v2 · dev-machine · the cross-vertical source of truth + adapter interfaces + the **control grammar** + the `Synthetic` oracle and `Replay` sources.
-  - root: `contracts/` · ignore_folders: `.venv`, `__pycache__`, `dist`, `.pytest_cache`, `captures` · Owner: **Erick**
+  - root: `contracts/` · ignore_folders: `.venv`, `__pycache__`, `dist`, `.pytest_cache`, `captures` · 
 - `operator` — Python 3.12 · uv · ruff · Claude Code skills (Generator + Critic) · dev-machine · the **offline self-model loop** (authoring/critique/replay/presentation).
   - root: `operator/` · ignore_folders: `.venv`, `__pycache__`, `.claude`, `out`, `.pytest_cache` · Owner: **TBD**
 - `pilot` — Python 3.11 · uv · ruff · Raspberry Pi 5 · the **online control loop**: an on-Pi LLM that reads live telemetry + vision and issues fixed control-grammar commands in real time. *(name provisional; ADR-19)*
@@ -72,12 +72,12 @@ By the demo, the system closes the generational self-model loop **in software** 
 
 *(Each component, its `(vertical)`, and what it owns. Boundary rule: no schema is defined outside `contracts`; the MVP depends only on adapter interfaces in `contracts`, never on a concrete provider.)*
 
-- **Telemetry contract** `(contracts)` — owns the `predicted`/`observed`/`gap`/`vision` JSON line shape (see Constraints → Frozen Contracts). *(Erick)*
-- **Self-model schema** `(contracts)` — owns the versioned 4-layer + `reasoning` self-model document shape. *(Erick)*
+- **Telemetry contract** `(contracts)` — owns the `predicted`/`observed`/`gap`/`vision` JSON line shape (see Constraints → Frozen Contracts).
+- **Self-model schema** `(contracts)` — owns the versioned 4-layer + `reasoning` self-model document shape.
 - **Control grammar** `(contracts)` — owns `control-command`: the fixed command vocabulary + command/ack envelope the online loop uses to drive the robot (draft; ADR-19). *(TBD)*
 - **Parts catalog grammar** `(contracts)` — owns `parts_catalog.json`, the finite typed design vocabulary (~10–15 valid configs). *(TBD)*
 - **Adapter interfaces** `(contracts)` — owns `TelemetrySource` and `VisionSource` protocol definitions that decouple the loop from hardware. *(TBD)*
-- **Synthetic oracle** `(contracts)` — owns `SyntheticTelemetrySource`: a parametric hidden-ground-truth forward model (friction, effective arm length, torque constant, mass) + measured noise; the LLM-information-separation rule applies (Constraints → Oracle grounding). *(Erick)*
+- **Synthetic oracle** `(contracts)` — owns `SyntheticTelemetrySource`: a parametric hidden-ground-truth forward model (friction, effective arm length, torque constant, mass) + measured noise; the LLM-information-separation rule applies (Constraints → Oracle grounding).
 - **Replay source** `(contracts)` — owns `ReplayTelemetrySource` / `ReplayVisionSource`: deterministic file readers over recorded `session_*.jsonl`. *(TBD)*
 - **Live hardware sources** `(coprocessor)` — owns `SerialTelemetrySource` (V5 @115,200) and `CameraVisionSource` (Pi camera feed into the vision pipeline). *(TBD)*
 - **Vision pipeline** `(coprocessor)` — owns `vision_loop.py`: YOLO11n object detection + AprilTag pose → `VisionBlock`. *(TBD)*
@@ -91,8 +91,6 @@ By the demo, the system closes the generational self-model loop **in software** 
 - **Markdown presenter** `(operator)` — owns gap tables, self-model diffs, and the `reasoning` audit-trail render. *(TBD)*
 - **Demo replay** `(operator)` — owns `make demo`, the end-to-end deterministic Gen 0 → Gen 2 reproduction. *(TBD)*
 - **Online-control harness** `(pilot)` — owns the on-Pi real-time loop: read live telemetry + vision → LLM picks a control-grammar command → send → ack → repeat, bounded + interruptible (ADR-19). *(TBD)*
-- **Aesthetic vocabulary** `(operator)` — owns the non-functional grammar (body panels / markings / appendages / NeoPixel). **V2 / out of MVP.** *(TBD)*
-
 ### Telemetry capture & merge (data flow)
 
 Two independent sources are captured on the Pi and merged into one `session_*.jsonl` record per task execution: the VEX **motor telemetry** line (over USB serial) and the **camera vision** state (over CSI). `serial_bridge.py` is the single merge point; both sources arrive through swap-in adapters, so the identical merge logic runs on real hardware or on recorded/synthetic data.
@@ -137,8 +135,8 @@ The merged record is exactly the Task Telemetry Contract (Constraints → Frozen
 
 | # | Task | Vertical | Deps | MVP | Owner |
 |---|------|----------|------|-----|-------|
-| 1 | `F1` telemetry-contract — freeze the predicted/observed/gap/vision JSON line | contracts | — | ✅ | Erick |
-| 2 | `F2` self-model-schema — freeze the versioned 4-layer + reasoning self-model | contracts | — | ✅ | Erick |
+| 1 | `F1` telemetry-contract — freeze the predicted/observed/gap/vision JSON line | contracts | — | ✅ | TBD|
+| 2 | `F2` self-model-schema — freeze the versioned 4-layer + reasoning self-model | contracts | — | ✅ | TBD|
 | 3 | `F3` parts-catalog-grammar — freeze `parts_catalog.json` vocabulary + valid-config rules | contracts | — | ✅ | TBD |
 | 4 | `F4` adapter-interfaces — `TelemetrySource`/`VisionSource` protocols | contracts | F1 | ✅ | TBD |
 | 5 | `F19` control-grammar — freeze the `control-command` vocabulary + command/ack (draft) | contracts | F1 | ✅ | TBD |
@@ -154,23 +152,21 @@ The merged record is exactly the Task Telemetry Contract (Constraints → Frozen
 | 15 | `F7` brain-telemetry-firmware — PROS C++ emits the contract on a 20 ms tick | brain | F1 | ✅ (V1.5 live) | TBD |
 | 16 | `F17` live-hw-sources — `SerialTelemetrySource` + `CameraVisionSource` | coprocessor | F4 | ✅ (V1.5) | TBD |
 | 17 | `F16` hw-baseline-capture — capture one real baseline; deliver JSONL to Erick | coprocessor + brain | F7, F6, F17 | ✅ (V1.5) | TBD |
-| 18 | `F18` oracle-baseline-request — spec capture format; recalibrate the oracle | contracts | F14, F16 | ✅ | Erick |
+| 18 | `F18` oracle-baseline-request — spec capture format; recalibrate the oracle | contracts | F14, F16 | ✅ | TBD |
 | 19 | `F20` brain-command-bridge — bidirectional PROS C++ (receive cmd + ack + watchdog) | brain | F19, F7 | ✅ (online) | TBD |
 | 20 | `F21` online-control-harness — on-Pi LLM real-time control loop | pilot | F19, F20, F5, F6 | ✅ (online) | TBD |
-| 21 | `F13` aesthetic-vocabulary — visual per-generation identity grammar | operator | F2 | ❌ V2 | TBD |
-
 ---
 
 ## Milestones
 
-*(Sequential validation gates. Each milestone states its goal and gates the work that follows. Owner is `TBD` except Erick's.)*
+*(Sequential validation gates. Each milestone states its goal and gates the work that follows.)*
 
-1. **`m1` contracts-frozen** *(automated)* — **Goal:** every contract loads and round-trips — pydantic models + example fixtures for the telemetry, self-model, parts-catalog, and (draft) control-command schemas parse cleanly. Gates all downstream work. **Owner: Erick.**
-2. **`m1b` oracle-ready** *(automated)* — **Goal:** the parametric `SyntheticTelemetrySource` emits contract-valid synthetic telemetry with its hidden parameters separated from the Generator (datasheet-grounded until baseline data lands). Gates m2. **Owner: Erick.**
-3. **`m2` loop-closes-synthetic** *(automated)* — **Goal:** `make demo` runs the offline loop over synthetic JSONL — Generator authors Gen 0, the critic panel returns pass/flag, and gap residuals tighten Gen 0 → Gen 2 (the oracle's hidden parameter recovered within tolerance). Gates hardware integration. **Owner: TBD.**
-4. **`m3` vision-integrated** *(automated)* — **Goal:** the vision pipeline emits a valid `vision` block (`bbox_iou` + AprilTag pose) into the merged JSONL. Gates m4. **Owner: TBD.**
-5. **`m4` hardware-capture + grounding** *(manual)* — **Goal:** a real V5 + Pi baseline capture (F16) is delivered to Erick, who recalibrates the oracle (F18) so synthetic data is grounded and a recorded session replaces a synthetic fixture with replay still green. Gates m5. **Owner: TBD** (capture) → **Erick** (calibrate).
-6. **`m5` demo-signoff** *(manual)* — **Goal:** Gen 0/1 recorded + Gen 2 live rehearsed end-to-end, with a recorded fallback ready. **Owner: Erick.**
+1. **`m1` contracts-frozen** *(manual — human gate)* — **Goal:** every contract loads and round-trips — pydantic models + example fixtures for the telemetry, self-model, parts-catalog, and (draft) control-command schemas parse cleanly. Gates all downstream work.
+2. **`m1b` oracle-ready** *(manual — human gate)* — **Goal:** the parametric `SyntheticTelemetrySource` emits contract-valid synthetic telemetry with its hidden parameters separated from the Generator (datasheet-grounded until baseline data lands). Gates m2.
+3. **`m2` loop-closes-synthetic** *(manual — human gate)* — **Goal:** `make demo` runs the offline loop over synthetic JSONL — Generator authors Gen 0, the critic panel returns pass/flag, and gap residuals tighten Gen 0 → Gen 2 (the oracle's hidden parameter recovered within tolerance). Gates hardware integration. **Owner: TBD.**
+4. **`m3` vision-integrated** *(manual — human gate)* — **Goal:** the vision pipeline emits a valid `vision` block (`bbox_iou` + AprilTag pose) into the merged JSONL. Gates m4. **Owner: TBD.**
+5. **`m4` hardware-capture + grounding** *(manual)* — **Goal:** a real V5 + Pi baseline capture (F16) is delivered to recalibrates the oracle (F18) so synthetic data is grounded and a recorded session replaces a synthetic fixture with replay still green. Gates m5. **Owner: TBD** (capture) → (calibrate).
+6. **`m5` demo-signoff** *(manual)* — **Goal:** Gen 0/1 recorded + Gen 2 live rehearsed end-to-end, with a recorded fallback ready.
 7. **`m6` online-control** *(manual; stretch — ADR-19)* — **Goal:** the `pilot` harness drives an open-ended task in real time on hardware (reading live telemetry + vision, issuing control-grammar commands), bounded by iteration/time limits with a working human interrupt. **Owner: TBD.**
 
 ---
@@ -182,14 +178,14 @@ The merged record is exactly the Task Telemetry Contract (Constraints → Frozen
 ```mermaid
 flowchart TD
   subgraph contracts["contracts"]
-    F1["F1 telemetry-contract · Erick"]
-    F2["F2 self-model-schema · Erick"]
+    F1["F1 telemetry-contract · TBD"]
+    F2["F2 self-model-schema · TBD"]
     F3["F3 parts-catalog-grammar · TBD"]
     F4["F4 adapter-interfaces · TBD"]
     F19["F19 control-grammar · TBD"]
-    F14["F14 synthetic-oracle · Erick"]
+    F14["F14 synthetic-oracle · TBD"]
     F15["F15 replay-source · TBD"]
-    F18["F18 oracle-baseline-request · Erick"]
+    F18["F18 oracle-baseline-request · TBD"]
   end
   subgraph operator["operator — offline self-model loop"]
     F10["F10 gap-analyzer · TBD"]
@@ -264,14 +260,14 @@ flowchart TD
 
 ### Critical Path
 
-The minimum-duration chain to the **grounded** demo runs through hardware capture, not the software loop — the software loop reaches `m2` early and de-risks the demo. Owners are `TBD` except Erick.
+The minimum-duration chain to the **grounded** demo runs through hardware capture, not the software loop — the software loop reaches `m2` early and de-risks the demo.
 
-1. `F1` telemetry-contract (**Erick**) → `m1` contracts-frozen (**Erick**)
+1. `F1` telemetry-contract (TBD) → `m1` contracts-frozen (TBD)
 2. `F5` vision-pipeline ∥ `F7` brain-telemetry-firmware ∥ `F17` live-hw-sources *(TBD)*
 3. `F6` serial-bridge-merge *(TBD; needs F5 + F17)* → `m3` vision-integrated *(TBD)*
 4. `F16` hw-baseline-capture *(TBD; needs F7 + F6 + F17)*
-5. `F18` oracle recalibration (**Erick**; needs F16) → `m4` hw-capture + grounding
-6. `m5` demo-signoff (**Erick**)
+5. `F18` oracle recalibration (needs F16) → `m4` hw-capture + grounding
+6. `m5` demo-signoff (TBD)
 
 The online control loop (`F19` → `F20` → `F21` → `m6`) extends the chain past the demo and is a stretch goal (ADR-19).
 
@@ -384,7 +380,7 @@ Every shortcut sits behind a protocol/adapter boundary in `contracts` and has a 
 
 - The `SyntheticTelemetrySource` is a **parametric hidden-ground-truth oracle** (ADR-17): a closed-form forward model with a few physical parameters (friction coefficient, effective arm length, torque constant, mass) plus measured noise. It is **not** hand-authored numbers and **not** a physics simulator.
 - **Information separation (non-negotiable):** the oracle's true parameters are **hidden from the Generator**. The Generator (F8) reads only `parts_catalog.json` + prior gap residuals; it never reads the oracle config. Gap-tightening must come from the self-model converging on the hidden truth, not from steering. This is what makes the synthetic demo a real test rather than a puppet show.
-- **Grounding requires hardware data Erick cannot collect himself.** The oracle's noise/offset parameters are calibrated from at least one real baseline capture (**F16**, owned by Jake with Grace's brain firmware) and requested via **F18**. Until that capture lands, the oracle runs **datasheet-grounded** (V5 11W Smart Motor: stall 2.1 Nm, continuous 0.735 Nm; `torque()`/`current()`/`velocity()`/`position()` API) and the m2 demo is **labeled "ungrounded synthetic."** Re-grounding closes at m4.
+- **Grounding requires hardware data Erick cannot collect himself.** The oracle's noise/offset parameters are calibrated from at least one real baseline capture (**F16**, owner TBD per O1; depends on the brain telemetry firmware F7) and requested via **F18**. Until that capture lands, the oracle runs **datasheet-grounded** (V5 11W Smart Motor: stall 2.1 Nm, continuous 0.735 Nm; `torque()`/`current()`/`velocity()`/`position()` API) and the m2 demo is **labeled "ungrounded synthetic."** Re-grounding closes at m4.
 
 ### Verification & Reviewer Runbook
 
@@ -424,7 +420,7 @@ Compilation uses the `arm-none-eabi` cross-toolchain; PROS kernel/templates are 
 
 ## Open questions
 
-- **O1** Owner assignment is **TBD** for every vertical/feature except Erick (contracts + oracle, no robot access). Confirm the per-vertical and per-feature owners; the earlier even-split proposal is withdrawn pending that decision.
+- **O1** Owner assignment is **TBD** for every vertical/feature. Confirm the per-vertical and per-feature owners; the earlier even-split proposal is withdrawn pending that decision.
 - **O2** *(resolving)* "Gap tightened" = the Generator's estimate of the oracle's hidden parameter (e.g., friction coefficient) is recovered within a tolerance band — target **≤10%** — across ≥2 generations, with the true value revealed only at the end. Finalize the band at m1b once the oracle is calibrated.
 - **O3** Whether the **grounded** re-run (after F18 recalibration) completes before m5, or the demo presents ungrounded-synthetic results plus the m4 baseline capture as corroboration.
 - **O4** *(critical-path risk)* The brain telemetry firmware (F7) and the vision pipeline (F5) both feed the hardware capture on the critical path. When owners are assigned (O1), keep F5 and F7 on different people so the two path items run in parallel rather than serially.

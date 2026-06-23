@@ -3,7 +3,7 @@
 > **Evidence-grounded.** **Root:** `robot/pi-runtime/` (the team's deployable Pi surface, DEC-0001 —
 > the spec's logical `coprocessor` vertical maps here). Rows cite **REQ**
 > ([`MASTER_REQUIREMENTS.md`](../../MASTER_REQUIREMENTS.md)), **REPO** (code in tree), or **WIKI**
-> (ingested research). Owner: **Jake** (Grace: vision-pipeline).
+> (ingested research). Owner: **TBD** (per O1; slices inherit the vertical lead once assigned, ADR-0027).
 
 **Vertical.** `coprocessor` — Raspberry Pi 5 runtime: the serial transport to the Brain, the vision
 pipeline (YOLO11n + AprilTag), the telemetry+vision merge into `session_*.jsonl`, and baseline
