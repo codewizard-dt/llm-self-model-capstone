@@ -1,0 +1,115 @@
+apiVersion: ai-sdd/v1
+kind: Review
+metadata:
+  feature: self-model-schema
+  slice: vocabulary-and-model
+  stack: contracts
+
+verdict: approve
+
+items:
+  - id: AC1
+    verdict: pass
+    notes: >-
+      `make sync` from REPO ROOT exits 0 (delegates `$(MAKE) -C contracts sync`
+      -> `uv sync`; "Resolved 12 packages", "Checked 11 packages"). No new
+      third-party dependency added — pydantic v2 already declared by F1. The new
+      modules import cleanly (verified under `uv run python`, see AC4). Only the
+      non-fatal `tool.uv.dev-dependencies` deprecation warning is emitted; exit
+      code 0.
+  - id: AC2
+    verdict: pass
+    notes: >-
+      `make lint` exits 0. `uv run ruff check src/ tests/` -> "All checks
+      passed!"; `uv run ruff format --check src/ tests/` -> "11 files already
+      formatted" (covers the new vocabulary.py, self_model.py, test_self_model.py
+      and changed __init__.py / schema.py). ruff is the only lint/format tool;
+      toolchain grep over contracts/ (*.py, Makefile, *.toml) for
+      poetry/flake8/isort/black/pylint/`pip install` returned NONE. Verified exit 0.
+  - id: AC3
+    verdict: pass
+    notes: >-
+      `make schema` exits 0 and is the single generator (contracts/schema.py
+      SCHEMAS dict drives both files via identical json.dumps(indent=2,
+      sort_keys=True) + trailing newline). schemas/self_model.json is non-empty
+      (5295 bytes) and renders all SIX config axes as JSON-Schema `enum` arrays
+      (grep confirmed enum arrays under MotorAllocation, ArmPosition, EndEffector,
+      WheelConfig, ArmGearRatio, Cartridge). contract_line.json byte-stable:
+      `git diff --stat`/`--exit-code contracts/schemas/contract_line.json` empty,
+      RC 0. The D8 freshness gate `make schema-check` (schema then
+      `git diff --exit-code schemas/`) run from contracts/ exits 0 — committed ==
+      generated. Note: schema-check is reachable from contracts/Makefile but not
+      proxied by the root Makefile; it is not a declared plan gate, and the
+      AC3-described freshness gate (`make schema` then `git diff --exit-code
+      schemas/`) passes — non-blocking. self_model.json is present (untracked at
+      review time, as expected pre-slice-commit, mirroring F1 package-scaffold).
+  - id: AC4
+    verdict: pass
+    notes: >-
+      After `make sync`, under `uv run python`: `from contracts import SelfModel`
+      and `from contracts import MotorAllocation, ArmPosition, EndEffector,
+      WheelConfig, ArmGearRatio, Cartridge` all succeed. Every F1 export remains
+      importable from `contracts` — verified ContractLine, VisionBlock,
+      AprilTagPose, MotorApiSample, MotorApiValues, ContractSource,
+      motor_sample_from_vexcode, motor_sample_from_pros, vexcode_motor_source_api
+      all import. __init__.py appends the new names to __all__ while keeping all
+      F1 names. No public-API regression.
+  - id: AC5
+    verdict: pass
+    notes: >-
+      SelfModel enforces the contract: schema_version is Literal["1.0"] (default
+      "1.0"); generation has Field(ge=0) (negative rejected, verified); the
+      model_validator(mode="after") enforces gen 0 => parent None and gen > 0 =>
+      int parent strictly < generation (gen0+parent0, gen1+parentNone, parent>=gen
+      all raise ValidationError; gen3+parent1 accepted — verified by direct
+      construction). SelfModelConfig's six axes are typed against the shared
+      contracts.vocabulary enums by import-identity (model_fields annotation IS
+      vocab.<Enum> — verified True). Out-of-vocabulary value (cartridge="999rpm")
+      raises ValidationError DESPITE strict=False on SelfModelConfig — re-verified
+      directly via `uv run python`.
+  - id: AC6
+    verdict: pass
+    notes: >-
+      `make test` exits 0: 30 passed in 0.04s. test_self_model.py contributes 16
+      collected items (14 functions, 2 parametrized expansions) covering the full
+      matrix: gen0-with-parent raises, gen1-with-null-parent raises,
+      parent>=generation raises, empty reasoning raises, missing
+      config/capability/generation each raise (parametrized), out-of-vocabulary
+      config raises, config annotations resolve to shared vocabulary enums by
+      import-identity, predictive/gap_model accept arbitrary task keys, extra field
+      on SelfModelConfig and on CapabilityLayer each raise. Independently
+      re-verified the strict=False sub-models: extra="forbid" still rejects extra
+      fields on BOTH SelfModelConfig and CapabilityLayer, and valid str->StrEnum /
+      int->float coercion still works.
+  - id: AC7
+    verdict: pass
+    notes: >-
+      No F1 regression. F1's existing suites pass under the same `make test` run:
+      test_contract_line.py (10 items incl. 4 parametrized fixture round-trips) and
+      test_motor_telemetry.py (5 items) all PASSED. F1 frozen models untouched —
+      git status shows only the 7 in-scope files changed; contract_line.py and
+      motor_telemetry.py unmodified. contract_line.json byte-stable
+      (git diff --exit-code RC 0, AC3). `make validate` exits 0 ("OK — all
+      fixtures valid") on F1's existing path; no self-model fixtures exist yet
+      (correctly deferred to the next slice `fixtures-and-gates`).
+
+# Boundary / toolchain audit (all clear):
+#  - No schema/pydantic model defined outside contracts/ — vocabulary.py,
+#    self_model.py, schema.py all under contracts/src/contracts/. Confirmed.
+#  - Toolchain: uv + ruff + pydantic v2 only; grep for
+#    poetry/flake8/isort/black/pylint/pip-install over contracts/ = NONE.
+#  - Frozen contracts intact: .ai-sdd/schemas/** UNTOUCHED (git status --porcelain
+#    clean); all four example *.structure gates pass — `ai-sdd check` on
+#    self-model / control-command / parts-catalog / task-telemetry examples each RC 0.
+#  - No out-of-scope files changed: git status shows exactly the 7 plan `files`.
+#  - F1 regression check: contract_line.json byte-stable, F1 tests green.
+#
+# Caveats (non-blocking):
+#  - self_model.json + new source files are untracked at review time; the ai-sdd
+#    engine commits the completed slice post-approval.
+#  - `make schema-check` exists only in contracts/Makefile (not proxied by root
+#    Makefile); the AC3 freshness condition still holds.
+#  - `uv sync` emits the cosmetic tool.uv.dev-dependencies deprecation warning;
+#    gates still exit 0.
+#  - self_model fixtures + validate.py self-model dispatch correctly deferred to
+#    slice `fixtures-and-gates` (NOT failed).

@@ -1,0 +1,68 @@
+apiVersion: ai-sdd/v1
+kind: Changeset
+metadata:
+  feature: self-model-schema
+  slice: vocabulary-and-model
+  stack: contracts
+
+summary: >-
+  Additively extended the landed F1 `contracts` package with the Self-Model
+  Schema (F2), with no F1 regression and a byte-stable contract_line.json.
+  NEW `contracts/src/contracts/vocabulary.py` — one `enum.StrEnum` per config
+  axis (MotorAllocation, ArmPosition, EndEffector, WheelConfig, ArmGearRatio,
+  Cartridge) with values seeded verbatim from the Parts Catalog Grammar; this is
+  the single source of truth F3 imports (D1/PD1). NEW
+  `contracts/src/contracts/self_model.py` — pydantic v2 `SelfModel`
+  (extra="allow"): schema_version Literal["1.0"], generation int (ge=0),
+  parent_generation int|None, config/structural/capability layers,
+  predictive: dict[str, dict[str, float|bool|str]],
+  gap_model: dict[str, dict[str, float]], reasoning str (min_length=1), plus a
+  model_validator(mode="after") enforcing the lineage rule (gen 0 => parent None;
+  gen>0 => parent int < generation). Sub-models: SelfModelConfig (six axes typed
+  against the shared vocabulary enums), Part{id,type} / Connection{source,target,kind}
+  (extra="allow", source/target edges not from/to), StructuralLayer (parts/connections
+  default_factory lists), CapabilityLayer (four float fields). SelfModelConfig and
+  CapabilityLayer reuse F1's StrictModel for extra="forbid" but set strict=False so
+  JSON string->StrEnum and int->float coercion works (fixtures land next slice).
+  CHANGED `__init__.py` — additively re-exports SelfModel + the six enums while
+  keeping every F1 export. CHANGED `schema.py` — now the single generator that
+  writes BOTH schemas/contract_line.json (byte-identical to the F1-committed file)
+  and schemas/self_model.json via the same json.dumps(indent=2, sort_keys=True)
+  formatting; idempotent. CHANGED `Makefile` — `schema` regenerates both json
+  files; added `schema-check` (make schema then git diff --exit-code schemas/) as
+  the D8 freshness gate. NEW committed `contracts/schemas/self_model.json` with
+  each config axis rendered as a JSON-Schema `enum` array. NEW
+  `tests/test_self_model.py` — 30 tests covering the full validator matrix.
+  Verified from repo root: make sync/lint/test/schema/validate all exit 0;
+  `from contracts import SelfModel` works under uv run; contract_line.json
+  byte-stable vs HEAD.
+
+satisfies:
+  - AC1
+  - AC2
+  - AC3
+  - AC4
+  - AC5
+  - AC6
+  - AC7
+
+files:
+  created:
+    - contracts/src/contracts/vocabulary.py
+    - contracts/src/contracts/self_model.py
+    - contracts/schemas/self_model.json
+    - contracts/tests/test_self_model.py
+  modified:
+    - contracts/src/contracts/__init__.py
+    - contracts/src/contracts/schema.py
+    - contracts/Makefile
+
+gates:
+  make_sync: 0
+  make_lint: 0
+  make_test: 0
+  make_schema: 0
+  make_validate: 0
+  tests_run: 30
+  contract_line_byte_stable: true
+  self_model_json_generated: true

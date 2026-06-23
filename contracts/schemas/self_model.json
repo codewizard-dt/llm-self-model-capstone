@@ -1,0 +1,259 @@
+{
+  "$defs": {
+    "ArmGearRatio": {
+      "enum": [
+        "7:1",
+        "1:1"
+      ],
+      "title": "ArmGearRatio",
+      "type": "string"
+    },
+    "ArmPosition": {
+      "enum": [
+        "front",
+        "rear",
+        "side",
+        "absent"
+      ],
+      "title": "ArmPosition",
+      "type": "string"
+    },
+    "CapabilityLayer": {
+      "additionalProperties": false,
+      "properties": {
+        "com_height_mm": {
+          "default": 0,
+          "title": "Com Height Mm",
+          "type": "number"
+        },
+        "max_grip_force_N": {
+          "default": 0,
+          "title": "Max Grip Force N",
+          "type": "number"
+        },
+        "max_pull_force_N": {
+          "default": 0,
+          "title": "Max Pull Force N",
+          "type": "number"
+        },
+        "reach_mm": {
+          "default": 0,
+          "title": "Reach Mm",
+          "type": "number"
+        }
+      },
+      "title": "CapabilityLayer",
+      "type": "object"
+    },
+    "Cartridge": {
+      "enum": [
+        "200rpm"
+      ],
+      "title": "Cartridge",
+      "type": "string"
+    },
+    "Connection": {
+      "additionalProperties": true,
+      "properties": {
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "target": {
+          "title": "Target",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "target",
+        "kind"
+      ],
+      "title": "Connection",
+      "type": "object"
+    },
+    "EndEffector": {
+      "enum": [
+        "claw_grasper",
+        "bare_arm",
+        "none"
+      ],
+      "title": "EndEffector",
+      "type": "string"
+    },
+    "MotorAllocation": {
+      "enum": [
+        "2drive+1arm+1claw",
+        "2drive+2free",
+        "4drive",
+        "3drive+1manip"
+      ],
+      "title": "MotorAllocation",
+      "type": "string"
+    },
+    "Part": {
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "type"
+      ],
+      "title": "Part",
+      "type": "object"
+    },
+    "SelfModelConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "arm_gear_ratio": {
+          "$ref": "#/$defs/ArmGearRatio"
+        },
+        "arm_position": {
+          "$ref": "#/$defs/ArmPosition"
+        },
+        "cartridge": {
+          "$ref": "#/$defs/Cartridge"
+        },
+        "end_effector": {
+          "$ref": "#/$defs/EndEffector"
+        },
+        "motor_allocation": {
+          "$ref": "#/$defs/MotorAllocation"
+        },
+        "wheel_config": {
+          "$ref": "#/$defs/WheelConfig"
+        }
+      },
+      "required": [
+        "motor_allocation",
+        "arm_position",
+        "end_effector",
+        "wheel_config",
+        "arm_gear_ratio",
+        "cartridge"
+      ],
+      "title": "SelfModelConfig",
+      "type": "object"
+    },
+    "StructuralLayer": {
+      "properties": {
+        "connections": {
+          "items": {
+            "$ref": "#/$defs/Connection"
+          },
+          "title": "Connections",
+          "type": "array"
+        },
+        "parts": {
+          "items": {
+            "$ref": "#/$defs/Part"
+          },
+          "title": "Parts",
+          "type": "array"
+        }
+      },
+      "title": "StructuralLayer",
+      "type": "object"
+    },
+    "WheelConfig": {
+      "enum": [
+        "front_omni+rear_standard"
+      ],
+      "title": "WheelConfig",
+      "type": "string"
+    }
+  },
+  "additionalProperties": true,
+  "properties": {
+    "capability": {
+      "$ref": "#/$defs/CapabilityLayer"
+    },
+    "config": {
+      "$ref": "#/$defs/SelfModelConfig"
+    },
+    "gap_model": {
+      "additionalProperties": {
+        "additionalProperties": {
+          "type": "number"
+        },
+        "type": "object"
+      },
+      "title": "Gap Model",
+      "type": "object"
+    },
+    "generation": {
+      "minimum": 0,
+      "title": "Generation",
+      "type": "integer"
+    },
+    "parent_generation": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Parent Generation"
+    },
+    "predictive": {
+      "additionalProperties": {
+        "additionalProperties": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "type": "object"
+      },
+      "title": "Predictive",
+      "type": "object"
+    },
+    "reasoning": {
+      "minLength": 1,
+      "title": "Reasoning",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "structural": {
+      "$ref": "#/$defs/StructuralLayer"
+    }
+  },
+  "required": [
+    "generation",
+    "config",
+    "structural",
+    "capability",
+    "predictive",
+    "gap_model",
+    "reasoning"
+  ],
+  "title": "SelfModel",
+  "type": "object"
+}
