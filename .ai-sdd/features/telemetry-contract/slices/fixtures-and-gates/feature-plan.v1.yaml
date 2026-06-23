@@ -1,0 +1,198 @@
+apiVersion: ai-sdd/v1
+kind: FeaturePlan
+metadata:
+  feature: telemetry-contract
+  slice: fixtures-and-gates
+  stack: contracts
+
+summary: >-
+  ACCEPTANCE / PROOF slice for the telemetry contract. The pydantic models
+  (ContractLine, MotorApiSample, VisionBlock, ...) already exist from the
+  pydantic-models slice; this slice ships the evidence layer that proves them
+  correct and lets a reviewer reproduce it. Concretely:
+  (1) Create contracts/fixtures/session_example.jsonl — exactly 4 newline-terminated
+  JSON lines (one per task: grab+vision, pull motor-only/no-vision, throw+vision,
+  score+vision with outcome.ball_in_bin), copied VERBATIM from the slice brief.
+  Every line must validate against ContractLine (full envelope: schema_version
+  "1.0", session_id, generation, round, task, motor_samples[min_length>=1] each a
+  full MotorApiSample with the 7 motor API values and source_api call-name mappings
+  whose prefixes match the device, e.g. claw_motor.position(DEGREES); plus
+  predicted, gap, and optional outcome/vision).
+  (2) UPGRADE contracts/src/contracts/validate.py from the slice-1 no-op into the
+  real validator — import ContractLine, glob contracts/fixtures/*.jsonl, call
+  ContractLine.model_validate_json on every non-blank line, collect failures,
+  print each "file:lineno: error" to stderr and exit 1 on any failure, else print
+  an OK line and exit 0. It still exits 0 if the fixtures dir is empty/absent, but
+  it will not be empty now.
+  (3) Create contracts/tests/test_contract_line.py — round-trip all 4 fixture lines
+  via ContractLine.model_validate_json(model.model_dump_json()); assert the
+  motor-only (no-vision) pull line parses; assert a line with outcome=None parses;
+  assert missing session_id raises ValidationError; assert task accepts an arbitrary
+  string ("custom_task") without error (proves the free-string task field / D2).
+  (4) Create contracts/tests/test_motor_telemetry.py — MIGRATE the 3 surviving motor
+  tests from the now-deleted robot/pi-runtime test file
+  (requires-all-vexcode-observations, rejects-missing-source_api-mapping,
+  rejects-unknown-source_api-call), rewriting imports to `from contracts import ...`;
+  the discarded ScoreContract tests are NOT migrated (D2/D5). ADD two new tests:
+  motor_sample_from_pros key normalization (cur/1000 -> current_amp, pos ->
+  position_deg, trq -> torque_nm) and a schema-export test asserting
+  json.dumps(ContractLine.model_json_schema()) contains "motor_samples" and
+  "session_id".
+  (5) DELETE the slice-1 placeholder contracts/tests/test_smoke.py now that real
+  tests exercise the public import surface (see DEC-SMOKE).
+  No models, schema.py, Makefile, or pyproject changes — those are frozen by the
+  prior slice. This slice touches contracts/ only.
+
+scope:
+  in:
+    - "Create contracts/fixtures/session_example.jsonl with the 4 verbatim task lines (grab, pull, throw, score)"
+    - "Upgrade contracts/src/contracts/validate.py from no-op to real per-line ContractLine validation with exit-1-on-failure semantics"
+    - "Create contracts/tests/test_contract_line.py (envelope round-trip + edge-case tests)"
+    - "Create contracts/tests/test_motor_telemetry.py (migrate 3 motor tests + add from_pros normalization + schema-export test)"
+    - "Delete contracts/tests/test_smoke.py (superseded by real tests)"
+    - "Make root + contracts gates (uv sync, make test, make validate, make lint) exit 0 against real work"
+  out:
+    - "Any change to the pydantic models (contract_line.py, motor_telemetry.py, __init__.py) — frozen by the pydantic-models slice"
+    - "Any change to schema.py, the committed contracts/schemas/contract_line.json, contracts/Makefile, root Makefile, pyproject.toml, ruff.toml — frozen / out of this slice"
+    - "Per-task typed sub-models for predicted/gap/outcome (forbidden by D2)"
+    - "Adapter protocols (F4), oracle (F14), replay sources (F15), gap math (F10), control grammar (F19)"
+    - "Any file outside contracts/ — including resurrecting robot/pi-runtime test files"
+
+acceptance:
+  - id: AC1
+    description: >-
+      contracts/fixtures/session_example.jsonl exists with exactly 4 newline-terminated
+      JSON lines, one per task (grab with vision, pull motor-only/no-vision, throw with
+      vision, score with vision and outcome.ball_in_bin=true), matching the verbatim JSON
+      in the slice brief; every line validates against ContractLine.
+  - id: AC2
+    description: >-
+      contracts/src/contracts/validate.py imports ContractLine and validates every line of
+      every contracts/fixtures/*.jsonl; on any line failing it prints "name:lineno: error"
+      to stderr and exits 1; when all lines pass it prints an OK message and exits 0; an
+      empty/absent fixtures dir still exits 0.
+  - id: AC3
+    description: >-
+      contracts/tests/test_contract_line.py passes — round-trips all 4 fixture lines, parses
+      the motor-only (no vision) line, parses a line with outcome=None, raises ValidationError
+      on a missing session_id, and accepts task="custom_task" without error.
+  - id: AC4
+    description: >-
+      contracts/tests/test_motor_telemetry.py passes — the 3 migrated motor tests
+      (requires-all-vexcode-observations, rejects-missing-source_api-mapping,
+      rejects-unknown-source_api-call) use `from contracts import ...`; the added
+      from_pros key-normalization test (cur/1000 -> current_amp, pos -> position_deg,
+      trq -> torque_nm) and the schema-export test ("motor_samples" and "session_id"
+      present) pass.
+  - id: AC5
+    description: >-
+      Root `make test` (delegating to contracts) exits 0 with real passing tests from
+      test_contract_line + test_motor_telemetry; no smoke test remains (it is deleted).
+  - id: AC6
+    description: >-
+      Root `make validate` exits 0 — the upgraded validate.py finds the 4 fixtures and all
+      validate against ContractLine (fixtures are VALID).
+  - id: AC7
+    description: >-
+      The score-task fixture parses with outcome.ball_in_bin=true carried in the flexible
+      outcome dict and NO per-task schema change is needed — proving D2 (a new task is just
+      a new free-string label + dict keys, never a schema edit).
+  - id: AC8
+    description: >-
+      All root gates are green: `uv sync`, `make lint` (ruff check + format --check over
+      src/ and tests/ including the new tests and upgraded validate.py), `make test`, and
+      `make validate` each exit 0 at the repo root.
+
+decisions:
+  - id: DEC-FIXTURES-VERBATIM
+    status: closed
+    decision: >-
+      The 4 JSONL lines are copied verbatim from the slice brief (fixtures-and-gates.md
+      "Fixtures" section): grab+vision, pull motor-only/no-vision, throw+vision (apriltag_pose
+      null), score+vision with outcome.ball_in_bin. They are not regenerated or paraphrased.
+    rationale: >-
+      The brief is the authoritative fixture source and the lines are hand-checked against
+      ContractLine; copying verbatim avoids drift and guarantees source_api prefixes match
+      each device.
+    grounds: "slice fixtures-and-gates.md (Fixtures); requirements Acceptance 4 & 5; requirements In-scope (4 JSONL fixtures grab/pull/throw/score)"
+  - id: DEC-VALIDATE-PATH
+    status: closed
+    decision: >-
+      validate.py resolves the fixtures directory as the contracts root's `fixtures/` dir,
+      i.e. Path(__file__).resolve().parent.parent.parent / "fixtures" (the same anchor the
+      slice-1 no-op used). The brief's illustrative snippet writes `parents[3]`, which would
+      resolve to the REPO root and miss contracts/fixtures/ — the implementer must use the
+      contracts-root anchor (parent.parent.parent == parents[2]) so the glob actually finds
+      the fixtures.
+    rationale: >-
+      validate.py lives at contracts/src/contracts/validate.py; its grandparent is the
+      contracts/ root where fixtures/ lives. Using the brief's parents[3] verbatim would make
+      `make validate` find zero fixtures and vacuously pass, defeating AC6. The semantics in
+      the brief (glob, per-line validate, exit 1 with stderr detail, exit 0 + OK) are honored;
+      only the path anchor is corrected.
+    grounds: "slice fixtures-and-gates.md (Validate script); contracts/Makefile (validate target runs `python -m contracts.validate`); requirements Acceptance 5"
+  - id: DEC-MIGRATE-NOT-REWRITE-TESTS
+    status: closed
+    decision: >-
+      Only the 3 motor tests that survive D2 are migrated from the deleted
+      robot/pi-runtime/tests/test_motor_telemetry_contracts.py
+      (test_motor_sample_requires_all_vexcode_observations,
+      test_motor_sample_rejects_missing_source_api_mapping,
+      test_motor_sample_rejects_unknown_source_api_call), with imports rewritten to
+      `from contracts import MotorApiSample, MotorApiValues, vexcode_motor_source_api,
+      motor_sample_from_pros`. The 4 ScoreContract tests and the
+      schema-includes-score-variant test are dropped because ScoreContract was discarded
+      in the prior slice; the new schema-export test targets ContractLine instead.
+    rationale: >-
+      D5 says migrate-not-rewrite the surviving pieces; D2 discarded ScoreContract so its
+      tests cannot be migrated. Pointing the schema-export test at ContractLine keeps the
+      coverage intent (schema export works and names the core fields).
+    grounds: "requirements Decisions D2 & D5; slice fixtures-and-gates.md (Tests); git b2e9e2e (test file deleted with pi-runtime copy)"
+  - id: DEC-TASK-FREE-STRING-PROVES-D2
+    status: closed
+    decision: >-
+      test_contract_line.py asserts task="custom_task" parses without error and the score
+      fixture carries ball_in_bin inside the flexible outcome dict — together these are the
+      executable proof of D2: a new task primitive needs no schema change.
+    rationale: >-
+      D2 makes task a free str and predicted/gap/outcome flexible dicts so task-specific
+      interpretation lives in F10, not the schema. A test that exercises an arbitrary task
+      label and an arbitrary outcome key is the cheapest reproducible proof of that property.
+    grounds: "requirements Decisions D2; requirements Constraints (task is a free str, not an enum); slice fixtures-and-gates.md (Tests, Acceptance)"
+  - id: DEC-SMOKE
+    status: closed
+    decision: >-
+      DELETE contracts/tests/test_smoke.py. The new test_contract_line.py and
+      test_motor_telemetry.py exercise the real public import surface (`from contracts import
+      ContractLine, MotorApiSample, ...`), so the slice-1 `import contracts` smoke assertion is
+      redundant. Deleting it keeps the suite to behavior-bearing tests.
+    rationale: >-
+      The smoke test was a placeholder for the empty slice-1 package; real tests now subsume
+      its single assertion. Removing it avoids a dead test with no behavioral coverage. (The
+      harmless alternative — keeping it — is explicitly rejected here in favor of a clean suite.)
+    grounds: "slice fixtures-and-gates.md (task item 5: recommend deleting); contracts/tests/test_smoke.py (current placeholder)"
+  - id: DEC-NO-MODEL-CHANGES
+    status: closed
+    decision: >-
+      This slice changes no models and no build/schema config. contract_line.py,
+      motor_telemetry.py, __init__.py, schema.py, contracts/schemas/contract_line.json,
+      both Makefiles, pyproject.toml and ruff.toml are out of scope and untouched; the file
+      manifest is restricted to fixtures, validate.py, and the two test files.
+    rationale: >-
+      Those surfaces were produced and frozen by the pydantic-models slice; this is the
+      proof layer on top. Editing them would re-open a started slice. The contracts boundary
+      rule (no schema defined outside contracts, and not re-defined here) is preserved.
+    grounds: "requirements Decisions D3 & D4; conventions contracts.md (Boundary rules — no schema redefined); slice depends_on pydantic-models"
+
+files:
+  - "contracts/fixtures/session_example.jsonl"
+  - "contracts/src/contracts/validate.py"
+  - "contracts/tests/test_contract_line.py"
+  - "contracts/tests/test_motor_telemetry.py"
+  - "contracts/tests/test_smoke.py"
+
+tests:
+  - "uv sync"
+  - "make lint"
+  - "make test"
+  - "make validate"

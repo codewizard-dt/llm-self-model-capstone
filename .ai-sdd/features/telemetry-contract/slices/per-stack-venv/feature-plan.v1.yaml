@@ -1,0 +1,166 @@
+apiVersion: ai-sdd/v1
+kind: FeaturePlan
+metadata:
+  feature: telemetry-contract
+  slice: per-stack-venv
+  stack: contracts
+
+summary: >-
+  Forward-correct the package-scaffold root uv workspace into per-stack uv projects.
+  package-scaffold set up a repo-root uv workspace with a single shared .venv, but the
+  Tech-stack registry pins different Python versions per vertical (contracts/operator = 3.12;
+  pilot/coprocessor = 3.11) and a uv workspace has exactly one shared interpreter, so it cannot
+  host 3.11 and 3.12 at once. This slice (the sanctioned forward correction of the committed,
+  immutable package-scaffold slice) does three things:
+  (1) Removes the root uv workspace — deletes the [tool.uv.workspace] stanza and the root
+  uv.lock, and deletes the root pyproject.toml entirely because it has no remaining purpose once
+  the build gate routes through make (see DEC-04).
+  (2) Makes contracts/ a fully standalone uv project — keeps contracts/.python-version at 3.12,
+  tightens contracts/pyproject.toml requires-python from ">=3.12" to ">=3.12,<3.13" so the env
+  can never drift onto 3.13+, and `cd contracts && uv sync` produces contracts/.venv on CPython
+  3.12.x (uv auto-downloads 3.12 if absent — no system install needed) plus contracts/uv.lock.
+  (3) Routes the build gate through the Makefile — changes
+  .ai-sdd/checks/changeset.build.check.yaml command from "uv sync" to "make sync", adds a `sync`
+  target to the root Makefile delegating to $(MAKE) -C contracts sync (with commented stubs for
+  operator/coprocessor/brain/pilot, same pattern as test/validate/lint), and a `sync` target to
+  contracts/Makefile running `uv sync`. Net: "build" becomes "sync this stack's env on this
+  stack's Python" — fixing the interpreter from 3.14 to the pinned 3.12. No regression:
+  `from contracts import ContractLine` still works and the 15-test suite + validate gate still pass.
+
+scope:
+  in:
+    - "Delete the [tool.uv.workspace] stanza from the root pyproject.toml"
+    - "Delete the root pyproject.toml entirely — no remaining purpose once the build gate routes through make (DEC-04)"
+    - "Delete the root uv.lock (it was the workspace lock)"
+    - "Tighten contracts/pyproject.toml requires-python from \">=3.12\" to \">=3.12,<3.13\""
+    - "Keep contracts/.python-version pinned at 3.12 (unchanged)"
+    - "Run `cd contracts && uv sync` to produce contracts/.venv on CPython 3.12.x and contracts/uv.lock"
+    - "Change .ai-sdd/checks/changeset.build.check.yaml command from \"uv sync\" to \"make sync\""
+    - "Add a `sync` target to the root Makefile delegating to $(MAKE) -C contracts sync, with commented operator/coprocessor/brain/pilot stubs"
+    - "Add a `sync` target to contracts/Makefile running `uv sync`"
+  out:
+    - "Scaffolding operator / pilot / coprocessor / brain stacks (out of this feature; only documented as the pattern via Makefile stubs)"
+    - "Any change to the contracts pydantic models, fixtures, schema export, or tests (no behavior change in this slice)"
+    - "Changing the other three gates (test / validate / lint) — they already route through make and stay as-is"
+    - "Pinning or upgrading any dependency version beyond the requires-python constraint"
+    - "Touching robot/pi-runtime sources (motor_telemetry already migrated in earlier slices)"
+
+acceptance:
+  - id: AC1
+    description: >-
+      no-workspace-stanza — The root pyproject.toml has NO [tool.uv.workspace] stanza. In this
+      plan the root pyproject.toml is deleted entirely (DEC-04), which satisfies this a fortiori:
+      `grep -R "tool.uv.workspace"` at the repo root returns nothing.
+  - id: AC2
+    description: >-
+      root-lock-removed — The root uv.lock no longer exists (`test -e uv.lock` is false at the repo root).
+  - id: AC3
+    description: >-
+      requires-python-tightened — contracts/pyproject.toml has requires-python = ">=3.12,<3.13"
+      (was ">=3.12").
+  - id: AC4
+    description: >-
+      contracts-venv-on-312 — `cd contracts && uv sync` exits 0 and contracts/.venv runs CPython
+      3.12.x: contracts/.venv/pyvenv.cfg reports version_info = 3.12.* (asserted explicitly — it is
+      NOT 3.14, and exit 0 alone is NOT accepted as proof). uv auto-downloads CPython 3.12 if absent,
+      so no system Python install is a precondition.
+  - id: AC5
+    description: >-
+      contracts-lock-exists — contracts/uv.lock exists after the standalone sync
+      (`test -e contracts/uv.lock` is true).
+  - id: AC6
+    description: >-
+      build-gate-is-make-sync — .ai-sdd/checks/changeset.build.check.yaml spec.command is exactly
+      "make sync" (no longer "uv sync").
+  - id: AC7
+    description: >-
+      root-make-sync-delegates — The root Makefile defines a `sync` target that delegates to the
+      contracts stack via $(MAKE) -C contracts sync; contracts/Makefile defines `sync` running
+      `uv sync`. Running `make sync` from the repo root exits 0.
+  - id: AC8
+    description: >-
+      four-gates-green-via-routing — All four FIXED root gates pass via the new routing:
+      `make sync` (= the build gate; exits 0 and syncs contracts on 3.12), `make test` (15 tests
+      pass), `make validate` (fixtures valid), `make lint` (ruff clean) — each exits 0. This INCLUDES
+      the self-consistency requirement: when this slice's changeset is submitted, the engine RE-READS
+      changeset.build and runs the NEW command `make sync`, which must exit 0 because the root +
+      contracts Makefiles now define `sync` in the same changeset.
+  - id: AC9
+    description: >-
+      no-regression — After the standalone sync, `from contracts import ContractLine` still works in
+      `cd contracts && uv run python`, and the 15-test suite plus the validate gate still pass (no
+      regression from the pydantic-models / fixtures-and-gates slices).
+
+decisions:
+  - id: DEC-01
+    status: closed
+    decision: >-
+      Adopt per-stack uv projects, NOT a root uv workspace. Each vertical becomes an independent uv
+      project owning its own .python-version and isolated .venv. This slice removes the root workspace
+      created in package-scaffold and tightens contracts to requires-python ">=3.12,<3.13".
+    rationale: >-
+      The Tech-stack registry pins different Python versions per vertical (contracts/operator = 3.12;
+      pilot/coprocessor = 3.11) and a uv workspace has exactly one shared interpreter, so it cannot
+      host 3.11 and 3.12 at once. The workspace only looked fine because contracts is the only stack
+      that exists today.
+    grounds: "MASTER_REQUIREMENTS.md -> Tech stacks; telemetry-contract/requirements.md D6 (supersedes the package-scaffold root-uv-workspace decision); conventions/contracts.md ('this vertical is its own Stack/Factory', ADR-0024/0012)"
+  - id: DEC-02
+    status: closed
+    decision: >-
+      Route the changeset.build gate through `make sync` instead of raw root `uv sync`. The root
+      Makefile `sync` target delegates to the slice's stack (cd contracts && uv sync), so "build"
+      means "sync this stack's env on this stack's Python."
+    rationale: >-
+      With no shared root environment, the build gate must be stack-scoped like test/validate/lint.
+      This is a factory-wide check change consistent with the existing make-delegated gates.
+    grounds: "telemetry-contract/requirements.md D7 (build gate routing); conventions/contracts.md (make-delegated gates, ADR-15); MASTER_REQUIREMENTS.md -> Verification & Reviewer Runbook"
+  - id: DEC-03
+    status: closed
+    decision: >-
+      Treat gate self-consistency as a hard acceptance requirement (AC7 + AC8), not an aside. The root
+      Makefile and contracts/Makefile MUST both define `sync` and `make sync` MUST exit 0 within THIS
+      same changeset.
+    rationale: >-
+      changeset.build is factory-wide; after this slice's changeset is submitted the engine re-reads
+      the check and runs the NEW command `make sync` to gate THIS slice. If `sync` did not exist, the
+      slice's own build gate would fail. The plan does not accept a green build gate that depends on a
+      `sync` target that does not yet exist.
+    grounds: "per-stack-venv.md slice brief (Notes/risks — 'Changing a global gate mid-run'); D7; the engine's submit-time re-read of changeset.build"
+  - id: DEC-04
+    status: closed
+    decision: >-
+      DELETE the root pyproject.toml entirely (do not keep it), alongside the root uv.lock.
+    rationale: >-
+      After the [tool.uv.workspace] stanza is removed, the root [project]
+      (name=vex-self-model-workspace, version 0.0.0, requires-python) has no remaining function: it
+      declares no dependencies, no build target, and nothing at repo root is built or installed from it
+      once the build gate routes through `make sync` to the stacks. Keeping it would also leave a
+      requires-python at the root that could be misread as a shared-interpreter signal — the exact
+      ambiguity this slice removes. No gate ever runs a standalone root `uv sync` (the gate is
+      `make sync`). This over-satisfies AC1: with no root pyproject.toml there is trivially no
+      [tool.uv.workspace] stanza.
+    grounds: "per-stack-venv.md slice brief §1 ('delete it too ... keep ONLY if something at repo root genuinely needs it — it should not, once the build gate is routed through make'); D6; D7"
+  - id: DEC-05
+    status: closed
+    decision: >-
+      Verify the interpreter version directly, not via exit code. AC4 asserts
+      contracts/.venv/pyvenv.cfg reports version_info = 3.12.* rather than accepting `uv sync` exit 0
+      as proof.
+    rationale: >-
+      The whole point of the slice is the 3.14 -> 3.12 interpreter swap, so an exit-0 `uv sync` that
+      silently resolved onto the wrong interpreter must be caught. uv auto-downloads CPython 3.12 if
+      absent, so no system Python install is a precondition.
+    grounds: "per-stack-venv.md slice brief §2 + Notes/risks ('verify the contracts .venv actually reports 3.12 — don''t just trust exit 0'); D6"
+
+files:
+  - "pyproject.toml"
+  - "uv.lock"
+  - "Makefile"
+  - "contracts/"
+  - ".ai-sdd/checks/changeset.build.check.yaml"
+
+tests:
+  - "make sync"
+  - "make lint"
+  - "make test"
+  - "make validate"

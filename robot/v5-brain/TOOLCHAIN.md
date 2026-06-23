@@ -142,14 +142,50 @@ package. For this project that is negligible and worth the reliability.
 
 ## 6. Verify serial output
 
-After upload, the Brain emits COBS-framed packets on the **user** USB port
-(`/dev/cu.usbmodem*3` on macOS; system/upload port ends in `1`).
+The V5 Brain exposes **two** USB serial ports. Only the user port carries stdout/stderr.
+
+### Port mapping
+
+| Host | User port (stdout) | System port (upload) |
+|------|--------------------|----------------------|
+| macOS | `/dev/cu.usbmodem*3` (ends in `3`) | `/dev/cu.usbmodem*1` (ends in `1`) |
+| Raspberry Pi / Linux | `/dev/ttyACM<N>` where interface = `00` | `/dev/ttyACM<N+1>` where interface = `01` |
+
+### Reading output with COBS enabled (default)
 
 ```bash
 pros terminal        # decodes COBS, shows stdout/stderr (run in an interactive shell)
 ```
 
 `std::printf(...)` + `std::fflush(stdout)` → arrives as a `sout` packet. `stderr` is
-guaranteed-delivery and arrives as `serr`. For a raw Pi-side reader, add
-`pros::c::serctl(SERCTL_DISABLE_COBS, NULL)` so frames are plain newline-delimited
-text (note: this breaks `pros terminal`, which expects COBS).
+guaranteed-delivery and arrives as `serr`.
+
+### Reading output with COBS disabled (Pi raw-reader mode)
+
+When `pros::c::serctl(SERCTL_DISABLE_COBS, NULL)` is set in the Brain program, output
+is plain newline-delimited text and `pros terminal` goes silent. Read it raw instead:
+
+**macOS:**
+```bash
+stty -f /dev/cu.usbmodem11203 115200 && cat /dev/cu.usbmodem11203
+```
+
+**Raspberry Pi** (use whichever `ttyACM*` reports interface `00` — it may not be `ACM0`):
+```bash
+stty -F /dev/ttyACM2 115200 raw && cat /dev/ttyACM2
+```
+
+### How to definitively identify the user port on the Raspberry Pi
+
+The Brain always assigns the user port to USB CDC interface `00` and the system port to
+interface `01`. Check which `ttyACM*` device maps to interface `00`:
+
+```bash
+for dev in /dev/ttyACM*; do
+  echo "$dev → interface $(cat /sys/class/tty/${dev##*/}/device/../bInterfaceNumber)"
+done
+```
+
+The device reporting `00` is always the user/stdout port — regardless of which `ACM`
+number it gets. Enumeration order depends on other connected USB devices (e.g. in
+practice on this Pi the Brain landed on `/dev/ttyACM2`, not `ACM0`).

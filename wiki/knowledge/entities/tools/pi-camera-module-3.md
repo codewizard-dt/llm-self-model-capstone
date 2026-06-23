@@ -2,10 +2,12 @@
 id: pi-camera-module-3
 title: Raspberry Pi Camera Module 3
 aliases: [Pi Camera Module 3, Camera Module 3, IMX708]
-updated: 2026-06-16
+updated: 2026-06-23
 sources:
   - ../../../raw/research/vision-vex-architecture/index.md
   - ../../../raw/research/rpi5-camera-module-3-cost/index.md
+  - ../../../raw/research/rpi-os-options/index.md
+  - ../../../raw/research/rpi-os-options/index-2.md
 tags: [tool, hardware, camera, raspberry-pi, vision]
 ---
 
@@ -65,5 +67,13 @@ The Pi 5 uses a **22-pin 0.5mm "mini" FPC** camera connector; Camera Module 3 sh
 
 Camera Module 3 pricing ($25/$35) has been **unaffected by the 2025–2026 LPDDR4 shortage** that drove Pi 5 board prices up 83–154%. The IMX708 sensor has a separate supply chain. See derived_from::[[rpi5-camera-module-3-cost]] for full system cost estimates.
 
+## Ubuntu 24.04 Compatibility (from [[rpi-os-options]])
+
+`picamera2` is officially Raspberry Pi OS–only. However, Camera Module 3 (IMX708) works on Ubuntu 24.04 + ROS 2 Jazzy by building the **Raspberry Pi fork of libcamera** (not upstream libcamera, which lacks IMX708 support). See relates_to::[[ros2-jazzy]] for the exact build commands. First-attempt success rate: ~85–90%. Fallback: `picam_ros2` (PhantomCybernetics).
+
+Alternative: replace with relates_to::[[oak-d]] (USB-based, no libcamera dependency, adds stereo depth).
+
 relates_to::[[raspberry-pi-5]]
+relates_to::[[ros2-jazzy]]
+relates_to::[[rpi-coprocessor-os-options]]
 used_by::[[physical-robot-software-factory]]

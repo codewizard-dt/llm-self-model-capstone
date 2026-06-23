@@ -120,6 +120,23 @@ The indexer holds the game piece in staging and pushes it into the flywheel on c
 
 See relates_to::[[vex-flywheel-indexer]] for full mechanism comparison and code patterns.
 
+## Ball Compatibility (from [[game-object-selection]])
+
+Although this page uses "disc" in its name and the VEX curriculum framing, **the flywheel mechanism works equally well with spherical balls** in the 55–75 mm diameter range. The critical variable is compression, not shape.
+
+**Compression rule**: target ~10% of object diameter as the gap reduction at the backplate. VEX Nothing But Net teams confirmed 0.35–0.5" (9–13 mm) compression on 4" foam balls at competition. For the capstone:
+
+| Object | Diameter | Backplate gap from wheel rim | Notes |
+|--------|----------|----------------------------|-------|
+| Racquetball | 57 mm | ~51 mm | Recommended; consistent hollow rubber |
+| Small foam ball | 55–70 mm | ~50–63 mm | Easier to tune; more variable shot |
+| VEX 4" foam ball | 100 mm | ~90 mm | Proven VRC object; too large for scoop |
+| Tennis ball | 67 mm | — | Not recommended — felt grabs wheel unevenly |
+
+Objects with zero compressibility (solid rubber, lacrosse balls) slip over the wheel without launching. Objects too soft (sponge) compress completely and absorb all energy.
+
+For the capstone self-model loop, the **racquetball (57 mm)** is preferred because it fits within all three morphology windows (claw, scoop, flywheel) and can persist across morphology swaps. See [[game-object-selection]] for the full three-window analysis.
+
 exemplified_by::[[vex-launch-disc-parts]]
 relates_to::[[vex-flywheel-structure-parts]]
 relates_to::[[vex-flywheel-indexer]]
@@ -128,3 +145,4 @@ relates_to::[[typed-assembly-grammar]]
 relates_to::[[vex-v5-motor-cartridges]]
 relates_to::[[task-telemetry-contract]]
 relates_to::[[llm-authored-self-model]]
+relates_to::[[game-object-selection]]

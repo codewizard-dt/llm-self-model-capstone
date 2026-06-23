@@ -63,6 +63,12 @@ The wiki is split into two domains with opposite organizing laws:
 - [Research: V5 Brain Program — Python vs PROS C++ (Both Sides)](knowledge/sources/v5-brain-python-vs-pros.md) — thin-executor architecture already settled; VEXcode Python stdin receiving unconfirmed; PROS C++ bidirectional serial community-confirmed; LemLib out of scope; 10-line empirical test resolves the question on first bringup
 - [Research: V5 User Programs — Why They're Mandatory and How Simple They Can Be](knowledge/sources/v5-user-programs.md) — RPi cannot bypass user program (proprietary RS-485, inert user port); no competition infrastructure needed; minimum Brain program is ~50–100 lines; upload once, tap slot to run
 - [Research: PROS CLI Workflow + The Exact Brain-Side C++ Bridge Program](knowledge/sources/pros-cli-brain-bridge.md) — 4-command CLI workflow; two-FreeRTOS-task architecture (receive + watchdog); move_velocity() API; ArduinoJson for JSON parsing; `pros terminal` conflicts with Pi's pyserial; full reference program with Clawbot port map
+- [Research: VEX V5 3-Wire Port Spec — Connector, Pinout, and Servo Compatibility](knowledge/sources/vex-3wire-port-spec.md) — 2.54 mm keyed male-pin port; GND→+5V→Signal pin order; 5 V @ 2 A shared; JR-style RC servos plug directly in; `Servo` or `pwm_out` API
+- [Research: Clawbot Claw → Household Scoop Replacement](knowledge/sources/clawbot-scoop-replacement.md) — claw+motor detaches via 2 screws; 1" bracket gap; plastic serving spoon is best replacement; drill 2× 11/64" holes, reuse original screws; ~5 min, zero new hardware; frees one Smart Motor; adds `passive_scoop` morphology type
+- [Research: AprilTag Larger Workspace & Map Format](knowledge/sources/apriltag-larger-workspace-map.md) — corrects 80cm arena to 150×200cm; 200mm tags for 1.5m range; checkpoint re-fix + dead-reckoning pattern; 2D JSON map format; VEXY_MAP multi-arena support
+- [Research: Game Object Selection — Graspability, Scoopability, Launchability](knowledge/sources/game-object-selection.md) — racquetball (57 mm, ~40 g, hollow rubber) recommended; only object that fits claw + scoop + flywheel simultaneously; compression rule: ~10% of diameter; foam ball runner-up
+- [Research: Task Contract Redesign — Single "Score" Task](knowledge/sources/task-contract-score-redesign.md) — replaces grab/pull/throw with one ScoreContract; fitness = distance_from_bin_m; motor contract layer unchanged; only 2 code files change
+- [Research — RPi OS Options for the Capstone (+ Addendum)](knowledge/sources/rpi-os-options.md) — four OS/stack options compared; Ubuntu 24.04 + Jazzy camera path confirmed (RPi libcamera fork, 85–90% success); Hailo AI HAT+ ($70) = lowest-risk FPS upgrade; ROS 2 gains: yolo_ros, apriltag_ros, foxglove, ros2 bag→Claude API; stay on Bookworm for Jun 29
 
 ### Concepts
 - [Agent Evolution Factory](knowledge/concepts/agent-evolution-factory.md) — evolving AI-agent architectures via ML+LLM; the recommended capstone pitch
@@ -95,6 +101,11 @@ The wiki is split into two domains with opposite organizing laws:
 - [VEX Flywheel Disc Launcher](knowledge/concepts/vex-flywheel-disc-launcher.md) — single/double flywheel mechanism; `launch_disc` morphology primitive; minimum 3 SKUs; 276-8402 ball bearings halve current draw; exclusive arm-motor swap on Clawbot
 - [VEX Flywheel Indexer](knowledge/concepts/vex-flywheel-indexer.md) — holds game piece in staging then fires on command; motor budget determines type (roller vs ratchet vs pneumatic); 1-motor flywheel enables zero-purchase roller indexer via freed claw motor
 - [PROS Dependency & Build Compatibility](knowledge/concepts/pros-dependency-compatibility.md) — rules for adding ANY PROS library on this Brain: pin kernel-4.x, build as monolith (`USE_PACKAGE:=0`); hot/cold split is silently broken (program runs but display + serial no-op)
+- [VEX V5 3-Wire Servo Port](knowledge/concepts/vex-v5-3wire-servo.md) — 2.54 mm keyed connector; GND·+5V·Signal pinout; 5 V @ 2 A shared; JR RC servos direct-fit; no encoder feedback (use Smart Motors for telemetered axes)
+- [AprilTag Workspace Layout for Manipulation Tasks](knowledge/concepts/apriltag-workspace-layout.md) — **updated** 150×200cm arena, 200mm tags (corrects prior 80cm/100mm); checkpoint re-fix pattern; 3 purpose-assigned tags (bin/staging/home); matte paper; robot localization for grab-and-toss task
+- [Robot Workspace Map (Multi-Arena JSON Format)](knowledge/concepts/robot-workspace-map.md) — 2D JSON map schema (map_id, arena, tags[], waypoints{}); VEXY_MAP env var for multi-arena support; pose memory + dead-reckoning volatile state; shape extensible via arena.shape field
+- [Game Object Selection](knowledge/concepts/game-object-selection.md) — multi-criteria framework for choosing a game piece compatible with claw + scoop + flywheel; racquetball (57 mm) is GEN-0 default; compression rule ~10% of diameter; 55–65 mm intersection window
+- [RPi Coprocessor OS Options](knowledge/concepts/rpi-coprocessor-os-options.md) — four-option decision matrix (Bookworm/Ubuntu/Trixie × PiCam2/OAK-D/Hailo); Ubuntu + Jazzy camera path confirmed via libcamera fork; VEX serial always custom pyserial; sequenced upgrade path post-Jun-29
 
 ### Entities
 - People — [knowledge/entities/people/](knowledge/entities/people/)
@@ -146,7 +157,12 @@ The wiki is split into two domains with opposite organizing laws:
   - [NVIDIA Jetson Nano](knowledge/entities/tools/jetson-nano.md) — VAIC reference coprocessor; EOL (dev kit discontinued); replaced by Pi 5 in capstone; serial protocol identical (/dev/ttyACM0, 115200 baud)
   - [NVIDIA Jetson Orin Nano Super](knowledge/entities/tools/jetson-orin-nano-super.md) — current Jetson entry-level ($249); 67 TOPS; rejected for capstone (7-20V DC power, $430+ total, overkill for 8-FPS tasks)
   - [NVIDIA JetPack SDK](knowledge/entities/tools/nvidia-jetpack.md) — mandatory Jetson OS stack; Ubuntu 18.04 + Python 3.6 (Nano/JetPack 4.6); 2-4hr setup; library compatibility friction
+  - [ROS 2 Jazzy Jalisco](knowledge/entities/tools/ros2-jazzy.md) — ROS 2 LTS for Ubuntu 24.04; Camera Module 3 works via RPi libcamera fork build; `yolo_ros`, `apriltag_ros`, `foxglove_bridge`, `ros2 bag` all apt-installable; VEX serial is always custom pyserial node
+  - [Raspberry Pi AI HAT+](knowledge/entities/tools/hailo-ai-hat.md) — Hailo-8L (13 TOPS, $70) / Hailo-8 (26 TOPS, $110) / Hailo-10H (40 TOPS, $130); works on Bookworm + Trixie; `sudo apt install hailo-all`; 30+ FPS YOLO; lowest-risk post-showcase FPS upgrade
+  - [Luxonis OAK-D](knowledge/entities/tools/oak-d.md) — spatial AI camera; stereo depth + 4 TOPS onboard VPU; USB interface (no libcamera); $79–$249; best long-term architecture for 3D object localization
+  - [Foxglove Studio](knowledge/entities/tools/foxglove-studio.md) — web-based ROS 2 visualization; `foxglove_bridge` apt on Jazzy; debug bounding boxes + poses in browser from any machine; invaluable for headless Pi demos
 - Components — [knowledge/entities/components/](knowledge/entities/components/) (this project's own modules, services, scripts)
+  - [localizer.py](knowledge/entities/components/localizer.md) — planned Pi-side module: load_map, update_from_tag, update_from_odometry, get_vector_to_waypoint; bridges workspace map config and runtime pose state
 
 ---
 

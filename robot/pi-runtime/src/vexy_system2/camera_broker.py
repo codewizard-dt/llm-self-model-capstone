@@ -59,8 +59,7 @@ def main() -> None:
             updated = protocol.now_ms()
             if cam is not None:
                 frame = cam.capture_array()
-                bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-                cv2.imwrite(str(latest), bgr)
+                cv2.imwrite(str(latest), frame)
             else:
                 write_synthetic(latest, args.width, args.height, error or "camera unavailable")
 

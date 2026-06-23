@@ -2,13 +2,15 @@
 id: raspberry-pi-5
 title: Raspberry Pi 5
 aliases: [Pi 5, Raspberry Pi 5, RPi 5]
-updated: 2026-06-16
+updated: 2026-06-23
 sources:
   - ../../../raw/research/vision-vex-architecture/index.md
   - ../../../raw/research/rpi5-camera-module-3-cost/index.md
   - ../../../raw/research/rpi-complete-kits/index.md
   - ../../../raw/research/rpi-complete-kits/index-2.md
   - ../../../raw/research/vex-v5-rpi-coprocessor-opensource/index.md
+  - ../../../raw/research/rpi-os-options/index.md
+  - ../../../raw/research/rpi-os-options/index-2.md
 
 tags: [tool, hardware, raspberry-pi, coprocessor, vision, ai]
 ---
@@ -127,9 +129,25 @@ Research (2026-06-17) confirmed Pi 5 is the correct choice over both Jetson Nano
 
 See compared_against::[[jetson-nano]] and compared_against::[[jetson-orin-nano-super]].
 
+## OS / Stack Options (from [[rpi-coprocessor-os-options]])
+
+Four configurations evaluated (2026-06-23). See relates_to::[[rpi-coprocessor-os-options]] for the full decision matrix.
+
+**For Jun 29 showcase**: Stay on current Bookworm + PiCam2 + custom Python — zero risk, already working.
+
+**Post-showcase FPS upgrade**: Add **Hailo AI HAT+** 13 TOPS ($70) to current Bookworm SD (`sudo apt install hailo-all`). 30+ FPS YOLO, near-zero code change. See relates_to::[[hailo-ai-hat]].
+
+**Post-showcase platform upgrade**: Migrate to Ubuntu 24.04 + **ROS 2 Jazzy** (~6–12 hr work). Camera Module 3 works via RPi libcamera fork build. Gains: `yolo_ros`, `apriltag_ros` (6-DOF TF2 pose), `foxglove_bridge` (browser debug), `ros2 bag` → JSON → Claude API feedback loop. See relates_to::[[ros2-jazzy]].
+
+**VEX V5 serial**: Always a custom pyserial node — `rosserial_vex_v5` has no Jazzy package. Protocol unchanged across all OS options.
+
 relates_to::[[vex-v5]]
 relates_to::[[pi-camera-module-3]]
 relates_to::[[raspberry-pi-build-hat]]
+relates_to::[[ros2-jazzy]]
+relates_to::[[hailo-ai-hat]]
+relates_to::[[oak-d]]
+relates_to::[[rpi-coprocessor-os-options]]
 used_by::[[physical-robot-software-factory]]
 extends::[[task-telemetry-contract]]
 implements::[[vex-coprocessor-pattern]]

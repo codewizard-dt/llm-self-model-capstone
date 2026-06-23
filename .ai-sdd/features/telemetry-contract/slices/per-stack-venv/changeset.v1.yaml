@@ -1,0 +1,56 @@
+apiVersion: ai-sdd/v1
+kind: Changeset
+metadata:
+  feature: telemetry-contract
+  slice: per-stack-venv
+  stack: contracts
+
+summary: >-
+  Forward-corrected the repo-root uv workspace into per-stack uv projects.
+  (1) Deleted the root pyproject.toml entirely (DEC-04) and the root uv.lock — the root
+  [tool.uv.workspace] stanza and the root [project].requires-python no longer serve a purpose
+  once the build gate routes through make, and a stray root requires-python could be misread as
+  a shared-interpreter signal.
+  (2) Made contracts/ a fully standalone uv project: tightened contracts/pyproject.toml
+  requires-python from ">=3.12" to ">=3.12,<3.13"; contracts/.python-version stays at 3.12.
+  Ran `cd contracts && uv sync` — uv auto-downloaded CPython 3.12.13, created contracts/.venv on
+  it (verified: contracts/.venv/pyvenv.cfg → version_info = 3.12.13), and generated contracts/uv.lock.
+  (3) Routed the build gate through make: changed .ai-sdd/checks/changeset.build.check.yaml command
+  from "uv sync" to "make sync"; added a `sync` target to the root Makefile delegating to
+  $(MAKE) -C contracts sync (with the operator/coprocessor/brain/pilot stub comments updated to
+  include sync); added a `sync` target to contracts/Makefile running `uv sync`.
+  No behavior regression: `from contracts import ContractLine` still works and the 15-test suite +
+  validate gate still pass. Self-consistent: `make sync` (the NEW build gate) exits 0 within this
+  same changeset because both Makefiles now define sync.
+
+satisfies:
+  - AC1  # no-workspace-stanza — root pyproject.toml deleted; no [tool.uv.workspace] anywhere
+  - AC2  # root-lock-removed — root uv.lock deleted
+  - AC3  # requires-python-tightened — contracts/pyproject.toml requires-python = ">=3.12,<3.13"
+  - AC4  # contracts-venv-on-312 — uv sync exit 0; pyvenv.cfg version_info = 3.12.13
+  - AC5  # contracts-lock-exists — contracts/uv.lock present
+  - AC6  # build-gate-is-make-sync — changeset.build.check.yaml command = "make sync"
+  - AC7  # root-make-sync-delegates — root + contracts Makefiles define sync; make sync exit 0
+  - AC8  # four-gates-green-via-routing — make sync / test / validate / lint all exit 0 from root
+  - AC9  # no-regression — ContractLine import works; 15 tests + validate still pass
+
+files:
+  deleted:
+    - pyproject.toml
+    - uv.lock
+  modified:
+    - Makefile
+    - contracts/pyproject.toml
+    - contracts/Makefile
+    - .ai-sdd/checks/changeset.build.check.yaml
+  created:
+    - contracts/uv.lock
+    # contracts/.venv created by uv sync on CPython 3.12.13 (gitignored)
+
+gates:
+  make_sync: 0
+  make_lint: 0
+  make_test: 0
+  make_validate: 0
+  tests_run: 15
+  contracts_venv_version_info: "3.12.13"

@@ -1,0 +1,49 @@
+apiVersion: ai-sdd/v1
+kind: Changeset
+metadata:
+  feature: telemetry-contract
+  slice: pydantic-models
+  stack: contracts
+
+summary: >-
+  Migrated the reusable, strictly-typed motor models out of robot/pi-runtime INTO
+  the contracts/ vertical (single source of truth per the contracts.md boundary
+  rule), discarded the ScoreContract task family, and added the ContractLine
+  runtime envelope on top.
+  (1) NEW contracts/src/contracts/motor_telemetry.py — verbatim migration of
+  StrictModel, MotorApiValues, MotorApiSample (+ its require_full_vexcode_motor_api
+  model_validator), ContractSource, the API_BINDING / MOTOR_API_FIELDS /
+  MOTOR_API_METHODS constants, Subsystem, vexcode_motor_source_api,
+  motor_sample_from_vexcode, motor_sample_from_pros. Dropped the now-unused
+  TypeAdapter / Any / Union imports; reflowed two >100-char lines to satisfy ruff
+  (line-length 100) with no behavior change.
+  (2) NEW contracts/src/contracts/contract_line.py — AprilTagPose + VisionBlock
+  (both StrictModel) and the ContractLine envelope (ConfigDict extra="allow",
+  schema_version Literal["1.0"], motor_samples min_length=1, predicted/gap/outcome
+  flexible dicts, optional vision/source).
+  (3) NEW contracts/src/contracts/schema.py — prints ContractLine.model_json_schema().
+  (4) contracts/src/contracts/__init__.py — re-exports the public API with __all__.
+  (5) GENERATED + committed contracts/schemas/contract_line.json via `make schema`
+  (non-empty, contains session_id + motor_samples).
+  (6) REMOVED the pi-runtime schema copy (boundary rule): deleted
+  robot/pi-runtime/src/vexy_system2/contracts/motor_telemetry.py, its package
+  __init__.py (and the now-empty contracts/ dir),
+  robot/pi-runtime/src/vexy_system2/motor_telemetry_schema.py, and
+  robot/pi-runtime/tests/test_motor_telemetry_contracts.py. Grep first confirmed no
+  other pi-runtime importer of vexy_system2.contracts / motor_telemetry_schema.
+  The discarded ScoreContract family (BaseTaskContract, ScorePredicted/Observed/Gap,
+  ScoreContract, MotorTelemetryContract alias + adapter, validate_motor_telemetry*,
+  motor_telemetry_json_schema) was NOT migrated and appears in zero files under
+  contracts/. No new model tests or fixtures (deferred to slice 3); validate.py
+  untouched. All four root gates (uv sync, make lint, make test, make validate)
+  exit 0.
+
+satisfies:
+  - AC1
+  - AC2
+  - AC3
+  - AC4
+  - AC5
+  - AC6
+  - AC7
+  - AC8

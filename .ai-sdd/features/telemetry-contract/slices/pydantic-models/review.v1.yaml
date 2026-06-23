@@ -1,0 +1,92 @@
+apiVersion: ai-sdd/v1
+kind: Review
+metadata:
+  feature: telemetry-contract
+  slice: pydantic-models
+  stack: contracts
+
+verdict: approve
+
+items:
+  - id: AC1
+    verdict: pass
+    notes: >-
+      contracts/src/contracts/motor_telemetry.py exists with StrictModel,
+      MotorApiValues, MotorApiSample (require_full_vexcode_motor_api validator intact —
+      enforces source_api key-set completeness AND per-field call-name prefix),
+      ContractSource, API_BINDING / MOTOR_API_FIELDS / MOTOR_API_METHODS constants,
+      Subsystem = Literal['claw','arm','drivetrain'], vexcode_motor_source_api,
+      motor_sample_from_vexcode, motor_sample_from_pros (PROS normalization incl.
+      cur/1000 intact). Diffed verbatim against HEAD pi-runtime source: logic equivalent,
+      only the unused TypeAdapter/Any/Union imports dropped and two long lines reflowed.
+      `uv run python -c "import contracts.motor_telemetry"` succeeds; ruff clean.
+  - id: AC2
+    verdict: pass
+    notes: >-
+      grep -rE over contracts/src for ScoreContract|BaseTaskContract|ScorePredicted|
+      ScoreObserved|ScoreGap|MotorTelemetryContract(Adapter)|validate_motor_telemetry|
+      motor_telemetry_json_schema returns zero hits (exit 1). All discarded per D2/D5.
+  - id: AC3
+    verdict: pass
+    notes: >-
+      contract_line.py defines ContractLine with model_config=ConfigDict(extra='allow'),
+      schema_version Literal['1.0']='1.0', session_id:str, generation:int, round:int,
+      task:str (FREE string — verified arbitrary task value accepted, not an enum/Literal),
+      motor_samples list[MotorApiSample]=Field(min_length=1), predicted dict[str,float|bool|str],
+      gap dict[str,float], outcome dict[str,Any]|None=None, vision VisionBlock|None=None,
+      source ContractSource|None=None. NO per-task typed predicted/gap submodel, NO top-level
+      `observed` field (grep zero hits) — D2 honored. Round-trip via
+      model_dump_json()/model_validate_json() returns an equal object; empty motor_samples
+      raises ValidationError; tampered source_api (wrong call name) raises ValidationError.
+  - id: AC4
+    verdict: pass
+    notes: >-
+      VisionBlock(StrictModel){object_detected:bool, object_bbox:list[int]|None=None,
+      apriltag_pose:AprilTagPose|None=None, bbox_iou:float|None=None} and
+      AprilTagPose(StrictModel){x,y,heading:float} present. Verified a fully populated
+      VisionBlock+AprilTagPose parses, and a ContractLine with vision=None AND outcome=None
+      parses without error. vision is Optional, defaults None.
+  - id: AC5
+    verdict: pass
+    notes: >-
+      schema.py prints ContractLine.model_json_schema(). contracts/schemas/contract_line.json
+      exists, non-empty (7028 bytes), contains session_id and motor_samples. Regenerated via
+      `uv run python -m contracts.schema` — NO DRIFT vs the present artifact. NB: the file is
+      currently untracked in git (new file); committing the completed slice is the ai-sdd
+      engine's post-approval step — non-blocking, artifact is present and correct.
+  - id: AC6
+    verdict: pass
+    notes: >-
+      After `uv sync`, `from contracts import ContractLine, MotorApiSample, MotorApiValues,
+      VisionBlock, AprilTagPose, ContractSource, motor_sample_from_vexcode,
+      motor_sample_from_pros, vexcode_motor_source_api` succeeds (prints ok). __init__.py
+      defines __all__ listing exactly these nine public names.
+  - id: AC7
+    verdict: pass
+    notes: >-
+      All four pi-runtime files are deleted (staged): contracts/motor_telemetry.py,
+      contracts/__init__.py, motor_telemetry_schema.py, tests/test_motor_telemetry_contracts.py.
+      The robot/pi-runtime/.../vexy_system2/contracts/ package dir is gone. grep over
+      robot/pi-runtime for vexy_system2.contracts / motor_telemetry_schema importers returns
+      zero hits (exit 1) — no dangling import left behind.
+  - id: AC8
+    verdict: pass
+    notes: >-
+      From repo ROOT all four FIXED gates exit 0: uv sync=0, make lint=0 (ruff check +
+      format --check, all passed), make test=0 (slice-1 smoke test collects 1 test, passes),
+      make validate=0 (no-op prints OK over absent fixtures dir).
+
+# Boundary / toolchain audit (all clear):
+#  - No schema/pydantic model defined outside contracts/: grep for pydantic/BaseModel/
+#    ConfigDict across *.py outside contracts/ (excl .venv, site-packages) = zero hits.
+#  - Approved toolchain only: grep over Makefile, contracts/Makefile, pyproject.toml,
+#    ruff.toml for pip install / poetry / black / isort / flake8 / pylint = zero hits.
+#  - Migration faithful to D5 (motor models moved verbatim, not rewritten); D2 honored
+#    (typed motor_samples core + flexible dict edges; no per-task subtyping; no top-level
+#    observed field).
+#
+# Caveats (non-blocking):
+#  - Interpreter at test time is CPython 3.14.4 (repo .venv), not the conventions' declared
+#    3.12. Not part of any acceptance gate; all gates pass. Flagged for the team.
+#  - The new schema JSON + three new source files are untracked in git at review time;
+#    the ai-sdd engine commits the completed slice post-approval. Artifacts present & correct.
