@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal, Optional, Union
+from typing import Any, Literal, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, model_validator
 
@@ -86,90 +86,30 @@ class BaseTaskContract(StrictModel):
     source: ContractSource
 
 
-class GrabPredicted(StrictModel):
-    object_width_mm: float
-    grip_force_n: float
+class ScorePredicted(StrictModel):
+    distance_from_bin_m: float = Field(ge=0.0)
     success: bool
 
 
-class GrabObserved(StrictModel):
-    gripped: bool
-    claw_position_delta_deg: float
-    claw_current_amp: float
-    claw_torque_nm: float
+class ScoreObserved(StrictModel):
+    ball_in_bin: bool
+    distance_from_bin_m: float = Field(ge=0.0)
+    score_value: float = Field(ge=0.0)
 
 
-class GrabGap(StrictModel):
-    force_error_n: float
-    width_error_mm: float
-
-
-class GrabContract(BaseTaskContract):
-    task: Literal["grab"]
-    predicted: GrabPredicted
-    observed: GrabObserved
-    gap: GrabGap
-
-
-class PullPredicted(StrictModel):
-    load_mass_kg: float
-    distance_m: float
-    success: bool
-
-
-class PullObserved(StrictModel):
-    pull_force_n: float
-    velocity_ratio: float
-    distance_m: float
-    energy_j: float
-
-
-class PullGap(StrictModel):
-    force_error_n: float
+class ScoreGap(StrictModel):
     distance_error_m: float
-    efficiency_loss: float
+    success_correct: bool
 
 
-class PullContract(BaseTaskContract):
-    task: Literal["pull"]
-    predicted: PullPredicted
-    observed: PullObserved
-    gap: PullGap
-
-    @model_validator(mode="after")
-    def require_drivetrain_samples(self) -> "PullContract":
-        if not any(sample.subsystem == "drivetrain" for sample in self.motor_samples):
-            raise ValueError("pull contracts require at least one drivetrain motor sample")
-        return self
+class ScoreContract(BaseTaskContract):
+    task: Literal["score"]
+    predicted: ScorePredicted
+    observed: ScoreObserved
+    gap: ScoreGap
 
 
-class ThrowPredicted(StrictModel):
-    range_m: float
-    object_mass_g: float
-
-
-class ThrowObserved(StrictModel):
-    release_velocity_ms: float
-    observed_range_m: float
-    arm_velocity_at_release_rpm: float
-
-
-class ThrowGap(StrictModel):
-    range_error_m: float
-    velocity_loss_ratio: float
-
-
-class ThrowContract(BaseTaskContract):
-    task: Literal["throw"]
-    predicted: ThrowPredicted
-    observed: ThrowObserved
-    gap: ThrowGap
-
-
-MotorTelemetryContract = Annotated[
-    Union[GrabContract, PullContract, ThrowContract],
-    Field(discriminator="task"),
-]
+MotorTelemetryContract = ScoreContract
 MotorTelemetryContractAdapter = TypeAdapter(MotorTelemetryContract)
 
 

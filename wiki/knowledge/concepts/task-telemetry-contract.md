@@ -1,79 +1,50 @@
 ---
 id: task-telemetry-contract
 title: Task Telemetry Contract
-aliases: [Task Contract, Telemetry Contract, Grab/Pull/Throw Contract]
-updated: 2026-06-16
+aliases: [Task Contract, Telemetry Contract, Score Contract]
+updated: 2026-06-23
 sources:
   - ../../raw/research/vex-v5-customization-grab-pull-throw/index.md
+  - ../../raw/research/task-contract-score-redesign/index.md
 tags: [concept, quantification, telemetry, gap-model, task, vex-v5]
 ---
 
 # Task Telemetry Contract
 
-The data structure that bridges the [[llm-authored-self-model]]'s capability predictions and the [[reality-gap]] residuals measured from actual robot execution. **Each task primitive (grab, pull, throw, …) has a contract with three blocks: `predicted` (what the self-model expected), `observed` (what telemetry recorded), and `gap` (the signed residual the next generation's self-model must explain).** The gap block is the ground-truth input to the design learning loop.
+The data structure that bridges the [[llm-authored-self-model]]'s capability predictions and the [[reality-gap]] residuals measured from actual robot execution. **Each task has a contract with three blocks: `predicted` (what the self-model expected), `observed` (what telemetry recorded), and `gap` (the signed residual the next generation's self-model must explain).** The gap block is the ground-truth input to the design learning loop.
 
 ## Why This Structure
 
-The capability self-model layer makes quantitative claims: "I can grip with 14.7 N" or "I can throw 0.4 m." Without a machine-readable residual, the LLM Critic panel can only argue in prose — it cannot numerically update the self-model. The contract gives every claim a testable, numeric post-condition that maps back to a physical parameter (moment arm, gear ratio, mass estimate, friction coefficient). When observed ≠ predicted, the LLM Generator can revise exactly the parameter that caused the discrepancy.
+The capability self-model layer makes quantitative claims: "I can score from 1.5 m" or "I expect the ball to go in." Without a machine-readable residual, the LLM Critic panel can only argue in prose — it cannot numerically update the self-model. The contract gives every claim a testable, numeric post-condition that maps back to a physical parameter (moment arm, gear ratio, mass estimate, launch velocity). When observed ≠ predicted, the LLM Generator can revise exactly the parameter that caused the discrepancy.
 
-## Grab Contract (VEX V5 Clawbot)
+## Score Contract (current — single task)
+
+The robot has **one task**: get the ball into the bin. Fitness = **distance from the bin at the moment of scoring** — further is better. Gen-0 (claw) scores near 0 m; Gen-1+ (scoop / flywheel) earns positive fitness by launching from a distance. See [[task-contract-score-redesign]] for implementation details.
 
 ```json
 {
-  "task": "grab",
+  "task": "score",
   "predicted": {
-    "object_width_mm": 40,
-    "grip_force_N": 14.7,
+    "distance_from_bin_m": 1.5,
     "success": true
   },
   "observed": {
-    "claw_position_delta_deg": 120,
-    "claw_current_A": 1.8,
-    "claw_torque_Nm": 0.9,
-    "gripped": true
+    "ball_in_bin": true,
+    "distance_from_bin_m": 1.3,
+    "score_value": 1.3
   },
-  "gap": { "force_error_N": -0.9, "width_error_mm": 5 }
+  "gap": {
+    "distance_error_m": -0.2,
+    "success_correct": true
+  }
 }
 ```
 
-**Telemetry sources:** `claw_motor.torque()`, `claw_motor.current()`, `claw_motor.position()`, `claw_motor.velocity()`
+`score_value = distance_from_bin_m if ball_in_bin else 0.0`
 
-**Grip binary signal:** `velocity < 5 RPM AND current > 1.5 A` → object gripped — *this requires custom polling code; VEXcode V5 has no built-in `is_stalled()` API. Recommended capstone pattern: `set_max_torque(30, PERCENT)` + `spin_for(720, DEGREES)` + `set_timeout(3, SECONDS)` — motor soft-stops on contact, then read `position()`. See [[vex-v5-clawbot-claw-autonomy]].*
+**Telemetry sources:** drivetrain odometry for distance; AI Vision Sensor or AprilTag localization for `distance_from_bin_m`; binary `ball_in_bin` from camera detection or manual observation.
 
-## Pull Contract (VEX V5 Clawbot)
-
-```json
-{
-  "task": "pull",
-  "predicted": { "load_mass_kg": 2.0, "distance_m": 0.5, "success": true },
-  "observed": {
-    "pull_force_N": 22.4,
-    "velocity_ratio": 0.77,
-    "distance_m": 0.5,
-    "energy_J": 11.2
-  },
-  "gap": { "force_error_N": 6.6, "efficiency_loss": 0.23 }
-}
-```
-
-**Telemetry sources:** `(left.torque() + right.torque()) / wheel_radius`, `actual_velocity / set_velocity`, `drivetrain.position()`
-
-## Throw Contract (VEX V5 Clawbot arm)
-
-```json
-{
-  "task": "throw",
-  "predicted": { "range_m": 0.4, "object_mass_g": 50 },
-  "observed": {
-    "release_velocity_ms": 0.38,
-    "observed_range_m": 0.25,
-    "arm_velocity_at_release_RPM": 27.1
-  },
-  "gap": { "range_error_m": -0.15, "velocity_loss_ratio": 0.16 }
-}
-```
-
-**Telemetry sources:** `arm_motor.velocity()` at release → computed `v₀ = ω × arm_length` → `R = v₀² sin(2θ) / g`. Observed range: AI Vision Sensor or Distance Sensor.
+> **Historical note (pre-2026-06-23):** The original design used three sub-capability contracts — Grab (claw force/position), Pull (drivetrain load/distance), and Throw (arm velocity/range) — modelling each primitive independently. These are preserved in [[vex-v5-customization-grab-pull-throw]] and [[vex-v5-booster-kit]] as reference material. The redesign collapses them into the single outcome that matters for the evolutionary fitness loop.
 
 ## Extending to New Platforms
 
