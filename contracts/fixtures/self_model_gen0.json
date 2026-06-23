@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "generation": 0,
+  "parent_generation": null,
+  "config": {
+    "motor_allocation": "2drive+1arm+1claw",
+    "arm_position": "front",
+    "end_effector": "claw_grasper",
+    "wheel_config": "front_omni+rear_standard",
+    "arm_gear_ratio": "7:1",
+    "cartridge": "200rpm"
+  },
+  "structural": {
+    "parts": [
+      { "id": "left_drive", "type": "drive_motor" },
+      { "id": "right_drive", "type": "drive_motor" },
+      { "id": "arm_motor", "type": "arm_motor" },
+      { "id": "claw_motor", "type": "claw_motor" }
+    ],
+    "connections": [
+      { "source": "left_drive", "target": "right_drive", "kind": "drivetrain" },
+      { "source": "arm_motor", "target": "claw_motor", "kind": "manipulator" }
+    ]
+  },
+  "capability": {
+    "reach_mm": 420.0,
+    "max_grip_force_N": 18.0,
+    "max_pull_force_N": 32.0,
+    "com_height_mm": 110.0
+  },
+  "predictive": {
+    "grab": { "grip_force_N": 14.7, "duration_s": 1.2, "success": true }
+  },
+  "gap_model": {
+    "grab": { "force_error_N": -3.4, "duration_error_s": 0.2 }
+  },
+  "reasoning": "Gen-0 authored Clawbot. The 2drive+1arm+1claw allocation pairs a front_omni+rear_standard drivetrain with a single front-mounted arm carrying a claw_grasper end effector; the 7:1 arm gear ratio on a 200rpm cartridge trades speed for the torque needed to lift and grasp game objects. The drivetrain and manipulator are modeled as two connection groups. Capability estimates (reach_mm, max_grip_force_N, max_pull_force_N, com_height_mm) are research-grounded starting figures for a VEX-class build at this gearing; predictive.grab carries the starting grasp prediction (grip_force_N 14.7, duration_s 1.2) that the Replay/Synthetic telemetry will correct."
+}

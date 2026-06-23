@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import typing
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
@@ -10,6 +12,15 @@ from pydantic import ValidationError
 from contracts import SelfModel
 from contracts import vocabulary as vocab
 from contracts.self_model import CapabilityLayer, SelfModelConfig
+
+
+# contracts/tests/test_self_model.py -> parents[1] is the contracts root where
+# fixtures/ lives (same resolution validate.py uses, robust to cwd).
+FIXTURES_DIR = Path(__file__).resolve().parents[1] / "fixtures"
+
+
+def _load_fixture(name: str) -> dict:
+    return json.loads((FIXTURES_DIR / name).read_text())
 
 
 VALID_CONFIG = {
@@ -123,3 +134,38 @@ def test_extra_field_on_strict_config_raises() -> None:
 def test_extra_field_on_capability_raises() -> None:
     with pytest.raises(ValidationError):
         CapabilityLayer(reach_mm=1.0, bogus="x")
+
+
+# F1's frozen grab residual keys (force_error_N / duration_error_s), taken from the
+# session_example.jsonl grab `gap` block; gen1's gap_model.grab must be a subset.
+F1_GRAB_GAP_KEYS = {"force_error_N", "duration_error_s"}
+
+
+@pytest.mark.parametrize("name", ["self_model_gen0.json", "self_model_gen1.json"])
+def test_self_model_fixture_round_trips(name: str) -> None:
+    raw = (FIXTURES_DIR / name).read_text()
+    model = SelfModel.model_validate_json(raw)
+    # round-trips: re-serialize and re-parse yields an equal document
+    again = SelfModel.model_validate_json(model.model_dump_json())
+    assert again.model_dump() == model.model_dump()
+
+
+def test_gen1_revision_closes_the_grab_gap() -> None:
+    gen0 = _load_fixture("self_model_gen0.json")
+    gen1 = _load_fixture("self_model_gen1.json")
+
+    assert gen1["generation"] == 1
+    assert gen1["parent_generation"] == 0
+
+    # At least one capability field OR predictive.grab value moved vs Gen-0.
+    capability_changed = gen0["capability"] != gen1["capability"]
+    predicted_grab_changed = gen0["predictive"]["grab"] != gen1["predictive"]["grab"]
+    assert capability_changed or predicted_grab_changed
+
+    # gap_model.grab keyed only with F1's frozen grab residual keys.
+    assert set(gen1["gap_model"]["grab"].keys()) <= F1_GRAB_GAP_KEYS
+
+    # The residual shrank toward 0 vs Gen-0 (the gap closing).
+    assert abs(gen1["gap_model"]["grab"]["force_error_N"]) < abs(
+        gen0["gap_model"]["grab"]["force_error_N"]
+    )

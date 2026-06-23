@@ -1,0 +1,193 @@
+apiVersion: ai-sdd/v1
+kind: FeaturePlan
+metadata:
+  feature: self-model-schema
+  slice: fixtures-and-gates
+  stack: contracts
+
+summary: >-
+  Close F2's contribution to the `m1` contracts-frozen milestone by adding the two
+  hand-authored self-model fixtures and the `validate` extension that gates them — all
+  strictly additive over the landed `vocabulary-and-model` slice, with no F1 regression.
+  Create `contracts/fixtures/self_model_gen0.json` — the Gen-0 authored Clawbot
+  (`generation:0`, `parent_generation:null`, the Clawbot `config` selection, populated
+  `structural`/`capability`/`predictive.grab`/`gap_model.grab`, non-empty `reasoning`) — and
+  `contracts/fixtures/self_model_gen1.json` — the Gen-1 gap-driven revision (`generation:1`,
+  `parent_generation:0`, at least one `capability`/`predictive.grab` value moved toward
+  observed reality vs Gen-0, `gap_model.grab` keyed with F1's frozen grab residual keys
+  `force_error_N`/`duration_error_s`, `reasoning` citing the gap evidence). Both fixtures must
+  validate against the runtime `SelfModel` AND conform to the frozen seed schema
+  (`.ai-sdd/schemas/self-model.schema.yaml`: required nonEmpty objects config/structural/
+  capability/predictive/gap_model and nonEmpty reasoning). Extend
+  `contracts/src/contracts/validate.py` with a SECOND dispatch beside the existing
+  `fixtures/*.jsonl → ContractLine` path: glob `fixtures/self_model_*.json`, validate each
+  against `SelfModel`, report `name: error` on stderr and exit 1 on any failure — keeping the
+  existing `*.jsonl → ContractLine` path byte-for-byte unchanged. Extend
+  `contracts/tests/test_self_model.py` with a round-trip parse of both fixtures and an
+  assertion that Gen-1 vs Gen-0 has a changed `capability`/`predictive` value AND that
+  `gap_model.grab`'s keys are a subset of F1's frozen grab `gap` keys
+  (`{force_error_N, duration_error_s}`). NO change to `self_model.py`/`vocabulary.py`/
+  `schema.py`/`Makefile` (all landed in the prior slice); `make schema`/`schema-check`
+  freshness must keep passing with no drift.
+
+scope:
+  in:
+    - "contracts/fixtures/self_model_gen0.json — NEW. Gen-0 authored Clawbot: generation:0, parent_generation:null, config = the Clawbot selection (motor_allocation:'2drive+1arm+1claw', arm_position:'front', end_effector:'claw_grasper', wheel_config:'front_omni+rear_standard', arm_gear_ratio:'7:1', cartridge:'200rpm'). Populated structural (parts/connections describing the 2-drive + 1-arm + 1-claw build), capability (reach_mm/max_grip_force_N/max_pull_force_N/com_height_mm with research-grounded starting estimates), predictive.grab (grip_force_N/duration_s/success starting predictions), gap_model.grab keyed force_error_N/duration_error_s (Gen-0 residual estimate), and non-empty reasoning explaining each structural choice. Validates against SelfModel AND the frozen seed schema (every required object nonEmpty)."
+    - "contracts/fixtures/self_model_gen1.json — NEW. Gen-1 revision (hand-authored, D6): generation:1, parent_generation:0, SAME config axes as Gen-0. At least one capability and/or predictive.grab value moved toward observed reality vs Gen-0 (the implementer picks a concrete numeric move, e.g. max_grip_force_N lowered and predictive.grab.grip_force_N lowered to match the telemetry residual). gap_model.grab re-keyed with F1's frozen grab residual keys force_error_N/duration_error_s, with the residual shrunk toward 0 vs Gen-0 (the gap closing). reasoning cites the gap evidence (the Gen-0 force_error_N residual) that drove the change. Validates against SelfModel AND the frozen seed schema."
+    - "contracts/src/contracts/validate.py — CHANGE (additive). Add a SECOND dispatch beside the existing fixtures/*.jsonl → ContractLine loop: glob fixtures/self_model_*.json (sorted), validate each whole-file JSON document against SelfModel via SelfModel.model_validate_json (or model_validate on parsed JSON), collecting failures as 'name: error' on stderr and returning exit 1 on any failure. The existing *.jsonl → ContractLine path, its 'name:lineno: error' format, the parents[2]/fixtures resolution, and the empty-dir-exits-0 behaviour all stay unchanged. Import SelfModel from contracts alongside the existing ContractLine import."
+    - "contracts/tests/test_self_model.py — CHANGE (extend, keep the full landed validator matrix). Add: (a) a round-trip parse of self_model_gen0.json AND self_model_gen1.json — load each fixture from contracts/fixtures/ (resolve the path relative to the repo, not via a glob on cwd), SelfModel.model_validate the parsed JSON, and assert it re-serializes/round-trips; (b) a Gen-1-vs-Gen-0 diff assertion: at least one capability field OR one predictive.grab value differs between gen0 and gen1, AND set(gen1.gap_model['grab'].keys()) is a subset of F1's frozen grab gap keys {'force_error_N', 'duration_error_s'}. Do not remove or weaken any existing test."
+  out:
+    - "contracts/src/contracts/self_model.py, vocabulary.py, schema.py — UNTOUCHED. The SelfModel models, the vocabulary enums, and the schema emitter all landed in the prior slice `vocabulary-and-model`; this slice only authors fixtures and the validate dispatch + tests."
+    - "contracts/Makefile — UNTOUCHED. The sync/test/validate/lint/schema/schema-check targets already exist; no new target is needed (the new self-model dispatch runs under the existing `make validate`; the fixtures are exercised by the existing `make validate` + `make test`)."
+    - "contracts/schemas/self_model.json / contract_line.json and the schema emit — UNTOUCHED. `make schema`/`schema-check` freshness must keep passing with no schema drift introduced by this slice (no model change ⇒ no regenerated schema)."
+    - "F1's frozen models, contract_line.py, and the existing session_example.jsonl fixture — UNTOUCHED. The *.jsonl → ContractLine validate path and F1's test suite must stay green (strictly additive)."
+    - "F3 parts_catalog.json, valid-combination / buildability rules, and anything under .ai-sdd/features/parts-catalog-grammar/ — OUT (F3, not this slice)."
+    - ".ai-sdd/schemas/self-model.schema.yaml and any .ai-sdd/schemas/ edit — OUT. The seed schema is FROZEN; fixtures conform to it, they never change it."
+    - "`make demo` — an m2-milestone concern, never a per-slice gate."
+    - "Generator/revision logic (F8), critic logic (F9), gap computation (F10), diff rendering (F11) — the Gen-1 fixture is a hand-authored deterministic example (D6), not generated."
+
+acceptance:
+  - id: AC1
+    description: >-
+      validate-self-models — `make validate` exits 0: `self_model_gen0.json` and
+      `self_model_gen1.json` each validate against `SelfModel` via the new
+      `fixtures/self_model_*.json` dispatch, AND the existing `*.jsonl` fixtures still
+      validate against `ContractLine` on the unchanged path. On any self-model failure the
+      validator prints `name: error` to stderr and exits 1.
+  - id: AC2
+    description: >-
+      fixtures-conform-to-frozen-seed-schema — both fixtures also conform to the frozen
+      seed schema `.ai-sdd/schemas/self-model.schema.yaml`: schema_version matches
+      `^[0-9]+\.[0-9]+$`; generation is a non-negative integer; parent_generation is null
+      (gen0) or a number (gen1); config / structural / capability / predictive / gap_model
+      are each non-empty objects; reasoning is a non-empty string. (Gen-0's predictive and
+      gap_model carry a populated `grab` block, so neither is the empty object the frozen
+      schema's nonEmpty invariant forbids.)
+  - id: AC3
+    description: >-
+      gen1-revision-shape — `self_model_gen1.json` has generation:1, parent_generation:0,
+      at least one `capability` field OR `predictive.grab` value moved toward observed
+      reality relative to `self_model_gen0.json`, `gap_model.grab` keyed exactly with F1's
+      frozen grab residual keys (`force_error_N`, `duration_error_s`) and the residual
+      shrunk toward 0 vs Gen-0, and `reasoning` that cites the Gen-0 gap evidence driving
+      the change.
+  - id: AC4
+    description: >-
+      test-diff-assertion-green — `make test` exits 0 with the extended
+      `test_self_model.py`: a round-trip parse of BOTH fixtures through `SelfModel`, plus an
+      assertion that Gen-1 vs Gen-0 has at least one changed `capability`/`predictive` value
+      AND that `set(gen1.gap_model['grab'].keys())` is a subset of F1's frozen grab gap keys
+      `{force_error_N, duration_error_s}`. The full landed validator matrix still passes
+      unchanged.
+  - id: AC5
+    description: >-
+      lint-clean — `make lint` exits 0: `ruff check src/ tests/` and
+      `ruff format --check src/ tests/` pass over the changed `validate.py` and
+      `test_self_model.py`.
+  - id: AC6
+    description: >-
+      no-schema-drift — `make schema` then `make schema-check` (`git diff --exit-code
+      schemas/`) still pass: this slice changes no pydantic model, so the committed
+      `schemas/self_model.json` and `schemas/contract_line.json` remain byte-identical to
+      the generated output (no drift introduced).
+  - id: AC7
+    description: >-
+      root-delegation-and-no-f1-regression — root `make sync` / `validate` / `test` /
+      `lint` / `schema` (delegating into `contracts/`) all exit 0, and F1's existing test
+      suite plus the `*.jsonl → ContractLine` validate path stay green. The change is
+      strictly additive: no F1 source, fixture, or schema output is modified.
+  - id: AC8
+    description: >-
+      gen1-reads-as-self-knowledge-improving — (manual reviewer check, Acceptance 8 of
+      requirements) reading the Gen-1 → Gen-0 diff, a numeric `capability`/`predictive`
+      value has moved toward reality and the `gap_model.grab` residual has shrunk, with
+      `reasoning` prose explaining why — the self-model's self-knowledge visibly improving
+      across the generation boundary.
+
+decisions:
+  - id: PD1
+    title: Gen-0 populates predictive.grab and gap_model.grab so the frozen seed schema's nonEmpty invariant holds
+    decision: >-
+      The frozen seed schema requires `predictive` and `gap_model` to be non-empty objects.
+      The MASTER_REQUIREMENTS Self-Model example uses `{ "grab": {}, ... }` (a `grab` key
+      with an empty inner dict), which already satisfies object-level nonEmpty. To make the
+      fixtures concrete and to support the Gen-1 diff, Gen-0 populates `predictive.grab`
+      with starting predictions (grip_force_N / duration_s / success) and `gap_model.grab`
+      with the Gen-0 residual estimate keyed `force_error_N` / `duration_error_s`. Both
+      objects are therefore non-empty by construction and validate against the frozen seed
+      schema and `SelfModel` (whose predictive/gap_model are free-task-keyed flexible dicts,
+      D2).
+    grounds: "requirements In-scope (predictive/gap_model free task keys; Gen-0 fixture populated); slice brief Fixtures bullet; .ai-sdd/schemas/self-model.schema.yaml predictive/gap_model nonEmpty invariants; MASTER_REQUIREMENTS Self-Model example (lines 301-313)"
+    status: closed
+  - id: PD2
+    title: Gen-1 reuses F1's frozen grab residual keys by convention (force_error_N, duration_error_s)
+    decision: >-
+      `self_model_gen1.json`'s `gap_model.grab` is keyed EXACTLY with F1's frozen telemetry
+      `gap` residual keys for the grab task — `force_error_N` and `duration_error_s` — taken
+      verbatim from F1's `gap` block (MASTER_REQUIREMENTS line 296: `{ "force_error_N":
+      -3.4, "duration_error_s": 0.2 }`, mirrored in the landed `session_example.jsonl`).
+      This is a convention enforced in the fixture + the test (key-subset assertion), NOT a
+      shared residual-key enum (D5 explicitly rejects a shared enum to keep F1's `gap` dict
+      flexible). F1 is untouched.
+    grounds: "requirements D5; slice brief 'gap_model.grab keyed with F1's residual keys'; MASTER_REQUIREMENTS Task-Telemetry gap (line 296); contracts/contract_line.py gap: dict[str, float] (F1 frozen, unchanged)"
+    status: closed
+  - id: PD3
+    title: The Gen-1 vs Gen-0 diff is a closing gap — one numeric value moves toward reality and the residual shrinks
+    decision: >-
+      The hand-authored Gen-1 revision (D6) demonstrates self-knowledge improving: at least
+      one `capability` field and/or `predictive.grab` value is moved from its Gen-0 estimate
+      toward the telemetry-observed reality, and the corresponding `gap_model.grab` residual
+      (`force_error_N` / `duration_error_s`) is shrunk toward 0 vs Gen-0 (the gap closing
+      across the generation). `reasoning` cites the Gen-0 residual as the evidence. The test
+      asserts the changed value (capability OR predictive) and the gap-key subset; the
+      direction/magnitude of the numeric move is the implementer's choice provided it is a
+      monotone improvement readable as self-knowledge improving (AC8). Concrete numbers are
+      the implementer's to choose — they are research-grounded estimates, not contract
+      values, and no MASTER section fixes them.
+    grounds: "requirements D6 and Acceptance 8; slice brief Gen-1 bullets + Acceptance 5; MASTER_REQUIREMENTS reasoning field ('what gap evidence drove each parameter change', line 312)"
+    status: closed
+  - id: PD4
+    title: validate.py gains a second whole-file JSON dispatch; the *.jsonl path is byte-stable
+    decision: >-
+      Add a SECOND dispatch in `validate.py`'s `main()` beside the existing
+      `fixtures/*.jsonl → ContractLine` line loop: glob `fixtures/self_model_*.json`
+      (sorted, same parents[2]/fixtures resolution), validate each WHOLE-FILE document
+      against `SelfModel`, and collect failures as `name: error` (no lineno — these are
+      single-document files) on stderr, returning exit 1 on any failure. The existing jsonl
+      loop, its `name:lineno: error` format, the OK/empty-dir behaviour, and the
+      `ContractLine` import are unchanged; `SelfModel` is imported alongside. No new Makefile
+      target — the dispatch runs under the existing `make validate`.
+    grounds: "requirements In-scope ('validate entrypoint, additive') and D5; slice brief 'validate.py extension'; contracts/src/contracts/validate.py (existing jsonl path, parents[2] resolution); contracts/Makefile validate target"
+    status: closed
+  - id: PD5
+    title: No model / schema / Makefile change — schema freshness stays green by construction
+    decision: >-
+      This slice touches no pydantic model, no `schema.py`, and no Makefile target, so
+      `make schema` regenerates byte-identical `schemas/*.json` and `make schema-check`
+      (`git diff --exit-code schemas/`) stays green with zero drift. The two-slice
+      decomposition (D7) put all model/schema/emit work in the prior `vocabulary-and-model`
+      slice; this slice is fixtures + validate dispatch + tests only.
+    grounds: "requirements D7 (two-slice decomposition) and D8 (single generator + freshness gate); slice brief 'OUT: any change to self_model.py/vocabulary.py/schema.py/Makefile schema emit (done in the prior slice)'; landed contracts/Makefile schema/schema-check targets"
+    status: closed
+  - id: PD6
+    title: Tooling locked to Python 3.12 / uv / ruff / pydantic v2; gates run via make
+    decision: >-
+      Python 3.12, uv for deps/venv, ruff for lint+format, pydantic v2 for validation. The
+      slice's gates are `make sync`, `make lint`, `make test`, `make validate`, `make
+      schema` (run from `contracts/` or root, which delegates). `make demo` is excluded —
+      it is an m2-milestone concern, never a per-slice gate.
+    grounds: "MASTER_REQUIREMENTS ADR-05/06/15/16; requirements Constraints; contracts convention (Build/Lint/Language/Validate rows; 'make demo is the m2 milestone step, not a per-slice gate'); plan-feature SKILL ('make demo is an m2-milestone concern')"
+    status: closed
+
+files:
+  - "contracts/fixtures/self_model_gen0.json"
+  - "contracts/fixtures/self_model_gen1.json"
+  - "contracts/src/contracts/validate.py"
+  - "contracts/tests/test_self_model.py"
+
+tests:
+  - "make sync"
+  - "make lint"
+  - "make test"
+  - "make validate"
+  - "make schema"
