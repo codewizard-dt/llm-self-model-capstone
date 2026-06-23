@@ -1,0 +1,98 @@
+apiVersion: ai-sdd/v1
+kind: Review
+metadata:
+  feature: telemetry-contract
+  slice: fixtures-and-gates
+  stack: contracts
+
+summary: >-
+  Independent adversarial review of the fixtures-and-gates (acceptance/proof) slice.
+  All four FIXED gates run from repo root exit 0 (uv sync, make lint, make test,
+  make validate). `make test` = 15 passed. The validator is NON-vacuous: it resolves
+  fixtures to contracts/fixtures (parents[2], the contracts root — NOT repo root) and
+  scans exactly 1 file (session_example.jsonl) with 4 non-blank lines, each validated
+  against ContractLine; `python -m contracts.validate` prints "OK — all fixtures valid".
+  The 4 fixture lines independently load via ContractLine.model_validate_json and match
+  the brief (grab+vision, pull motor-only/NO vision, throw+vision apriltag_pose null,
+  score+vision outcome.ball_in_bin=true). AC7/D2 proven: task is a free `str` (no enum),
+  outcome is `dict[str, Any] | None`, ball_in_bin lives in the flexible outcome dict with
+  no schema change. test_smoke.py is deleted (staged + absent from disk). Boundary rules
+  hold: only validate.py modified plus fixtures/ + 2 test files created; no model, schema.py,
+  Makefile, or pyproject change; nothing outside contracts/; no forbidden toolchain.
+
+verdict: approve
+
+items:
+  - id: AC1
+    verdict: pass
+    notes: >-
+      contracts/fixtures/session_example.jsonl has exactly 4 newline-terminated JSON lines:
+      L1 grab+vision (apriltag_pose present), L2 pull motor-only (NO vision block), L3 throw+vision
+      with apriltag_pose=null, L4 score+vision with outcome.ball_in_bin=true. Each line independently
+      loaded via ContractLine.model_validate_json and validated. test_fixture_has_four_lines and the
+      4 parametrized round-trip tests pass.
+  - id: AC2
+    verdict: pass
+    notes: >-
+      validate.py imports ContractLine, anchors fixtures at parents[2]/"fixtures" (re-derived to
+      .../contracts/fixtures, the contracts root — not repo root), globs *.jsonl, validates every
+      non-blank line, collects "name:lineno: error" to stderr + exit 1 on failure, else prints
+      "OK — all fixtures valid" exit 0. Empty/absent-dir path preserved (glob guarded by is_dir()).
+      Verified by reading source and re-deriving the path; non-vacuous (1 file, 4 lines scanned).
+  - id: AC3
+    verdict: pass
+    notes: >-
+      test_contract_line.py: 6 tests all PASS — round-trips all 4 fixtures, parses motor-only/no-vision
+      pull line (vision is None, subsystem drivetrain), parses outcome=None, raises ValidationError on
+      missing session_id (independently re-verified), accepts task="custom_task", and asserts score
+      ball_in_bin in the flexible outcome dict.
+  - id: AC4
+    verdict: pass
+    notes: >-
+      test_motor_telemetry.py: 5 tests all PASS. The 3 migrated motor tests
+      (requires-all-vexcode-observations, rejects-missing-source_api-mapping, rejects-unknown-source_api-call)
+      use `from contracts import ...`. The added motor_sample_from_pros normalization test (cur 2100/1000
+      -> current_amp 2.1, pos -> position_deg 540, trq -> torque_nm 1.1) and the schema-export test asserting
+      "motor_samples" and "session_id" both present pass. ScoreContract tests correctly dropped (D2/D5).
+  - id: AC5
+    verdict: pass
+    notes: >-
+      Root `make test` (delegates to contracts) exits 0 with 15 real passing tests from
+      test_contract_line + test_motor_telemetry. test_smoke.py is deleted — confirmed absent from disk
+      and staged for deletion in git status.
+  - id: AC6
+    verdict: pass
+    notes: >-
+      Root `make validate` exits 0; upgraded validate.py finds the 4 fixtures and all validate against
+      ContractLine. Verified non-vacuous: scanned 1 file with 4 non-blank lines (a 0-file OK would be a
+      defect — not the case here).
+  - id: AC7
+    verdict: pass
+    notes: >-
+      D2 proof holds. ContractLine.model_fields["task"].annotation is `str` (free string, no enum);
+      outcome annotation is `dict[str, Any] | None`. The score fixture parses with ball_in_bin/score_value
+      carried in the flexible outcome dict (runtime type dict), NO per-task submodel, NO schema change.
+      A new task is just a new free-string label + dict keys.
+  - id: AC8
+    verdict: pass
+    notes: >-
+      All four root gates green, exit codes recorded independently: uv sync=0, make lint=0
+      (ruff check + ruff format --check over src/ and tests/, all passed / 8 files formatted),
+      make test=0 (15 passed), make validate=0 ("OK — all fixtures valid"). No forbidden toolchain
+      (pip/poetry/black/isort/flake8/pylint) in changed files.
+
+# Boundary / toolchain audit (all clear):
+#  - Only contracts/ touched: validate.py modified; fixtures/session_example.jsonl,
+#    tests/test_contract_line.py, tests/test_motor_telemetry.py created; tests/test_smoke.py deleted.
+#  - No model/schema/build change: contract_line.py, motor_telemetry.py, __init__.py, schema.py,
+#    contracts/schemas/contract_line.json, both Makefiles, pyproject.toml, ruff.toml all untouched
+#    (git diff/status confirm). No pydantic schema defined outside contracts/.
+#  - No forbidden toolchain in changed files (grep pip install/poetry/black/isort/flake8/pylint = none).
+#
+# Caveats (non-blocking):
+#  - Interpreter at test time is CPython 3.14.4 (repo .venv), not the conventions' declared 3.12.
+#    Not part of any acceptance gate; all gates pass on it. Flagged for the team (consistent with the
+#    prior slice's caveat).
+#  - Root `uv sync` uninstalls/reinstalls the contracts editable package against the repo-root venv;
+#    make targets `cd contracts` and `uv run` re-resolve cleanly, so all gates still pass. Cosmetic.
+#  - New files are untracked at review time; the ai-sdd engine commits the completed slice post-approval.

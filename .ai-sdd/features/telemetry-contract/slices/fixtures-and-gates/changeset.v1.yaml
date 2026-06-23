@@ -1,0 +1,60 @@
+apiVersion: ai-sdd/v1
+kind: Changeset
+metadata:
+  feature: telemetry-contract
+  slice: fixtures-and-gates
+  stack: contracts
+
+summary: >-
+  Shipped the acceptance/proof layer for the telemetry contract.
+  (1) NEW contracts/fixtures/session_example.jsonl — the 4 verbatim task lines
+  (grab+vision, pull motor-only/no-vision, throw+vision with apriltag_pose null,
+  score+vision with outcome.ball_in_bin); all 4 validate against ContractLine.
+  (2) UPGRADED contracts/src/contracts/validate.py from the slice-1 no-op into the
+  real validator — anchored at the contracts root
+  (Path(__file__).resolve().parents[2] / "fixtures", per DEC-VALIDATE-PATH),
+  globbing *.jsonl and calling ContractLine.model_validate_json on every non-blank
+  line, collecting "name:lineno: error" to stderr and exiting 1 on failure, else
+  printing "OK — all fixtures valid" and exiting 0 (still exit 0 if the dir is
+  empty or absent).
+  (3) NEW contracts/tests/test_contract_line.py — round-trips all 4 fixtures,
+  parses the motor-only (no-vision) line, parses outcome=None, raises on missing
+  session_id, accepts task="custom_task", and asserts score ball_in_bin lives in
+  the flexible outcome dict (D2 proof).
+  (4) NEW contracts/tests/test_motor_telemetry.py — migrated the 3 surviving motor
+  tests (requires-all-vexcode-observations, rejects-missing-source_api-mapping,
+  rejects-unknown-source_api-call) with imports rewritten to
+  `from contracts import ...`; dropped the 4 ScoreContract tests (ScoreContract
+  was discarded in the pydantic-models slice); added the motor_sample_from_pros
+  key-normalization test (cur/1000->current_amp, pos->position_deg, trq->torque_nm)
+  and a ContractLine schema-export test ("motor_samples" and "session_id" present).
+  (5) DELETED the slice-1 placeholder contracts/tests/test_smoke.py (DEC-SMOKE).
+  No models, schema.py, Makefiles, or pyproject changes — those are frozen by the
+  prior slice. Touched contracts/ only. All four root gates exit 0.
+
+satisfies:
+  - AC1
+  - AC2
+  - AC3
+  - AC4
+  - AC5
+  - AC6
+  - AC7
+  - AC8
+
+files:
+  created:
+    - contracts/fixtures/session_example.jsonl
+    - contracts/tests/test_contract_line.py
+    - contracts/tests/test_motor_telemetry.py
+  modified:
+    - contracts/src/contracts/validate.py
+  deleted:
+    - contracts/tests/test_smoke.py
+
+gates:
+  uv_sync: 0
+  make_lint: 0
+  make_test: 0
+  make_validate: 0
+  tests_run: 15
