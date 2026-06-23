@@ -1,6 +1,9 @@
-.PHONY: test validate lint schema
+.PHONY: sync test validate lint schema
 
 UV := uv run
+
+sync:
+	uv sync
 
 test:
 	$(UV) pytest tests/ -v

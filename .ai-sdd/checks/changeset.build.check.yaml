@@ -4,5 +4,5 @@ metadata: { name: changeset.build }
 spec:
   # Explicit command (MASTER_REQUIREMENTS → Verification & Reviewer Runbook; ADR-15). Blocking.
   checkKind: deterministic
-  command: "uv sync"
+  command: "make sync"
   required: true
