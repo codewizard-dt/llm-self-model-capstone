@@ -2,7 +2,7 @@
 id: vex-v5-clawbot-build-instructions
 title: "VEX V5 Clawbot Build Instructions (276-6009-750 Rev6)"
 aliases: [Clawbot Build Instructions, VEX Clawbot, V5 Clawbot]
-updated: 2026-06-16
+updated: 2026-06-22
 sources:
   - ../../raw/276-6009-750-Rev6.pdf
 tags: [source, vex-v5, hardware, build-instructions, clawbot, typed-grammar, robotics]
@@ -73,6 +73,11 @@ Every part carries a VEX SKU, making this document the **real-world instantiatio
 
 **The Clawbot is the "Gen 0" self-model baseline**: the LLM self-model loop's first generation would describe itself from this morphology — "I am a 4-wheel tank-drive with a 7:1 geared arm and a geared claw. Predicted: I can lift objects under ~X kg to ~Y cm height." The typed parts list is the seed for `vex_v5_catalog.json`. The port assignments are the `electronics.hub_ports` block. The 7:1 gear ratio is a `capability_model` parameter (torque budget, reach). The hacksaw-cut constraint maps to a `build_warnings` field. This document is the ground truth for the entire Stage-2 generation manifest format.
 
+## Claw Swap: Household Scoop End-Effector (from [[clawbot-scoop-replacement]])
+
+The entire claw + claw-motor assembly detaches with **two #8-32 screws** at the arm tip bracket, leaving two parallel C-channel faces **1" (25.4 mm) apart** with holes **0.5" apart**. Any kitchen serving spoon or powder scoop (handle ≤ ~22 mm wide) can be mounted in its place by drilling two 11/64" holes and reusing the original screws + hex nuts. Build time: ~5 minutes. This frees one V5 Smart Motor for reuse or removal.
+
 used_by::[[physical-robot-software-factory]]
 exemplifies::[[typed-assembly-grammar]]
 relates_to::[[feasibility-human-built-generational-factory]]
+mutated_by::[[clawbot-scoop-replacement]]

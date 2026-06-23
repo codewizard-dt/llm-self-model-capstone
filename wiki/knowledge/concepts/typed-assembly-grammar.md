@@ -2,7 +2,7 @@
 id: typed-assembly-grammar
 title: Typed Assembly Grammar
 aliases: [Restricted Design Language, Typed Parts Grammar, Searchable Assembly Grammar]
-updated: 2026-06-17
+updated: 2026-06-22
 sources:
   - ../../raw/Feasibility of a Human-Built Generational Robot Software Factory.pdf
   - ../../raw/Feasibility of a Software-Factory Approach to Learning Robots That Assemble Additional Robots from M.pdf
@@ -161,6 +161,57 @@ The grammar's vocabulary = the parts catalog. CAD is the authoritative source fo
 
 references::[[vex-v5-cad-designs]]
 
+## Passive-Scoop Vocabulary Extension — No-Purchase Morphology Mutation (from [[clawbot-scoop-replacement]])
+
+The standard `claw_grasper` end-effector can be replaced with a **`passive_scoop`** sourced from a household kitchen item (serving spoon, powder scoop, ladle) without purchasing any VEX parts. This is the first grammar mutation that costs $0 and uses non-VEX material.
+
+The mounting interface at the arm tip exposes two parallel C-channel bracket faces **1" apart** with two #8-32 holes **0.5" apart** (standard VEX grid). Any item with a handle ≤ ~22 mm wide can be clamped there by drilling two 11/64" clearance holes and reusing the original screws + hex nuts.
+
+The corrected grammar end-effector field now becomes:
+
+```json
+{
+  "end_effector": ["claw_grasper", "bare_arm", "none", "flywheel_launcher", "passive_scoop"]
+}
+```
+
+With the constraint:
+
+```json
+{
+  "constraints": {
+    "passive_scoop_requires_motor": false,
+    "passive_scoop_frees_motor_port": true
+  }
+}
+```
+
+**Self-model consequence:** `passive_scoop` sets `grip_force: null`, changes the `grab` primitive from `set_max_torque + spin_for(degrees)` to `scoop_under + arm_lift`, and frees one V5 Smart Motor for future reuse. The LLM self-model must note: "I cannot grip; I can only scoop objects I can slide under."
+
+**Ranked household candidates:** plastic serving spoon (★★★★★) > stainless serving spoon (★★★★) > plastic powder/coffee scoop (★★★★) > zip-tie mount with any item (★★★).
+
+references::[[clawbot-scoop-replacement]]
+
+## Game Object Node (from [[game-object-selection]])
+
+The grammar requires a `game_object` node declaring the physical properties of the object the robot manipulates. All three handling morphologies (claw, passive scoop, flywheel) constrain this node differently — the object must satisfy the intersection of all active morphologies. The GEN-0 default (racquetball) sits in the **55–65 mm** window where claw, scoop, and flywheel constraints all overlap:
+
+```json
+{
+  "game_object": {
+    "type": "racquetball",
+    "diameter_mm": 57,
+    "weight_g": 40,
+    "material": "hollow_rubber",
+    "compressibility": "medium",
+    "color": "blue_or_green",
+    "cost_usd": 2.0
+  }
+}
+```
+
+The game object's physical parameters feed directly into [[task-telemetry-contract]] `predicted` blocks: `diameter_mm` drives the claw position proxy; `weight_g` drives the catapult range prediction; `compressibility` drives the flywheel energy-transfer model. See full selection rationale and alternative candidates: [[game-object-selection]].
+
 constrained_by::[[physical-robot-software-factory]]  
 relates_to::[[reality-gap]]  
 derived_from::[[feasibility-human-built-generational-factory]]  
@@ -171,3 +222,5 @@ expanded_by::[[vex-v5-booster-kit]]
 extended_by::[[aesthetic-vocabulary]]  
 references::[[vex-v5-cad-designs]]
 expanded_by::[[vex-flywheel-disc-launcher]]
+expanded_by::[[clawbot-scoop-replacement]]
+constrained_by::[[game-object-selection]]
