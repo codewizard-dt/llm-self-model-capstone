@@ -30,8 +30,8 @@ If you are new here, start with this page, then drill into the linked docs.
 |-- wiki/                       Structured knowledge base and work lifecycle docs.
 |-- robot/
 |   |-- pi-runtime/             Raspberry Pi runtime: bridge, camera, dashboard, demo.
-|   `-- v5-brain/               VEX V5 Brain PROS C++ code and bring-up notes.
-`-- build-history/              Hardware build photos and screenshots.
+|   |-- v5-brain/               VEX V5 Brain PROS C++ code and bring-up notes.
+|-- build-history/              Hardware build photos and screenshots.
 ```
 
 ## Current Code Surfaces
