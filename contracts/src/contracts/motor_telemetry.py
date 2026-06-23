@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal, Optional, Union
+from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 API_BINDING = "vexcode_python"
@@ -59,7 +59,9 @@ class MotorApiSample(StrictModel):
         if source_keys != required_keys:
             missing = sorted(required_keys - source_keys)
             extra = sorted(source_keys - required_keys)
-            raise ValueError(f"source_api must match required motor fields; missing={missing}; extra={extra}")
+            raise ValueError(
+                f"source_api must match required motor fields; missing={missing}; extra={extra}"
+            )
 
         for field_name, method_name in MOTOR_API_METHODS.items():
             call = self.source_api[field_name]
@@ -75,54 +77,6 @@ class ContractSource(StrictModel):
     brain_end_ms: Optional[int] = Field(default=None, ge=0)
     pi_received_ms: Optional[int] = Field(default=None, ge=0)
     telemetry_sample_count: int = Field(ge=0)
-
-
-class BaseTaskContract(StrictModel):
-    schema_version: Literal["v1"] = "v1"
-    run_id: str
-    episode_id: str
-    created_ms: int = Field(ge=0)
-    motor_samples: list[MotorApiSample] = Field(min_length=1)
-    source: ContractSource
-
-
-class ScorePredicted(StrictModel):
-    distance_from_bin_m: float = Field(ge=0.0)
-    success: bool
-
-
-class ScoreObserved(StrictModel):
-    ball_in_bin: bool
-    distance_from_bin_m: float = Field(ge=0.0)
-    score_value: float = Field(ge=0.0)
-
-
-class ScoreGap(StrictModel):
-    distance_error_m: float
-    success_correct: bool
-
-
-class ScoreContract(BaseTaskContract):
-    task: Literal["score"]
-    predicted: ScorePredicted
-    observed: ScoreObserved
-    gap: ScoreGap
-
-
-MotorTelemetryContract = ScoreContract
-MotorTelemetryContractAdapter = TypeAdapter(MotorTelemetryContract)
-
-
-def motor_telemetry_json_schema() -> dict[str, Any]:
-    return MotorTelemetryContractAdapter.json_schema()
-
-
-def validate_motor_telemetry_json(json_data: Union[str, bytes, bytearray]) -> MotorTelemetryContract:
-    return MotorTelemetryContractAdapter.validate_json(json_data)
-
-
-def validate_motor_telemetry(data: dict[str, Any]) -> MotorTelemetryContract:
-    return MotorTelemetryContractAdapter.validate_python(data)
 
 
 def vexcode_motor_source_api(device: str) -> dict[str, str]:

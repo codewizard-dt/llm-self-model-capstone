@@ -1,0 +1,224 @@
+apiVersion: ai-sdd/v1
+kind: FeaturePlan
+metadata:
+  feature: telemetry-contract
+  slice: pydantic-models
+  stack: contracts
+
+summary: >-
+  MIGRATION + extension slice. Move the reusable, strictly-typed motor models out
+  of robot/pi-runtime and INTO the contracts/ vertical (the single source of truth
+  per the contracts.md boundary rule), DISCARD the ScoreContract task family (D2),
+  and ADD the ContractLine envelope + VisionBlock on top. Concretely:
+  (1) Create contracts/src/contracts/motor_telemetry.py containing ONLY the reusable
+  pieces migrated verbatim from
+  robot/pi-runtime/src/vexy_system2/contracts/motor_telemetry.py — StrictModel,
+  MotorApiValues, MotorApiSample (with its model_validator), ContractSource,
+  the API_BINDING / MOTOR_API_FIELDS / MOTOR_API_METHODS constants, Subsystem,
+  vexcode_motor_source_api, motor_sample_from_vexcode, motor_sample_from_pros.
+  DISCARD (do not migrate) BaseTaskContract, ScorePredicted/Observed/Gap,
+  ScoreContract, the MotorTelemetryContract alias, MotorTelemetryContractAdapter,
+  and validate_motor_telemetry / validate_motor_telemetry_json /
+  motor_telemetry_json_schema.
+  (2) Create contracts/src/contracts/contract_line.py with AprilTagPose, VisionBlock
+  (both StrictModel), and the ContractLine envelope (model_config extra="allow":
+  schema_version Literal["1.0"], session_id, generation:int, round:int, task:str
+  free-string, motor_samples: list[MotorApiSample] min_length=1,
+  predicted: dict[str, float|bool|str], gap: dict[str,float],
+  outcome: dict[str,Any]|None=None, vision: VisionBlock|None=None,
+  source: ContractSource|None=None).
+  (3) Create contracts/src/contracts/schema.py printing ContractLine.model_json_schema();
+  the already-wired Makefile `schema` target writes contracts/schemas/contract_line.json,
+  which is generated and COMMITTED this slice (schema is NOT a gated check).
+  (4) Update contracts/src/contracts/__init__.py to re-export ContractLine, VisionBlock,
+  AprilTagPose, MotorApiSample, MotorApiValues, ContractSource and the three helper fns.
+  (5) Per the boundary rule "No schema is defined outside contracts", the pi-runtime copy
+  MUST BE REMOVED (not duplicated): delete
+  robot/pi-runtime/src/vexy_system2/contracts/motor_telemetry.py,
+  robot/pi-runtime/src/vexy_system2/contracts/__init__.py (and the now-empty contracts/
+  package dir under pi-runtime), robot/pi-runtime/src/vexy_system2/motor_telemetry_schema.py,
+  and robot/pi-runtime/tests/test_motor_telemetry_contracts.py (its three MotorApiSample
+  tests are re-created under contracts/ in the NEXT slice, fixtures-and-gates).
+  IMPLEMENTER PRECONDITION: before deleting the pi-runtime package, grep pi-runtime for
+  any OTHER importer of vexy_system2.contracts / vexy_system2.motor_telemetry_schema;
+  none exists today (verified at plan time), but if one is found it is a FLAGGED CAVEAT /
+  out-of-scope follow-up — do NOT inline-fix it. No new model tests are added here (they
+  land in slice 3); no fixtures are added here. All four FIXED root gates (uv sync,
+  make lint, make test, make validate) must exit 0.
+
+scope:
+  in:
+    - "contracts/src/contracts/motor_telemetry.py — NEW. Migrated VERBATIM (do not rewrite — D5) from robot/pi-runtime/src/vexy_system2/contracts/motor_telemetry.py: StrictModel, MotorApiValues, MotorApiSample (+ its model_validator require_full_vexcode_motor_api), ContractSource, API_BINDING / MOTOR_API_FIELDS / MOTOR_API_METHODS, Subsystem = Literal['claw','arm','drivetrain'], vexcode_motor_source_api(device), motor_sample_from_vexcode(...), motor_sample_from_pros(...) (PROS normalization: pos->position_deg, vel->velocity_rpm, cur/1000->current_amp, trq->torque_nm, etc.). Drop the now-unused imports (TypeAdapter, Any, Union) so ruff passes; keep `from __future__ import annotations` and the model_validator's forward-ref return annotation working."
+    - "contracts/src/contracts/contract_line.py — NEW. AprilTagPose(StrictModel){x,y,heading: float}; VisionBlock(StrictModel){object_detected:bool, object_bbox:list[int]|None=None, apriltag_pose:AprilTagPose|None=None, bbox_iou:float|None=None}; ContractLine(BaseModel, model_config=ConfigDict(extra='allow')){schema_version:Literal['1.0']='1.0', session_id:str, generation:int, round:int, task:str, motor_samples:list[MotorApiSample]=Field(min_length=1), predicted:dict[str,float|bool|str], gap:dict[str,float], outcome:dict[str,Any]|None=None, vision:VisionBlock|None=None, source:ContractSource|None=None}. Imports StrictModel, MotorApiSample, ContractSource from contracts.motor_telemetry."
+    - "contracts/src/contracts/schema.py — NEW. main() prints json.dumps(ContractLine.model_json_schema(), indent=2, sort_keys=True); `if __name__ == '__main__': main()` so `python -m contracts.schema` works with the existing Makefile target."
+    - "contracts/src/contracts/__init__.py — populate the public API: re-export ContractLine, VisionBlock, AprilTagPose (from contracts.contract_line) and MotorApiSample, MotorApiValues, ContractSource, motor_sample_from_vexcode, motor_sample_from_pros, vexcode_motor_source_api (from contracts.motor_telemetry); define __all__ listing exactly these names."
+    - "contracts/schemas/contract_line.json — GENERATE via `make schema` and COMMIT the resulting non-empty JSON Schema. (schema is wired but NOT a gated check; generate+commit so it is ready for downstream verticals.)"
+    - "DELETE robot/pi-runtime/src/vexy_system2/contracts/motor_telemetry.py — the schema's pi-runtime home; removed because the canonical copy now lives in contracts/ (boundary rule)."
+    - "DELETE robot/pi-runtime/src/vexy_system2/contracts/__init__.py and remove the now-empty robot/pi-runtime/src/vexy_system2/contracts/ package directory."
+    - "DELETE robot/pi-runtime/src/vexy_system2/motor_telemetry_schema.py — the pi-runtime schema-print entry point, superseded by contracts/src/contracts/schema.py."
+    - "DELETE robot/pi-runtime/tests/test_motor_telemetry_contracts.py — it imports the discarded ScoreContract family and the removed pi-runtime module; its three reusable MotorApiSample tests are re-created under contracts/ in the NEXT slice (fixtures-and-gates), NOT here."
+    - "IMPLEMENTER STEP (no file change unless a hit): grep pi-runtime for any OTHER importer of `vexy_system2.contracts` or `vexy_system2.motor_telemetry_schema` before deleting. Verified clean at plan time. If a hit is found, STOP inline-fixing — record it as a flagged caveat / out-of-scope follow-up and surface it in the changeset."
+  out:
+    - "New model unit tests for ContractLine / MotorApiSample / VisionBlock — DEFERRED to slice 3 (fixtures-and-gates). make test still exits 0 here because the slice-1 smoke test still collects >=1 test."
+    - "JSONL fixtures (contracts/fixtures/) and any fixture-driven validate.py logic — DEFERRED to slice 3. validate.py stays the no-op that prints OK / exits 0 on the absent fixtures dir; make validate stays green."
+    - "Re-creating the migrated MotorApiSample tests under contracts/ — that is slice 3's job, not this one."
+    - "Editing contracts/src/contracts/validate.py — left untouched (still the no-op from package-scaffold)."
+    - "Editing the Makefiles — the `schema` target (UV python -m contracts.schema > schemas/contract_line.json) already exists from package-scaffold; do NOT modify it. Only touch a Makefile if the schema target is found broken; otherwise leave Makefiles unchanged."
+    - "Any inline fix to a discovered third-party importer of the deleted pi-runtime package — that is a flagged out-of-scope follow-up, not part of this slice."
+    - "Per-task typed sub-models for predicted/gap/outcome (D2 forbids them — they stay flexible dicts)."
+    - "Adapter interfaces (F4), oracle (F14), replay sources (F15), control grammar (F19), self-model (F2), parts catalog (F3)."
+    - "Top-level `observed` field — NOT part of the contracts/ envelope. Per D2 the strictly-typed core is motor_samples; predicted/gap/outcome are flexible dict edges. (The MASTER_REQUIREMENTS sketch shows an `observed` block, but the decision-closed contracts requirements D2 supersede it for this runtime envelope.)"
+
+acceptance:
+  - id: AC1
+    description: >-
+      motor-models-migrated — contracts/src/contracts/motor_telemetry.py exists and
+      contains StrictModel, MotorApiValues, MotorApiSample (with the
+      require_full_vexcode_motor_api model_validator intact), ContractSource, the
+      API_BINDING / MOTOR_API_FIELDS / MOTOR_API_METHODS constants, Subsystem, and the
+      three helpers vexcode_motor_source_api / motor_sample_from_vexcode /
+      motor_sample_from_pros — moved verbatim from the pi-runtime source (D5: migrate,
+      do not rewrite). The module imports cleanly (`uv run python -c "import contracts.motor_telemetry"`)
+      and passes ruff with no unused imports.
+  - id: AC2
+    description: >-
+      scorecontract-discarded — none of BaseTaskContract, ScorePredicted,
+      ScoreObserved, ScoreGap, ScoreContract, the MotorTelemetryContract alias,
+      MotorTelemetryContractAdapter, validate_motor_telemetry,
+      validate_motor_telemetry_json, or motor_telemetry_json_schema appears anywhere
+      under contracts/ (`grep -r` finds zero hits). They are dropped per D2 (no
+      per-task subtyping) / D5 (ScoreContract + BaseTaskContract discarded).
+  - id: AC3
+    description: >-
+      contractline-envelope — contracts/src/contracts/contract_line.py defines
+      ContractLine with model_config=ConfigDict(extra='allow') and fields
+      schema_version:Literal['1.0']='1.0', session_id:str, generation:int, round:int,
+      task:str (free string, no enum), motor_samples:list[MotorApiSample] with
+      min_length=1, predicted:dict[str,float|bool|str], gap:dict[str,float],
+      outcome:dict[str,Any]|None=None, vision:VisionBlock|None=None,
+      source:ContractSource|None=None. A ContractLine built with >=1 valid
+      MotorApiSample + predicted + gap round-trips through model_dump_json() /
+      model_validate_json(); an empty motor_samples list raises ValidationError.
+  - id: AC4
+    description: >-
+      visionblock-optional — VisionBlock(StrictModel){object_detected:bool,
+      object_bbox:list[int]|None, apriltag_pose:AprilTagPose|None, bbox_iou:float|None}
+      and AprilTagPose(StrictModel){x,y,heading:float} are defined; a ContractLine with
+      vision=None AND outcome=None parses without error, and a ContractLine with a fully
+      populated VisionBlock + AprilTagPose parses without error (vision is present-but-optional).
+  - id: AC5
+    description: >-
+      schema-export-committed — contracts/src/contracts/schema.py prints
+      ContractLine.model_json_schema(); `make schema` exits 0 and writes a non-empty
+      contracts/schemas/contract_line.json which is committed to the repo. (schema is
+      NOT a gated check, but the generated artifact must be present and committed.)
+  - id: AC6
+    description: >-
+      public-api-imports — after `uv sync`, `uv run python -c "from contracts import
+      ContractLine, MotorApiSample, MotorApiValues, VisionBlock, AprilTagPose,
+      ContractSource, motor_sample_from_vexcode, motor_sample_from_pros,
+      vexcode_motor_source_api"` succeeds; contracts/src/contracts/__init__.py defines
+      __all__ listing exactly these public names.
+  - id: AC7
+    description: >-
+      pi-runtime-copy-removed — robot/pi-runtime/src/vexy_system2/contracts/motor_telemetry.py,
+      robot/pi-runtime/src/vexy_system2/contracts/__init__.py (and the now-empty
+      contracts/ package dir), robot/pi-runtime/src/vexy_system2/motor_telemetry_schema.py,
+      and robot/pi-runtime/tests/test_motor_telemetry_contracts.py are all deleted, so
+      the schema lives in exactly one place (boundary rule). The implementer first
+      grep-confirmed no other pi-runtime importer of vexy_system2.contracts /
+      motor_telemetry_schema exists (clean at plan time); any hit found is recorded as a
+      flagged out-of-scope caveat, not inline-fixed.
+  - id: AC8
+    description: >-
+      root-gates-green — from the repo ROOT, `uv sync`, `make lint`, `make test`, and
+      `make validate` all exit 0. make test still collects >=1 test via the surviving
+      slice-1 smoke test (no new model tests this slice); make validate is still a no-op
+      over the absent fixtures dir; make lint passes ruff check + format --check on all
+      new contracts/ source files.
+
+decisions:
+  - id: PD1
+    title: Migrate the reusable motor models into contracts/ verbatim; do not rewrite
+    decision: >-
+      Move StrictModel, MotorApiValues, MotorApiSample (+ its model_validator),
+      ContractSource, the API_BINDING/MOTOR_API_FIELDS/MOTOR_API_METHODS constants,
+      Subsystem, and vexcode_motor_source_api / motor_sample_from_vexcode /
+      motor_sample_from_pros from
+      robot/pi-runtime/src/vexy_system2/contracts/motor_telemetry.py into
+      contracts/src/contracts/motor_telemetry.py unchanged in behavior (adjust only the
+      module's own imports — drop TypeAdapter/Any/Union once the ScoreContract code is
+      removed so ruff stays green). This is a migration, not a reimplementation.
+    grounds: "requirements D5 (Migrate, do not rewrite); slice brief 'Migration source'; MASTER_REQUIREMENTS ADR-06 (pydantic v2 models with JSON-Schema export)"
+    status: closed
+  - id: PD2
+    title: Discard the ScoreContract task family and the per-contract validate/adapter helpers
+    decision: >-
+      Do NOT migrate BaseTaskContract, ScorePredicted/Observed/Gap, ScoreContract, the
+      MotorTelemetryContract alias, MotorTelemetryContractAdapter, or
+      validate_motor_telemetry / validate_motor_telemetry_json /
+      motor_telemetry_json_schema. The ContractLine envelope replaces them: predicted /
+      gap / outcome are flexible dicts (no per-task subtyping), and validation flows
+      through ContractLine itself. None of the discarded symbols may appear under contracts/.
+    grounds: "requirements D2 (typed motor core + flexible dict edges; no per-task subtyping) and D5 (ScoreContract + BaseTaskContract discarded); slice brief 'Discard' list"
+    status: closed
+  - id: PD3
+    title: ContractLine uses extra='allow' for top-level forward compatibility; inner strict models keep extra='forbid'
+    decision: >-
+      ContractLine sets model_config=ConfigDict(extra='allow') so new top-level envelope
+      fields stay forward-compatible without a schema bump; MotorApiSample,
+      MotorApiValues, VisionBlock, AprilTagPose, ContractSource keep StrictModel's
+      extra='forbid', strict=True. schema_version is locked to Literal['1.0']; task is a
+      free str (no enum); motor_samples carries Field(min_length=1).
+    grounds: "requirements Constraints (extra='forbid' on MotorApiSample/MotorApiValues; ContractLine may use extra='allow'; schema_version Literal['1.0'] locked; task free str; motor_samples min_length=1) and D2; slice brief 'New models to add'"
+    status: closed
+  - id: PD4
+    title: Remove the pi-runtime schema copy as part of the migration (boundary rule)
+    decision: >-
+      The contracts.md boundary rule states "No schema is defined outside contracts" —
+      every other vertical imports the frozen schema, none redefines it. Leaving the
+      pi-runtime copy in place would be a duplicate definition the reviewer is REQUIRED
+      to reject. Therefore deleting the pi-runtime copy is an in-scope, mandatory part of
+      this migration: remove
+      robot/pi-runtime/src/vexy_system2/contracts/motor_telemetry.py, its package
+      __init__.py (and the emptied contracts/ dir),
+      robot/pi-runtime/src/vexy_system2/motor_telemetry_schema.py, and
+      robot/pi-runtime/tests/test_motor_telemetry_contracts.py. This is why the files
+      manifest spans both contracts/ and robot/pi-runtime/.
+    grounds: "contracts.md Boundary rules ('No schema is defined outside contracts'); requirements D5 (Migrate, do not rewrite — the source is moved, not copied)"
+    status: closed
+  - id: PD5
+    title: Grep-gate the pi-runtime deletion on no other importer; any hit is an out-of-scope flag, not an inline fix
+    decision: >-
+      Before deleting the pi-runtime package the implementer must grep pi-runtime for any
+      other importer of vexy_system2.contracts / vexy_system2.motor_telemetry_schema. At
+      plan time this grep is clean (the only references are the four files being deleted).
+      If a future importer is found, it is recorded as a FLAGGED CAVEAT / out-of-scope
+      follow-up in the changeset and surfaced to the reviewer — it is NOT fixed inline in
+      this migration slice (that would expand scope beyond the contracts vertical's
+      boundary).
+    grounds: "requirements D5 (migration scope is the contracts vertical); contracts.md vertical-root scoping; planner instruction to flag, not inline-fix, other importers"
+    status: closed
+  - id: PD6
+    title: Generate and commit contract_line.json; no new tests or fixtures this slice
+    decision: >-
+      `make schema` (already wired in package-scaffold:
+      `uv run python -m contracts.schema > schemas/contract_line.json`) is run to
+      generate contracts/schemas/contract_line.json, which is committed. schema is NOT
+      one of the four FIXED gates, so it is not gated — but the generated artifact must
+      be present. No new model tests are added (slice 3 owns them); the slice-1 smoke
+      test keeps `make test` at >=1 collected test / exit 0. No fixtures are added;
+      validate.py stays the no-op so `make validate` exits 0.
+    grounds: "slice brief Acceptance (make schema exits 0; contract_line.json non-empty + committed; make test must not regress with 0 new tests; no fixtures this slice); planner gate-reality note (schema ungated; tests=slice 3; validate no-op)"
+    status: closed
+
+files:
+  - "contracts/"
+  - "robot/pi-runtime/"
+  - "Makefile"
+
+tests:
+  - "uv sync"
+  - "make lint"
+  - "make test"
+  - "make validate"

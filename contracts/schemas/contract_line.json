@@ -1,0 +1,341 @@
+{
+  "$defs": {
+    "AprilTagPose": {
+      "additionalProperties": false,
+      "properties": {
+        "heading": {
+          "title": "Heading",
+          "type": "number"
+        },
+        "x": {
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "title": "Y",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "heading"
+      ],
+      "title": "AprilTagPose",
+      "type": "object"
+    },
+    "ContractSource": {
+      "additionalProperties": false,
+      "properties": {
+        "brain_end_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Brain End Ms"
+        },
+        "brain_start_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Brain Start Ms"
+        },
+        "pi_received_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pi Received Ms"
+        },
+        "raw_session_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Session Path"
+        },
+        "telemetry_sample_count": {
+          "minimum": 0,
+          "title": "Telemetry Sample Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "telemetry_sample_count"
+      ],
+      "title": "ContractSource",
+      "type": "object"
+    },
+    "MotorApiSample": {
+      "additionalProperties": false,
+      "properties": {
+        "api_binding": {
+          "const": "vexcode_python",
+          "default": "vexcode_python",
+          "title": "Api Binding",
+          "type": "string"
+        },
+        "device": {
+          "title": "Device",
+          "type": "string"
+        },
+        "sample_ms": {
+          "minimum": 0,
+          "title": "Sample Ms",
+          "type": "integer"
+        },
+        "source_api": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Source Api",
+          "type": "object"
+        },
+        "subsystem": {
+          "enum": [
+            "claw",
+            "arm",
+            "drivetrain"
+          ],
+          "title": "Subsystem",
+          "type": "string"
+        },
+        "values": {
+          "$ref": "#/$defs/MotorApiValues"
+        }
+      },
+      "required": [
+        "device",
+        "subsystem",
+        "sample_ms",
+        "values",
+        "source_api"
+      ],
+      "title": "MotorApiSample",
+      "type": "object"
+    },
+    "MotorApiValues": {
+      "additionalProperties": false,
+      "properties": {
+        "current_amp": {
+          "title": "Current Amp",
+          "type": "number"
+        },
+        "efficiency_pct": {
+          "title": "Efficiency Pct",
+          "type": "number"
+        },
+        "position_deg": {
+          "title": "Position Deg",
+          "type": "number"
+        },
+        "power_w": {
+          "title": "Power W",
+          "type": "number"
+        },
+        "temperature_c": {
+          "title": "Temperature C",
+          "type": "number"
+        },
+        "torque_nm": {
+          "title": "Torque Nm",
+          "type": "number"
+        },
+        "velocity_rpm": {
+          "title": "Velocity Rpm",
+          "type": "number"
+        }
+      },
+      "required": [
+        "position_deg",
+        "velocity_rpm",
+        "current_amp",
+        "power_w",
+        "torque_nm",
+        "efficiency_pct",
+        "temperature_c"
+      ],
+      "title": "MotorApiValues",
+      "type": "object"
+    },
+    "VisionBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "apriltag_pose": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AprilTagPose"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "bbox_iou": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bbox Iou"
+        },
+        "object_bbox": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Object Bbox"
+        },
+        "object_detected": {
+          "title": "Object Detected",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "object_detected"
+      ],
+      "title": "VisionBlock",
+      "type": "object"
+    }
+  },
+  "additionalProperties": true,
+  "properties": {
+    "gap": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "title": "Gap",
+      "type": "object"
+    },
+    "generation": {
+      "title": "Generation",
+      "type": "integer"
+    },
+    "motor_samples": {
+      "items": {
+        "$ref": "#/$defs/MotorApiSample"
+      },
+      "minItems": 1,
+      "title": "Motor Samples",
+      "type": "array"
+    },
+    "outcome": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Outcome"
+    },
+    "predicted": {
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "title": "Predicted",
+      "type": "object"
+    },
+    "round": {
+      "title": "Round",
+      "type": "integer"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "session_id": {
+      "title": "Session Id",
+      "type": "string"
+    },
+    "source": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ContractSource"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "task": {
+      "title": "Task",
+      "type": "string"
+    },
+    "vision": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/VisionBlock"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "session_id",
+    "generation",
+    "round",
+    "task",
+    "motor_samples",
+    "predicted",
+    "gap"
+  ],
+  "title": "ContractLine",
+  "type": "object"
+}
