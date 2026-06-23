@@ -1,0 +1,35 @@
+apiVersion: ai-sdd/v1
+kind: Changeset
+metadata:
+  feature: telemetry-contract
+  slice: package-scaffold
+  stack: contracts
+
+summary: >-
+  Scaffolded the contracts/ uv package skeleton (no pydantic models yet) and
+  stood up the repo-root uv workspace + Makefile so the four FIXED deterministic
+  gates pass from the REPO ROOT against the otherwise-empty source tree.
+  Created: root pyproject.toml declaring a uv workspace
+  ([tool.uv.workspace] members=["contracts"]) with a minimal [project] anchor
+  (vex-self-model-workspace, 0.0.0, requires-python >=3.12); root Makefile with
+  .PHONY validate/test/lint/schema delegating to `$(MAKE) -C contracts <target>`
+  plus commented operator/coprocessor/brain/pilot stubs; the generated and
+  committed uv.lock. Under contracts/: pyproject.toml (hatchling build,
+  name=contracts, requires-python >=3.12, deps pydantic>=2.12,<3, dev pytest>=8,
+  wheel packages=["src/contracts"]); .python-version (3.12); ruff.toml
+  (line-length=100, target-version=py312, src=["src"]); Makefile
+  (lint/test/validate/schema via `uv run`); src/contracts/__init__.py (empty);
+  src/contracts/validate.py (no-op no-fixtures path -> prints OK, exits 0,
+  no ContractLine import); tests/__init__.py (empty); tests/test_smoke.py (one
+  trivial `import contracts` test so pytest collects >=1 and never exits 5);
+  schemas/.gitkeep. Verified from repo root: `uv sync`, `make lint`, `make test`,
+  and `make validate` all exit 0.
+
+satisfies:
+  - AC1
+  - AC2
+  - AC3
+  - AC4
+  - AC5
+  - AC6
+  - AC7

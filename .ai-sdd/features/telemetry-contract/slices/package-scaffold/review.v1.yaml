@@ -1,0 +1,80 @@
+apiVersion: ai-sdd/v1
+kind: Review
+metadata:
+  feature: telemetry-contract
+  slice: package-scaffold
+  stack: contracts
+
+verdict: approve
+
+items:
+  - id: AC1
+    verdict: pass
+    notes: >-
+      `uv sync` run from REPO ROOT exits 0. Root pyproject.toml declares
+      [tool.uv.workspace] members=["contracts"] with a minimal [project] anchor
+      (vex-self-model-workspace 0.0.0, requires-python >=3.12); sync resolved 13
+      packages incl. the contracts member + pydantic 2.13.4 and pytest 9.1.1, and
+      uv.lock is present at the repo root (requires-python ">=3.12"). One
+      non-fatal deprecation warning emitted (`tool.uv.dev-dependencies` ->
+      `dependency-groups.dev`); does not affect exit code. Verified exit 0.
+  - id: AC2
+    verdict: pass
+    notes: >-
+      `make lint` from repo root exits 0. Root Makefile delegates via
+      `$(MAKE) -C contracts lint`, which runs `uv run ruff check src/ tests/`
+      ("All checks passed!") then `uv run ruff format --check src/ tests/`
+      ("4 files already formatted"). ruff is the only lint/format tool; no
+      black/isort/flake8/pylint. Verified exit 0.
+  - id: AC3
+    verdict: pass
+    notes: >-
+      `make test` from repo root exits 0. Delegates `$(MAKE) -C contracts test`
+      -> `uv run pytest tests/ -v`; collected 1 item
+      (tests/test_smoke.py::test_import_contracts PASSED). pytest collects >=1
+      test so it returns 0, NOT exit 5. Verified exit 0.
+  - id: AC4
+    verdict: pass
+    notes: >-
+      `make validate` from repo root exits 0. Delegates
+      `$(MAKE) -C contracts validate` -> `uv run python -m contracts.validate`,
+      which globs ../fixtures/*.jsonl; with no fixtures dir present it prints
+      "OK" and returns 0. Confirmed validate.py does NOT import ContractLine
+      (the symbol appears only in docstring/comment text). Verified exit 0.
+  - id: AC5
+    verdict: pass
+    notes: >-
+      Repo-root Makefile exists with `.PHONY: validate test lint schema`, each
+      target delegating to `$(MAKE) -C contracts <target>`, plus commented
+      operator/coprocessor/brain/pilot stubs (per D3/PD1). The delegating
+      test/validate/lint targets all exit 0 this slice (verified above). The
+      `schema` target is present but ungated (PD5) and correctly fails
+      (no contracts.schema module yet) — not one of the four FIXED gates.
+  - id: AC6
+    verdict: pass
+    notes: >-
+      Src layout in place and import-ready. Root pyproject.toml declares
+      [tool.uv.workspace] members=["contracts"]; contracts/pyproject.toml uses
+      hatchling with [tool.hatch.build.targets.wheel] packages=["src/contracts"],
+      requires-python >=3.12, deps pydantic>=2.12,<3, dev pytest>=8;
+      contracts/.python-version reads "3.12"; contracts/ruff.toml sets
+      line-length=100, target-version="py312", src=["src"];
+      src/contracts/__init__.py and tests/__init__.py exist and are empty;
+      `from contracts import ...` resolves (smoke test imports the package).
+      CAVEAT (non-blocking): the root workspace venv resolved to CPython 3.14.4,
+      not 3.12 — root has no .python-version and 3.12 is not installed on this
+      machine, so uv picks the default interpreter satisfying ">=3.12". The
+      acceptance check is that contracts/.python-version *reads* 3.12 (it does)
+      and requires-python >=3.12 is satisfied (it is). Gates all pass on 3.14.
+  - id: AC7
+    verdict: pass
+    notes: >-
+      contracts/schemas/ exists, committed empty via a 0-byte .gitkeep
+      (PD6), ready to receive contract_line.json in a later slice.
+
+# Boundary / toolchain audit (all clear):
+#  - No schema defined outside contracts (no pydantic BaseModel anywhere this slice).
+#  - No wrong toolchain: grep for poetry/flake8/isort/black/pip install/pylint = none.
+#  - uv + ruff + pydantic v2 + hatchling + src layout per conventions.
+#  - validate.py does not import not-yet-existing ContractLine.
+#  - No frozen-contract example touched (no schema/model changes this slice).
