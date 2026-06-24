@@ -258,13 +258,24 @@ ros2 topic pub --once /align_to_tag/cancel std_msgs/String '{"data":"operator_ca
 ### 2.8 Guarded tag approach + scan proof
 
 Only run this after 2.4 through 2.7 are green and the robot has clear floor space.
-Record the proof first:
+Use the single-command proof runner when available:
+
+```bash
+ros2 run vexy_ros vexy_run_calibrated_tag_proof
+```
+
+It records MCAP, runs `vexy_tag_action_proof`, writes `summary.json`, and
+exports `contract.jsonl` in a timestamped `/home/vexy/proof/` directory.
+
+Manual recording still works. Record the proof first:
 
 ```bash
 proof=~/proof/tag-approach-scan-$(date +%Y%m%d-%H%M%S)
 mkdir -p "$proof"
 ros2 bag record -s mcap -o "$proof/mcap" \
-  /tf /apriltag/detections /vision/scene_map /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status
+  /tf /apriltag/detections /vision/object_detections /vision/object_indications \
+  /vision/scene_map /task_plan/current \
+  /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status
 ```
 
 Then run one bounded packaged proof from another sourced shell:
@@ -352,6 +363,42 @@ Expected: `/vision/scene_map` includes an `objects[]` entry with the object pose
 transformed into the active workspace map. This is an operator/prototype hint;
 the canonical object detector can replace it later.
 
+To use NCNN object detection as that object source, install the lightweight
+Python `ncnn` runtime and provide an exported `.param`/`.bin` model on the Pi,
+then launch with:
+
+```bash
+ros2 launch vexy_ros vexy.launch.py \
+  yolo_enabled:=true \
+  yolo_model_path:=/home/vexy/models/yolo11n_ncnn_model \
+  yolo_class_names_json:='{"0":"bin"}'
+```
+
+Proof topics:
+
+```bash
+ros2 topic echo /vision/object_detections --once
+ros2 topic echo /vision/object_indications --once
+ros2 topic echo /vision/scene_map --once
+```
+
+Depth is estimated from calibrated intrinsics and configured class dimensions.
+Use AprilTags or operator-measured indications for precise object coordinates.
+
+Dynamic plans accept tag and object targets:
+
+```bash
+ros2 topic echo /task_plan/current &
+ros2 topic pub --once /task_plan/request std_msgs/String \
+  '{"data":"{\"target\":\"tag:0\",\"action\":\"approach\",\"target_distance_m\":0.8,\"dispatch\":true}"}'
+ros2 topic pub --once /task_plan/request std_msgs/String \
+  '{"data":"{\"target\":\"object:bin\",\"action\":\"inspect\"}"}'
+```
+
+Tag plans can dispatch through `align_to_tag`; object plans are mapped but
+non-dispatchable until a bounded object/go-to-pose controller is implemented and
+proven.
+
 ---
 
 ## 3. Recording Sessions
@@ -366,7 +413,7 @@ ros2 bag record -a -o session_$(date +%Y%m%d_%H%M%S)
 Record specific topics only (smaller files):
 
 ```bash
-ros2 bag record /camera/image_raw /camera/camera_info /camera/image_rect /apriltag/detections /tf /vision/scene_map /align_to_tag/feedback /align_to_tag/result /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status \
+ros2 bag record /camera/image_raw /camera/camera_info /camera/image_rect /apriltag/detections /tf /vision/object_detections /vision/object_indications /vision/scene_map /task_plan/current /align_to_tag/feedback /align_to_tag/result /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status \
   -o session_$(date +%Y%m%d_%H%M%S)
 ```
 
