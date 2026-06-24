@@ -30,6 +30,8 @@ from contracts.motor_telemetry import StrictModel
 MAX_LINEAR = 0.35  # m/s   — ROS/Pi command-envelope maximum.
 MAX_OMEGA = 0.60  # rad/s — ROS/Pi command-envelope maximum.
 MAX_FLYWHEEL_RPM = 3600.0  # output shaft RPM — proposed default; F20 may narrow
+MAX_ARM_RPM = 600.0  # V5 motor cartridge upper envelope; F20 may narrow.
+MAX_CLAW_GRIP_FORCE_N = 100.0  # permissive target envelope; F20 may narrow.
 ARM_DEG_MIN = 0.0
 ARM_DEG_MAX = 360.0  # conservative; F20 narrows per assembled build
 TTL_MS_MAX = 5000  # ROS bridge envelope; Brain motion commands narrow this.
@@ -113,7 +115,7 @@ class ArmCommand(ControlEnvelope):
     type: Literal["cmd"] = "cmd"
     cmd: Literal["arm"] = "arm"
     deg: float = Field(ge=ARM_DEG_MIN, le=ARM_DEG_MAX)
-    vel_rpm: float | None = None
+    vel_rpm: float | None = Field(default=None, ge=0.0, le=MAX_ARM_RPM)
 
 
 class ClawCommand(ControlEnvelope):
@@ -122,7 +124,7 @@ class ClawCommand(ControlEnvelope):
     type: Literal["cmd"] = "cmd"
     cmd: Literal["claw"] = "claw"
     state: Literal["open", "close"]
-    grip_force_N: float | None = None
+    grip_force_N: float | None = Field(default=None, ge=0.0, le=MAX_CLAW_GRIP_FORCE_N)
 
 
 class FlywheelCommand(ControlEnvelope):

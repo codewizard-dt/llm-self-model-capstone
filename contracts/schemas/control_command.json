@@ -48,6 +48,8 @@
         "vel_rpm": {
           "anyOf": [
             {
+              "maximum": 600.0,
+              "minimum": 0.0,
               "type": "number"
             },
             {
@@ -80,6 +82,8 @@
         "grip_force_N": {
           "anyOf": [
             {
+              "maximum": 100.0,
+              "minimum": 0.0,
               "type": "number"
             },
             {

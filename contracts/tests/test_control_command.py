@@ -21,6 +21,8 @@ from contracts import (
     ARM_DEG_MIN,
     BRAIN_MAX_LINEAR,
     BRAIN_TTL_MS_MAX,
+    MAX_ARM_RPM,
+    MAX_CLAW_GRIP_FORCE_N,
     MAX_FLYWHEEL_RPM,
     MAX_LINEAR,
     MAX_OMEGA,
@@ -188,6 +190,32 @@ def test_turn_omega_out_of_range_rejected(omega):
 def test_arm_deg_out_of_range_rejected(deg):
     with pytest.raises(ValidationError):
         CONTROL_LINE_TA.validate_python(_env(type="cmd", cmd="arm", deg=deg))
+
+
+@pytest.mark.parametrize("vel_rpm", [-0.1, MAX_ARM_RPM + 0.1, 999999.0])
+def test_arm_vel_rpm_out_of_range_rejected(vel_rpm):
+    with pytest.raises(ValidationError):
+        CONTROL_LINE_TA.validate_python(_env(type="cmd", cmd="arm", deg=90.0, vel_rpm=vel_rpm))
+
+
+def test_arm_vel_rpm_boundaries_accepted():
+    CONTROL_LINE_TA.validate_python(_env(type="cmd", cmd="arm", deg=90.0, vel_rpm=0.0))
+    CONTROL_LINE_TA.validate_python(_env(type="cmd", cmd="arm", deg=90.0, vel_rpm=MAX_ARM_RPM))
+
+
+@pytest.mark.parametrize("grip_force_N", [-0.1, MAX_CLAW_GRIP_FORCE_N + 0.1, 999999999.0])
+def test_claw_grip_force_out_of_range_rejected(grip_force_N):
+    with pytest.raises(ValidationError):
+        CONTROL_LINE_TA.validate_python(
+            _env(type="cmd", cmd="claw", state="close", grip_force_N=grip_force_N)
+        )
+
+
+def test_claw_grip_force_boundaries_accepted():
+    CONTROL_LINE_TA.validate_python(_env(type="cmd", cmd="claw", state="close", grip_force_N=0.0))
+    CONTROL_LINE_TA.validate_python(
+        _env(type="cmd", cmd="claw", state="close", grip_force_N=MAX_CLAW_GRIP_FORCE_N)
+    )
 
 
 # --- acc-test-range-flywheel ------------------------------------------------
@@ -390,6 +418,8 @@ def test_clamp_constants_bit_for_bit():
     assert MAX_LINEAR == 0.35
     assert MAX_OMEGA == 0.60
     assert MAX_FLYWHEEL_RPM == 3600.0
+    assert MAX_ARM_RPM == 600.0
+    assert MAX_CLAW_GRIP_FORCE_N == 100.0
     assert ARM_DEG_MIN == 0.0
     assert ARM_DEG_MAX == 360.0
     assert TTL_MS_MAX == 5000
