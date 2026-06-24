@@ -90,7 +90,7 @@ def validate_contract_line(line: str) -> None:
 
 def _motor_samples(bundle: Mapping[str, Any]) -> list[dict[str, Any]]:
     if "motor_samples" in bundle:
-        return [dict(sample) for sample in bundle["motor_samples"]]
+        return [_normalize_motor_sample(sample) for sample in bundle["motor_samples"]]
 
     samples: list[dict[str, Any]] = []
     for record in bundle.get("brain", {}).get("telemetry", []):
