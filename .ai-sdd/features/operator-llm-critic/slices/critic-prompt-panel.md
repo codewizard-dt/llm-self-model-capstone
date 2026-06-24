@@ -5,8 +5,8 @@
 | Feature | operator-llm-critic |
 | Maps to | F9 critic-panel |
 | Stack | operator |
-| Depends on | `generator-gap-revision`, F2 `SelfModel` |
-| Related blockers | F3 parts-catalog grammar, F10 gap-analyzer |
+| Depends on | `generator-gap-revision`, F2 `SelfModel`, F3 parts-catalog grammar |
+| Related blockers | F10 gap-analyzer |
 
 ## Scope
 
@@ -43,7 +43,7 @@ through `contracts/` before it is treated as a schema.
 
 - Candidate `SelfModel` fixture from F8 planning.
 - Evidence packet from `operator-packet-builder`.
-- F3 valid-config rules for full buildability review.
+- F3 valid-config rules for buildability review.
 - F10 residual summaries for full gap-sign review.
 
 ## Test / Validation Notes

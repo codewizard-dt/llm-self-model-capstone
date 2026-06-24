@@ -5,8 +5,8 @@
 | Feature | operator-llm-critic |
 | Maps to | F8 generator |
 | Stack | operator |
-| Depends on | `operator-packet-builder`, F2 `SelfModel` |
-| Blocks on for full F8 | F3 parts-catalog grammar, F10 gap-analyzer |
+| Depends on | `operator-packet-builder`, F2 `SelfModel`, F3 parts-catalog grammar |
+| Blocks on for full F8 | F10 gap-analyzer |
 
 ## Scope
 
@@ -33,6 +33,8 @@ The fixtures should prove that generated candidates can validate against
    durable schema.
 5. Prompt planning forbids hidden synthetic oracle parameters and private
    critic chain-of-thought.
+6. Candidate config values are checkable against F3 `validate_config` instead
+   of prompt-invented buildability rules.
 
 ## Out of Scope
 
@@ -45,7 +47,7 @@ The fixtures should prove that generated candidates can validate against
 
 - `operator-packet-builder` for visible evidence packets.
 - F2 `contracts.SelfModel` for validation.
-- F3 parts-catalog valid-config rules for full buildability enforcement.
+- F3 parts-catalog valid-config rules for buildability enforcement.
 - F10 gap analyzer for real residual summaries in later revisions.
 
 ## Test / Validation Notes

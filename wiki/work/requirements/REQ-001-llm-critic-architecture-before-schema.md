@@ -37,12 +37,16 @@ Update on 2026-06-24: PR #13 `self-model-schema` and PR #14
 and F4 as hypothetical. The architecture brief should consume
 `contracts.SelfModel`, `contracts.vocabulary`, and the `TelemetrySource` /
 `VisionSource` adapter protocols directly. PR #15 `ROS 2 align-to-tag bridge
-and tag slices` has software/docs approval; hardware proof remains a separate
-truth gate.
+and tag slices` is merged; hardware proof remains a separate truth gate. PR
+#16 `parts-catalog-grammar` is merged, so F3 is no longer hypothetical: the
+operator LLM/Critic work should consume `contracts.PartsCatalog`,
+`contracts/parts_catalog.json`, and `contracts.validate_config` directly.
 
 | PR | State | Review | Author | Assignee | Alignment note |
 |---|---|---|---|---|---|
-| [#10 [codex] docs: add LLM/Critic requirements](https://github.com/codewizard-dt/llm-self-model-capstone/pull/10) | open draft | review required | `ghuang123` | none | This requirement PR; documents Grace's pre-m1 LLM/Critic architecture lane and aligns it with merged PR #9. |
+| [#16 [parts-catalog-grammar] F3: freeze the parts-catalog grammar + valid-config rules](https://github.com/codewizard-dt/llm-self-model-capstone/pull/16) | merged | approved | `215eight` | none | Landed F3 `PartsCatalog`, `parts_catalog.json`, `validate_config`, validation, and catalog gates. |
+| [#15 [codex] ROS 2 align-to-tag bridge and tag slices](https://github.com/codewizard-dt/llm-self-model-capstone/pull/15) | merged | approved | `jakekinchen` | none | Landed the ROS bridge/tag software path; hardware proof remains a separate verification docket. |
+| [#10 [codex] docs: add LLM/Critic requirements](https://github.com/codewizard-dt/llm-self-model-capstone/pull/10) | open | review required | `ghuang123` | none | This requirement PR; documents Grace's pre-m1 LLM/Critic architecture lane and now aligns with merged PRs #9, #13, #14, #15, and #16. |
 | [#9 Dt typed assembly grammar](https://github.com/codewizard-dt/llm-self-model-capstone/pull/9) | merged | approved | `codewizard-dt` | `215eight` | Landed F1 telemetry-contract planning/implementation, top-level `contracts/` package work, fixture gates, and an F2 self-model-schema draft brief. |
 | [#8 docs: add repo navigation readme](https://github.com/codewizard-dt/llm-self-model-capstone/pull/8) | merged | approved | `ghuang123` | none | Beginner repo map is in `main`. Use it as the onboarding front door. |
 | [#7 Eac/ai sdd plan](https://github.com/codewizard-dt/llm-self-model-capstone/pull/7) | merged | approved | `215eight` | none | AI-SDD program plan is in `main`; use `.ai-sdd/programs/self-model-loop/requirements.md` as the program-level planning source. |
@@ -109,7 +113,8 @@ The team needs to design the LLM/operator side while contract work is still in m
 3. Identify the minimum fields F2 and F1 must expose for F8/F9 to work.
 4. Define how the system behaves when contracts are missing or ambiguous.
 5. Define a resource-assessment checklist for the planned agent team.
-6. Produce requirements that can be converted into `/ai-sdd-plan` slices once F2 is ready.
+6. Produce requirements that can be converted into `/ai-sdd-plan` slices using
+   the landed F2/F3 contract surfaces.
 
 ## Non-Goals
 
@@ -133,7 +138,8 @@ Need a list of LLM-facing fields and residual-key expectations so F1/F2/F3 can s
 
 ### Future Generator implementer
 
-Needs a prompt/input/output contract that can be implemented after F2/F3/F10 are ready.
+Needs a prompt/input/output contract that consumes landed F2/F3 surfaces and
+stays blocked on F10 residual summaries for the full revision path.
 
 ### Future Critic implementer
 
@@ -147,7 +153,7 @@ The architecture must define at least four operator roles:
 
 | Role | Purpose | Build timing |
 |---|---|---|
-| Generator | Authors Gen-0 self-model and revises Gen-N+1 from gap evidence. | F8, after F2/F3/F10 |
+| Generator | Authors Gen-0 self-model and revises Gen-N+1 from gap evidence. | F8, after F2/F3; full gap revision after F10 |
 | Physics Critic | Checks whether the self-model's physical claims are plausible. | F9, after F2 |
 | Torque Critic | Checks motor force/torque/load claims against VEX motor constraints. | F9, after F2 and F1 data conventions |
 | CoM/Geometry Critic | Checks reach, center of mass, structural connections, and build plausibility. | F9, after F2/F3 |
@@ -174,13 +180,15 @@ The Generator output is a candidate `SelfModel` document, not arbitrary prose.
 
 The architecture must require:
 
-- schema-aligned JSON or markdown-with-JSON-block output once F2 is frozen;
+- schema-aligned JSON or markdown-with-JSON-block output against the landed F2
+  `SelfModel`;
 - required `reasoning` text explaining what changed and why;
 - generation lineage (`generation`, `parent_generation`);
 - a `gap_model` update that uses the same residual keys as F1/F10 gap evidence;
 - no access to hidden oracle parameters.
 
-Pre-F2, the output may be a placeholder interface document, but it must name the future `SelfModel` fields from the F2 draft rather than create new names.
+The output may be a placeholder interface document in this planning slice, but
+it must name the landed `SelfModel` fields rather than create new names.
 
 ### LLM-004: Define Critic Inputs and Outputs
 
@@ -209,9 +217,9 @@ If required schema/data is missing, the LLM must mark the section as blocked and
 
 Examples:
 
-- `[BLOCKED: awaiting F2 SelfModel schema]`
-- `[BLOCKED: awaiting F3 parts catalog valid-config rules]`
-- `[BLOCKED: awaiting F1 gap residual key convention]`
+- `[BLOCKED: awaiting F10 gap analyzer residual summary]`
+- `[BLOCKED: no ContractLine evidence for this task]`
+- `[BLOCKED: hardware proof not recorded as contract-valid JSONL]`
 
 The Generator and Critics must not hallucinate field names, unit conventions, or buildability rules.
 
@@ -222,8 +230,9 @@ The architecture must keep all schema definitions in `contracts/`.
 Allowed:
 
 - reference `contracts.ContractLine`;
-- reference `contracts.SelfModel` once F2 lands;
-- reference `contracts.vocabulary` once F2/F3 land;
+- reference landed `contracts.SelfModel`;
+- reference `contracts.vocabulary`, `contracts.PartsCatalog`, and
+  `contracts.validate_config` from landed F2/F3;
 - write prompt/interface docs in `operator/` or `wiki/work/`.
 
 Not allowed:
@@ -308,7 +317,8 @@ Short notes for contract owners:
 
 - F2 needs `reasoning`, `gap_model`, `predictive`, `capability`, and `structural` fields to be visible to Generator and Critics.
 - F1/F10 residual keys should be stable enough for `gap_model[task]` to mirror them key-for-key.
-- F3 vocabulary should expose both per-axis legal values and buildable combination rules.
+- F3 vocabulary and catalog expose both per-axis legal values and buildable
+  combination rules.
 
 ### Deliverable D: Resource Assessment
 
@@ -335,9 +345,13 @@ This requirement is satisfied when:
 
 1. Build on merged PR #9 because it changes the contract root and adds F1/F2 planning surface.
 2. Draft the LLM/Critic architecture brief against the merged `contracts/` package direction.
-3. Give F2/F3 owners a short list of fields the Generator and Critics require.
-4. After F2 is planned/accepted, create an AI-SDD feature plan for `operator-llm-critic-architecture` or split directly into F8/F9 planning docs.
-5. Only after F2/F3/F10 are stable, implement F8 Generator and F9 Critic panel.
+3. Use the landed F2/F3 fields and catalog verdicts in the Generator and
+   Critics requirements.
+4. With F2/F3 accepted, create an AI-SDD feature plan for
+   `operator-llm-critic-architecture` or split directly into F8/F9 planning
+   docs.
+5. Only after F10 is stable, implement the full gap-revision path for F8
+   Generator and F9 Critic panel.
 
 ## Open Questions
 

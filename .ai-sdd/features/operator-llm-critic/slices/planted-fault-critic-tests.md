@@ -6,7 +6,7 @@
 | Maps to | F9 critic-panel |
 | Stack | operator |
 | Depends on | `critic-review-aggregation` |
-| Related blockers | F3 parts-catalog grammar, F10 gap-analyzer |
+| Related blockers | F10 gap-analyzer |
 
 ## Scope
 
@@ -24,7 +24,8 @@ physics, torque, and CoM/geometry claims against the visible packet.
    geometry claims.
 4. Each planted fault has an expected critic lane and expected cited field or
    packet section.
-5. Tests distinguish true critic flags from blocked F3/F10 dependencies.
+5. Tests distinguish true critic flags from catalog validation failures and
+   blocked F10 dependencies.
 6. Fixtures validate candidate shape through `contracts.SelfModel` rather than
    an operator-local schema.
 
@@ -33,22 +34,23 @@ physics, torque, and CoM/geometry claims against the visible packet.
 - Writing the actual test suite in this planning slice.
 - Implementing critic prompt calls.
 - Encoding hidden oracle answer keys.
-- Implementing F3/F10 blockers.
+- Changing F3 catalog rules or implementing F10 blockers.
 
 ## Dependencies
 
 - `critic-review-aggregation` report expectations.
 - `critic-prompt-panel` critic lanes and review template.
 - F2 `SelfModel` validation.
-- F3 valid-config rules and F10 residual summaries for later full-fidelity
-  planted faults.
+- F3 valid-config rules for catalog-backed planted faults.
+- F10 residual summaries for later full-fidelity planted faults.
 
 ## Test / Validation Notes
 
 - Plan fixture tests that fail if a planted fault is not flagged by its intended
   critic lane.
-- Include blocked-dependency fixtures to ensure `[BLOCKED: awaiting F3
-  parts-catalog valid-config rules]` and `[BLOCKED: awaiting F10 gap analyzer
-  residual summary]` do not become false approvals.
+- Include blocked-dependency fixtures to ensure `[BLOCKED: awaiting F10 gap
+  analyzer residual summary]` does not become a false approval.
+- Include catalog-violation fixtures that use F3 verdicts instead of
+  operator-local buildability rules.
 - Include a reviewer check that test fixtures avoid hidden oracle leakage and
   cite only packet-visible evidence.

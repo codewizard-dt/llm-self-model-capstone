@@ -10,6 +10,7 @@ related:
   - REQ-001
   - PR #13 self-model-schema
   - PR #14 adapter-interfaces
+  - PR #16 parts-catalog-grammar
 ---
 
 # LLM/Critic Architecture
@@ -23,8 +24,9 @@ when those slices are created.
 
 The core rule is simple: `operator/` orchestrates LLM work, but `contracts/`
 owns the durable shapes. The Generator and Critics consume `ContractLine`,
-`SelfModel`, and shared vocabulary from `contracts`; they do not create a second
-telemetry schema, self-model schema, or parts vocabulary.
+`SelfModel`, `PartsCatalog`, `validate_config`, and shared vocabulary from
+`contracts`; they do not create a second telemetry schema, self-model schema, or
+parts vocabulary.
 
 ## Current Repo Grounding
 
@@ -35,19 +37,20 @@ As of 2026-06-24, the architecture can assume:
 | `contracts.ContractLine` | Merged in F1 | Generator and gap analysis read task evidence from this envelope. |
 | `contracts.SelfModel` | Merged in F2 / PR #13 | Generator output is a candidate `SelfModel`; Critics inspect that same object. |
 | `contracts.vocabulary` | Merged in F2 / PR #13 | `SelfModel.config` values come from shared enums, not prompt-invented strings. |
+| `contracts.PartsCatalog` / `validate_config` | Merged in F3 / PR #16 | Generator packets can include finite buildability constraints; CoM/geometry Critics can cite catalog verdicts instead of inventing rules. |
 | `TelemetrySource` / `VisionSource` | Merged in F4 / PR #14 | Runtime sources can be replay, synthetic, serial, or camera without changing operator logic. |
-| ROS 2 align-to-tag evidence path | Approved software PR #15 | MCAP/raw ROS proof should be exported into `ContractLine` before the operator loop consumes it. |
+| ROS 2 align-to-tag evidence path | Merged software PR #15 | MCAP/raw ROS proof should be exported into `ContractLine` before the operator loop consumes it. |
 
-F3 parts-catalog grammar and F10 gap analyzer are still dependencies for full
-F8 Generator implementation. Until they land, the Generator packet must label
-those sections blocked or fixture-backed.
+F3 parts-catalog grammar has landed. F10 gap analyzer remains the dependency
+for full F8 Generator implementation, so residual-summary sections must stay
+blocked or fixture-backed until F10 lands.
 
 ## System Flow
 
 ```mermaid
 flowchart TD
   Human["Human operator"]
-  Contracts["contracts package<br/>ContractLine + SelfModel + vocabulary"]
+  Contracts["contracts package<br/>ContractLine + SelfModel + PartsCatalog + vocabulary"]
   Sources["Replay/Synthetic/Serial/Camera sources<br/>via TelemetrySource + VisionSource"]
   Gap["F10 gap analyzer<br/>signed residual summary"]
   Packet["Operator packet builder<br/>source refs + constraints + blocked sections"]
@@ -104,7 +107,7 @@ learning belongs in versioned repo artifacts, not hidden critic memory.
 | Current or prior `SelfModel` | `contracts.SelfModel` fixtures or approved generation file | Yes for Gen N+1; no for Gen 0 | Gen 0 uses `parent_generation = null`. |
 | Task evidence | `ContractLine` JSONL | Yes | Use `task`, `predicted`, `gap`, `outcome`, `vision`, and `motor_samples`. |
 | Gap summary | F10 gap analyzer | Blocked until F10 | Fixture summaries are allowed if labeled fixture-backed. |
-| Parts vocabulary | F3 parts catalog + `contracts.vocabulary` | Partly blocked until F3 | F2 config enums exist; buildable combination rules still need F3. |
+| Parts vocabulary | `contracts.vocabulary`, `contracts.PartsCatalog`, `contracts.validate_config`, `contracts/parts_catalog.json` | Yes | F3 provides finite axes, buildable combination rules, and catalog verdicts. |
 | Human constraints | Operator packet markdown | Yes | Demo task, available hardware, time, and safety limits. |
 | Hidden oracle parameters | Never | No | Information separation is part of the thesis. |
 
@@ -163,7 +166,6 @@ belongs in `contracts/` before treating it as durable schema.
 The LLM must say when a required dependency is missing. Use exact blocked labels
 inside packets, prompt outputs, and reviews:
 
-- `[BLOCKED: awaiting F3 parts-catalog valid-config rules]`
 - `[BLOCKED: awaiting F10 gap analyzer residual summary]`
 - `[BLOCKED: no ContractLine evidence for this task]`
 - `[BLOCKED: hardware proof not recorded as contract-valid JSONL]`
@@ -214,7 +216,7 @@ After this doc is accepted, split implementation into small AI-SDD slices:
 
 | Slice | Feature | Deliverable |
 |---|---|---|
-| `operator-packet-builder` | F8 support | Builds a markdown/JSON packet from `SelfModel`, `ContractLine` JSONL, human constraints, and blocked-state notes. |
+| `operator-packet-builder` | F8 support | Builds a markdown/JSON packet from `SelfModel`, `ContractLine` JSONL, F3 catalog constraints, human constraints, and blocked-state notes. |
 | `generator-prompt-and-fixtures` | F8 | Prompt skeleton plus fixture proving Gen 0 and Gen N+1 candidate output validates against `contracts.SelfModel`. |
 | `generator-gap-revision` | F8 | Uses a fixture F10 residual summary to revise `predictive`, `gap_model`, and keyed `reasoning`. |
 | `critic-prompt-panel` | F9 | Three stateless critic prompt templates: physics, torque, CoM/geometry. |
@@ -228,9 +230,10 @@ visible repo data.
 ## Acceptance Checklist
 
 - Generator inputs reference `contracts.ContractLine`, `contracts.SelfModel`,
-  and shared vocabulary.
+  `contracts.PartsCatalog`, `contracts.validate_config`, and shared
+  vocabulary.
 - Critic panel has exactly three lanes: physics, torque, CoM/geometry.
-- Missing F3/F10 data is labeled blocked.
+- Missing F10 data is labeled blocked.
 - No schema is duplicated under `operator/`.
 - Hidden oracle parameters are explicitly forbidden.
 - Resource assessment separates offline LLM work from on-Pi control.
@@ -241,5 +244,5 @@ visible repo data.
 Grace can say:
 
 > I built the LLM/Critic architecture doc. It keeps schemas in `contracts`,
-> defines the Generator and three stateless Critics, names the missing F3/F10
-> blockers, and translates the work into F8/F9 implementation slices.
+> defines the Generator and three stateless Critics, names the remaining F10
+> blocker, and translates the work into F8/F9 implementation slices.
