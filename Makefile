@@ -1,5 +1,12 @@
 # Delegate to per-vertical Makefiles. Add a vertical's target once its Makefile exists.
-.PHONY: sync validate test lint schema catalog catalog-check
+.PHONY: sync validate test lint schema schema-check catalog catalog-check m1 m1-judge
+
+# m1 contracts-frozen milestone gate (delegates into contracts/).
+m1:
+	$(MAKE) -C contracts m1
+
+m1-judge:
+	$(MAKE) -C contracts m1-judge
 
 sync:
 	$(MAKE) -C contracts sync
@@ -15,6 +22,9 @@ lint:
 
 schema:
 	$(MAKE) -C contracts schema
+
+schema-check:
+	$(MAKE) -C contracts schema-check
 
 catalog:
 	$(MAKE) -C contracts catalog

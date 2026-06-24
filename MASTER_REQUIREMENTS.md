@@ -74,7 +74,7 @@ By the demo, the system closes the generational self-model loop **in software** 
 
 - **Telemetry contract** `(contracts)` — owns the `predicted`/`observed`/`gap`/`vision` JSON line shape (see Constraints → Frozen Contracts).
 - **Self-model schema** `(contracts)` — owns the versioned 4-layer + `reasoning` self-model document shape.
-- **Control grammar** `(contracts)` — owns `control-command`: the fixed command vocabulary + command/ack envelope the online loop uses to drive the robot (draft; ADR-19). *(TBD)*
+- **Control grammar** `(contracts)` — owns `control-command`: the fixed command vocabulary + command/ack envelope the online loop uses to drive the robot (frozen at m1; ADR-19). *(215eight)*
 - **Parts catalog grammar** `(contracts)` — owns `parts_catalog.json`, the finite typed design vocabulary (60 valid configs under F3's valid-config rules). *(TBD)*
 - **Adapter interfaces** `(contracts)` — owns `TelemetrySource` and `VisionSource` `@runtime_checkable` Protocol definitions; each exposes a single `observe()` method returning a `reactivex.Observable` stream (`Observable[ContractLine]` and `Observable[VisionBlock]` respectively). Cold observables for `Replay`/`Synthetic` sources; hot observables (bridged via `Subject`) for `Serial`/`Camera` sources. Decouples every consumer from hardware; swapping an implementation is a config flag with no pipeline change (ADR-20). *(TBD)*
 - **Synthetic oracle** `(contracts)` — owns `SyntheticTelemetrySource`: a parametric hidden-ground-truth forward model (friction, effective arm length, torque constant, mass) + measured noise; the LLM-information-separation rule applies (Constraints → Oracle grounding).
@@ -139,7 +139,7 @@ The exported record is exactly the Task Telemetry Contract (Constraints -> Froze
 | 2 | `F2` self-model-schema — freeze the versioned 4-layer + reasoning self-model | contracts | — | ✅ | TBD|
 | 3 | `F3` parts-catalog-grammar — freeze `parts_catalog.json` vocabulary + valid-config rules | contracts | — | ✅ | TBD |
 | 4 | `F4` adapter-interfaces — `TelemetrySource`/`VisionSource` protocols | contracts | F1 | ✅ | TBD |
-| 5 | `F19` control-grammar — freeze the `control-command` vocabulary + command/ack (draft) | contracts | F1 | ✅ | TBD |
+| 5 | `F19` control-grammar — freeze the `control-command` vocabulary + command/ack (frozen at m1) | contracts | F1 | ✅ | 215eight |
 | 6 | `F14` synthetic-oracle — hidden-ground-truth `SyntheticTelemetrySource` | contracts | F1, F4 | ✅ | Erick |
 | 7 | `F15` replay-source — `Replay` telemetry/vision readers over recorded sessions | contracts | F1, F4 | ✅ | TBD |
 | 8 | `F10` gap-analyzer — compute signed residuals from contract lines | operator | F1 | ✅ | TBD |
@@ -161,7 +161,7 @@ The exported record is exactly the Task Telemetry Contract (Constraints -> Froze
 
 *(Sequential validation gates. Each milestone states its goal and gates the work that follows.)*
 
-1. **`m1` contracts-frozen** *(manual — human gate)* — **Goal:** every contract loads and round-trips — pydantic models + example fixtures for the telemetry, self-model, parts-catalog, and (draft) control-command schemas parse cleanly. Gates all downstream work.
+1. **`m1` contracts-frozen** *(manual — human gate)* — **Goal:** every contract loads and round-trips — pydantic models + example fixtures for the telemetry, self-model, parts-catalog, and control-command schemas parse cleanly. Gates all downstream work. **Signed off 2026-06-24 (215eight).**
 2. **`m1b` oracle-ready** *(manual — human gate)* — **Goal:** the parametric `SyntheticTelemetrySource` emits contract-valid synthetic telemetry with its hidden parameters separated from the Generator (datasheet-grounded until baseline data lands). Gates m2.
 3. **`m2` loop-closes-synthetic** *(manual — human gate)* — **Goal:** `make demo` runs the offline loop over synthetic JSONL — Generator authors Gen 0, the critic panel returns pass/flag, and gap residuals tighten Gen 0 → Gen 2 (the oracle's hidden parameter recovered within tolerance). Gates hardware integration. **Owner: TBD.**
 4. **`m3` vision-integrated** *(manual — human gate)* — **Goal:** PiCam2 measured `CameraInfo` is loaded, `/camera/image_rect` is live, AprilTag detections/TF produce `/vision/scene_map`, and the resulting vision evidence can be exported into a valid `vision` block. Gates m4. **Owner: TBD.**
@@ -344,7 +344,7 @@ Closed decisions use definitive language — no "if needed / or / prefer / may b
 >   self-model loop, the project includes a second loop: an online LLM on the Pi (`pilot` vertical)
 >   reads live telemetry + vision and issues **fixed control-grammar** commands to perform an
 >   open-ended task in real time, bounded by iteration/time limits + a human interrupt, informed by
->   the offline analysis. Adds a `control-command` contract (draft) owned by `contracts`. **Revisit
+>   the offline analysis. Adds a `control-command` contract (frozen at m1) owned by `contracts`. **Revisit
 >   ADR-03/ADR-08:** on-device online inference likely needs an API key + network (contradicting "no
 >   keys"); the runtime + secret posture for `pilot` is an open decision. Rejected: leaving real-time
 >   control as V2-only (the maintainer scoped it in now).
