@@ -6,7 +6,7 @@ package_name = "vexy_ros"
 
 setup(
     name=package_name,
-    version="0.2.0",
+    version="0.3.0",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     data_files=[
