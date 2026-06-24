@@ -64,8 +64,8 @@ def _env(**overrides) -> dict:
         (_env(type="cmd", cmd="stop", reason="operator_estop"), StopCommand),
         (_env(type="cmd", cmd="drive", vx=0.1, omega=0.2), DriveCommand),
         (_env(type="cmd", cmd="turn", omega=-0.3), TurnCommand),
-        (_env(type="cmd", cmd="arm", deg=90.0), ArmCommand),
-        (_env(type="cmd", cmd="arm", deg=90.0, vel_rpm=30.0), ArmCommand),
+        (_env(type="cmd", cmd="arm", deg=45.0), ArmCommand),
+        (_env(type="cmd", cmd="arm", deg=45.0, vel_rpm=30.0), ArmCommand),
         (_env(type="cmd", cmd="claw", state="open"), ClawCommand),
         (_env(type="cmd", cmd="claw", state="close", grip_force_N=12.0), ClawCommand),
         (_env(type="cmd", cmd="flywheel", rpm=1800.0), FlywheelCommand),
@@ -186,7 +186,7 @@ def test_turn_omega_out_of_range_rejected(omega):
 # --- acc-test-range-arm -----------------------------------------------------
 
 
-@pytest.mark.parametrize("deg", [ARM_DEG_MIN - 1e-6, ARM_DEG_MAX + 1e-6, -1.0, 361.0])
+@pytest.mark.parametrize("deg", [ARM_DEG_MIN - 1e-6, ARM_DEG_MAX + 1e-6, -1.0, 91.0])
 def test_arm_deg_out_of_range_rejected(deg):
     with pytest.raises(ValidationError):
         CONTROL_LINE_TA.validate_python(_env(type="cmd", cmd="arm", deg=deg))
@@ -195,12 +195,12 @@ def test_arm_deg_out_of_range_rejected(deg):
 @pytest.mark.parametrize("vel_rpm", [-0.1, MAX_ARM_RPM + 0.1, 999999.0])
 def test_arm_vel_rpm_out_of_range_rejected(vel_rpm):
     with pytest.raises(ValidationError):
-        CONTROL_LINE_TA.validate_python(_env(type="cmd", cmd="arm", deg=90.0, vel_rpm=vel_rpm))
+        CONTROL_LINE_TA.validate_python(_env(type="cmd", cmd="arm", deg=45.0, vel_rpm=vel_rpm))
 
 
 def test_arm_vel_rpm_boundaries_accepted():
-    CONTROL_LINE_TA.validate_python(_env(type="cmd", cmd="arm", deg=90.0, vel_rpm=0.0))
-    CONTROL_LINE_TA.validate_python(_env(type="cmd", cmd="arm", deg=90.0, vel_rpm=MAX_ARM_RPM))
+    CONTROL_LINE_TA.validate_python(_env(type="cmd", cmd="arm", deg=45.0, vel_rpm=0.0))
+    CONTROL_LINE_TA.validate_python(_env(type="cmd", cmd="arm", deg=45.0, vel_rpm=MAX_ARM_RPM))
 
 
 @pytest.mark.parametrize("grip_force_N", [-0.1, MAX_CLAW_GRIP_FORCE_N + 0.1, 999999999.0])
@@ -421,7 +421,7 @@ def test_clamp_constants_bit_for_bit():
     assert MAX_ARM_RPM == 600.0
     assert MAX_CLAW_GRIP_FORCE_N == 100.0
     assert ARM_DEG_MIN == 0.0
-    assert ARM_DEG_MAX == 360.0
+    assert ARM_DEG_MAX == 90.0
     assert TTL_MS_MAX == 5000
     assert BRAIN_MAX_LINEAR == 0.18
     assert BRAIN_TTL_MS_MAX == 500

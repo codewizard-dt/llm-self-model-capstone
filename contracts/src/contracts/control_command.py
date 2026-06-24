@@ -32,8 +32,14 @@ MAX_OMEGA = 0.60  # rad/s — ROS/Pi command-envelope maximum.
 MAX_FLYWHEEL_RPM = 3600.0  # output shaft RPM — proposed default; F20 may narrow
 MAX_ARM_RPM = 600.0  # V5 motor cartridge upper envelope; F20 may narrow.
 MAX_CLAW_GRIP_FORCE_N = 100.0  # permissive target envelope; F20 may narrow.
+# `deg` is the *physical arm-joint angle* in degrees (NOT encoder counts): 0° is
+# the stowed/down home (claw at the floor), increasing toward a raised claw. The
+# as-built claw arm sweeps ~90° (a min/max stall calibration measured encoder
+# -125..+1667 motor counts at ~0.05°/enc ≈ -6..+83° of joint travel, ~19:1 geared
+# — O1 resolved). The Brain (F20) converts `deg`→encoder target with the
+# precise per-build °/enc and clamps physically; F19 only range-checks the wire.
 ARM_DEG_MIN = 0.0
-ARM_DEG_MAX = 360.0  # conservative; F20 narrows per assembled build
+ARM_DEG_MAX = 90.0  # measured joint travel (~90° sweep); F20 holds the exact °/enc
 TTL_MS_MAX = 5000  # ROS bridge envelope; Brain motion commands narrow this.
 BRAIN_MAX_LINEAR = 0.18  # guarded PROS drive clamp for physical Clawbot motion.
 BRAIN_TTL_MS_MAX = 500  # guarded PROS per-motion TTL clamp.
@@ -110,7 +116,12 @@ class TurnCommand(ControlEnvelope):
 
 
 class ArmCommand(ControlEnvelope):
-    """Arm verb — absolute target angle in degrees, optional vel_rpm."""
+    """Arm verb — absolute physical joint angle in degrees, optional vel_rpm.
+
+    `deg` is the arm-joint angle (0° stowed/down, ~90° raised), not a motor
+    encoder count; the Brain maps it to encoder targets per build. See the
+    ARM_DEG_MIN/MAX note above for the as-built calibration.
+    """
 
     type: Literal["cmd"] = "cmd"
     cmd: Literal["arm"] = "arm"

@@ -2,7 +2,7 @@
   "$defs": {
     "ArmCommand": {
       "additionalProperties": false,
-      "description": "Arm verb \u2014 absolute target angle in degrees, optional vel_rpm.",
+      "description": "Arm verb \u2014 absolute physical joint angle in degrees, optional vel_rpm.\n\n`deg` is the arm-joint angle (0\u00b0 stowed/down, ~90\u00b0 raised), not a motor\nencoder count; the Brain maps it to encoder targets per build. See the\nARM_DEG_MIN/MAX note above for the as-built calibration.",
       "properties": {
         "cmd": {
           "const": "arm",
@@ -11,7 +11,7 @@
           "type": "string"
         },
         "deg": {
-          "maximum": 360.0,
+          "maximum": 90.0,
           "minimum": 0.0,
           "title": "Deg",
           "type": "number"
