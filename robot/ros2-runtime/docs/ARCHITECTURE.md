@@ -61,9 +61,18 @@ camera_ros (camera_node)    ← github.com/christianrauch/camera_ros
     │                         wraps libcamera; exposes standard ROS 2 topics
     ├─▶ /camera/image_raw       (sensor_msgs/Image,      15–30 Hz)
     └─▶ /camera/camera_info     (sensor_msgs/CameraInfo, 15–30 Hz)
+          │
+          ▼
+image_proc rectify_node
+    └─▶ /camera/image_rect      (sensor_msgs/Image,      15–30 Hz)
+          │
+          ▼
+apriltag_ros apriltag_node
+    ├─▶ /apriltag/detections    (apriltag_msgs/AprilTagDetectionArray)
+    └─▶ /tf                     (tf2_msgs/TFMessage)
 ```
 
-The RPi libcamera fork is built from source inside the colcon workspace (`~/ros2_ws`) rather than installed via apt. This is required because the apt package (`libcamera0`) ships the upstream version, which does not include the IMX708 pipeline handler needed for Camera Module 3.
+The RPi libcamera fork is built from source inside the colcon workspace (`~/ros2_ws`) rather than installed via apt. This is required because the apt package (`libcamera0`) ships the upstream version, which does not include the IMX708 pipeline handler needed for Camera Module 3. `camera_ros` loads calibration through `camera_info_url`; the launch file sets libcamera frame timing with `FrameDurationLimits` because frame rate is exposed as a duration control rather than a direct `fps` parameter.
 
 ## VEX Serial Bridge
 
@@ -125,6 +134,9 @@ Ack records are published on `/vex/ack`, keyed by the `ack` sequence. Telemetry/
 |---|---|---|---|---|
 | `/camera/image_raw` | `sensor_msgs/Image` | `camera` | — (bag, apriltag, yolo) | 15 Hz (default) |
 | `/camera/camera_info` | `sensor_msgs/CameraInfo` | `camera` | — (bag, apriltag) | 15 Hz (default) |
+| `/camera/image_rect` | `sensor_msgs/Image` | `camera_rectify` | `apriltag` | 15 Hz (default) |
+| `/apriltag/detections` | `apriltag_msgs/AprilTagDetectionArray` | `apriltag` | — (bag, controller) | tag dependent |
+| `/tf` | `tf2_msgs/TFMessage` | `apriltag` | — (bag, Foxglove) | tag dependent |
 | `/vex/cmd` | `std_msgs/String` | external / LLM loop | `vex_bridge` | on-demand |
 | `/vex/ack` | `std_msgs/String` | `vex_bridge` | — (bag, controller) | heartbeat/cmd dependent |
 | `/vex/telemetry` | `std_msgs/String` | `vex_bridge` | — (bag) | Brain sample dependent |
@@ -154,14 +166,14 @@ Ack records are published on `/vex/ack`, keyed by the `ack` sequence. Telemetry/
 
 The bag captures all topics simultaneously — camera frames, VEX telemetry, any additional sensor topics — providing a complete, time-synchronized ground truth for the LLM to compare against the robot's prior predictions.
 
-## Planned Additions
+## Vision Extensions
 
 ### apriltag_ros — Workspace Localization
 
-`apriltag_ros` subscribes to `/camera/image_raw` and `/camera/camera_info` and publishes calibration-aware 6-DOF tag poses. Because `camera_ros` already publishes `CameraInfo`, no extra calibration wiring is needed.
+`apriltag_ros` subscribes to `/camera/image_rect` and `/camera/camera_info` and publishes calibration-aware 6-DOF tag poses. Tag-pose proof is only valid once `/camera/camera_info` contains nonzero measured calibration values.
 
 ```
-/camera/image_raw  ──▶  apriltag_ros  ──▶  /detections  (apriltag_msgs/AprilTagDetectionArray)
+/camera/image_raw  ──▶  image_proc  ──▶  /camera/image_rect  ──▶  apriltag_ros  ──▶  /apriltag/detections
 /camera/camera_info ──▶
 ```
 
@@ -177,6 +189,9 @@ robot/ros2-runtime/
 ├── README.md
 ├── package.xml
 ├── setup.py / setup.cfg
+├── config/
+│   ├── apriltag_36h11.yaml
+│   └── imx708_wide_640x480.yaml
 ├── launch/
 │   └── vexy.launch.py          ← main entry point
 ├── scripts/

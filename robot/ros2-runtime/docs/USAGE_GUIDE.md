@@ -116,6 +116,8 @@ Expected output when the full stack is running:
 ```
 /camera/camera_info
 /camera/image_raw
+/camera/image_rect
+/apriltag/detections
 /parameter_events
 /rosout
 /vex/cmd
@@ -128,6 +130,7 @@ Expected output when the full stack is running:
 
 ```bash
 ros2 topic hz /camera/image_raw
+ros2 topic hz /camera/image_rect
 ros2 topic hz /vex/ack
 ```
 
@@ -241,42 +244,38 @@ Combine into a structured payload and pass to the Claude API for self-model revi
 
 ---
 
-## 6. Adding apriltag_ros for Workspace Localization
+## 6. AprilTag Workspace Localization
 
-### Install
+The launch file starts `image_proc` rectification and `apriltag_ros` by default. The detector consumes `/camera/image_rect` plus `/camera/camera_info`, then publishes `/apriltag/detections` and `/tf`.
+
+Before accepting tag pose as proof, replace `config/imx708_wide_640x480.yaml` with measured Camera Module 3 calibration from `camera_calibration`.
+
+### Calibrate/load Camera Module 3
 
 ```bash
-sudo apt install -y ros-jazzy-apriltag-ros
+sudo apt install -y ros-jazzy-camera-calibration
+ros2 run camera_calibration cameracalibrator \
+  --size 8x6 --square 0.025 \
+  image:=/camera/image_raw camera:=/camera
 ```
 
-### Add to vexy.launch.py
+Save the output as a camera-info YAML and relaunch with a URL:
 
-Insert the following `Node` block into the `LaunchDescription` list in `launch/vexy.launch.py`:
-
-```python
-Node(
-    package="apriltag_ros",
-    executable="apriltag_node",
-    name="apriltag",
-    remappings=[
-        ("image_rect", "/camera/image_raw"),
-        ("camera_info", "/camera/camera_info"),
-    ],
-    parameters=[{
-        "family": "36h11",
-        "size": 0.200,  # tag physical size in metres (200 mm tags)
-    }],
-),
+```bash
+ros2 launch vexy_ros vexy.launch.py \
+  camera_info_url:=file:///home/vexy/calibration/imx708_wide_640x480.yaml
 ```
 
 ### Verify
 
 ```bash
-ros2 topic list | grep detections
-ros2 topic echo /detections
+ros2 topic hz /camera/image_rect
+ros2 topic echo /camera/camera_info --once | grep -E 'k:|p:'
+ros2 topic echo /apriltag/detections --once
+ros2 topic echo /tf --once
 ```
 
-The node publishes `apriltag_msgs/AprilTagDetectionArray` on `/detections` with calibration-aware 6-DOF poses. Tag family `36h11` matches the printed tags in `raw/research/apriltag-prints/`.
+The default config expects tag family `36h11`, tag ID `0`, physical size `0.160` m, and frame name `tag36h11_0`.
 
 ---
 
@@ -366,7 +365,10 @@ Click the layout name at the top → **Save layout** → give it a name (e.g. `v
 | `baud_rate` | `115200` | Serial baud rate — must match PROS firmware |
 | `camera_width` | `640` | Camera capture width in pixels |
 | `camera_height` | `480` | Camera capture height in pixels |
-| `camera_fps` | `15` | Camera frames per second |
+| `camera_fps` | `15` | Camera frames per second; launch converts this to libcamera `FrameDurationLimits` |
+| `camera_frame_id` | `camera_optical_frame` | Frame ID for camera messages |
+| `camera_info_url` | package config URL | Calibration URL; must use `file:///...` format |
+| `apriltag_config` | package config path | YAML with tag family/ID/size settings |
 
 **`vex_bridge_node` internal parameters** (set via `--ros-args -p` when running the node directly):
 
@@ -374,7 +376,9 @@ Click the layout name at the top → **Save layout** → give it a name (e.g. `v
 |---|---|---|
 | `serial_port` | `auto` | Passed through from launch arg |
 | `baud_rate` | `115200` | Passed through from launch arg |
-| `serial_timeout` | `0.4` | Serial read/write timeout in seconds |
+| `serial_timeout` | `0.1` | Serial read/write timeout in seconds |
+| `ack_timeout_s` | `0.4` | Pending command ack timeout |
+| `telemetry_stale_s` | `2.0` | Bridge status threshold for missing/stale telemetry samples |
 
 **Velocity clamp constants** (code-level, not launch parameters):
 

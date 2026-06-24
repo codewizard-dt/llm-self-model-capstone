@@ -82,6 +82,8 @@ ros2 launch vexy_ros vexy.launch.py
 ```bash
 source ~/ros2_ws/install/setup.bash
 ros2 topic hz /camera/image_raw   # should show ~15 Hz (default) or ~30 Hz (configured)
+ros2 topic hz /camera/image_rect  # rectified stream after calibration load
+ros2 topic echo /apriltag/detections --once  # with tag36h11 id 0 visible
 ros2 topic echo /vex/ack --once   # should show heartbeat/command acks from Brain
 ros2 topic echo /vex/bridge_status --once  # bridge state/faults when present
 ```
@@ -104,7 +106,10 @@ sudo apt-get install -y \
     libdw-dev libudev-dev \
     libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
     libcamera-dev libyaml-dev \
-    python3-rosdep
+    python3-rosdep \
+    ros-jazzy-apriltag-ros \
+    ros-jazzy-camera-calibration \
+    ros-jazzy-image-proc
 ```
 
 ### 2. Install colcon-meson
@@ -172,7 +177,9 @@ ros2 topic hz /camera/image_raw
 
 | Node name | Package | Role |
 |-----------|---------|------|
-| `camera` | `camera_ros` | Camera Module 3 → /camera/image_raw |
+| `camera` | `camera_ros` | Camera Module 3 → /camera/image_raw + /camera/camera_info |
+| `camera_rectify` | `image_proc` | /camera/image_raw + /camera/camera_info → /camera/image_rect |
+| `apriltag` | `apriltag_ros` | /camera/image_rect + /camera/camera_info → /apriltag/detections + /tf |
 | `vex_bridge` | `vexy_ros` | USB serial ↔ /vex/cmd + /vex/ack + /vex/telemetry + /vex/bridge_status |
 | `foxglove_bridge` | `foxglove_bridge` | WebSocket bridge at port 8765 for Foxglove Studio |
 
@@ -181,7 +188,10 @@ ros2 topic hz /camera/image_raw
 | Topic | Type | Direction | Description |
 |-------|------|-----------|-------------|
 | `/camera/image_raw` | `sensor_msgs/Image` | pub (camera) | Raw frames at configured FPS |
-| `/camera/camera_info` | `sensor_msgs/CameraInfo` | pub (camera) | Intrinsics (uncalibrated by default) |
+| `/camera/camera_info` | `sensor_msgs/CameraInfo` | pub (camera) | Calibration/intrinsics loaded from `camera_info_url` |
+| `/camera/image_rect` | `sensor_msgs/Image` | pub (camera_rectify) | Rectified frames from `image_proc` |
+| `/apriltag/detections` | `apriltag_msgs/AprilTagDetectionArray` | pub (apriltag) | Tag detections from rectified frames |
+| `/tf` | `tf2_msgs/TFMessage` | pub (apriltag) | Tag transforms when pose estimation succeeds |
 | `/vex/cmd` | `std_msgs/String` | sub (vex_bridge) | JSON command packet to Brain |
 | `/vex/ack` | `std_msgs/String` | pub (vex_bridge) | JSON ack from Brain, keyed by `ack` sequence |
 | `/vex/telemetry` | `std_msgs/String` | pub (vex_bridge) | JSON telemetry/sample/event records from Brain |
@@ -237,11 +247,12 @@ ros2 launch vexy_ros vexy.launch.py camera_width:=1280 camera_height:=720
 # Higher frame rate (30 Hz match for IMX708 native)
 ros2 launch vexy_ros vexy.launch.py camera_fps:=30
 
-# Combined
+# Combined, with measured calibration override
 ros2 launch vexy_ros vexy.launch.py \
     serial_port:=auto \
     baud_rate:=115200 \
-    camera_width:=1280 camera_height:=720 camera_fps:=30
+    camera_width:=1280 camera_height:=720 camera_fps:=30 \
+    camera_info_url:=file:///home/vexy/calibration/imx708_wide_1280x720.yaml
 ```
 
 ### All launch arguments
@@ -252,7 +263,10 @@ ros2 launch vexy_ros vexy.launch.py \
 | `baud_rate` | `115200` | Serial baud rate |
 | `camera_width` | `640` | Frame width in pixels |
 | `camera_height` | `480` | Frame height in pixels |
-| `camera_fps` | `15` | Target frame rate |
+| `camera_fps` | `15` | Target frame rate, converted to `FrameDurationLimits` because libcamera exposes frame timing as duration |
+| `camera_frame_id` | `camera_optical_frame` | Frame ID stamped into camera messages |
+| `camera_info_url` | package config URL | Must be a URL such as `file:///...`; replace the starter file with measured calibration before tag-pose proof |
+| `apriltag_config` | package config path | YAML for tag family, ID, frame name, and physical size |
 
 ---
 
@@ -272,7 +286,7 @@ Then open **https://app.foxglove.dev** in a browser and connect:
 | Yes (default) | `ws://vexy.local:8765` |
 | No (mDNS fails on some networks) | `ws://10.10.3.4:8765` |
 
-Useful panels: **Image** (subscribe `/camera/image_raw`), **Raw Messages** (subscribe `/vex/ack`, `/vex/telemetry`, and `/vex/bridge_status`), **Topic Graph**.
+Useful panels: **Image** (subscribe `/camera/image_raw` or `/camera/image_rect`), **Raw Messages** (subscribe `/apriltag/detections`, `/vex/ack`, `/vex/telemetry`, and `/vex/bridge_status`), **3D** (show `/tf`), **Topic Graph**.
 
 ---
 
@@ -284,8 +298,8 @@ Useful panels: **Image** (subscribe `/camera/image_raw`), **Raw Messages** (subs
 # Record everything
 ros2 bag record -a -o session_$(date +%Y%m%d_%H%M%S)
 
-# Record only camera + VEX bridge topics (smaller files)
-ros2 bag record /camera/image_raw /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status \
+# Record only camera, tag, and VEX bridge topics (smaller files)
+ros2 bag record /camera/image_raw /camera/camera_info /camera/image_rect /apriltag/detections /tf /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status \
     -o session_$(date +%Y%m%d_%H%M%S)
 
 # Inspect a recorded bag

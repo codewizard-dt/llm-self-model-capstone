@@ -72,7 +72,10 @@ Default launch parameters:
 | `baud_rate` | `115200` | Do not change |
 | `camera_width` | `640` | |
 | `camera_height` | `480` | |
-| `camera_fps` | `15` | Up to 30 for IMX708 |
+| `camera_fps` | `15` | Converted to libcamera `FrameDurationLimits` |
+| `camera_frame_id` | `camera_optical_frame` | Camera optical frame stamped into messages |
+| `camera_info_url` | package config URL | Must be `file:///...`; replace starter config with measured calibration |
+| `apriltag_config` | package config path | Tag family/ID/size YAML |
 
 ### Start individual nodes
 
@@ -156,7 +159,7 @@ Expected: `vexy_ros` appears in output. If not, run `source ~/ros2_ws/install/se
 ros2 node list
 ```
 
-Expected: `/camera`, `/vex_bridge`, and `/foxglove_bridge` are all listed.
+Expected: `/camera`, `/camera_rectify`, `/apriltag`, `/vex_bridge`, and `/foxglove_bridge` are all listed.
 
 ### 2.4 Camera publishing
 
@@ -170,9 +173,22 @@ Also verify camera info is publishing:
 
 ```bash
 ros2 topic hz /camera/camera_info
+ros2 topic echo /camera/camera_info --once | grep -E 'k:|d:|p:'
 ```
 
-### 2.5 VEX bridge connected to Brain
+Expected: `/camera/camera_info` publishes nonzero `k` and `p` matrix values. If the matrices are zero, the calibration URL did not load and tag-pose proof is not valid.
+
+### 2.5 Rectification and AprilTag proof
+
+```bash
+ros2 topic hz /camera/image_rect
+ros2 topic echo /apriltag/detections --once
+ros2 topic echo /tf --once
+```
+
+Expected: `/camera/image_rect` runs at the camera rate. With a printed tag36h11 ID `0` visible and the physical tag size matching `config/apriltag_36h11.yaml`, `/apriltag/detections` publishes an `AprilTagDetectionArray`; `/tf` includes a transform for `tag36h11_0` when pose estimation succeeds.
+
+### 2.6 VEX bridge connected to Brain
 
 ```bash
 ros2 topic echo /vex/ack --once
@@ -195,7 +211,7 @@ Expected: ~6–7 Hz (heartbeat fires at 0.15 s interval).
 
 `/vex/ack` proves the Brain is receiving heartbeats/commands. `/vex/telemetry` is reserved for streaming telemetry/sample/event records; if the current Brain firmware only emits ack records, `/vex/bridge_status` may report `no_telemetry` until telemetry streaming is added.
 
-### 2.6 Foxglove bridge reachable
+### 2.7 Foxglove bridge reachable
 
 ```bash
 # From the Pi:
@@ -211,7 +227,7 @@ In Foxglove Studio (browser or desktop):
 1. Open `https://app.foxglove.dev`
 2. Click **Open connection** → **Foxglove WebSocket**
 3. Enter `ws://vexy.local:8765` (or `ws://<IP>:8765` if mDNS fails)
-4. Confirm topics `/camera/image_raw`, `/vex/ack`, `/vex/telemetry`, `/vex/bridge_status`, etc. appear in the topic list
+4. Confirm topics `/camera/image_raw`, `/camera/image_rect`, `/apriltag/detections`, `/vex/ack`, `/vex/telemetry`, `/vex/bridge_status`, etc. appear in the topic list
 
 ---
 
@@ -227,7 +243,7 @@ ros2 bag record -a -o session_$(date +%Y%m%d_%H%M%S)
 Record specific topics only (smaller files):
 
 ```bash
-ros2 bag record /camera/image_raw /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status \
+ros2 bag record /camera/image_raw /camera/camera_info /camera/image_rect /apriltag/detections /tf /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status \
   -o session_$(date +%Y%m%d_%H%M%S)
 ```
 
