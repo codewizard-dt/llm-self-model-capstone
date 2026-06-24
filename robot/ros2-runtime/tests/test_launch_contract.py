@@ -36,9 +36,11 @@ class LaunchContractTests(unittest.TestCase):
 
         self.assertIn("apriltag:", config_text)
         self.assertIn("family: 36h11", config_text)
-        self.assertIn("size: 0.160", config_text)
+        self.assertIn("size: 0.200", config_text)
+        self.assertIn("refine: true", config_text)
         self.assertIn("ids: [0]", config_text)
         self.assertIn("frames: [tag36h11_0]", config_text)
+        self.assertIn("sizes: [0.200]", config_text)
 
     def test_camera_info_config_is_nonzero_and_marked_as_starter(self) -> None:
         config_text = (ROOT / "config" / "imx708_wide_640x480.yaml").read_text()

@@ -294,7 +294,7 @@ ros2 topic echo /apriltag/detections --once
 ros2 topic echo /tf --once
 ```
 
-The default config expects tag family `36h11`, tag ID `0`, physical size `0.160` m, and frame name `tag36h11_0`.
+The default config expects tag family `36h11`, tag ID `0`, physical size `0.200` m, and frame name `tag36h11_0`.
 
 ---
 
