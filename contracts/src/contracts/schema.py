@@ -1,8 +1,9 @@
 """Generate the committed JSON Schemas from the pydantic models.
 
-`make schema` invokes this as the single generator: it writes both
-`schemas/contract_line.json` (byte-stable vs the F1-committed file) and
-`schemas/self_model.json`, using identical `json.dumps` formatting.
+`make schema` invokes this as the single generator: it writes
+`schemas/contract_line.json` (byte-stable vs the F1-committed file),
+`schemas/self_model.json`, and `schemas/score_contract.json` (the typed `score`
+task line), using identical `json.dumps` formatting.
 """
 
 from __future__ import annotations
@@ -10,12 +11,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from contracts.contract_line import ContractLine
+from contracts.contract_line import ContractLine, ScoreContractLine
 from contracts.self_model import SelfModel
 
 SCHEMAS = {
     "contract_line.json": ContractLine,
     "self_model.json": SelfModel,
+    "score_contract.json": ScoreContractLine,
 }
 
 

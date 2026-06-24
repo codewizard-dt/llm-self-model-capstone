@@ -1,7 +1,12 @@
 """Public API for the contracts vertical — the single source of truth for schemas."""
 
 from contracts.adapters import TelemetrySource, VisionSource
-from contracts.contract_line import AprilTagPose, ContractLine, VisionBlock
+from contracts.contract_line import (
+    AprilTagPose,
+    ContractLine,
+    ScoreContractLine,
+    VisionBlock,
+)
 from contracts.motor_telemetry import (
     ContractSource,
     MotorApiSample,
@@ -11,6 +16,7 @@ from contracts.motor_telemetry import (
     vexcode_motor_source_api,
 )
 from contracts.self_model import SelfModel
+from contracts.task_contracts import ScoreGap, ScoreObserved, ScorePredicted
 from contracts.vocabulary import (
     ArmGearRatio,
     ArmPosition,
@@ -24,6 +30,10 @@ __all__ = [
     "TelemetrySource",
     "VisionSource",
     "ContractLine",
+    "ScoreContractLine",
+    "ScorePredicted",
+    "ScoreObserved",
+    "ScoreGap",
     "VisionBlock",
     "AprilTagPose",
     "MotorApiSample",
