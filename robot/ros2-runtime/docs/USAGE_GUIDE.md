@@ -267,18 +267,23 @@ Combine into a structured payload and pass to the Claude API for self-model revi
 
 The launch file starts `image_proc` rectification and `apriltag_ros` by default. The detector consumes `/camera/image_rect` plus `/camera/camera_info`, then publishes `/apriltag/detections` and `/tf`.
 
-Before accepting tag pose as proof, replace `config/imx708_wide_640x480.yaml` with measured Camera Module 3 calibration from `camera_calibration`.
+Before accepting tag pose as proof, replace `config/imx708_wide_640x480.yaml` with measured Camera Module 3 calibration.
 
 ### Calibrate/load Camera Module 3
 
+Headless over SSH, using an 8x6 inner-corner checkerboard with 25 mm squares:
+
 ```bash
-sudo apt install -y ros-jazzy-camera-calibration
-ros2 run camera_calibration cameracalibrator \
-  --size 8x6 --square 0.025 \
-  image:=/camera/image_raw camera:=/camera
+mkdir -p /home/vexy/calibration/imx708_wide_640x480_samples
+ros2 run vexy_ros vexy_calibrate_camera \
+  --cols 8 --rows 6 --square-m 0.025 \
+  --samples 25 \
+  --out /home/vexy/calibration/imx708_wide_640x480.yaml \
+  --preview-dir /home/vexy/calibration/imx708_wide_640x480_samples
 ```
 
-Save the output as a camera-info YAML and relaunch with a URL:
+Move the checkerboard through the frame until the command writes the YAML, then
+relaunch with a URL:
 
 ```bash
 ros2 launch vexy_ros vexy.launch.py \

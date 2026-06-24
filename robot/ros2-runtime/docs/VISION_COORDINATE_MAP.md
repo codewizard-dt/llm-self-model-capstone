@@ -49,9 +49,20 @@ for separately.
 1. PiCam2 calibration:
 
 ```bash
-ros2 run camera_calibration cameracalibrator \
-  --size 8x6 --square 0.025 \
-  image:=/camera/image_raw camera:=/camera
+mkdir -p /home/vexy/calibration/imx708_wide_640x480_samples
+ros2 run vexy_ros vexy_calibrate_camera \
+  --cols 8 --rows 6 --square-m 0.025 \
+  --samples 25 \
+  --out /home/vexy/calibration/imx708_wide_640x480.yaml \
+  --preview-dir /home/vexy/calibration/imx708_wide_640x480_samples
+```
+
+Move an 8x6 inner-corner checkerboard through the camera view until all samples
+are captured. Relaunch with the measured calibration:
+
+```bash
+ros2 launch vexy_ros vexy.launch.py \
+  camera_info_url:=file:///home/vexy/calibration/imx708_wide_640x480.yaml
 ```
 
 2. Rectification:

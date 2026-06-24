@@ -83,6 +83,10 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn(
             "vexy_tag_action_proof = vexy_ros.tag_action_proof:main", setup_text
         )
+        self.assertIn(
+            "vexy_calibrate_camera = vexy_ros.camera_calibration_capture:main",
+            setup_text,
+        )
 
 
 if __name__ == "__main__":
