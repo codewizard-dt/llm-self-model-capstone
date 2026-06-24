@@ -290,6 +290,21 @@ ros2 launch vexy_ros vexy.launch.py \
   camera_info_url:=file:///home/vexy/calibration/imx708_wide_640x480.yaml
 ```
 
+For the persistent `vexy-ros-stack.service`, put the same launch argument in a
+user-systemd drop-in and restart the service:
+
+```ini
+# /home/vexy/.config/systemd/user/vexy-ros-stack.service.d/20-measured-camera-info.conf
+[Service]
+ExecStart=
+ExecStart=/bin/bash -lc 'source /opt/ros/jazzy/setup.bash && source /home/vexy/ros2_ws/install/setup.bash && exec ros2 launch vexy_ros vexy.launch.py camera_fps:=30 serial_port:=auto camera_info_url:=file:///home/vexy/calibration/imx708_wide_640x480.yaml'
+```
+
+```bash
+systemctl --user daemon-reload
+systemctl --user restart vexy-ros-stack.service
+```
+
 ### Verify
 
 ```bash
@@ -298,6 +313,10 @@ ros2 topic echo /camera/camera_info --once | grep -E 'k:|p:'
 ros2 topic echo /apriltag/detections --once
 ros2 topic echo /tf --once
 ```
+
+`detections: []` means the AprilTag detector is running but no configured tag is
+visible enough in the rectified frame. Put the printed tag back in view before
+debugging `scene_map_node` or motion behavior.
 
 The default config expects tag family `36h11`, tag ID `0`, physical size `0.200` m, and frame name `tag36h11_0`.
 `/apriltag/detections` carries tag IDs/corners; `scene_map_node` uses `/tf`

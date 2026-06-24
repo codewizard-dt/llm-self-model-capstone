@@ -41,6 +41,21 @@ Every pose includes both:
 - ROS math fields: `x_m`, `y_m`, `yaw_rad`
 - wiki map fields: `x_mm`, `y_mm`, `heading_deg`
 
+## Current Device Status
+
+As of 2026-06-24 on `vexy`:
+
+- PiCam2 calibration captured 25 checkerboard samples and wrote
+  `/home/vexy/calibration/imx708_wide_640x480.yaml`.
+- `vexy-ros-stack.service` loads the measured calibration through
+  `camera_info_url:=file:///home/vexy/calibration/imx708_wide_640x480.yaml`.
+- `/camera/camera_info` now reports measured intrinsics (`fx` about 558.33,
+  `fy` about 557.27), not the starter `430/320/240` matrix.
+- `/camera/image_rect` publishes at camera rate and `/vex/ack` is green.
+- `/apriltag/detections` is currently an empty array because no AprilTag is
+  visible in the live camera frame. This is a scene-state blocker, not a
+  calibration-load failure.
+
 ## Proof Gates
 
 Run these in order. Do not call the stack healthy unless each gate is accounted
@@ -65,6 +80,23 @@ ros2 launch vexy_ros vexy.launch.py \
   camera_info_url:=file:///home/vexy/calibration/imx708_wide_640x480.yaml
 ```
 
+For the persistent Pi service, use a user-systemd drop-in:
+
+```ini
+# /home/vexy/.config/systemd/user/vexy-ros-stack.service.d/20-measured-camera-info.conf
+[Service]
+ExecStart=
+ExecStart=/bin/bash -lc 'source /opt/ros/jazzy/setup.bash && source /home/vexy/ros2_ws/install/setup.bash && exec ros2 launch vexy_ros vexy.launch.py camera_fps:=30 serial_port:=auto camera_info_url:=file:///home/vexy/calibration/imx708_wide_640x480.yaml'
+```
+
+Then reload and restart:
+
+```bash
+systemctl --user daemon-reload
+systemctl --user restart vexy-ros-stack.service
+systemctl --user status vexy-ros-stack.service
+```
+
 2. Rectification:
 
 ```bash
@@ -81,6 +113,10 @@ ros2 topic echo /tf --once
 
 `/apriltag/detections` proves detector activity and tag IDs/corners; `/tf`
 contains the camera-to-tag transform used by `scene_map_node`.
+
+An empty `detections: []` message means the detector is alive but no configured
+tag is visible enough to solve. Put a `tag36h11` tag from the active workspace
+map back in the rectified camera view before running scene-map or motion proof.
 
 4. Scene map:
 
