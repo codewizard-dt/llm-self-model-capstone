@@ -1,0 +1,13 @@
+summary: Added TelemetrySource and VisionSource runtime-checkable Protocol classes in a new adapters.py module, wired them into the contracts package exports, added reactivex as a dependency, and covered them with conformance and smoke tests.
+satisfies:
+  - A1
+  - A2
+  - A3
+  - A4
+  - A5
+  - A6
+  - A7
+  - A8
+  - A9
+  - A10
+  - A11
