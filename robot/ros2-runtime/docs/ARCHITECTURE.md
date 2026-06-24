@@ -138,11 +138,14 @@ Ack records are published on `/vex/ack`, keyed by the `ack` sequence. Telemetry/
 |---|---|---|---|---|
 | `/camera/image_raw` | `sensor_msgs/Image` | `camera` | — (bag, apriltag, yolo) | 15 Hz (default) |
 | `/camera/camera_info` | `sensor_msgs/CameraInfo` | `camera` | — (bag, apriltag) | 15 Hz (default) |
-| `/camera/image_rect` | `sensor_msgs/Image` | `camera_rectify` | `apriltag` | 15 Hz (default) |
+| `/camera/image_rect` | `sensor_msgs/Image` | `camera_rectify` | `apriltag`, `yolo_ncnn` | 15 Hz (default) |
 | `/apriltag/detections` | `apriltag_msgs/AprilTagDetectionArray` | `apriltag` | — (bag, controller) | tag dependent |
 | `/tf` | `tf2_msgs/TFMessage` | `apriltag` | — (bag, Foxglove) | tag dependent |
-| `/vision/object_indications` | `std_msgs/String` | operator / detector | `scene_map` | on-demand |
-| `/vision/scene_map` | `std_msgs/String` | `scene_map` | — (bag, operator) | tag dependent |
+| `/vision/object_detections` | `std_msgs/String` | `yolo_ncnn` | `object_indication` | model dependent |
+| `/vision/object_indications` | `std_msgs/String` | operator / `object_indication` | `scene_map` | on-demand |
+| `/vision/scene_map` | `std_msgs/String` | `scene_map` | `task_plan`, bag, operator | tag dependent |
+| `/task_plan/request` | `std_msgs/String` | operator / online loop | `task_plan` | on-demand |
+| `/task_plan/current` | `std_msgs/String` | `task_plan` | bag, operator | on-demand |
 | `/align_to_tag/goal` | `std_msgs/String` | operator / controller | `align_to_tag` | on-demand |
 | `/align_to_tag/cancel` | `std_msgs/String` | operator / controller | `align_to_tag` | on-demand |
 | `/align_to_tag/feedback` | `std_msgs/String` | `align_to_tag` | — (bag, Foxglove) | control-period dependent |
@@ -201,9 +204,9 @@ staging, and tag `2` at home. The published JSON carries ROS-friendly
 meter/radian values and wiki-friendly `x_mm`, `y_mm`, `heading_deg` values.
 
 The node also accepts `/vision/object_indications` for operator- or
-detector-provided untagged object hints in camera-relative coordinates. That is
-the interim interop point until YOLO/object tracking is wired into the same map
-surface.
+detector-provided untagged object hints in camera-relative coordinates. YOLO
+NCNN boxes are projected into that same surface by `object_indication`, keeping
+object coordinates in one scene-map contract.
 
 The `camera_in_robot_json` launch argument records the measured PiCam2 mount
 offset in the robot body frame, so the node can publish robot-center
@@ -213,9 +216,20 @@ coordinates instead of only camera coordinates.
 
 `align_to_tag` is the first local-control skill. It consumes `/apriltag/detections`, `/vex/ack`, and `/vex/bridge_status`; publishes bounded fixed-grammar `/vex/cmd` packets; and emits JSON feedback/result topics. It sends a final `stop` command on success, cancel, timeout, stale tag, stale ack, or bridge fault. No LLM or API call is in this loop.
 
-### yolo_ros — Object Detection
+### YOLO NCNN and TaskPlan
 
-`yolo_ros` (mgonzs13/yolo_ros) must be built from source; no apt package is available for Jazzy. It subscribes to `/camera/image_raw` and publishes detection arrays for game objects.
+`yolo_ncnn` is an optional in-package node. It subscribes to
+`/camera/image_rect`, loads NCNN `.param`/`.bin` model exports directly with the
+lightweight Python `ncnn` runtime, and publishes `/vision/object_detections`
+JSON. `object_indication` uses calibrated CameraInfo plus per-class dimensions
+to estimate camera-relative object positions, then publishes
+`/vision/object_indications` for `scene_map`.
+
+`task_plan` consumes `/vision/scene_map` and `/task_plan/request`. Requests use
+targets such as `tag:0` or `object:bin`. Tag plans can dispatch to the proven
+`align_to_tag` primitive when `dispatch:true`; object plans are mapped but
+non-dispatchable until a bounded object/go-to-pose controller is implemented
+and proven with MCAP plus `/vex/ack` and `/vex/telemetry`.
 
 ## Package Layout
 

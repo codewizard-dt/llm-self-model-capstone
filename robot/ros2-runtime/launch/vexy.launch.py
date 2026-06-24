@@ -10,6 +10,12 @@ Nodes launched:
                   Publishes: /apriltag/detections, /tf
   scene_map     — AprilTag detections + workspace map → robot/object map coordinates
                   Publishes: /vision/scene_map
+  yolo_ncnn     — optional YOLO NCNN object detector over rectified camera frames
+                  Publishes: /vision/object_detections
+  object_indication — object boxes + CameraInfo → camera-relative object indications
+                      Publishes: /vision/object_indications
+  task_plan     — scene map + target request → bounded tag/object task plan
+                  Publishes: /task_plan/current
   align_to_tag  — bounded local-control skill for visible AprilTag alignment
                   Subscribes: /align_to_tag/goal, /apriltag/detections, /vex/ack, /vex/bridge_status
                   Publishes: /vex/cmd, /align_to_tag/feedback, /align_to_tag/result
@@ -30,6 +36,7 @@ from pathlib import Path
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.conditions import IfCondition
 from launch.substitutions import (
     EnvironmentVariable,
     LaunchConfiguration,
@@ -89,6 +96,9 @@ def _launch_nodes(context, *args, **kwargs):
             raise RuntimeError(f"workspace map does not exist: {map_path}")
         workspace_map_path = str(map_path)
     camera_in_robot_json = LaunchConfiguration("camera_in_robot_json").perform(context)
+    object_dimensions_json = LaunchConfiguration("object_dimensions_json").perform(
+        context
+    )
 
     return [
         # ----------------------------------------------------------
@@ -157,6 +167,53 @@ def _launch_nodes(context, *args, **kwargs):
                     "camera_in_robot_json": camera_in_robot_json,
                 }
             ],
+        ),
+        # ----------------------------------------------------------
+        # Optional YOLO NCNN object detector. Disabled by default so
+        # camera/tag/bridge proof still runs on Pis before model install.
+        # ----------------------------------------------------------
+        Node(
+            package="vexy_ros",
+            executable="yolo_ncnn_node",
+            name="yolo_ncnn",
+            condition=IfCondition(LaunchConfiguration("yolo_enabled")),
+            parameters=[
+                {
+                    "model_path": LaunchConfiguration("yolo_model_path"),
+                    "confidence_threshold": LaunchConfiguration("yolo_confidence"),
+                    "nms_iou_threshold": LaunchConfiguration("yolo_nms_iou"),
+                    "max_hz": LaunchConfiguration("yolo_max_hz"),
+                    "classes_json": LaunchConfiguration("yolo_classes_json"),
+                    "class_names_json": LaunchConfiguration("yolo_class_names_json"),
+                    "input_size": LaunchConfiguration("yolo_input_size"),
+                    "input_name": LaunchConfiguration("yolo_input_name"),
+                    "output_name": LaunchConfiguration("yolo_output_name"),
+                }
+            ],
+        ),
+        # ----------------------------------------------------------
+        # Object projection into the existing scene-map input.
+        # ----------------------------------------------------------
+        Node(
+            package="vexy_ros",
+            executable="object_indication_node",
+            name="object_indication",
+            parameters=[
+                {
+                    "object_dimensions_json": object_dimensions_json,
+                    "default_height_m": LaunchConfiguration("default_object_height_m"),
+                    "min_confidence": LaunchConfiguration("object_min_confidence"),
+                }
+            ],
+        ),
+        # ----------------------------------------------------------
+        # Dynamic task planner for tag/object targets. Only tag plans
+        # dispatch to proven motion primitives for now.
+        # ----------------------------------------------------------
+        Node(
+            package="vexy_ros",
+            executable="task_plan_node",
+            name="task_plan",
         ),
         # ----------------------------------------------------------
         # Bounded local-control skill for tag alignment.
@@ -239,6 +296,30 @@ def generate_launch_description():
                 "camera_in_robot_json",
                 default_value='{"x_m":0.0,"y_m":0.0,"yaw_rad":0.0}',
             ),
+            DeclareLaunchArgument("yolo_enabled", default_value="false"),
+            DeclareLaunchArgument(
+                "yolo_model_path",
+                default_value=EnvironmentVariable("VEXY_YOLO_MODEL", default_value=""),
+            ),
+            DeclareLaunchArgument("yolo_confidence", default_value="0.35"),
+            DeclareLaunchArgument("yolo_nms_iou", default_value="0.45"),
+            DeclareLaunchArgument("yolo_max_hz", default_value="5.0"),
+            DeclareLaunchArgument("yolo_classes_json", default_value="[]"),
+            DeclareLaunchArgument("yolo_class_names_json", default_value="{}"),
+            DeclareLaunchArgument("yolo_input_size", default_value="640"),
+            DeclareLaunchArgument("yolo_input_name", default_value=""),
+            DeclareLaunchArgument("yolo_output_name", default_value=""),
+            DeclareLaunchArgument(
+                "object_dimensions_json",
+                default_value=(
+                    '{"*":{"height_m":0.12},"bin":{"height_m":0.20,'
+                    '"width_m":0.30},"bottle":{"height_m":0.20,'
+                    '"width_m":0.065},"cup":{"height_m":0.12,'
+                    '"width_m":0.08},"sports ball":{"diameter_m":0.065}}'
+                ),
+            ),
+            DeclareLaunchArgument("default_object_height_m", default_value="0.12"),
+            DeclareLaunchArgument("object_min_confidence", default_value="0.35"),
             OpaqueFunction(function=_launch_nodes),
         ]
     )
