@@ -11,3 +11,4 @@ prompts, and workflows, but they must import or reference `contracts` models
 instead of redefining telemetry or self-model JSON shapes.
 
 - [LLM/Critic Architecture](llm_critic_architecture.md)
+- [June 23 Team Update](team_update_2026_06_23.html)
