@@ -2,13 +2,16 @@
 
 Buildable PROS project for the V5 Brain side of the Pi/ROS serial bridge.
 
-This bridge is intentionally conservative for the first physical ack/telemetry proof:
+This bridge is intentionally conservative for physical proof:
 
 - `USE_PACKAGE:=0` monolith build, matching the proven `v5-test` workaround for this Brain.
 - COBS disabled in `initialize()` so the Pi reads raw newline-delimited JSON.
 - `heartbeat` and `stop` packets ack `state:"ok"`.
-- `drive`, `turn`, and `set_goal` packets ack `state:"rejected"` with `fault:"motion_disabled"` until motor ports and safety limits are mapped.
+- `drive` and `turn` packets are accepted only when drive motors are present on ports `1` and `10`.
+- Motion commands are clamped, TTL-limited, watchdog-stopped, and current/voltage-limited.
+- `set_goal` is rejected by the Brain; higher-level goals stay in ROS.
 - A separate telemetry task emits `type:"telemetry"` records every 500 ms so the ROS bridge can prove `/vex/telemetry` independently from `/vex/ack`.
+- Telemetry includes `motor_samples` for `left_drive` and `right_drive` using the same field names required by the contract JSONL exporter.
 
 Build from this directory:
 

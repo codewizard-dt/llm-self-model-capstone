@@ -216,15 +216,20 @@ Supported `cmd` values: `stop`, `drive`, `turn`, `set_goal`
 
 **Ack** (`/vex/ack`):
 ```json
-{"v":1,"ack":1,"type":"ack","state":"ok","recv_ms":124,"battery_mv":12300,"heading_deg":0.0,"fault":null}
+{"v":1,"ack":1,"type":"ack","state":"ok","recv_ms":124,"battery_mv":12300,"motion_enabled":true,"drive_ports_ok":true,"motor_ports":[1,3,8,10],"fault":null}
 ```
-
-Ack records may include state fields from the current Brain firmware. They are still command acknowledgements, not proof that a streaming telemetry topic is healthy.
 
 **Telemetry** (`/vex/telemetry`):
 ```json
-{"v":1,"type":"telemetry","battery_mv":12300,"heading_deg":0.0}
+{"v":1,"type":"telemetry","motion_enabled":true,"drive_ports_ok":true,"motor_samples":[{"device":"left_drive","subsystem":"drivetrain","sample_ms":1200,"values":{"position_deg":10.0,"velocity_rpm":0.0,"current_amp":0.0,"power_w":0.0,"torque_nm":0.0,"efficiency_pct":0.0,"temperature_c":23.0}}]}
 ```
+
+The guarded V5 firmware accepts `drive`/`turn` only when the expected drive ports
+are present. It stops on command TTL expiry, watchdog expiry, explicit `stop`, or
+estop.
+
+Ack records are command acknowledgements; use `/vex/telemetry` for streaming
+health and motor-sample proof.
 
 **Bridge status** (`/vex/bridge_status`):
 ```json

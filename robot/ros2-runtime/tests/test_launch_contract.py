@@ -42,9 +42,16 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn("size: 0.200", config_text)
         self.assertIn("refine: true", config_text)
         self.assertIn("debug: false", config_text)
-        self.assertIn("ids: [0]", config_text)
-        self.assertIn("frames: [tag36h11_0]", config_text)
-        self.assertIn("sizes: [0.200]", config_text)
+        self.assertIn("ids: [0, 1, 2]", config_text)
+        self.assertIn("frames: [tag36h11_0, tag36h11_1, tag36h11_2]", config_text)
+        self.assertIn("sizes: [0.200, 0.200, 0.200]", config_text)
+
+    def test_align_to_tag_consumes_tf_pose_source(self) -> None:
+        node_text = (ROOT / "src" / "vexy_ros" / "align_to_tag_node.py").read_text()
+
+        self.assertIn("TFMessage", node_text)
+        self.assertIn('"/tf"', node_text)
+        self.assertIn("tag_id_from_frame_id", node_text)
 
     def test_camera_info_config_is_nonzero_and_marked_as_starter(self) -> None:
         config_text = (ROOT / "config" / "imx708_wide_640x480.yaml").read_text()
