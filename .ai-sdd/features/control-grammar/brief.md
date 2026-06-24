@@ -8,7 +8,7 @@
 | Gates | `m1` contracts-frozen |
 | Deps | F1 telemetry-contract, F2 self-model-schema, F3 parts-catalog-grammar, F4 adapter-interfaces — **all merged** |
 | Unblocks | F20 brain-command-bridge → F21 online-control-harness (`pilot`) |
-| Owner | TBD |
+| Owner | 215eight |
 
 > Sources: [MASTER_REQUIREMENTS.md](../../../MASTER_REQUIREMENTS.md) (Components → "Control grammar `(contracts)` — owns `control-command`"; Sub-features F19/F20/F21; ADR-10/19; Frozen Contracts; Milestones m1). Catalog narrowing: F3 frozen Parts Catalog Grammar (effector-encoded `MotorAllocation`, 4 buildable configs). Wire draft + safety: [robot/v5-brain/PROTOCOL.md](../../../robot/v5-brain/PROTOCOL.md), [robot/v5-brain/BRAIN_INTERFACE.md](../../../robot/v5-brain/BRAIN_INTERFACE.md), [robot/v5-brain/pros_bridge/](../../../robot/v5-brain/pros_bridge/) (guarded handler: `stop`/`drive`/`heartbeat`, watchdog, TTL clamps). Research: [raw/research/ros2-jazzy-supervisory-control-plan/](../../../raw/research/ros2-jazzy-supervisory-control-plan/index.md) ("treat `control-command` as the canonical command/ack/fault schema before custom ROS messages proliferate"; agent loop slow / robot loop fast / V5 loop hard-real-time; the Brain stays the safety authority), [raw/research/robot-policy/](../../../raw/research/robot-policy/index.md) (the V5 Brain runs a deterministic classical policy; the LLM revises a self-model, it does not train a neural policy). Full decision record (D1–D13) lives in [requirements.md](requirements.md).
 
@@ -76,15 +76,15 @@ Each item is independently runnable from `contracts/` (or repo root, which deleg
 
 | id | Validates | Mode | Owner |
 |---|---|---|---|
-| `s1` models + schemas | `control_command.py` defines the envelope, the closed 6-verb `ControlCommand` union, `HeartbeatLine`, `ControlLine`, `AckLine`, `FaultCode`, and clamp constants; all field/range/ack validators fire; `__init__` re-exports; `make schema` emits the two schema files; `make lint` + `make test` green; F1–F4 suites pass | automated (`make lint`, `make test`, `make schema`) | TBD |
-| `s2` fixtures + gates | the three control fixtures round-trip via the extended `validate` dispatch; exhaustive `FaultCode` coverage + cross-contract demux tests fire; `make schema-check` byte-identical for F1–F3 schemas; root `make validate`/`test`/`lint`/`schema` green | automated (`make validate`, `make schema-check`) | TBD |
-| (gate) `m1` contracts-frozen | all contracts (F1–F4 + F19) load and round-trip cleanly; manual grab-cycle reviewer check (Acceptance §8) | manual — human gate | TBD |
+| `s1` models + schemas | `control_command.py` defines the envelope, the closed 6-verb `ControlCommand` union, `HeartbeatLine`, `ControlLine`, `AckLine`, `FaultCode`, and clamp constants; all field/range/ack validators fire; `__init__` re-exports; `make schema` emits the two schema files; `make lint` + `make test` green; F1–F4 suites pass | automated (`make lint`, `make test`, `make schema`) | 215eight |
+| `s2` fixtures + gates | the three control fixtures round-trip via the extended `validate` dispatch; exhaustive `FaultCode` coverage + cross-contract demux tests fire; `make schema-check` byte-identical for F1–F3 schemas; root `make validate`/`test`/`lint`/`schema` green | automated (`make validate`, `make schema-check`) | 215eight |
+| (gate) `m1` contracts-frozen | all contracts (F1–F4 + F19) load and round-trip cleanly; manual grab-cycle reviewer check (Acceptance §8) | manual — human gate | 215eight — **signed off 2026-06-24** |
 
 ---
 
 ## Open questions
 
-- **O1 — arm angle range.** `ArmCommand.deg` ships with a conservative `[0, 360]`; the operational sub-range differs between the claw and scoop builds and isn't measured in-repo. Proposal: F20 narrows per assembled build once hard stops are measured. Needs an owner call (could defer the bound entirely to F20).
+- **O1 — arm angle range. RESOLVED (2026-06-24).** A bench min/max stall sweep measured the as-built claw arm at encoder `-125..+1667` motor counts over a ~90° physical swing (~0.05°/enc, ~19:1 geared). `ArmCommand.deg` is now defined as the **physical arm-joint angle** (0° stowed/down, ~90° raised), bounded `[0, 90]`; the Brain (F20) converts `deg`→encoder per build and holds the exact `°/enc` (refine via a level-app check at a known encoder target). The original `[0, 360]` matched neither the encoder nor the joint frame and is dropped. See commit `31960c9`.
 - **O2 — `MAX_FLYWHEEL_RPM`.** Shipped permissive at `3600` (let the Brain clamp + motor PID enforce reality); the cartridge-rated ceiling is ~600 RPM at the output shaft but launch-mechanism gearing is unmeasured. Confirm with the flywheel-build owner.
 - **O3 — clamp constants for F20.** Whether F19 emits a generated C++ header so the Brain pins to the same numbers, or F20 inlines them under a `make` diff-guard. Deferred to the F20 owner.
 - **O4 — MASTER "draft" wording.** MASTER tags `control-command` as *draft*; after `m1` it should read "frozen" alongside F1–F4 (small MASTER amendment landed with/after the F19 merge).
