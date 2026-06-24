@@ -633,8 +633,9 @@ ros2 run vexy_ros vex_bridge_node \
 | ROS 2 Jazzy base install | Yes | In `/opt/ros/jazzy/` |
 | `~/ros2_ws` build artifacts | Yes | In `~/ros2_ws/install/` |
 | `source` in `~/.bashrc` | Yes | If added permanently |
-| Running ROS nodes | **No** | Must be restarted |
-| Foxglove bridge | **No** | Must be restarted |
+| User systemd services | Yes | `vexy-ros-stack.service` and `vexy-ros-bridge.service` |
+| Running ROS nodes | Yes, if services are enabled | Verify after every reboot |
+| Foxglove bridge | Yes, if `vexy-ros-stack.service` is active | Runs from the stack launch file |
 
 ### After reboot — restart sequence
 
@@ -649,36 +650,59 @@ source ~/ros2_ws/install/setup.bash
 ls /dev/ttyACM*     # VEX V5 Brain
 ls /dev/video*      # Camera
 
-# 4. Launch full stack
-ros2 launch vexy_ros vexy.launch.py
+# 4. Verify managed stack
+systemctl --user is-active vexy-ros-stack.service
+systemctl --user is-active vexy-ros-bridge.service
 
-# Foxglove bridge starts automatically with the launch file above
+# 5. Confirm the legacy duplicate service is not running
+systemctl --user is-enabled vexy-ros.service 2>/dev/null || true
+systemctl --user is-active vexy-ros.service 2>/dev/null || true
+
+# 6. Confirm one clean graph
+ros2 node list
 ```
 
-### Optional: auto-start on boot with systemd
+Expected nodes: `/camera`, `/camera_rectify`, `/apriltag`, `/scene_map`,
+`/align_to_tag`, `/vex_bridge`, `/foxglove_bridge`, and `/vexy_ros_bridge`.
+If each node appears twice, stop and disable the legacy service:
 
-Create `/etc/systemd/system/vexy-ros.service`:
+```bash
+systemctl --user stop vexy-ros.service
+systemctl --user disable vexy-ros.service
+systemctl --user restart vexy-ros-stack.service
+```
+
+### Auto-start on boot with user systemd
+
+Use user services, not a system `/etc/systemd/system/vexy-ros.service`, so the
+ROS graph has one owner. The current Pi uses:
+
+- `vexy-ros-stack.service` — camera, rectification, AprilTag, scene map, align skill, V5 serial bridge, Foxglove
+- `vexy-ros-bridge.service` — `/vexy/cmd_vel` to `/vex/cmd` adapter
+
+Create `~/.config/systemd/user/vexy-ros-stack.service`:
 
 ```ini
 [Unit]
-Description=vexy ROS 2 Stack
-After=network.target
+Description=Vexy ROS 2 camera and V5 bridge stack
+After=default.target
 
 [Service]
-User=vexy
-ExecStart=/bin/bash -c 'source /opt/ros/jazzy/setup.bash && source /home/vexy/ros2_ws/install/setup.bash && ros2 launch vexy_ros vexy.launch.py'
+Type=simple
+Environment=ROS_DOMAIN_ID=0
+ExecStart=/bin/bash -lc 'source /opt/ros/jazzy/setup.bash && source /home/vexy/ros2_ws/install/setup.bash && exec ros2 launch vexy_ros vexy.launch.py camera_fps:=30 serial_port:=auto'
 Restart=on-failure
-RestartSec=5
+RestartSec=2
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target
 ```
 
 ```bash
-sudo systemctl daemon-reload
-sudo systemctl enable vexy-ros.service
-sudo systemctl start vexy-ros.service
-sudo systemctl status vexy-ros.service
+systemctl --user daemon-reload
+systemctl --user enable vexy-ros-stack.service
+systemctl --user start vexy-ros-stack.service
+systemctl --user status vexy-ros-stack.service
 ```
 
 ---
@@ -785,13 +809,16 @@ cat ~/ros2_ws/log/latest/logger_all.log
 
 ```bash
 # Live log stream
-journalctl -u vexy-ros.service -f
+journalctl --user -u vexy-ros-stack.service -f
 
 # Last 100 lines
-journalctl -u vexy-ros.service -n 100
+journalctl --user -u vexy-ros-stack.service -n 100
 
 # Since last boot
-journalctl -u vexy-ros.service -b
+journalctl --user -u vexy-ros-stack.service -b
+
+# Adapter bridge logs
+journalctl --user -u vexy-ros-bridge.service -n 100
 ```
 
 ### System-level dmesg (USB/camera device events)
@@ -825,8 +852,9 @@ ssh vexy@vexy.local
 # Source
 source ~/ros2_ws/install/setup.bash
 
-# Launch full stack
-ros2 launch vexy_ros vexy.launch.py
+# Ensure managed stack is active
+systemctl --user restart vexy-ros-stack.service
+systemctl --user start vexy-ros-bridge.service
 
 # Check nodes
 ros2 node list
