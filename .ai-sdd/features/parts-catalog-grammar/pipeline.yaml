@@ -1,0 +1,10 @@
+apiVersion: ai-sdd/v1
+kind: Pipeline
+metadata: { name: parts-catalog-grammar, version: 1 }
+spec:
+  semantics: enabler
+  nodes:
+    - { id: catalog-model-and-rules, kind: pipeline, pipeline: ../.., stack: contracts }
+    - { id: validate-and-gates,      kind: pipeline, pipeline: ../.., stack: contracts }
+  edges:
+    - { from: catalog-model-and-rules, to: validate-and-gates }
