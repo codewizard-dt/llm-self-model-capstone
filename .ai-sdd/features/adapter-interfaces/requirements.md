@@ -34,7 +34,9 @@ mechanically enforces ADR-01.
 - `reactivex` added to `contracts/pyproject.toml` via `uv add reactivex`
 - `contracts/tests/test_adapters.py` — conformance tests (pure in-memory, no I/O):
   - `isinstance` conformance: pass cases for both protocols, fail cases (missing `observe`)
-  - Non-overlap: a class implementing only `TelemetrySource` does not satisfy `VisionSource`
+  - Runtime structural caveat documented: because both protocols expose the same `observe()`
+    method, `@runtime_checkable` can only verify the method shape; static type checking guards
+    the element type (`Observable[ContractLine]` vs `Observable[VisionBlock]`)
   - Smoke test: minimal cold `TelemetrySource` emits one fixture `ContractLine` then `on_completed`; `on_next` receives the record and `on_completed` fires
   - F1 and F2 regression: existing test suites still pass
 
@@ -59,7 +61,7 @@ Each item independently runnable from `contracts/` (or repo root, which delegate
 2. `make lint` exits 0 — `ruff check` + `ruff format --check` clean
 3. `make test` exits 0, covering:
    - `isinstance` conformance pass/fail for `TelemetrySource` and `VisionSource`
-   - Non-overlap check
+   - Runtime structural caveat documented for the shared `observe()` method shape
    - Smoke test: cold `TelemetrySource` emits one `ContractLine` + `on_completed`
    - F1 and F2 suites still passing (regression guard)
 4. `from contracts import TelemetrySource, VisionSource` resolves cleanly in `uv run python` after `make sync`
@@ -72,7 +74,8 @@ Each item independently runnable from `contracts/` (or repo root, which delegate
 - Python 3.12 (`requires-python = ">=3.12,<3.13"`) · uv · ruff — no pip/poetry/black/flake8 (ADR-05, ADR-15, ADR-16)
 - Build entry is `make sync` (the routed build gate per F1 D7)
 - `root: contracts/` · `ignore_folders: .venv, __pycache__, dist, .pytest_cache, captures`
-- `reactivex` is the **only** new dep added by F4; pinned via `uv add reactivex`
+- `reactivex` is the only new runtime dep added by F4; `ruff` remains declared as a dev dependency so
+  `make lint` is reproducible from a clean `uv sync`
 - Protocols use **`typing.Protocol` + `@runtime_checkable`** from stdlib; `Observable` imported from `reactivex` for return-type annotation only
 - `ContractLine` and `VisionBlock` imported from `contracts.contract_line`; never redefined
 - **Additive only:** `adapters.py` is new; `__init__.py` gains two exports; no existing file modified beyond that

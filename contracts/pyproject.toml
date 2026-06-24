@@ -12,10 +12,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "ruff>=0.14"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/contracts"]
 
 [tool.uv]
-dev-dependencies = ["pytest>=8"]
+dev-dependencies = ["pytest>=8", "ruff>=0.14"]

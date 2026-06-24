@@ -80,7 +80,7 @@ def test_vision_source_isinstance_fail_missing_observe():
     assert not isinstance(MissingObserveVision(), VisionSource)
 
 
-def test_telemetry_source_does_not_satisfy_vision_source():
+def test_source_protocol_runtime_check_is_structural_only():
     """Both protocols share the same structural signature so isinstance is True for both.
 
     The runtime_checkable check is purely structural. The real non-overlap guarantee

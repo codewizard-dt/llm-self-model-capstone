@@ -19,7 +19,7 @@ existing file is modified beyond `__init__.py` gaining two export lines.
 |---|---|
 | `contracts/src/contracts/adapters.py` | **new** — `TelemetrySource` and `VisionSource` protocols |
 | `contracts/src/contracts/__init__.py` | **extend** — add `TelemetrySource`, `VisionSource` to imports and `__all__` |
-| `contracts/pyproject.toml` | **extend** — `uv add reactivex` adds `reactivex` to `[project.dependencies]` |
+| `contracts/pyproject.toml` | **extend** — add `reactivex` to `[project.dependencies]`; keep `ruff` declared in dev dependencies so `make lint` is reproducible |
 | `contracts/tests/test_adapters.py` | **new** — conformance and smoke tests |
 
 No other file may be created or modified by this slice.
@@ -76,8 +76,9 @@ imports and exports remain unchanged.
 
 ### `contracts/pyproject.toml`
 
-Run `uv add reactivex` from `contracts/`. This is the only dependency change for F4. Do not
-pin a specific version beyond what `uv` resolves; do not add any other package.
+Run `uv add reactivex` from `contracts/`. This is the only runtime dependency change for F4.
+Keep `ruff` in the contracts dev dependencies so the existing `make lint` target works after a
+fresh `uv sync`.
 
 ### `contracts/tests/test_adapters.py`
 
@@ -179,11 +180,11 @@ def test_vision_source_isinstance_fail_missing_observe():
 
 
 # ---------------------------------------------------------------------------
-# Non-overlap: TelemetrySource implementor does NOT satisfy VisionSource
+# Runtime structural caveat: protocols share the same method shape
 # ---------------------------------------------------------------------------
 
 def test_telemetry_source_does_not_satisfy_vision_source():
-    """A class typed for TelemetrySource must not accidentally satisfy VisionSource.
+    """Document the runtime structural caveat for the two source protocols.
 
     Both protocols share the same structural signature (``observe`` with no
     arguments), so the runtime_checkable check passes for both — this is
