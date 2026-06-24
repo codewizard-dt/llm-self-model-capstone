@@ -86,6 +86,8 @@ Three corrections from the 2026-06-17 audit (`index-2.md`):
 
 **Combinatorial impact:** raw slots drop from 1,152 to 96; after validity filtering, **~10–15 meaningful configurations** (not the ~15–30 previously stated).
 
+> **Superseded for the project's frozen vocabulary (2026-06-24).** The project's *frozen* vocabulary in `contracts/src/contracts/vocabulary.py` diverged from this 2026-06-17 corrected research block — PR #13 trimmed `arm_position` to `{front, rear}`, swapped `end_effector` to `{claw_grasper, scoop, flywheel}`, and re-expanded `cartridge` to all three V5 cartridges `{100rpm, 200rpm, 600rpm}`; F3 then dropped `4drive` from `motor_allocation` (every config now requires a powered manipulator). Under F3's valid-config rules the buildable design space is **exactly 60 configs** (claw 12 + scoop 36 + flywheel 12), not ~10–15 — the older estimate predated the flywheel/scoop/3-cartridge vocabulary. This research summary is preserved as faithful lineage of `raw/research/vex-v5-starter-kit-configurations/index-2.md`; the authoritative live spec lives in [`MASTER_REQUIREMENTS.md`](../../../MASTER_REQUIREMENTS.md) and [`contracts/parts_catalog.json`](../../../contracts/parts_catalog.json), and the cross-links to [[typed-assembly-grammar]] carry the same callout.
+
 What the kit **cannot** produce without add-ons: tank treads, pneumatics, 4-bar linkage arm, scissor lift, flywheel shooter, vision-based autonomy, holonomic X-drive, aluminum structure.
 
 ## Claw-Grasper-Locked Configuration Space

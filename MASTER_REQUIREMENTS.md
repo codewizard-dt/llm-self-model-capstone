@@ -75,7 +75,7 @@ By the demo, the system closes the generational self-model loop **in software** 
 - **Telemetry contract** `(contracts)` — owns the `predicted`/`observed`/`gap`/`vision` JSON line shape (see Constraints → Frozen Contracts).
 - **Self-model schema** `(contracts)` — owns the versioned 4-layer + `reasoning` self-model document shape.
 - **Control grammar** `(contracts)` — owns `control-command`: the fixed command vocabulary + command/ack envelope the online loop uses to drive the robot (draft; ADR-19). *(TBD)*
-- **Parts catalog grammar** `(contracts)` — owns `parts_catalog.json`, the finite typed design vocabulary (~10–15 valid configs). *(TBD)*
+- **Parts catalog grammar** `(contracts)` — owns `parts_catalog.json`, the finite typed design vocabulary (60 valid configs under F3's valid-config rules). *(TBD)*
 - **Adapter interfaces** `(contracts)` — owns `TelemetrySource` and `VisionSource` `@runtime_checkable` Protocol definitions; each exposes a single `observe()` method returning a `reactivex.Observable` stream (`Observable[ContractLine]` and `Observable[VisionBlock]` respectively). Cold observables for `Replay`/`Synthetic` sources; hot observables (bridged via `Subject`) for `Serial`/`Camera` sources. Decouples every consumer from hardware; swapping an implementation is a config flag with no pipeline change (ADR-20). *(TBD)*
 - **Synthetic oracle** `(contracts)` — owns `SyntheticTelemetrySource`: a parametric hidden-ground-truth forward model (friction, effective arm length, torque constant, mass) + measured noise; the LLM-information-separation rule applies (Constraints → Oracle grounding).
 - **Replay source** `(contracts)` — owns `ReplayTelemetrySource` / `ReplayVisionSource`: deterministic file readers over recorded `session_*.jsonl`. *(TBD)*
@@ -313,10 +313,10 @@ The online control loop (`F19` → `F20` → `F21` → `m6`) extends the chain p
 }
 ```
 
-**Parts Catalog Grammar** — `parts_catalog.json` (Starter Kit, ~10–15 valid configs). Revised 2026-06-23 (PR #13 review) for real hardware feasibility: end effectors are the actual ball-manipulation mechanisms, arm position is trimmed to the feasible mounts, and the cartridge axis carries all three VEX V5 gear cartridges:
+**Parts Catalog Grammar** — `parts_catalog.json` (Starter Kit). Revised 2026-06-23 (PR #13 review) for real hardware feasibility: end effectors are the actual ball-manipulation mechanisms, arm position is trimmed to the feasible mounts, and the cartridge axis carries all three VEX V5 gear cartridges. Amended for F3: `4drive` was dropped from `motor_allocation` (it leaves no motor for a manipulator, and every config now requires a powered end effector). The buildable design space is **60 configs** under F3's valid-config rules (claw needs 2 manipulator motors so it is `2drive+1arm+1claw`-only; flywheel requires `600rpm`); the exact count is enforced by F3's enumeration test. *(Supersedes the earlier "~10–15" estimate, which predated the flywheel/scoop/3-cartridge vocabulary.)*
 ```json
 {
-  "motor_allocation": ["2drive+1arm+1claw", "2drive+2free", "4drive", "3drive+1manip"],
+  "motor_allocation": ["2drive+1arm+1claw", "2drive+2free", "3drive+1manip"],
   "arm_position":     ["front", "rear"],
   "end_effector":     ["claw_grasper", "scoop", "flywheel"],
   "wheel_config":     ["front_omni+rear_standard"],

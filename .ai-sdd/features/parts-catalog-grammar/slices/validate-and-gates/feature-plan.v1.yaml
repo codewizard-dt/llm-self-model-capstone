@@ -1,0 +1,148 @@
+summary: >-
+  F3 slice 2 (validate-and-gates), stack contracts. Strictly additive: add a third
+  dispatch to the existing `contracts.validate` entrypoint that (a) round-trips
+  contracts/parts_catalog.json against `PartsCatalog` and (b) asserts each F2
+  `self_model_*.json` fixture's `config` is `buildable` via `validate_config`,
+  reporting failures into the existing collect-errors / stderr / exit-1 harness
+  without touching the F1 (`*.jsonl → ContractLine`) or F2 (`self_model_*.json →
+  SelfModel`) dispatches. Add `catalog` and `catalog-check` delegations to the root
+  Makefile (the contracts/ targets already exist from slice 1). Add a validate test
+  covering the catalog round-trip and a mutated-unbuildable-config failure. Close F3
+  for m1 with a full green gate sweep and no F1/F2 regression.
+
+scope:
+  in:
+    - Third dispatch in contracts/src/contracts/validate.py — parts_catalog.json
+      round-trip against PartsCatalog and per-fixture buildability assertion.
+    - Failure reporting consistent with the existing harness — a catalog
+      parse/validation failure reported under the parts_catalog.json name, and a
+      non-buildable fixture reported as "not buildable" followed by its violation
+      messages; any failure exits 1.
+    - Empty/absent fixtures dir and missing parts_catalog.json handled consistently
+      with the existing entrypoint behaviour.
+    - Root Makefile gains catalog and catalog-check targets that each delegate into
+      the contracts/ Makefile, alongside the existing
+      sync/validate/test/lint/schema delegations.
+    - Test coverage for the new dispatch (catalog round-trip success; a
+      mutated-unbuildable-config fixture makes validate fail with a readable reason,
+      with committed fixtures left buildable).
+  out:
+    - Slice-1 surfaces — PartsCatalog, validate_config, CatalogVerdict,
+      contracts/src/contracts/parts_catalog.py, contracts/src/contracts/catalog.py,
+      contracts/parts_catalog.json, the SelfModelConfig __all__ export, and the
+      contracts/Makefile catalog/catalog-check targets. All already committed; not
+      touched here.
+    - The F1 *.jsonl → ContractLine and F2 self_model_*.json → SelfModel dispatches —
+      kept intact, not modified.
+    - The contracts.vocabulary enum value sets, the SelfModel/SelfModelConfig shape,
+      and any JSON Schema emission (no schema is emitted for PartsCatalog — D5).
+    - Physics judgment (torque/CoM/geometry) — F9 (D2).
+    - Generator (F8), gap math (F10), critics (F9), diff rendering (F11); hardware,
+      network, PROS C++.
+    - The make demo target — an m2-milestone concern, not a per-slice gate.
+
+acceptance:
+  - id: VG-1
+    description: >-
+      `make validate` (run from contracts/ and from the repo root) exits 0. The new
+      dispatch round-trips contracts/parts_catalog.json against PartsCatalog and
+      asserts each F2 self_model_*.json fixture's config is buildable via
+      validate_config, while the F1 *.jsonl → ContractLine and F2 self_model_*.json →
+      SelfModel dispatches still validate their fixtures unchanged.
+  - id: VG-2
+    description: >-
+      A temporarily-mutated fixture whose config is unbuildable (e.g.
+      flywheel + 200rpm cartridge) makes the validate entrypoint exit non-zero with a
+      readable reason naming the fixture and its violation messages. This is
+      demonstrated by a test that mutates a config in-memory or via a temp fixture;
+      the committed fixtures stay buildable.
+  - id: VG-3
+    description: >-
+      `make catalog` and `make catalog-check` are runnable from the repo root via the
+      added root-Makefile delegation and exit 0 (catalog regenerates
+      parts_catalog.json from the vocabulary enums; catalog-check confirms no diff).
+  - id: VG-4
+    description: >-
+      Root `make sync`, `make validate`, `make test`, `make lint`, `make catalog`, and
+      `make catalog-check` all exit 0.
+  - id: VG-5
+    description: >-
+      The full F1 and F2 test suites still pass with no regression; `make test` is
+      green at both contracts/ and root.
+  - id: VG-6
+    description: >-
+      `make lint` exits 0 (ruff check + ruff format --check over src/ and tests/).
+
+decisions:
+  - id: PLAN-VG-FILES
+    summary: >-
+      Implementation manifest limited to validate.py, a validate test file, and the
+      root Makefile; all slice-1 files excluded.
+    decision: >-
+      The only files this slice may touch are contracts/src/contracts/validate.py
+      (add the third dispatch), contracts/tests/test_validate.py (new — the repo has
+      no existing validate-entrypoint test file; test_parts_catalog.py covers the
+      rules engine, not the entrypoint dispatch), and the root Makefile (add
+      catalog/catalog-check delegation). parts_catalog.py, catalog.py,
+      parts_catalog.json, the __init__.py export, and contracts/Makefile are slice-1
+      deliverables already committed and are explicitly out of this slice's manifest.
+    grounding: >-
+      F3 requirements D12 (slice split: validate-and-gates = validate extension +
+      root delegation + full green / no F1-F2 regression); slice brief "Files to
+      create / change"; verified on disk that contracts/Makefile already has
+      catalog/catalog-check and __init__.py already exports SelfModelConfig.
+    status: closed
+  - id: PLAN-VG-ADDITIVE
+    summary: >-
+      The third dispatch reuses the existing collect-errors / stderr / exit-1 harness
+      and leaves the F1 and F2 dispatches untouched.
+    decision: >-
+      Add the parts-catalog round-trip and the per-fixture buildability assertion to
+      the same errors list / stderr / return-1 control flow already in validate.main,
+      preserving the F1 *.jsonl → ContractLine and F2 self_model_*.json → SelfModel
+      paths verbatim. Missing parts_catalog.json / empty fixtures dir are handled like
+      the existing entrypoint (no spurious failure).
+    grounding: >-
+      F3 requirements "In scope" (validate entrypoint additive — third dispatch) and
+      D12; slice brief "validate.py third dispatch"; existing
+      contracts/src/contracts/validate.py harness.
+    status: closed
+  - id: PLAN-VG-CONFIG-REUSE
+    summary: >-
+      Buildability assertion reuses F2's SelfModelConfig and slice-1's
+      validate_config; no new model or rule is defined.
+    decision: >-
+      For each self_model_*.json fixture, load the SelfModel, take model.config, and
+      call validate_config(config); require verdict.buildable is True. No new pydantic
+      model, rule, or violation code is introduced in this slice — the rules engine is
+      frozen by slice 1.
+    grounding: >-
+      F3 requirements D3 (validate_config input reuses SelfModelConfig) and D9
+      (CatalogVerdict shape); slice brief "Assert fixture buildability".
+    status: closed
+  - id: PLAN-VG-GATES
+    summary: >-
+      Gate commands are uv sync + the make targets; no make demo.
+    decision: >-
+      The implementer's gate set is `uv sync`, `make validate`, `make test`,
+      `make lint`, plus `make catalog` and `make catalog-check` (root delegation is
+      added in this slice, so the root targets are verifiable here). `make demo` is
+      deliberately excluded as an m2 concern.
+    grounding: >-
+      plan-feature SKILL.md ("make demo is an m2-milestone concern — do not add it as
+      a per-slice gate"; minimum gates uv sync / make test / make validate /
+      make lint); F3 requirements Acceptance 7.
+    status: closed
+
+files:
+  - contracts/src/contracts/validate.py
+  - contracts/tests/test_validate.py
+  - Makefile
+
+tests:
+  - uv sync
+  - make validate
+  - make catalog
+  - make catalog-check
+  - make test
+  - make lint

@@ -1,0 +1,45 @@
+items:
+  - id: VG-1
+    verdict: pass
+    notes: >-
+      `make validate` exits 0 from both contracts/ and the repo root. The new third
+      dispatch is REAL, not a no-op: independently confirmed it round-trips
+      contracts/parts_catalog.json against PartsCatalog AND runs validate_config over
+      each committed self_model_*.json fixture (gen0, gen1 both buildable=True). The
+      F1 (*.jsonl -> ContractLine) and F2 (self_model_*.json -> SelfModel) dispatches
+      in validate.py are unchanged verbatim — the diff only adds code after the F2
+      loop; both still validate their fixtures (no regression).
+  - id: VG-2
+    verdict: pass
+    notes: >-
+      Verified independently of the test harness: injecting a flywheel+200rpm fixture
+      into the real fixtures dir makes the actual entrypoint exit 1 with the readable
+      reason "self_model_..._injected.json: not buildable — end_effector 'flywheel'
+      requires cartridge '600rpm'; got '200rpm'". The committed test
+      (test_unbuildable_fixture_makes_entrypoint_exit_nonzero) constructs this in a
+      tmp_path fixtures dir via monkeypatch, never editing committed fixtures; git
+      status confirms committed fixtures stay buildable and untouched.
+  - id: VG-3
+    verdict: pass
+    notes: >-
+      Root `make catalog` and `make catalog-check` both exit 0 via the new
+      root-Makefile delegations into contracts/ (regenerate parts_catalog.json from
+      the vocabulary enums; catalog-check asserts no diff). catalog-check produced no
+      diff.
+  - id: VG-4
+    verdict: pass
+    notes: >-
+      Root `make sync`, `make validate`, `make test`, `make lint`, `make catalog`, and
+      `make catalog-check` all exit 0. Ran each from the repo root.
+  - id: VG-5
+    verdict: pass
+    notes: >-
+      Full suite green at contracts/ and root: 69 passed, including the 4 new
+      test_validate.py cases and the pre-existing F1/F2 suites. No regression.
+  - id: VG-6
+    verdict: pass
+    notes: >-
+      Root `make lint` exits 0 — `ruff check` (all checks passed) + `ruff format
+      --check` (19 files already formatted) over src/ and tests/. ruff-only toolchain;
+      no black/isort/flake8.
+verdict: approve

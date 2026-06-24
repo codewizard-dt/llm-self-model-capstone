@@ -552,20 +552,16 @@
         ├── motor_allocation
         │     ├── 2drive+1arm+1claw  ← Gen 0 (Clawbot)
         │     ├── 2drive+2free
-        │     ├── 4drive
         │     └── 3drive+1manip
         │
         ├── arm_position
         │     ├── front  ← Gen 0
-        │     ├── rear
-        │     ├── side
-        │     └── absent
+        │     └── rear
         │
         ├── end_effector
         │     ├── claw_grasper  ← Gen 0
-        │     ├── bare_arm
-        │     ├── none
-        │     └── [3D print: scoop_cup, paddle, ...]  ← expansion
+        │     ├── scoop
+        │     └── flywheel  ← needs 600rpm cartridge
         │
         ├── wheel_config
         │     └── front_omni+rear_standard  ← only valid with base kit
@@ -582,8 +578,9 @@
 Gen 0 telemetry gaps  ──►  LLM proposes mutation  ──►  Gen 1 config
                                                         (different from Gen 0)</pre>
       </figure>
-      <p>The base kit yields about 10 to 15 valid configurations. That count is small enough to work through in 3 to 5
-        generations and large enough to produce behavioral differences worth measuring.</p>
+      <p>The vocabulary yields 60 valid configurations under F3's valid-config rules. That count is small enough to
+        sample meaningfully across a handful of generations and large enough to produce behavioral differences worth
+        measuring.</p>
     </section>
 
     <section>

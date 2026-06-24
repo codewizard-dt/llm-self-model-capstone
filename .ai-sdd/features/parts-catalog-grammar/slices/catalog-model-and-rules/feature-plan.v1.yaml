@@ -1,0 +1,142 @@
+summary: >-
+  F3 slice catalog-model-and-rules (contracts vertical). Add a pydantic v2
+  `PartsCatalog` model (`contracts/src/contracts/parts_catalog.py`) whose six
+  axis fields are typed against the imported `contracts.vocabulary` enums (D1)
+  plus a typed `CatalogConstraints` sub-model; a `Violation`/`CatalogVerdict`
+  pair and a deterministic `validate_config(SelfModelConfig) -> CatalogVerdict`
+  combinatorial-buildability engine (rules R1/R2/R3); a `catalog` entrypoint
+  (`contracts/src/contracts/catalog.py`) that direct-file-writes the committed
+  `contracts/parts_catalog.json` materialized from the vocabulary enums (mirrors
+  `schema.py`, no stdout redirect); `catalog` + `catalog-check` targets in
+  `contracts/Makefile`; an additive `SelfModelConfig` export from
+  `contracts/__init__.py` (D11); and unit tests in
+  `contracts/tests/test_parts_catalog.py`. Strictly additive to landed F1+F2 —
+  `ContractLine`, `SelfModel`, `contract_line.json`, `self_model.json` untouched.
+  The legal-sentence enumeration totals exactly 60 (D13). The `validate`
+  entrypoint extension and root-Makefile delegation are explicitly the NEXT
+  slice (validate-and-gates), not this one (D12).
+
+scope:
+  in:
+    - "Create contracts/src/contracts/parts_catalog.py: PartsCatalog (pydantic v2, extra=forbid, schema_version: Literal['1.0'] locked) with one list[Enum] field per axis (motor_allocation, arm_position, end_effector, wheel_config, arm_gear_ratio, cartridge) typed against the IMPORTED contracts.vocabulary enums, plus a typed CatalogConstraints sub-model carrying the machine-readable rule set."
+    - "Define Violation = {code: str, message: str} and CatalogVerdict = {buildable: bool, violations: list[Violation]} (D9)."
+    - "Implement validate_config(config: SelfModelConfig) -> CatalogVerdict — deterministic engine consuming F2's SelfModelConfig (D3) with rules R1 (CLAW_MOTOR_BUDGET), R2 (scoop/flywheel valid on all three allocations), R3 (FLYWHEEL_CARTRIDGE), each violation carrying a human-readable message."
+    - "Create contracts/src/contracts/catalog.py mirroring schema.py: a {filename: payload} registry + write_text (NO stdout redirect); main() writes contracts/parts_catalog.json directly. The six axis arrays are generated from the vocabulary enum members (values, declared order) so they can never drift; payload also carries schema_version and the machine-readable constraints block (D4). No JSON Schema is emitted for PartsCatalog (D5)."
+    - "Add `catalog` and `catalog-check` targets to contracts/Makefile (catalog: $(UV) python -m contracts.catalog ; catalog-check: catalog then git diff --exit-code parts_catalog.json), mirroring schema/schema-check."
+    - "Commit the generated contracts/parts_catalog.json."
+    - "Additively add SelfModelConfig to contracts/__init__.py imports and __all__ (one line each), keeping all F1/F2 exports (D11)."
+    - "Add contracts/tests/test_parts_catalog.py covering the acceptance checklist (drift guard, Gen-0 buildable, planted-illegal combos, scoop-on-each-allocation, enumeration==60, round-trip)."
+  out:
+    - "The `validate` entrypoint parts-catalog extension (round-trip + F2-fixture-buildable assertion) — NEXT slice validate-and-gates (D12)."
+    - "Root-level Makefile delegation of catalog/catalog-check — NEXT slice validate-and-gates (D12); do NOT touch the root Makefile."
+    - "Any change to the contracts.vocabulary enum value sets — owned by F2 (D1); the 4drive removal already landed as s0 (D6). No further vocabulary edits."
+    - "Any JSON Schema emission for PartsCatalog (D5) and any change to schema.py / the schemas/ directory."
+    - "Physics judgment — torque budget, CoM/geometry, reach, whether 600rpm suits claw/scoop — that is F9 (D2/D8 forward-only)."
+    - "Any change to F1 ContractLine/contract_line.json or F2 SelfModel/self_model.json behaviour (additive-only)."
+    - "Generator (F8), gap math (F10), critic logic (F9), diff rendering (F11); hardware, network, PROS C++."
+    - "make demo (m2-milestone concern, never a per-slice gate)."
+
+acceptance:
+  - id: acc-sync
+    description: "`make sync` (uv sync) exits 0 from contracts/."
+  - id: acc-lint
+    description: "`make lint` (ruff check + ruff format --check on src/ and tests/) exits 0."
+  - id: acc-imports
+    description: "`from contracts import PartsCatalog, validate_config, SelfModelConfig` succeeds in `uv run python` after sync — SelfModelConfig added additively to contracts.__all__ (D11), all F1/F2 exports preserved."
+  - id: acc-catalog-emits
+    description: "`make catalog` exits 0 and direct-file-writes a non-empty contracts/parts_catalog.json (no stdout redirect) listing the six axes plus schema_version and a machine-readable constraints block."
+  - id: acc-catalog-check
+    description: "`make catalog-check` exits 0 — the committed contracts/parts_catalog.json byte-equals the freshly generated one (catalog then git diff --exit-code parts_catalog.json), mirroring schema-check."
+  - id: acc-drift-guard
+    description: "A unit test asserts each catalog axis array equals the value set of the corresponding contracts.vocabulary enum (import-identity / drift guard): a redefined or forked value set fails the test, and motor_allocation has NO '4drive' member (D1/D6)."
+  - id: acc-gen0-buildable
+    description: "The Gen-0 Clawbot config (motor_allocation=2drive+1arm+1claw, arm_position=front, end_effector=claw_grasper, wheel_config=front_omni+rear_standard, arm_gear_ratio=7:1, cartridge=200rpm) → validate_config returns buildable=True with no violations."
+  - id: acc-claw-budget-2free
+    description: "claw_grasper + motor_allocation=2drive+2free → not buildable, a violation with code='CLAW_MOTOR_BUDGET' (R1/D7)."
+  - id: acc-claw-budget-3drive
+    description: "claw_grasper + motor_allocation=3drive+1manip → not buildable, a violation with code='CLAW_MOTOR_BUDGET' (R1/D7)."
+  - id: acc-flywheel-cartridge
+    description: "flywheel + cartridge=200rpm → not buildable, a violation with code='FLYWHEEL_CARTRIDGE' and a human-readable message (R3/D8 forward-only)."
+  - id: acc-scoop-each-allocation
+    description: "A scoop config on each of the three motor allocations (2drive+1arm+1claw, 2drive+2free, 3drive+1manip) → buildable=True (R2 — scoop/flywheel need >=1 manipulator motor, supplied by all three)."
+  - id: acc-enum-60
+    description: "The full enumeration of legal sentences over the grammar (those validate_config reports buildable) has exactly 60 entries (claw 12 + scoop 36 + flywheel 12; D13)."
+  - id: acc-json-roundtrip
+    description: "contracts/parts_catalog.json round-trips: loading it and validating through PartsCatalog succeeds with no loss."
+  - id: acc-no-regression
+    description: "`make test` exits 0 and the existing F1 + F2 test suites still pass; contract_line.json and self_model.json are byte-unchanged (additive-only)."
+
+decisions:
+  - id: D1
+    decision: "Axis values come only from the shared contracts.vocabulary enums; PartsCatalog fields are typed against the imported enums and parts_catalog.json axis arrays are materialized from enum members — never redefined or hard-coded. The drift-guard test enforces this."
+    grounding: "F3 requirements decision D1; conventions/contracts.md Boundary rule 'No schema is defined outside contracts'; MASTER_REQUIREMENTS Constraints -> Frozen Contracts."
+    status: closed
+  - id: D2
+    decision: "F3 answers only deterministic combinatorial/structural buildability (motor budget, part availability). Physics (torque/CoM/geometry/reach) is F9 critic-panel and out of scope here."
+    grounding: "F3 requirements decision D2; slice brief Out of scope."
+    status: closed
+  - id: D3
+    decision: "validate_config consumes F2's SelfModelConfig (strict=False, JSON strings coerce to StrEnums); it is imported, not re-typed."
+    grounding: "F3 requirements decision D3; contracts/src/contracts/self_model.py SelfModelConfig."
+    status: closed
+  - id: D4
+    decision: "Rules are expressed BOTH as a machine-readable constraints block embedded in parts_catalog.json (for F8 to read) AND as the executable validate_config engine; a typed CatalogConstraints sub-model carries the constraints in PartsCatalog."
+    grounding: "F3 requirements decision D4; slice brief PartsCatalog / catalog.py sections."
+    status: closed
+  - id: D5
+    decision: "parts_catalog.json is a DATA document at the contracts root (contracts/parts_catalog.json), distinct from schemas/*.json; NO JSON Schema is emitted for PartsCatalog and schema.py is not touched."
+    grounding: "F3 requirements decision D5; slice brief catalog.py section."
+    status: closed
+  - id: D6
+    decision: "4drive is already removed from MotorAllocation at the vocabulary level (s0, commit 8c3bb99) — it is NOT an F3 rule. F3 must not re-add it; R2 relies on every remaining allocation supplying >=1 manipulator motor. The drift guard asserts 4drive is absent."
+    grounding: "F3 requirements decision D6; contracts/src/contracts/vocabulary.py MotorAllocation; slice brief Depends on row."
+    status: closed
+  - id: D7
+    decision: "R1 — end_effector == claw_grasper requires motor_allocation == '2drive+1arm+1claw' (claw needs arm-lift + claw = 2 manipulator motors); otherwise emit a violation with code='CLAW_MOTOR_BUDGET'."
+    grounding: "F3 requirements decision D7; slice brief R1."
+    status: closed
+  - id: D8
+    decision: "R3 — forward-only — end_effector == flywheel requires cartridge == '600rpm'; otherwise emit a violation with code='FLYWHEEL_CARTRIDGE'. Claw/scoop cartridge suitability is NOT judged here (F9's torque call); claw/scoop accept any cartridge."
+    grounding: "F3 requirements decision D8; slice brief R3."
+    status: closed
+  - id: D9
+    decision: "CatalogVerdict = {buildable: bool, violations: list[Violation]} and Violation = {code: str, message: str} — a stable machine code plus a human-readable message so F8/F9 can route on the code."
+    grounding: "F3 requirements decision D9; slice brief validate_config section."
+    status: closed
+  - id: D10
+    decision: "PartsCatalog carries schema_version: Literal['1.0'] (locked), bumped per-contract independently of F1/F2."
+    grounding: "F3 requirements decision D10 / Constraints; mirrors self_model.py schema_version."
+    status: closed
+  - id: D11
+    decision: "SelfModelConfig is exported additively from contracts/__init__.py (added to imports and __all__, one line each) so F3 and F8 import it from the package root; all existing F1/F2 exports are preserved."
+    grounding: "F3 requirements decision D11; contracts/src/contracts/__init__.py."
+    status: closed
+  - id: D12
+    decision: "This is the catalog-model-and-rules slice ONLY: PartsCatalog + validate_config + catalog emit + catalog-check + SelfModelConfig export + unit tests. The `validate` entrypoint parts-catalog path and root-Makefile delegation belong to the next slice (validate-and-gates) and are out of scope here; the root Makefile is not touched."
+    grounding: "F3 requirements decision D12 (slice decomposition); slice brief 'What this slice delivers'."
+    status: closed
+  - id: D13
+    decision: "The legal-sentence design space is exactly 60 valid configs (claw 12 + scoop 36 + flywheel 12), asserted by the enumeration test. MASTER's stale '~10-15' is reconciled to 60 in s0."
+    grounding: "F3 requirements decision D13; slice brief Acceptance item 7/enumeration."
+    status: closed
+  - id: D14
+    decision: "catalog.py mirrors the as-shipped schema.py exactly: a {filename: payload} registry plus Path.write_text with no stdout redirect; the Makefile catalog target runs `python -m contracts.catalog` with no '>' redirect and catalog-check runs catalog then `git diff --exit-code parts_catalog.json`."
+    grounding: "F3 requirements Constraints 'Mirror F2's as-shipped conventions'; contracts/src/contracts/schema.py and contracts/Makefile schema/schema-check."
+    status: closed
+
+files:
+  - contracts/src/contracts/parts_catalog.py
+  - contracts/src/contracts/catalog.py
+  - contracts/src/contracts/__init__.py
+  - contracts/parts_catalog.json
+  - contracts/Makefile
+  - contracts/tests/test_parts_catalog.py
+
+tests:
+  - "uv sync"
+  - "make sync"
+  - "make catalog"
+  - "make catalog-check"
+  - "make validate"
+  - "make test"
+  - "make lint"

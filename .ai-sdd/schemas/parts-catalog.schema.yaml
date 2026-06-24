@@ -5,8 +5,8 @@ spec:
   # FROZEN CONTRACT — Parts Catalog Grammar. Transcribed verbatim from
   # MASTER_REQUIREMENTS.md → Constraints → Frozen Contracts. Requirement-level freeze; canonical
   # runtime copy is parts_catalog.json + a pydantic-v2 model in `contracts/` (ADR-06/14). The finite
-  # typed design vocabulary (~10–15 valid configs, Starter Kit only). Validated continuously by
-  # parts-catalog.structure against examples/parts-catalog.example.json.
+  # typed design vocabulary (60 valid configs under F3's valid-config rules, Starter Kit only).
+  # Validated continuously by parts-catalog.structure against examples/parts-catalog.example.json.
   handle: file
   format: yaml
   scope: shared

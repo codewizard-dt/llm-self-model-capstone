@@ -1,0 +1,26 @@
+summary: >-
+  F3 slice 2 (validate-and-gates), stack contracts. Strictly additive. Added a third
+  dispatch to the `contracts.validate` entrypoint that (a) round-trips
+  contracts/parts_catalog.json against `PartsCatalog` (failure reported as
+  `parts_catalog.json: <error>`) and (b) for each `self_model_*.json` fixture runs
+  `validate_config(model.config)` and requires `buildable is True` (a non-buildable
+  fixture reported as `<name>: not buildable — <messages>`); both reuse the existing
+  collect-errors / stderr / exit-1 harness. The F1 (`*.jsonl → ContractLine`) and F2
+  (`self_model_*.json → SelfModel`) dispatches are left verbatim; a missing
+  parts_catalog.json is skipped, consistent with an absent fixtures dir. Added
+  `catalog` and `catalog-check` delegations to the root Makefile (and `.PHONY`)
+  alongside sync/validate/test/lint/schema, so both are runnable from the repo root.
+  Added contracts/tests/test_validate.py covering the catalog round-trip, both
+  committed F2 fixtures reporting buildable through the validate path, the entrypoint
+  exiting 0 over the committed tree, and a temp-fixture unbuildable config
+  (flywheel + 200rpm) making the entrypoint exit 1 with a readable reason naming the
+  fixture and the 600rpm violation. Committed fixtures stay buildable. Full green gate
+  sweep with no F1/F2 regression (69 tests pass; ruff clean; root
+  catalog/catalog-check exit 0).
+satisfies:
+  - VG-1
+  - VG-2
+  - VG-3
+  - VG-4
+  - VG-5
+  - VG-6
