@@ -38,6 +38,7 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn("family: 36h11", config_text)
         self.assertIn("size: 0.200", config_text)
         self.assertIn("refine: true", config_text)
+        self.assertIn("debug: false", config_text)
         self.assertIn("ids: [0]", config_text)
         self.assertIn("frames: [tag36h11_0]", config_text)
         self.assertIn("sizes: [0.200]", config_text)
