@@ -1,0 +1,10 @@
+apiVersion: ai-sdd/v1
+kind: Pipeline
+metadata: { name: control-grammar, version: 1 }
+spec:
+  semantics: enabler
+  nodes:
+    - { id: models-and-schemas,         kind: pipeline, pipeline: ../.., stack: contracts }
+    - { id: validate-fixtures-and-gates, kind: pipeline, pipeline: ../.., stack: contracts }
+  edges:
+    - { from: models-and-schemas, to: validate-fixtures-and-gates }

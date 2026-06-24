@@ -1,0 +1,77 @@
+summary: >-
+  F19 slice validate-fixtures-and-gates (contracts vertical) — closes the
+  control-grammar feature for m1. Adds three control-command fixtures verbatim
+  from the slice brief: contracts/fixtures/control_command_grab_cycle.jsonl
+  (12 lines — heartbeat → drive → arm(lower 90°) → claw(close) → arm(lift 270°)
+  → stop, each paired with its ack; claw-build cycle), control_command_flywheel_cycle.jsonl
+  (10 lines — heartbeat → drive → flywheel(2400 rpm) → flywheel(0 rpm) → stop,
+  each paired with its ack; flywheel-build cycle), and control_command_rejections.jsonl
+  (8 lines — one ack per FaultCode value, exhaustive enum coverage; the
+  ttl_expired row uses state="stale" per D6/D17, the other 7 use
+  state="rejected"). Every command line carries v=1, seq monotonic from 1,
+  ttl_ms ≤ TTL_MS_MAX=1000, and body fields inside their Field bounds; every ack
+  line carries v=1, type="ack", non-null fault, and a state matching the D6
+  invariants. Extends contracts/src/contracts/validate.py with the F19 fourth
+  dispatch (strictly additive, sequenced after the F3 dispatch): globs
+  control_command_*.jsonl, JSON-decodes each non-blank line, and routes by the
+  closed `type` discriminator (D2/D16) — `type == "ack"` → AckLine.model_validate;
+  otherwise → TypeAdapter(ControlLine).validate_python (ControlLine is a
+  discriminated-union type alias, not a BaseModel, so a TypeAdapter is the
+  canonical pydantic-v2 entry point; built once at module import). Failures land
+  in the existing `errors` list as `f"{path.name}:{lineno}: {exc}"` — same shape
+  as F1. Applies the one principled F1 glob narrowing from `*.jsonl` to
+  `session_*.jsonl` (D15): behavioral no-op for the committed fixtures (only
+  session_example.jsonl matches today) and mirrors F2's `self_model_*.json`
+  family-glob style exactly. The validate.py docstring header is updated from
+  "Three dispatches" to "Four dispatches" with a new bullet describing the F19
+  surface (the per-line type routing) and inline notes on the F1 narrowing.
+  Extends contracts/tests/test_validate.py additively (no F1/F2/F3 test case
+  deleted) with ten new cases. Per-fixture round-trip tests for all three
+  control fixtures parse every line via the same TypeAdapter/AckLine routing
+  the entrypoint uses and assert the verb sequences. The
+  exhaustive-FaultCode-coverage test (D7) asserts the parsed `fault` set equals
+  `{fc.value for fc in FaultCode}` with no extras, omissions, or duplicates.
+  The stale-vs-rejected distinction test (D6/D17) asserts ttl_expired→stale and
+  every other rejected-fault row→rejected. Three temp-root entrypoint tests
+  reuse the existing _PathStub monkeypatch pattern from the F3 unbuildable-
+  fixture test (rather than introducing a new abstraction or refactoring
+  validate.py's path resolution): one writes a vx=0.9 mutation into a temp
+  control_command_*.jsonl and asserts validate.main() returns 1 with
+  `<file>:<lineno>: ...validation error...vx...` on stderr; one writes a
+  cmd="fly" mutation and asserts validate.main() returns 1 with an error
+  naming the file but NOT mentioning ContractLine (cross-dispatch isolation +
+  D15 invariant in one test); one writes a valid ControlLine heartbeat into a
+  control_command_*.jsonl in a temp tree and asserts validate.main() exits 0
+  (the narrowed F1 glob does not see the file, so it is not parsed as
+  ContractLine — the D15 positive case). A fourth temp-root test stands up a
+  session_example.jsonl alongside the grab-cycle fixture and asserts main()
+  exits 0 — F1 regression sanity against the narrowed glob. A final schema-
+  presence sanity test asserts contracts/schemas/control_command.json and
+  ack_line.json are present and non-empty — the in-tree complement to
+  `make schema-check` which guards byte-identity via `git diff --exit-code
+  schemas/` (also green). Schemas, slice-1 control_command.py,
+  contracts/__init__.py, parts_catalog.json, the Makefiles, and every file
+  outside the plan's `files` scope are byte-identical. Gate sweep —
+  contracts/{sync,lint,schema-check,test,validate} all exit 0; root-delegated
+  {sync,test,lint,validate,catalog,catalog-check} all exit 0; pytest is now
+  139 passing (was 129 in slice 1 + 10 new cases here). No new Makefile target
+  was added; F19's surface lands inside the existing `make validate`. F19
+  closes for m1.
+satisfies:
+  - acc-sync
+  - acc-lint
+  - acc-validate-green
+  - acc-fixture-grab-roundtrip
+  - acc-fixture-flywheel-roundtrip
+  - acc-fixture-rejections-roundtrip
+  - acc-exhaustive-faultcode
+  - acc-stale-vs-rejected-distinction
+  - acc-type-routing-rejects-bad-cmd
+  - acc-glob-narrowed
+  - acc-cross-dispatch-isolation
+  - acc-no-regression
+  - acc-test
+  - acc-schema-unchanged
+  - acc-imports-unchanged
+  - acc-root-delegate-validate
+  - acc-root-delegate-full

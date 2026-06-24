@@ -2,10 +2,13 @@
 
 ``validate.py`` lives at ``contracts/src/contracts/validate.py``; its grandparent
 (``parents[2]``) is the contracts root where ``fixtures/`` and ``parts_catalog.json``
-live (DEC-VALIDATE-PATH). Three dispatches run over that one contracts root:
+live (DEC-VALIDATE-PATH). Four dispatches run over that one contracts root:
 
-* ``*.jsonl`` → ``ContractLine`` — every non-blank line is validated; a failure is
-  reported as ``name:lineno: error`` on stderr.
+* ``session_*.jsonl`` → ``ContractLine`` — every non-blank line is validated; a failure
+  is reported as ``name:lineno: error`` on stderr. The glob is narrowed to the
+  ``session_*.jsonl`` family (D15) so the F19 ``control_command_*.jsonl`` family can
+  live in the same directory without falling into this loop; behavioral no-op for the
+  committed fixtures (only ``session_example.jsonl`` matches today).
 * ``self_model_*.json`` → ``SelfModel`` — each whole-file JSON document is validated;
   a failure is reported as ``name: error`` on stderr (single-document files, no lineno).
 * ``parts_catalog.json`` → ``PartsCatalog`` (F3) — the catalog round-trips against the
@@ -14,22 +17,37 @@ live (DEC-VALIDATE-PATH). Three dispatches run over that one contracts root:
   ``validate_config`` (a non-buildable fixture is reported as
   ``name: not buildable — <messages>``). A missing ``parts_catalog.json`` is skipped,
   consistent with an absent fixtures dir.
+* ``control_command_*.jsonl`` → ``ControlLine`` | ``AckLine`` (F19) — every non-blank
+  line is JSON-parsed, then routed by the closed ``type`` discriminator (D2/D16):
+  ``type == "ack"`` → ``AckLine.model_validate``; otherwise →
+  ``TypeAdapter(ControlLine).validate_python`` (which sub-routes ``type ∈ {cmd,
+  heartbeat}`` and, for ``cmd`` lines, sub-discriminates by the inner ``cmd`` verb).
+  A failure is reported as ``name:lineno: error`` on stderr.
 
 Any failure on any dispatch exits 1; otherwise an OK line is printed and the
 process exits 0. An empty or absent fixtures dir still exits 0.
 """
 
+import json
 import sys
 from pathlib import Path
 
-from contracts import ContractLine, PartsCatalog, SelfModel, validate_config
+from pydantic import TypeAdapter
+
+from contracts import AckLine, ContractLine, ControlLine, PartsCatalog, SelfModel, validate_config
+
+# Build the ControlLine TypeAdapter once at import time (D16). ControlLine is a
+# discriminated-union *type alias* (Annotated[Union[...], Discriminator(...)]),
+# not a BaseModel subclass — so `.model_validate` is unavailable and a TypeAdapter
+# is the canonical pydantic-v2 entry point.
+_control_line_adapter: TypeAdapter[ControlLine] = TypeAdapter(ControlLine)
 
 
 def main() -> int:
     contracts_root = Path(__file__).resolve().parents[2]
     fixtures_dir = contracts_root / "fixtures"
     errors: list[str] = []
-    fixtures = sorted(fixtures_dir.glob("*.jsonl")) if fixtures_dir.is_dir() else []
+    fixtures = sorted(fixtures_dir.glob("session_*.jsonl")) if fixtures_dir.is_dir() else []
     for path in fixtures:
         for lineno, raw in enumerate(path.read_text().splitlines(), 1):
             line = raw.strip()
@@ -65,6 +83,28 @@ def main() -> int:
             if not verdict.buildable:
                 reasons = "; ".join(v.message for v in verdict.violations)
                 errors.append(f"{path.name}: not buildable — {reasons}")
+
+    # F19 fourth dispatch (additive): control_command_*.jsonl is per-line routed
+    # by the closed `type` discriminator (D2/D16). `type == "ack"` lines validate
+    # against AckLine; every other line validates against ControlLine (which
+    # itself sub-routes `type ∈ {cmd, heartbeat}` and, for cmd lines, the inner
+    # `cmd` verb discriminator).
+    control_fixtures = (
+        sorted(fixtures_dir.glob("control_command_*.jsonl")) if fixtures_dir.is_dir() else []
+    )
+    for path in control_fixtures:
+        for lineno, raw in enumerate(path.read_text().splitlines(), 1):
+            line = raw.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+                if isinstance(obj, dict) and obj.get("type") == "ack":
+                    AckLine.model_validate(obj)
+                else:
+                    _control_line_adapter.validate_python(obj)
+            except Exception as exc:  # noqa: BLE001 — collect every line's failure
+                errors.append(f"{path.name}:{lineno}: {exc}")
 
     if errors:
         for error in errors:

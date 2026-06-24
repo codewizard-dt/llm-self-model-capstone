@@ -1,0 +1,190 @@
+summary: >-
+  F19 slice models-and-schemas (contracts vertical). Add a pydantic v2
+  `control_command.py` module (`contracts/src/contracts/control_command.py`) that
+  defines: the strict `ControlEnvelope` (`v: Literal[1]`, `seq` ∈ [0, 2**32),
+  `sent_ms`, `ttl_ms` ∈ [1, TTL_MS_MAX]); the closed 6-verb `ControlCommand`
+  discriminated union (`stop`/`drive`/`turn`/`arm`/`claw`/`flywheel`) keyed on
+  `cmd`; `HeartbeatLine`; the outer `ControlLine` wire union keyed on `type`
+  (`cmd`/`heartbeat`); the receipt-only `AckLine` (`type: "ack"`, `state`,
+  `fault`, with model-validator enforcing `fault is None` iff `state == "ok"`);
+  the closed 8-value `FaultCode` `StrEnum` including the new `not_assembled`;
+  and the module-level clamp constants (`MAX_LINEAR=0.35`, `MAX_OMEGA=0.60`,
+  `MAX_FLYWHEEL_RPM=3600.0`, `ARM_DEG_MIN=0.0`, `ARM_DEG_MAX=360.0`,
+  `TTL_MS_MAX=1000`). Extend `schema.py`'s SCHEMAS registry additively by two
+  entries (`control_command.json` → `ControlLine`, `ack_line.json` → `AckLine`)
+  so `make schema` emits the two new JSON Schemas alongside the existing three;
+  the existing `contract_line.json`/`self_model.json`/`score_contract.json`
+  outputs MUST be byte-identical. Re-export the new public surface from
+  `contracts/__init__.py` additively (every existing export preserved). Add unit
+  tests in `contracts/tests/test_control_command.py` covering field validators,
+  the inner/outer discriminated union, per-command range bounds (incl. the
+  `vy == 0` lock — D12), envelope shape, ack invariants, clamp-constant
+  identity, and the cross-contract demux invariant against `ContractLine`. NO
+  fixtures and NO `validate.py` wiring in this slice — those land in the next
+  slice (validate-fixtures-and-gates, D14). Strictly additive to F1+F2+F3+F4.
+
+scope:
+  in:
+    - "Create contracts/src/contracts/control_command.py defining ControlEnvelope (StrictModel base, extra='forbid'): v: Literal[1] = 1; seq: int = Field(ge=0, lt=2**32); sent_ms: int = Field(ge=0); ttl_ms: int = Field(ge=1, le=TTL_MS_MAX). The outer `type` discriminator is carried on the wire-line models below, not the envelope itself, so the discriminated union routes cleanly."
+    - "Define module-level clamp constants in control_command.py (D10): MAX_LINEAR=0.35, MAX_OMEGA=0.60, MAX_FLYWHEEL_RPM=3600.0, ARM_DEG_MIN=0.0, ARM_DEG_MAX=360.0, TTL_MS_MAX=1000 — the single source F20 will import; the existing C++ literals 0.35 / 0.60 in robot/v5-brain/pros_bridge/src/main.cpp are reconciled to these constants in F20 (C1)."
+    - "Define FaultCode(StrEnum) with EXACTLY 8 values, in this order: 'malformed_json', 'unknown_command', 'ttl_expired', 'watchdog', 'estop_latched', 'out_of_range', 'oversized_packet', 'not_assembled' (D7) — `not_assembled` is the new code F20 emits when a verb is wire-legal but mechanically inapplicable (D13)."
+    - "Define the 6 command-body models (subclassing ControlEnvelope, extra='forbid'), each carrying type: Literal['cmd'] = 'cmd' and a cmd Literal: StopCommand (cmd='stop', reason: Literal['operator_estop','operator','watchdog_self','fault']); DriveCommand (cmd='drive', vx: Field(ge=-MAX_LINEAR, le=MAX_LINEAR), vy: Field(default=0.0, ge=0.0, le=0.0) — D12, omega: Field(ge=-MAX_OMEGA, le=MAX_OMEGA)); TurnCommand (cmd='turn', omega: Field(ge=-MAX_OMEGA, le=MAX_OMEGA)); ArmCommand (cmd='arm', deg: Field(ge=ARM_DEG_MIN, le=ARM_DEG_MAX), vel_rpm: float | None = None); ClawCommand (cmd='claw', state: Literal['open','close'], grip_force_N: float | None = None); FlywheelCommand (cmd='flywheel', rpm: Field(ge=0.0, le=MAX_FLYWHEEL_RPM))."
+    - "Define ControlCommand as the inner discriminated union: Annotated[Union[StopCommand, DriveCommand, TurnCommand, ArmCommand, ClawCommand, FlywheelCommand], Field(discriminator='cmd')]."
+    - "Define HeartbeatLine(ControlEnvelope) with type: Literal['heartbeat'] = 'heartbeat', extra='forbid', envelope-only (no cmd field)."
+    - "Define ControlLine as the OUTER discriminated union keyed on `type`: Annotated[Union[StopCommand, DriveCommand, TurnCommand, ArmCommand, ClawCommand, FlywheelCommand, HeartbeatLine], Field(discriminator='type')]. Because all 6 command bodies carry type: Literal['cmd'], pydantic v2's type-discriminator routes the 6 'cmd' members together; cmd then sub-discriminates. If pydantic v2 requires a two-step adapter to express the nested cmd/heartbeat routing cleanly, the implementer may introduce a thin internal CommandLine wrapper provided the wire shape stays exactly {v, seq, type, sent_ms, ttl_ms, cmd, ...body} for cmd lines and {v, seq, type='heartbeat', sent_ms, ttl_ms} for heartbeats."
+    - "Define AckLine(StrictModel, extra='forbid'): v: Literal[1] = 1; type: Literal['ack'] = 'ack'; ack: int = Field(ge=0, lt=2**32); state: Literal['ok','rejected','stale']; recv_ms: int = Field(ge=0); fault: FaultCode | None = None. Add @model_validator(mode='after') enforcing: fault is None iff state == 'ok'; state == 'rejected' requires non-null fault; state == 'stale' accepts either (typical: fault = 'ttl_expired')."
+    - "Extend contracts/src/contracts/schema.py SCHEMAS registry by exactly two entries — 'control_command.json': ControlLine, 'ack_line.json': AckLine — appended after the existing three. _render and main() unchanged. `make schema` then emits contracts/schemas/control_command.json and contracts/schemas/ack_line.json; the existing contract_line.json, self_model.json, and score_contract.json outputs MUST remain byte-identical (regression guard for F1/F2/F3 incl. PR #18's re-emitted self_model.json baseline)."
+    - "Extend contracts/src/contracts/__init__.py imports and __all__ additively (D10/requirements In-scope): ControlEnvelope, ControlLine, ControlCommand, HeartbeatLine, AckLine, StopCommand, DriveCommand, TurnCommand, ArmCommand, ClawCommand, FlywheelCommand, FaultCode, MAX_LINEAR, MAX_OMEGA, MAX_FLYWHEEL_RPM, ARM_DEG_MIN, ARM_DEG_MAX, TTL_MS_MAX. Every existing export preserved verbatim."
+    - "Commit the generated contracts/schemas/control_command.json and contracts/schemas/ack_line.json (the type/cmd/state/fault discriminators must surface as JSON-Schema enum arrays — Acceptance §4)."
+    - "Add contracts/tests/test_control_command.py covering the acceptance ids below: round-trip parse of one valid instance of each of the 7 line shapes (6 commands + 1 heartbeat) via pydantic.TypeAdapter(ControlLine), plus AckLine.model_validate; the discriminated-union failure cases (unknown cmd, unknown type, missing cmd field, missing required body field); the per-command range bounds (incl. vy != 0 → ValidationError per D12, ttl_ms outside [1, TTL_MS_MAX]); envelope shape (v != 1, extras forbidden, seq out of range); ack invariants; clamp-constant identity; cross-contract demux against contracts.ContractLine."
+  out:
+    - "Fixtures (control_command_grab_cycle.jsonl, control_command_flywheel_cycle.jsonl, control_command_rejections.jsonl) — NEXT slice validate-fixtures-and-gates (D14). Do NOT create anything under contracts/fixtures/ in this slice."
+    - "The `validate` entrypoint extension (the third dispatch routing control_command_*.jsonl by `type` to ControlLine vs AckLine) — NEXT slice validate-fixtures-and-gates (D14). Do NOT touch contracts/src/contracts/validate.py."
+    - "Exhaustive FaultCode coverage assertion against the rejections fixture — NEXT slice (fixture-dependent)."
+    - "Root-level Makefile delegation — already in place; nothing to change here. The contracts/Makefile is NOT modified in this slice (no new targets — `make schema` already drives the registry; the two new schema files emit automatically because the SCHEMAS dict is the source of truth)."
+    - "F20 Brain-side PROS C++ parser/clamp/ack/watchdog — separate feature, not this vertical."
+    - "F21 online control harness (`pilot` Rx pipeline) — separate feature."
+    - "Cross-build verb applicability enforcement (FaultCode.not_assembled emission) — F20's job (D13). F19 only ships the enum value."
+    - "Generated C++ header (O2 / C1's pragmatic path) — out of scope; F20 owner's call."
+    - "Any change to F1 ContractLine, F2 SelfModel, F3 PartsCatalog, F4 adapter interfaces, or contracts.vocabulary."
+    - "`make demo` (m2-milestone concern, never a per-slice gate)."
+    - "Hardware, network, transport selection (USB serial vs RS-485), authentication on commands, ROS message bindings, binary protocol-v2, reactivex operators / Subjects, ControlSink adapter protocol."
+
+acceptance:
+  - id: acc-sync
+    description: "`make sync` (uv sync) exits 0 from contracts/."
+  - id: acc-lint
+    description: "`make lint` (ruff check + ruff format --check on src/ and tests/) exits 0."
+  - id: acc-test-roundtrip-commands
+    description: "Unit test: one valid instance of each of the 6 command verbs (stop, drive, turn, arm, claw, flywheel) round-trips through pydantic.TypeAdapter(ControlLine).validate_python / model_dump with the exact wire shape {v:1, seq, type:'cmd', sent_ms, ttl_ms, cmd:'<verb>', ...body} preserved."
+  - id: acc-test-roundtrip-heartbeat
+    description: "Unit test: a valid HeartbeatLine round-trips through TypeAdapter(ControlLine) with shape {v:1, seq, type:'heartbeat', sent_ms, ttl_ms} — no cmd field."
+  - id: acc-test-roundtrip-ack
+    description: "Unit test: a valid AckLine (state='ok', fault=None) round-trips through AckLine.model_validate / model_dump with shape {v:1, type:'ack', ack, state, recv_ms, fault:null}."
+  - id: acc-test-discriminator-unknown-cmd
+    description: "Unit test: a `type:'cmd'` line with `cmd:'fly'` (out of vocabulary) raises ValidationError — proves the closed inner cmd discriminator (D1/D4)."
+  - id: acc-test-discriminator-unknown-type
+    description: "Unit test: a line with `type:'telemetry'` raises ValidationError — proves the closed outer `type` discriminator (D2/D4); only 'cmd' and 'heartbeat' are accepted by ControlLine."
+  - id: acc-test-discriminator-missing-cmd
+    description: "Unit test: a `type:'cmd'` line missing the `cmd` field raises ValidationError (discriminator-required failure)."
+  - id: acc-test-discriminator-missing-body-field
+    description: "Unit test: a `cmd:'drive'` line missing required `vx` raises ValidationError; similarly missing `omega` raises ValidationError."
+  - id: acc-test-range-vx
+    description: "Unit test: drive with vx > MAX_LINEAR raises ValidationError; drive with vx < -MAX_LINEAR raises ValidationError (D11 reject — F19 does not clamp)."
+  - id: acc-test-vy-locked
+    description: "Unit test: drive with vy != 0 (e.g. vy=0.1 or vy=-0.1) raises ValidationError — the holonomic axis is wire-locked to 0 (D12)."
+  - id: acc-test-range-omega
+    description: "Unit test: drive with omega outside [-MAX_OMEGA, MAX_OMEGA] raises ValidationError; turn with omega < -MAX_OMEGA raises ValidationError."
+  - id: acc-test-range-arm
+    description: "Unit test: arm with deg < ARM_DEG_MIN raises ValidationError; arm with deg > ARM_DEG_MAX raises ValidationError."
+  - id: acc-test-range-flywheel
+    description: "Unit test: flywheel with rpm < 0.0 raises ValidationError; flywheel with rpm > MAX_FLYWHEEL_RPM raises ValidationError."
+  - id: acc-test-range-ttl
+    description: "Unit test: ttl_ms < 1 raises ValidationError; ttl_ms > TTL_MS_MAX raises ValidationError (D5)."
+  - id: acc-test-envelope-v
+    description: "Unit test: a wire line with v != 1 (e.g. v=2) raises ValidationError — `v: Literal[1]` is locked (D8)."
+  - id: acc-test-envelope-extras
+    description: "Unit test: any unknown extra field on ControlEnvelope / any command / HeartbeatLine / AckLine raises ValidationError (extra='forbid' on every model)."
+  - id: acc-test-envelope-seq
+    description: "Unit test: seq < 0 raises ValidationError; seq >= 2**32 raises ValidationError (D5)."
+  - id: acc-test-ack-ok-with-fault
+    description: "Unit test: AckLine(state='ok', fault='ttl_expired', ...) raises ValidationError (model-validator: fault must be None when state == 'ok')."
+  - id: acc-test-ack-rejected-without-fault
+    description: "Unit test: AckLine(state='rejected', fault=None, ...) raises ValidationError (model-validator: rejected requires non-null fault)."
+  - id: acc-test-ack-stale-with-fault
+    description: "Unit test: AckLine(state='stale', fault='ttl_expired', ...) validates cleanly (D6 — stale accepts either; typical fault is ttl_expired)."
+  - id: acc-test-ack-ok-no-fault
+    description: "Unit test: AckLine(state='ok', fault=None, ...) validates cleanly."
+  - id: acc-test-clamp-identity
+    description: "Unit test: import MAX_LINEAR, MAX_OMEGA, MAX_FLYWHEEL_RPM, ARM_DEG_MIN, ARM_DEG_MAX, TTL_MS_MAX from `contracts` and assert each equals the documented value bit-for-bit (MAX_LINEAR == 0.35, MAX_OMEGA == 0.60, MAX_FLYWHEEL_RPM == 3600.0, ARM_DEG_MIN == 0.0, ARM_DEG_MAX == 360.0, TTL_MS_MAX == 1000) — D10/C1 single-source guarantee."
+  - id: acc-test-faultcode-closed
+    description: "Unit test: FaultCode is a StrEnum with EXACTLY the 8 documented members ('malformed_json', 'unknown_command', 'ttl_expired', 'watchdog', 'estop_latched', 'out_of_range', 'oversized_packet', 'not_assembled') — `set(FaultCode) == { ... }` with no extras and no omissions (D7)."
+  - id: acc-test-cross-contract-demux
+    description: "Unit test (D2 invariant): a hand-authored ContractLine instance is dumped to JSON, parses cleanly via ContractLine.model_validate_json, and FAILS to validate as ControlLine (pydantic.TypeAdapter(ControlLine).validate_json raises ValidationError) — proves the `type` discriminator does not collide between the telemetry and control wire streams on the shared USB user port."
+  - id: acc-schema-emit
+    description: "`make schema` exits 0 and writes contracts/schemas/control_command.json + contracts/schemas/ack_line.json (committed, non-empty). The type/cmd/state/fault discriminators surface as JSON-Schema enum arrays."
+  - id: acc-schema-check
+    description: "`make schema-check` exits 0 — the committed control_command.json + ack_line.json byte-equal the freshly generated ones, AND contracts/schemas/contract_line.json + self_model.json + score_contract.json are byte-IDENTICAL to their pre-F19 committed versions (no F1/F2/F3 regression; PR #18's re-emitted self_model.json baseline preserved)."
+  - id: acc-imports
+    description: "`from contracts import ControlEnvelope, ControlLine, ControlCommand, HeartbeatLine, AckLine, StopCommand, DriveCommand, TurnCommand, ArmCommand, ClawCommand, FlywheelCommand, FaultCode, MAX_LINEAR, MAX_OMEGA, MAX_FLYWHEEL_RPM, ARM_DEG_MIN, ARM_DEG_MAX, TTL_MS_MAX` succeeds in `uv run python` after sync; every F1/F2/F3/F4 export remains importable."
+  - id: acc-no-regression
+    description: "`make test` exits 0 and the existing F1+F2+F3+F4 test suites still pass; `make validate` exits 0 (existing F1 contract_line/F2 self_model/F3 parts_catalog dispatches unchanged — validate.py is not touched in this slice)."
+
+decisions:
+  - id: D1
+    decision: "Command vocabulary is the closed 6-verb set {stop, drive, turn, arm, claw, flywheel}, spanning the 3 post-PR #18 buildable motor topologies (claw_grasper, scoop, flywheel). One verb per addressable manipulator motor. Earlier 'ship claw only, defer scoop/flywheel' plan rejected: the Generator can revise across all 3 builds today; deferring would leave 2/3 of the design space un-drivable until an immediate contract amendment."
+    grounding: "F19 requirements decision D1; brief 'Scope-shaping precondition' + In-scope; MASTER_REQUIREMENTS Components → Control grammar + ADR-19; commits ad022c1 / b1b03c8 (PR #18 narrowing); contracts/src/contracts/vocabulary.py MotorAllocation."
+    status: closed
+  - id: D2
+    decision: "The outer stream discriminator is the closed `type: Literal['cmd', 'heartbeat', 'ack']`, with `type` as the SINGLE demultiplexer for the Pi reader thread (BRAIN_INTERFACE §3.3 Option 1 — tagged single-stream). In this slice ControlLine accepts `type ∈ {cmd, heartbeat}` and AckLine carries `type: Literal['ack']` — the third mutually-exclusive value. The cross-contract demux test asserts ContractLine's payload cannot collide (acc-test-cross-contract-demux)."
+    grounding: "F19 requirements decision D2; brief In-scope + Constraints; robot/pi-runtime/docs/BRAIN_INTERFACE.md §3.3."
+    status: closed
+  - id: D3
+    decision: "AckLine is receipt-only: state + fault + ack (the acknowledged seq) + recv_ms + v + type. NO telemetry-leaking fields (no battery_mv/heading_deg/temp_c/pos/vel/cur/trq) — telemetry belongs to F1 ContractLine."
+    grounding: "F19 requirements decision D3; brief In-scope (AckLine bullet)."
+    status: closed
+  - id: D4
+    decision: "Discriminator placement is two-level: outer `type` (cmd/heartbeat/ack) at the wire-line, inner `cmd` (stop/drive/turn/arm/claw/flywheel) inside cmd-typed lines. Implemented as nested pydantic v2 discriminated unions — the 6 command bodies all carry type: Literal['cmd'], so the outer type-keyed union routes the 6 'cmd' members together and the inner cmd-keyed union routes within them. If pydantic v2 requires a thin internal CommandLine wrapper to express this two-step routing cleanly, the implementer may introduce one — the wire shape MUST stay {v, seq, type, sent_ms, ttl_ms, cmd, ...body} for cmd lines."
+    grounding: "F19 requirements decision D4; brief In-scope + Constraints; ADR-06 (pydantic v2 + discriminated unions)."
+    status: closed
+  - id: D5
+    decision: "Wire bounds are ttl_ms: int = Field(ge=1, le=TTL_MS_MAX=1000) and seq: int = Field(ge=0, lt=2**32). 1000 ms matches bridge.py's existing clamp and gives F20's WATCHDOG_MS=250 headroom; the uint32 seq bound matches a future binary framing."
+    grounding: "F19 requirements decision D5; brief In-scope + Constraints; robot/pi-runtime/docs/BRAIN_INTERFACE.md §3.1; robot/v5-brain/pros_bridge/src/main.cpp WATCHDOG_MS."
+    status: closed
+  - id: D6
+    decision: "Ack state values are the closed set {ok, rejected, stale}. `stale` is added for the case where the Brain receives a command AFTER its TTL has expired — distinct from rejected (Brain refuses to act); lets F20 log without re-stopping. The model-validator enforces: fault is None iff state == 'ok'; rejected requires non-null fault; stale accepts either (typical fault = 'ttl_expired')."
+    grounding: "F19 requirements decision D6; brief In-scope (AckLine bullet)."
+    status: closed
+  - id: D7
+    decision: "FaultCode is a closed StrEnum of EXACTLY 8 values: 'malformed_json', 'unknown_command', 'ttl_expired', 'watchdog', 'estop_latched', 'out_of_range', 'oversized_packet', 'not_assembled'. `not_assembled` is the new code F20 emits when a verb is wire-legal but mechanically inapplicable to the assembled build — decouples wire-legality from runtime-applicability (D13). F19 ships the enum value; F20 emits it."
+    grounding: "F19 requirements decision D7; brief In-scope + Constraints; F19 D13 (cross-build applicability); robot/v5-brain/pros_bridge/src/main.cpp existing ack() reject paths."
+    status: closed
+  - id: D8
+    decision: "Wire version is `v: Literal[1] = 1` on every line (ControlLine commands, HeartbeatLine, AckLine). NO `schema_version` field on the control wire — `v` plays that role; F1's `schema_version` lives on ContractLine and stays there. The two contracts version independently (mirrors F2/F3 schema_version isolation)."
+    grounding: "F19 requirements decision D8; brief In-scope + Constraints; robot/pi-runtime/docs/PROTOCOL.md draft."
+    status: closed
+  - id: D9
+    decision: "Module name is contracts/src/contracts/control_command.py (mirrors contract_line.py / self_model.py / parts_catalog.py). Schemas emit to contracts/schemas/control_command.json (the command/heartbeat union, i.e. ControlLine) and contracts/schemas/ack_line.json (the AckLine) — two files because they validate different lines on the same stream; a single combined schema would force every consumer to encode the demux."
+    grounding: "F19 requirements decision D9; brief In-scope."
+    status: closed
+  - id: D10
+    decision: "Clamp constants live as module-level exports in contracts.control_command and are re-exported from `contracts` package root: MAX_LINEAR=0.35, MAX_OMEGA=0.60, MAX_FLYWHEEL_RPM=3600.0, ARM_DEG_MIN=0.0, ARM_DEG_MAX=360.0, TTL_MS_MAX=1000. F19 enforces them as Field(ge=..., le=...) bounds at parse time AND exposes them as importable constants so F20 imports the same numbers for its runtime clamp (single source — acc-test-clamp-identity asserts equality bit-for-bit). The existing C++ literals 0.35 / 0.60 in robot/v5-brain/pros_bridge/src/main.cpp are reconciled to these constants in F20 (C1)."
+    grounding: "F19 requirements decision D10; brief In-scope + Coordination items C1; robot/v5-brain/pros_bridge/src/main.cpp inline MAX_LINEAR/MAX_OMEGA literals."
+    status: closed
+  - id: D11
+    decision: "Out-of-range values are REJECTED (ValidationError) at F19, not silently clamped. F19 is the contract — a value outside the documented range is a `pilot` bug. F20 still clamps at the Brain (its safety contract: never trust the Pi), but the Pi-side parser never silently saturates a malformed emission."
+    grounding: "F19 requirements decision D11; brief Decisions; ADR-19 bounded + interruptible."
+    status: closed
+  - id: D12
+    decision: "DriveCommand.vy is kept on the wire, LOCKED to 0 via Field(default=0.0, ge=0.0, le=0.0) — a non-zero vy is a ValidationError. Every post-PR #18 buildable config uses the same `front_omni+rear_standard` drivetrain, so a holonomic vy is structurally inapplicable today; keeping the field forward-compats a future holonomic kit upgrade (drop the `le=0` bound, no wire addition). Aligns with the published PROTOCOL.md draft which already lists vy."
+    grounding: "F19 requirements decision D12; brief Decisions; contracts/src/contracts/vocabulary.py WheelConfig; robot/pi-runtime/docs/PROTOCOL.md draft."
+    status: closed
+  - id: D13
+    decision: "Cross-build verb applicability is F20's job, NOT F19's. F19 freezes the verb set across all 3 buildable motor topologies (any verb is wire-legal). F20 reads the assembled build's motor port assignments (local Brain knowledge) and rejects mechanically-inapplicable verbs with FaultCode.not_assembled. F19 ships the enum value; emission lives in F20."
+    grounding: "F19 requirements decision D13; brief Decisions + Coordination items C5; F19 D7 not_assembled."
+    status: closed
+  - id: D14
+    decision: "This is the models-and-schemas slice ONLY: control_command.py (envelope + 6-verb ControlCommand union + HeartbeatLine + ControlLine + AckLine + FaultCode + clamp constants) + schema.py registry additions (2 entries) + the two emitted JSON Schemas (committed) + __init__.py re-exports + unit tests. Fixtures (3 jsonl files) + validate.py third dispatch + exhaustive FaultCode coverage assertion belong to the NEXT slice (validate-fixtures-and-gates); the contracts/Makefile is NOT touched and contracts/fixtures/ is NOT touched in this slice. Mirrors F3's catalog-model-and-rules → validate-and-gates decomposition exactly."
+    grounding: "F19 requirements decision D14 (slice decomposition); slice brief 'What this slice delivers' + 'Files to create / change'; F3 slice decomposition precedent."
+    status: closed
+  - id: D15
+    decision: "schema.py mirrors the as-shipped pattern: a {filename: pydantic-model} registry plus _render (json.dumps(model.model_json_schema(), indent=2, sort_keys=True)) plus Path.write_text with a trailing newline — NO stdout redirect. F19 adds two entries to the existing SCHEMAS dict; _render and main() are unchanged. `make schema` continues to drive the registry, so no new Makefile target is required."
+    grounding: "F19 requirements In-scope (schema.py registry extended additively); contracts/src/contracts/schema.py as-shipped; F3 precedent (catalog.py mirrored schema.py exactly)."
+    status: closed
+
+files:
+  - contracts/src/contracts/control_command.py
+  - contracts/src/contracts/schema.py
+  - contracts/src/contracts/__init__.py
+  - contracts/schemas/control_command.json
+  - contracts/schemas/ack_line.json
+  - contracts/tests/test_control_command.py
+
+tests:
+  - "uv sync"
+  - "make sync"
+  - "make schema"
+  - "make schema-check"
+  - "make test"
+  - "make lint"
+  - "make validate"

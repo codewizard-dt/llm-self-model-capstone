@@ -11,18 +11,27 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from pydantic import TypeAdapter
+
 from contracts.contract_line import ContractLine, ScoreContractLine
+from contracts.control_command import AckLine, ControlLine
 from contracts.self_model import SelfModel
 
 SCHEMAS = {
     "contract_line.json": ContractLine,
     "self_model.json": SelfModel,
     "score_contract.json": ScoreContractLine,
+    "control_command.json": ControlLine,
+    "ack_line.json": AckLine,
 }
 
 
 def _render(model: type) -> str:
-    return json.dumps(model.model_json_schema(), indent=2, sort_keys=True)
+    if hasattr(model, "model_json_schema"):
+        schema = model.model_json_schema()
+    else:
+        schema = TypeAdapter(model).json_schema()
+    return json.dumps(schema, indent=2, sort_keys=True)
 
 
 def main() -> None:

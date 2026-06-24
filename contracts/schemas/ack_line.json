@@ -1,0 +1,164 @@
+{
+  "$defs": {
+    "FaultCode": {
+      "description": "Closed receipt-fault vocabulary (D7). F20 emits; F19 ships the values.",
+      "enum": [
+        "malformed_json",
+        "unknown_command",
+        "ttl_expired",
+        "watchdog",
+        "estop_latched",
+        "out_of_range",
+        "oversized_packet",
+        "not_assembled"
+      ],
+      "title": "FaultCode",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Brain \u2192 Pi receipt for a single command seq.\n\n`state` is the closed set {ok, rejected, stale} (D6); the model validator\nenforces `fault is None iff state == \"ok\"`, `state == \"rejected\"` requires\na non-null fault, and `state == \"stale\"` accepts either (typical fault is\n`ttl_expired`). The optional health fields match the guarded V5 Brain\nfirmware proven in PR #21; streaming motor samples remain on telemetry.",
+  "properties": {
+    "ack": {
+      "exclusiveMaximum": 4294967296,
+      "minimum": 0,
+      "title": "Ack",
+      "type": "integer"
+    },
+    "battery_mv": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Battery Mv"
+    },
+    "battery_pct": {
+      "anyOf": [
+        {
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Battery Pct"
+    },
+    "drive_ports_ok": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Drive Ports Ok"
+    },
+    "estop": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Estop"
+    },
+    "fault": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/FaultCode"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "motion_enabled": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Motion Enabled"
+    },
+    "motor_ports": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Motor Ports"
+    },
+    "recv_ms": {
+      "minimum": 0,
+      "title": "Recv Ms",
+      "type": "integer"
+    },
+    "state": {
+      "enum": [
+        "ok",
+        "rejected",
+        "stale"
+      ],
+      "title": "State",
+      "type": "string"
+    },
+    "type": {
+      "const": "ack",
+      "default": "ack",
+      "title": "Type",
+      "type": "string"
+    },
+    "v": {
+      "const": 1,
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    },
+    "watchdog_age_ms": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Watchdog Age Ms"
+    }
+  },
+  "required": [
+    "ack",
+    "state",
+    "recv_ms"
+  ],
+  "title": "AckLine",
+  "type": "object"
+}

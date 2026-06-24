@@ -1,0 +1,10 @@
+{"v":1,"seq":1,"type":"heartbeat","sent_ms":1781881000000,"ttl_ms":200}
+{"v":1,"type":"ack","ack":1,"state":"ok","recv_ms":1781881000010,"fault":null}
+{"v":1,"seq":2,"type":"cmd","cmd":"drive","sent_ms":1781881000020,"ttl_ms":200,"vx":0.10,"vy":0.0,"omega":0.0}
+{"v":1,"type":"ack","ack":2,"state":"ok","recv_ms":1781881000030,"fault":null}
+{"v":1,"seq":3,"type":"cmd","cmd":"flywheel","sent_ms":1781881000040,"ttl_ms":1000,"rpm":2400.0}
+{"v":1,"type":"ack","ack":3,"state":"ok","recv_ms":1781881000050,"fault":null}
+{"v":1,"seq":4,"type":"cmd","cmd":"flywheel","sent_ms":1781881000060,"ttl_ms":1000,"rpm":0.0}
+{"v":1,"type":"ack","ack":4,"state":"ok","recv_ms":1781881000070,"fault":null}
+{"v":1,"seq":5,"type":"cmd","cmd":"stop","sent_ms":1781881000080,"ttl_ms":100,"reason":"operator"}
+{"v":1,"type":"ack","ack":5,"state":"ok","recv_ms":1781881000090,"fault":null}
