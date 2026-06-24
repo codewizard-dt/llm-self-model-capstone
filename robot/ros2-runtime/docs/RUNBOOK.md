@@ -178,6 +178,27 @@ ros2 topic echo /camera/camera_info --once | grep -E 'k:|d:|p:'
 
 Expected: `/camera/camera_info` publishes nonzero `k` and `p` matrix values. If the matrices are zero, the calibration URL did not load and tag-pose proof is not valid.
 
+On the Pi service, measured calibration should be loaded with a user-systemd
+drop-in so restarts keep the same `camera_info_url`:
+
+```ini
+# /home/vexy/.config/systemd/user/vexy-ros-stack.service.d/20-measured-camera-info.conf
+[Service]
+ExecStart=
+ExecStart=/bin/bash -lc 'source /opt/ros/jazzy/setup.bash && source /home/vexy/ros2_ws/install/setup.bash && exec ros2 launch vexy_ros vexy.launch.py camera_fps:=30 serial_port:=auto camera_info_url:=file:///home/vexy/calibration/imx708_wide_640x480.yaml'
+```
+
+```bash
+systemctl --user daemon-reload
+systemctl --user restart vexy-ros-stack.service
+systemctl --user status vexy-ros-stack.service
+```
+
+For the 2026-06-24 measured PiCam2 calibration, `/camera/camera_info` should
+report `fx` about `558.33`, `fy` about `557.27`, `cx` about `421.65`, and `cy`
+about `251.14`. Seeing the starter matrix (`430`, `320`, `240`) means the
+measured YAML is not loaded.
+
 ### 2.5 Rectification and AprilTag proof
 
 ```bash
@@ -188,6 +209,9 @@ ros2 topic echo /tf --once
 
 Expected: `/camera/image_rect` runs at the camera rate. With a printed tag36h11 ID `0` visible and the physical tag size matching `config/apriltag_36h11.yaml`, `/apriltag/detections` publishes an `AprilTagDetectionArray`; `/tf` includes a transform for `tag36h11_0` when pose estimation succeeds.
 `scene_map_node` uses the `/tf` transform, not the detection array, for pose.
+If `/apriltag/detections` publishes `detections: []`, the detector is alive but
+no configured tag is visible enough to solve. Check the live `/camera/image_rect`
+frame before treating this as a calibration or node failure.
 
 ### 2.6 VEX bridge connected to Brain
 
