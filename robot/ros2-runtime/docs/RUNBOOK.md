@@ -159,7 +159,7 @@ Expected: `vexy_ros` appears in output. If not, run `source ~/ros2_ws/install/se
 ros2 node list
 ```
 
-Expected: `/camera`, `/camera_rectify`, `/apriltag`, `/vex_bridge`, and `/foxglove_bridge` are all listed.
+Expected: `/camera`, `/camera_rectify`, `/apriltag`, `/align_to_tag`, `/vex_bridge`, and `/foxglove_bridge` are all listed.
 
 ### 2.4 Camera publishing
 
@@ -211,7 +211,26 @@ Expected: ~6–7 Hz (heartbeat fires at 0.15 s interval).
 
 `/vex/ack` proves the Brain is receiving heartbeats/commands. `/vex/telemetry` is reserved for streaming telemetry/sample/event records; if the current Brain firmware only emits ack records, `/vex/bridge_status` may report `no_telemetry` until telemetry streaming is added.
 
-### 2.7 Foxglove bridge reachable
+### 2.7 AlignToTag bounded local skill
+
+Only run this with the robot on blocks or in a safe fixture after camera, tag, and `/vex/ack` proof are green.
+
+```bash
+ros2 topic echo /align_to_tag/feedback &
+ros2 topic echo /align_to_tag/result --once &
+ros2 topic pub --once /align_to_tag/goal std_msgs/String \
+  '{"data":"{\"tag_id\":0,\"target_distance_m\":0.45,\"yaw_tolerance_rad\":0.05,\"lateral_tolerance_m\":0.03,\"timeout_s\":5.0,\"max_step_ms\":150}"}'
+```
+
+Expected: feedback reports tag visibility plus yaw/lateral/distance error; result is either `success` or an explicit bounded failure such as `stale_tag`, `stale_ack`, `bridge_fault`, `timeout`, or `cancelled`. The node sends a final `stop` command on every terminal result.
+
+Cancel an active run:
+
+```bash
+ros2 topic pub --once /align_to_tag/cancel std_msgs/String '{"data":"operator_cancel"}'
+```
+
+### 2.8 Foxglove bridge reachable
 
 ```bash
 # From the Pi:
@@ -227,7 +246,7 @@ In Foxglove Studio (browser or desktop):
 1. Open `https://app.foxglove.dev`
 2. Click **Open connection** → **Foxglove WebSocket**
 3. Enter `ws://vexy.local:8765` (or `ws://<IP>:8765` if mDNS fails)
-4. Confirm topics `/camera/image_raw`, `/camera/image_rect`, `/apriltag/detections`, `/vex/ack`, `/vex/telemetry`, `/vex/bridge_status`, etc. appear in the topic list
+4. Confirm topics `/camera/image_raw`, `/camera/image_rect`, `/apriltag/detections`, `/align_to_tag/feedback`, `/align_to_tag/result`, `/vex/ack`, `/vex/telemetry`, `/vex/bridge_status`, etc. appear in the topic list
 
 ---
 
@@ -243,7 +262,7 @@ ros2 bag record -a -o session_$(date +%Y%m%d_%H%M%S)
 Record specific topics only (smaller files):
 
 ```bash
-ros2 bag record /camera/image_raw /camera/camera_info /camera/image_rect /apriltag/detections /tf /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status \
+ros2 bag record /camera/image_raw /camera/camera_info /camera/image_rect /apriltag/detections /tf /align_to_tag/feedback /align_to_tag/result /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status \
   -o session_$(date +%Y%m%d_%H%M%S)
 ```
 

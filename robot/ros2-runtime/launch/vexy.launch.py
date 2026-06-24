@@ -8,6 +8,9 @@ Nodes launched:
                   Publishes: /camera/image_rect
   apriltag      — AprilTag 36h11 detector over rectified camera stream
                   Publishes: /apriltag/detections, /tf
+  align_to_tag  — bounded local-control skill for visible AprilTag alignment
+                  Subscribes: /align_to_tag/goal, /apriltag/detections, /vex/ack, /vex/bridge_status
+                  Publishes: /vex/cmd, /align_to_tag/feedback, /align_to_tag/result
   vex_bridge       — USB serial bridge to V5 Brain
                      Subscribes: /vex/cmd
                      Publishes:  /vex/ack, /vex/telemetry, /vex/bridge_status
@@ -108,6 +111,14 @@ def _launch_nodes(context, *args, **kwargs):
                 ("camera_info", "/camera/camera_info"),
                 ("detections", "/apriltag/detections"),
             ],
+        ),
+        # ----------------------------------------------------------
+        # Bounded local-control skill for tag alignment.
+        # ----------------------------------------------------------
+        Node(
+            package="vexy_ros",
+            executable="align_to_tag_node",
+            name="align_to_tag",
         ),
         # ----------------------------------------------------------
         # VEX V5 serial bridge

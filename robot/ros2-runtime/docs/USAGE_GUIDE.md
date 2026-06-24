@@ -118,6 +118,8 @@ Expected output when the full stack is running:
 /camera/image_raw
 /camera/image_rect
 /apriltag/detections
+/align_to_tag/feedback
+/align_to_tag/result
 /parameter_events
 /rosout
 /vex/cmd
@@ -196,6 +198,22 @@ The Brain will echo an ack on `/vex/ack`:
 
 ## 5. Recording a Session and Exporting for LLM Analysis
 
+### Align to a visible tag
+
+The `align_to_tag` node is a bounded local-control skill. It does not call an LLM. It refuses to start unless a current configured tag and current VEX ack are both present.
+
+```bash
+ros2 topic echo /align_to_tag/result --once &
+ros2 topic pub --once /align_to_tag/goal std_msgs/String \
+  '{"data":"{\"tag_id\":0,\"target_distance_m\":0.45,\"yaw_tolerance_rad\":0.05,\"lateral_tolerance_m\":0.03,\"timeout_s\":5.0,\"max_step_ms\":150}"}'
+```
+
+Cancel:
+
+```bash
+ros2 topic pub --once /align_to_tag/cancel std_msgs/String '{"data":"operator_cancel"}'
+```
+
 ### Record all topics
 
 ```bash
@@ -237,6 +255,7 @@ For a simpler one-liner extraction of string topics (works without plugins):
 ros2 bag play session_20260623_143000/ &
 ros2 topic echo /vex/ack --no-arr > ack.txt
 ros2 topic echo /vex/bridge_status --no-arr > bridge_status.txt
+ros2 topic echo /align_to_tag/result --no-arr > align_result.txt
 ros2 topic echo /vex/cmd --no-arr > commands.txt
 ```
 

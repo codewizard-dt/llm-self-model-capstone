@@ -180,6 +180,7 @@ ros2 topic hz /camera/image_raw
 | `camera` | `camera_ros` | Camera Module 3 → /camera/image_raw + /camera/camera_info |
 | `camera_rectify` | `image_proc` | /camera/image_raw + /camera/camera_info → /camera/image_rect |
 | `apriltag` | `apriltag_ros` | /camera/image_rect + /camera/camera_info → /apriltag/detections + /tf |
+| `align_to_tag` | `vexy_ros` | Bounded local skill: visible tag + bridge health → /vex/cmd |
 | `vex_bridge` | `vexy_ros` | USB serial ↔ /vex/cmd + /vex/ack + /vex/telemetry + /vex/bridge_status |
 | `foxglove_bridge` | `foxglove_bridge` | WebSocket bridge at port 8765 for Foxglove Studio |
 
@@ -192,6 +193,10 @@ ros2 topic hz /camera/image_raw
 | `/camera/image_rect` | `sensor_msgs/Image` | pub (camera_rectify) | Rectified frames from `image_proc` |
 | `/apriltag/detections` | `apriltag_msgs/AprilTagDetectionArray` | pub (apriltag) | Tag detections from rectified frames |
 | `/tf` | `tf2_msgs/TFMessage` | pub (apriltag) | Tag transforms when pose estimation succeeds |
+| `/align_to_tag/goal` | `std_msgs/String` | sub (align_to_tag) | JSON goal for a bounded local align run |
+| `/align_to_tag/cancel` | `std_msgs/String` | sub (align_to_tag) | Cancel the current align run |
+| `/align_to_tag/feedback` | `std_msgs/String` | pub (align_to_tag) | JSON feedback with tag errors, ack state, and fault state |
+| `/align_to_tag/result` | `std_msgs/String` | pub (align_to_tag) | JSON result with success/failure reason |
 | `/vex/cmd` | `std_msgs/String` | sub (vex_bridge) | JSON command packet to Brain |
 | `/vex/ack` | `std_msgs/String` | pub (vex_bridge) | JSON ack from Brain, keyed by `ack` sequence |
 | `/vex/telemetry` | `std_msgs/String` | pub (vex_bridge) | JSON telemetry/sample/event records from Brain |
@@ -299,7 +304,7 @@ Useful panels: **Image** (subscribe `/camera/image_raw` or `/camera/image_rect`)
 ros2 bag record -a -o session_$(date +%Y%m%d_%H%M%S)
 
 # Record only camera, tag, and VEX bridge topics (smaller files)
-ros2 bag record /camera/image_raw /camera/camera_info /camera/image_rect /apriltag/detections /tf /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status \
+ros2 bag record /camera/image_raw /camera/camera_info /camera/image_rect /apriltag/detections /tf /align_to_tag/feedback /align_to_tag/result /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status \
     -o session_$(date +%Y%m%d_%H%M%S)
 
 # Inspect a recorded bag

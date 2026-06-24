@@ -11,6 +11,7 @@
   <depend>std_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
+  <exec_depend>apriltag_msgs</exec_depend>
   <exec_depend>apriltag_ros</exec_depend>
   <exec_depend>image_proc</exec_depend>
   <exec_depend>foxglove_bridge</exec_depend>

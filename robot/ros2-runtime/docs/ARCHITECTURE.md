@@ -137,6 +137,10 @@ Ack records are published on `/vex/ack`, keyed by the `ack` sequence. Telemetry/
 | `/camera/image_rect` | `sensor_msgs/Image` | `camera_rectify` | `apriltag` | 15 Hz (default) |
 | `/apriltag/detections` | `apriltag_msgs/AprilTagDetectionArray` | `apriltag` | — (bag, controller) | tag dependent |
 | `/tf` | `tf2_msgs/TFMessage` | `apriltag` | — (bag, Foxglove) | tag dependent |
+| `/align_to_tag/goal` | `std_msgs/String` | operator / controller | `align_to_tag` | on-demand |
+| `/align_to_tag/cancel` | `std_msgs/String` | operator / controller | `align_to_tag` | on-demand |
+| `/align_to_tag/feedback` | `std_msgs/String` | `align_to_tag` | — (bag, Foxglove) | control-period dependent |
+| `/align_to_tag/result` | `std_msgs/String` | `align_to_tag` | — (bag, Foxglove) | terminal |
 | `/vex/cmd` | `std_msgs/String` | external / LLM loop | `vex_bridge` | on-demand |
 | `/vex/ack` | `std_msgs/String` | `vex_bridge` | — (bag, controller) | heartbeat/cmd dependent |
 | `/vex/telemetry` | `std_msgs/String` | `vex_bridge` | — (bag) | Brain sample dependent |
@@ -176,6 +180,10 @@ The bag captures all topics simultaneously — camera frames, VEX telemetry, any
 /camera/image_raw  ──▶  image_proc  ──▶  /camera/image_rect  ──▶  apriltag_ros  ──▶  /apriltag/detections
 /camera/camera_info ──▶
 ```
+
+### AlignToTag — Bounded Local Control
+
+`align_to_tag` is the first local-control skill. It consumes `/apriltag/detections`, `/vex/ack`, and `/vex/bridge_status`; publishes bounded fixed-grammar `/vex/cmd` packets; and emits JSON feedback/result topics. It sends a final `stop` command on success, cancel, timeout, stale tag, stale ack, or bridge fault. No LLM or API call is in this loop.
 
 ### yolo_ros — Object Detection
 

@@ -25,6 +25,7 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn('package="apriltag_ros"', launch_text)
         self.assertIn('executable="apriltag_node"', launch_text)
         self.assertIn('("detections", "/apriltag/detections")', launch_text)
+        self.assertIn('executable="align_to_tag_node"', launch_text)
 
     def test_apriltag_config_names_the_expected_first_proof_tag(self) -> None:
         config_text = (ROOT / "config" / "apriltag_36h11.yaml").read_text()
@@ -51,8 +52,10 @@ class LaunchContractTests(unittest.TestCase):
         setup_text = (ROOT / "setup.py").read_text()
 
         self.assertIn("apriltag_ros", exec_depends)
+        self.assertIn("apriltag_msgs", exec_depends)
         self.assertIn("image_proc", exec_depends)
         self.assertIn('glob("config/*.yaml")', setup_text)
+        self.assertIn("align_to_tag_node = vexy_ros.align_to_tag_node:main", setup_text)
 
 
 if __name__ == "__main__":
