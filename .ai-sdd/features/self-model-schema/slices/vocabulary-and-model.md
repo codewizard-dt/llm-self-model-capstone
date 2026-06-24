@@ -28,14 +28,15 @@ contracts/
 
 ## `contracts/vocabulary.py`
 
-One `StrEnum` per axis, values seeded from MASTER_REQUIREMENTS → Parts Catalog Grammar:
+One `StrEnum` per axis, seeded from MASTER_REQUIREMENTS → Parts Catalog Grammar and
+revised per the PR #13 review for real hardware feasibility:
 
 - `MotorAllocation`: `2drive+1arm+1claw`, `2drive+2free`, `4drive`, `3drive+1manip`
-- `ArmPosition`: `front`, `rear`, `side`, `absent`
-- `EndEffector`: `claw_grasper`, `bare_arm`, `none`
+- `ArmPosition`: `front`, `rear` (trimmed — side/absent mounts are not feasible)
+- `EndEffector`: `claw_grasper`, `scoop`, `flywheel` (the real ball-manipulation mechanisms; bare_arm/none dropped)
 - `WheelConfig`: `front_omni+rear_standard`
 - `ArmGearRatio`: `7:1`, `1:1`
-- `Cartridge`: `200rpm`
+- `Cartridge`: `100rpm`, `200rpm`, `600rpm` (all three VEX V5 gear cartridges)
 
 This is the single source of truth F3 (parts-catalog-grammar) will later import to generate `parts_catalog.json` — do not duplicate these value sets anywhere else (D1, C1).
 
@@ -50,7 +51,7 @@ This is the single source of truth F3 (parts-catalog-grammar) will later import 
 - `capability: CapabilityLayer` — `reach_mm`, `max_grip_force_N`, `max_pull_force_N`, `com_height_mm` (float, default 0); `extra="forbid"`
 - `predictive: dict[str, dict[str, float | bool | str]]` — free task-string keys
 - `gap_model: dict[str, dict[str, float]]` — free task-string keys; reuses F1's `gap` residual keys per task
-- `reasoning: str` — `min_length=1`
+- `reasoning: dict[str, str]` — one keyed rationale per change/choice (PR #13); non-empty map, non-empty values
 
 Re-export `SelfModel` and the vocabulary enums from `contracts/__init__.py` (keep all F1 exports).
 

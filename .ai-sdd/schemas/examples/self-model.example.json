@@ -7,5 +7,5 @@
   "capability": { "reach_mm": 0, "max_grip_force_N": 0, "max_pull_force_N": 0, "com_height_mm": 0 },
   "predictive": { "grab": {}, "pull": {}, "throw": {} },
   "gap_model": { "grab": {}, "pull": {}, "throw": {} },
-  "reasoning": "Why each structural choice was made and what gap evidence drove each parameter change."
+  "reasoning": { "end_effector": "claw_grasper chosen to grasp game objects.", "cartridge": "200rpm balances drivetrain speed and torque." }
 }

@@ -42,7 +42,7 @@ def minimal_self_model(**overrides) -> dict:
         "capability": {},
         "predictive": {},
         "gap_model": {},
-        "reasoning": "initial design",
+        "reasoning": {"motor_allocation": "initial design"},
     }
     doc.update(overrides)
     return doc
@@ -86,8 +86,22 @@ def test_negative_generation_raises() -> None:
 
 
 def test_empty_reasoning_raises() -> None:
+    # reasoning is now a dict[str, str] (PR #13): an empty mapping is rejected.
     with pytest.raises(ValidationError):
-        SelfModel(**minimal_self_model(reasoning=""))
+        SelfModel(**minimal_self_model(reasoning={}))
+
+
+def test_reasoning_with_blank_rationale_raises() -> None:
+    with pytest.raises(ValidationError):
+        SelfModel(**minimal_self_model(reasoning={"end_effector": "  "}))
+
+
+def test_reasoning_is_keyed_by_change() -> None:
+    model = SelfModel(
+        **minimal_self_model(reasoning={"end_effector": "claw for grasping", "cartridge": "200rpm"})
+    )
+    assert model.reasoning["end_effector"] == "claw for grasping"
+    assert set(model.reasoning) == {"end_effector", "cartridge"}
 
 
 @pytest.mark.parametrize("missing", ["config", "capability", "generation"])

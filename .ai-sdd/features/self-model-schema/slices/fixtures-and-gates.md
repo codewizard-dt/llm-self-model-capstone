@@ -29,13 +29,13 @@ contracts/
 - `generation: 0`, `parent_generation: null`
 - `config`: `motor_allocation:"2drive+1arm+1claw"`, `arm_position:"front"`, `end_effector:"claw_grasper"`, `wheel_config:"front_omni+rear_standard"`, `arm_gear_ratio:"7:1"`, `cartridge:"200rpm"`
 - `capability`, `predictive.grab`, `gap_model.grab` populated with research-grounded starting values
-- `reasoning`: why each structural choice was made
+- `reasoning` (`dict[str, str]`, PR #13): one entry per initial choice (e.g. `end_effector`, `cartridge`) → why
 
 `self_model_gen1.json` — Gen-1 revision (hand-authored, D6):
 - `generation: 1`, `parent_generation: 0`
 - at least one `capability` and/or `predictive.grab` value moved toward observed reality vs Gen-0
 - `gap_model.grab` keyed with F1's frozen residual keys — `force_error_N`, `duration_error_s` (D5)
-- `reasoning`: cites the gap evidence that drove the change
+- `reasoning` (`dict[str, str]`, PR #13): one entry per changed parameter (e.g. `predictive.grab.grip_force_N`, `capability.max_grip_force_N`) → why, citing the gap evidence
 
 ## `validate.py` extension
 

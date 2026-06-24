@@ -1,5 +1,10 @@
-"""Config-axis vocabulary — one StrEnum per axis, seeded verbatim from the
-MASTER_REQUIREMENTS Parts Catalog Grammar.
+"""Config-axis vocabulary — one StrEnum per axis.
+
+Seeded from the MASTER_REQUIREMENTS Parts Catalog Grammar, then revised per the
+PR #13 review to keep only realistically feasible options: end effectors are the
+real ball-manipulation mechanisms (claw / scoop / flywheel), arm position is
+trimmed to the two feasible mounts, and the cartridge axis carries all three VEX
+V5 gear cartridges (100 / 200 / 600 rpm).
 
 This module is the single source of truth for the legal per-axis config values.
 F2 (self-model) types `SelfModelConfig` against these enums, and F3
@@ -21,14 +26,12 @@ class MotorAllocation(StrEnum):
 class ArmPosition(StrEnum):
     FRONT = "front"
     REAR = "rear"
-    SIDE = "side"
-    ABSENT = "absent"
 
 
 class EndEffector(StrEnum):
     CLAW_GRASPER = "claw_grasper"
-    BARE_ARM = "bare_arm"
-    NONE = "none"
+    SCOOP = "scoop"
+    FLYWHEEL = "flywheel"
 
 
 class WheelConfig(StrEnum):
@@ -41,4 +44,6 @@ class ArmGearRatio(StrEnum):
 
 
 class Cartridge(StrEnum):
+    RPM_100 = "100rpm"
     RPM_200 = "200rpm"
+    RPM_600 = "600rpm"

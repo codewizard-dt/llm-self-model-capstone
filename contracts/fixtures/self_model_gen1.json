@@ -34,5 +34,9 @@
   "gap_model": {
     "grab": { "force_error_N": -0.3, "duration_error_s": 0.1 }
   },
-  "reasoning": "Gen-1 revision driven by the Gen-0 grab gap evidence. The Gen-0 gap_model.grab residual force_error_N -3.4 showed the self-model overpredicted grip force by ~3.4 N against observed telemetry, so this generation lowers predictive.grab.grip_force_N from 14.7 to 11.6 (toward the ~11.3 N implied by the residual) and trims max_grip_force_N from 18.0 to 15.0 to match the corrected manipulator estimate. With the prediction moved toward reality the residual collapses: force_error_N shrinks from -3.4 to -0.3 and duration_error_s from 0.2 to 0.1. The gap closing across the generation boundary is the self-model's self-knowledge improving."
+  "reasoning": {
+    "predictive.grab.grip_force_N": "Lowered 14.7 -> 11.6 toward the ~11.3 N implied by the Gen-0 force_error_N -3.4 residual; the self-model overpredicted grip force.",
+    "capability.max_grip_force_N": "Trimmed 18.0 -> 15.0 to match the corrected manipulator estimate.",
+    "gap_model.grab": "With the prediction moved toward reality the residual collapses: force_error_N -3.4 -> -0.3, duration_error_s 0.2 -> 0.1 — self-knowledge improving across the generation boundary."
+  }
 }

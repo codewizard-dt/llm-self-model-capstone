@@ -11,9 +11,7 @@
     "ArmPosition": {
       "enum": [
         "front",
-        "rear",
-        "side",
-        "absent"
+        "rear"
       ],
       "title": "ArmPosition",
       "type": "string"
@@ -47,7 +45,9 @@
     },
     "Cartridge": {
       "enum": [
-        "200rpm"
+        "100rpm",
+        "200rpm",
+        "600rpm"
       ],
       "title": "Cartridge",
       "type": "string"
@@ -79,8 +79,8 @@
     "EndEffector": {
       "enum": [
         "claw_grasper",
-        "bare_arm",
-        "none"
+        "scoop",
+        "flywheel"
       ],
       "title": "EndEffector",
       "type": "string"
@@ -231,9 +231,12 @@
       "type": "object"
     },
     "reasoning": {
-      "minLength": 1,
+      "additionalProperties": {
+        "type": "string"
+      },
+      "minProperties": 1,
       "title": "Reasoning",
-      "type": "string"
+      "type": "object"
     },
     "schema_version": {
       "const": "1.0",

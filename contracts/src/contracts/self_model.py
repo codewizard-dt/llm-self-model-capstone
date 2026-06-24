@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from contracts.motor_telemetry import StrictModel
 from contracts.vocabulary import (
@@ -72,7 +72,18 @@ class SelfModel(BaseModel):
     capability: CapabilityLayer
     predictive: dict[str, dict[str, float | bool | str]]
     gap_model: dict[str, dict[str, float]]
-    reasoning: str = Field(min_length=1)
+    # One keyed rationale per change/choice (PR #13 review): e.g. an
+    # `end_effector` change carries its own line, and a generation that changes
+    # `end_effector` and `cartridge` carries a line for each. Gen 0 keys by its
+    # initial structural choices.
+    reasoning: dict[str, str] = Field(min_length=1)
+
+    @field_validator("reasoning")
+    @classmethod
+    def reasoning_entries_are_nonempty(cls, value: dict[str, str]) -> dict[str, str]:
+        if any(not str(rationale).strip() for rationale in value.values()):
+            raise ValueError("each reasoning entry must be a non-empty rationale")
+        return value
 
     @model_validator(mode="after")
     def enforce_lineage(self) -> SelfModel:
