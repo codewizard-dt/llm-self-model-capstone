@@ -1,5 +1,5 @@
 # Delegate to per-vertical Makefiles. Add a vertical's target once its Makefile exists.
-.PHONY: sync validate test lint schema
+.PHONY: sync validate test lint schema catalog catalog-check
 
 sync:
 	$(MAKE) -C contracts sync
@@ -15,6 +15,12 @@ lint:
 
 schema:
 	$(MAKE) -C contracts schema
+
+catalog:
+	$(MAKE) -C contracts catalog
+
+catalog-check:
+	$(MAKE) -C contracts catalog-check
 
 # Stubs — filled in by later features
 # operator:    $(MAKE) -C operator           sync / validate / test / lint
