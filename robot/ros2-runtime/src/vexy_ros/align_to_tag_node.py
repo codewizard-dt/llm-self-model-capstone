@@ -10,6 +10,7 @@ import rclpy
 from apriltag_msgs.msg import AprilTagDetectionArray
 from rclpy.node import Node
 from std_msgs.msg import String
+from tf2_msgs.msg import TFMessage
 
 from .align_to_tag import (
     AlignDecision,
@@ -20,6 +21,7 @@ from .align_to_tag import (
     VexCommand,
 )
 from .bridge_protocol import PROTOCOL_VERSION, now_ms
+from .vision_map import camera_from_apriltag_translation, tag_id_from_frame_id
 
 
 class AlignToTagNode(Node):
@@ -50,6 +52,7 @@ class AlignToTagNode(Node):
             self._on_detections,
             10,
         )
+        self.create_subscription(TFMessage, "/tf", self._on_tf, 10)
 
         period = (
             self.get_parameter("control_period_s").get_parameter_value().double_value
@@ -113,6 +116,14 @@ class AlignToTagNode(Node):
             if tag_id is None:
                 continue
             observation = self._tag_observation(detection, tag_id, now_s)
+            if observation is not None:
+                self._latest_tag = observation
+                return
+
+    def _on_tf(self, msg: TFMessage) -> None:
+        now_s = time.monotonic()
+        for transform in msg.transforms:
+            observation = self._tag_observation_from_transform(transform, now_s)
             if observation is not None:
                 self._latest_tag = observation
                 return
@@ -188,6 +199,35 @@ class AlignToTagNode(Node):
             stamp_s=now_s,
             yaw_error_rad=yaw_error,
             lateral_error_m=lateral_error,
+            distance_m=distance,
+            confidence=None,
+        )
+
+    @staticmethod
+    def _tag_observation_from_transform(
+        transform_stamped: Any, now_s: float
+    ) -> TagObservation | None:
+        tag_id = tag_id_from_frame_id(
+            str(getattr(transform_stamped, "child_frame_id", ""))
+        )
+        if tag_id is None:
+            return None
+        transform = getattr(transform_stamped, "transform", None)
+        translation = getattr(transform, "translation", None)
+        if translation is None:
+            return None
+
+        camera_from_tag = camera_from_apriltag_translation(
+            optical_x_m=float(getattr(translation, "x", 0.0)),
+            optical_z_m=float(getattr(translation, "z", 0.0)),
+        )
+        distance = math.sqrt(camera_from_tag.x_m**2 + camera_from_tag.y_m**2)
+        yaw_error = math.atan2(camera_from_tag.y_m, camera_from_tag.x_m)
+        return TagObservation(
+            tag_id=tag_id,
+            stamp_s=now_s,
+            yaw_error_rad=yaw_error,
+            lateral_error_m=camera_from_tag.y_m,
             distance_m=distance,
             confidence=None,
         )

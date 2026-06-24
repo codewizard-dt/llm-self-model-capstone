@@ -210,7 +210,7 @@ ros2 topic echo /vex/bridge_status --once
 
 Expected: ~6–7 Hz (heartbeat fires at 0.15 s interval).
 
-`/vex/ack` proves the Brain is receiving heartbeats/commands. `/vex/telemetry` is reserved for streaming telemetry/sample/event records; if the current Brain firmware only emits ack records, `/vex/bridge_status` may report `no_telemetry` until telemetry streaming is added.
+`/vex/ack` proves the Brain is receiving heartbeats/commands. `/vex/telemetry` should publish separately and include `motion_enabled`, `drive_ports_ok`, `motor_ports`, and `motor_samples` for the left/right drive motors when the guarded PROS bridge is loaded.
 
 ### 2.7 AlignToTag bounded local skill
 
@@ -231,7 +231,43 @@ Cancel an active run:
 ros2 topic pub --once /align_to_tag/cancel std_msgs/String '{"data":"operator_cancel"}'
 ```
 
-### 2.8 Foxglove bridge reachable
+### 2.8 Guarded tag approach + scan proof
+
+Only run this after 2.4 through 2.7 are green and the robot has clear floor space.
+Record the proof first:
+
+```bash
+proof=~/proof/tag-approach-scan-$(date +%Y%m%d-%H%M%S)
+mkdir -p "$proof"
+ros2 bag record -s mcap -o "$proof/mcap" \
+  /tf /apriltag/detections /vision/scene_map /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status
+```
+
+Then run one bounded packaged proof from another sourced shell:
+
+```bash
+proof=~/proof/tag-approach-scan-<timestamp-from-recording-shell>
+ros2 run vexy_ros vexy_tag_action_proof \
+  --mode visual-one-foot-scan \
+  --summary-out "$proof/summary.json"
+```
+
+Expected: the summary reports `approach_reached_target: true`, `/vex/ack`
+reports `state:"ok"`, `/vex/telemetry` returns zero drive velocity after the
+stop, and `/vision/scene_map`/`/tf` show the visible tag IDs observed during the
+scan.
+
+For scan-only tag visibility checks:
+
+```bash
+proof=~/proof/tag-approach-scan-<timestamp-from-recording-shell>
+ros2 run vexy_ros vexy_tag_action_proof \
+  --mode scan-only \
+  --scan-duration-s 20 \
+  --summary-out "$proof/scan-summary.json"
+```
+
+### 2.9 Foxglove bridge reachable
 
 ```bash
 # From the Pi:
@@ -249,11 +285,13 @@ In Foxglove Studio (browser or desktop):
 3. Enter `ws://vexy.local:8765` (or `ws://<IP>:8765` if mDNS fails)
 4. Confirm topics `/camera/image_raw`, `/camera/image_rect`, `/apriltag/detections`, `/align_to_tag/feedback`, `/align_to_tag/result`, `/vex/ack`, `/vex/telemetry`, `/vex/bridge_status`, etc. appear in the topic list
 
-### 2.9 Scene map proof
+### 2.10 Scene map proof
 
 The scene map turns the fixed AprilTag workspace layout into robot/object map
 coordinates. The default map is `config/maps/table-grab-toss-v1.json`, matching
-the wiki-backed 150 cm x 200 cm arena with 200 mm tag36h11 tags:
+the wiki-backed 150 cm x 200 cm arena with 200 mm tag36h11 tags. For the Gen0
+50 x 108 in arena from PR #20, launch with `VEXY_MAP=gen0-grab-toss-v1` or pass
+the installed `workspace_map_path` explicitly.
 
 - tag `0`: bin
 - tag `1`: ball staging

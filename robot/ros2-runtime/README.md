@@ -216,15 +216,20 @@ Supported `cmd` values: `stop`, `drive`, `turn`, `set_goal`
 
 **Ack** (`/vex/ack`):
 ```json
-{"v":1,"ack":1,"type":"ack","state":"ok","recv_ms":124,"battery_mv":12300,"heading_deg":0.0,"fault":null}
+{"v":1,"ack":1,"type":"ack","state":"ok","recv_ms":124,"battery_mv":12300,"motion_enabled":true,"drive_ports_ok":true,"motor_ports":[1,3,8,10],"fault":null}
 ```
-
-Ack records may include state fields from the current Brain firmware. They are still command acknowledgements, not proof that a streaming telemetry topic is healthy.
 
 **Telemetry** (`/vex/telemetry`):
 ```json
-{"v":1,"type":"telemetry","battery_mv":12300,"heading_deg":0.0}
+{"v":1,"type":"telemetry","motion_enabled":true,"drive_ports_ok":true,"motor_samples":[{"device":"left_drive","subsystem":"drivetrain","sample_ms":1200,"values":{"position_deg":10.0,"velocity_rpm":0.0,"current_amp":0.0,"power_w":0.0,"torque_nm":0.0,"efficiency_pct":0.0,"temperature_c":23.0}}]}
 ```
+
+The guarded V5 firmware accepts `drive`/`turn` only when the expected drive ports
+are present. It stops on command TTL expiry, watchdog expiry, explicit `stop`, or
+estop.
+
+Ack records are command acknowledgements; use `/vex/telemetry` for streaming
+health and motor-sample proof.
 
 **Bridge status** (`/vex/bridge_status`):
 ```json
@@ -261,6 +266,9 @@ ros2 launch vexy_ros vexy.launch.py \
     baud_rate:=115200 \
     camera_width:=1280 camera_height:=720 camera_fps:=30 \
     camera_info_url:=file:///home/vexy/calibration/imx708_wide_1280x720.yaml
+
+# Select the Gen0 50x108 in arena map by id
+VEXY_MAP=gen0-grab-toss-v1 ros2 launch vexy_ros vexy.launch.py
 ```
 
 ### All launch arguments
@@ -275,7 +283,8 @@ ros2 launch vexy_ros vexy.launch.py \
 | `camera_frame_id` | `camera_optical_frame` | Frame ID stamped into camera messages |
 | `camera_info_url` | package config URL | Must be a URL such as `file:///...`; replace the starter file with measured calibration before tag-pose proof |
 | `apriltag_config` | package config path | YAML for tag family, ID, frame name, and physical size |
-| `workspace_map_path` | package `table-grab-toss-v1.json` | Wiki-backed 1500 x 2000 mm AprilTag workspace map |
+| `workspace_map_name` | `VEXY_MAP` or `table-grab-toss-v1` | Map id under package `config/maps`; use `gen0-grab-toss-v1` for the 50 x 108 in arena |
+| `workspace_map_path` | derived from `workspace_map_name` | Explicit workspace map JSON path; overrides `workspace_map_name` |
 | `camera_in_robot_json` | `{"x_m":0.0,"y_m":0.0,"yaw_rad":0.0}` | Measured camera pose in the robot body frame |
 
 ---
