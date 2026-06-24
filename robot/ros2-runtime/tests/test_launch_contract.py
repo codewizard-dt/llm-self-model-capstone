@@ -25,6 +25,10 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn('package="apriltag_ros"', launch_text)
         self.assertIn('executable="apriltag_node"', launch_text)
         self.assertIn('("detections", "/apriltag/detections")', launch_text)
+        self.assertIn('executable="scene_map_node"', launch_text)
+        self.assertIn("workspace_map_path", launch_text)
+        self.assertIn("table-grab-toss-v1.json", launch_text)
+        self.assertIn("camera_in_robot_json", launch_text)
         self.assertIn('executable="align_to_tag_node"', launch_text)
 
     def test_apriltag_config_names_the_expected_first_proof_tag(self) -> None:
@@ -55,7 +59,12 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn("apriltag_msgs", exec_depends)
         self.assertIn("image_proc", exec_depends)
         self.assertIn('glob("config/*.yaml")', setup_text)
+        self.assertIn('glob("config/maps/*.json")', setup_text)
         self.assertIn("align_to_tag_node = vexy_ros.align_to_tag_node:main", setup_text)
+        self.assertIn("scene_map_node = vexy_ros.scene_map_node:main", setup_text)
+        self.assertIn(
+            "vexy_export_contract_jsonl = vexy_ros.evidence_export:main", setup_text
+        )
 
 
 if __name__ == "__main__":

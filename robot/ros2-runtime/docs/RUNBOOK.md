@@ -248,6 +248,46 @@ In Foxglove Studio (browser or desktop):
 3. Enter `ws://vexy.local:8765` (or `ws://<IP>:8765` if mDNS fails)
 4. Confirm topics `/camera/image_raw`, `/camera/image_rect`, `/apriltag/detections`, `/align_to_tag/feedback`, `/align_to_tag/result`, `/vex/ack`, `/vex/telemetry`, `/vex/bridge_status`, etc. appear in the topic list
 
+### 2.9 Scene map proof
+
+The scene map turns the fixed AprilTag workspace layout into robot/object map
+coordinates. The default map is `config/maps/table-grab-toss-v1.json`, matching
+the wiki-backed 150 cm x 200 cm arena with 200 mm tag36h11 tags:
+
+- tag `0`: bin
+- tag `1`: ball staging
+- tag `2`: home
+
+With a fixed anchor tag visible:
+
+```bash
+ros2 topic echo /vision/scene_map --once
+```
+
+Expected: JSON with `robot_pose`, `camera_pose`, `tags`, `anchor_tag_ids`, and
+`observed_tag_ids`. Poses include both ROS-friendly meter/radian fields and the
+wiki map fields `x_mm`, `y_mm`, `heading_deg`.
+
+If the camera is mounted away from the robot center, relaunch with the measured
+camera pose in the robot body frame:
+
+```bash
+ros2 launch vexy_ros vexy.launch.py \
+  camera_in_robot_json:='{"x_m":0.12,"y_m":0.0,"yaw_rad":0.0}'
+```
+
+To indicate an untagged object in camera-relative coordinates:
+
+```bash
+ros2 topic pub --once /vision/object_indications std_msgs/String \
+  '{"data":"[{\"name\":\"red_block\",\"forward_m\":0.65,\"left_m\":-0.12,\"confidence\":0.8}]"}'
+ros2 topic echo /vision/scene_map --once
+```
+
+Expected: `/vision/scene_map` includes an `objects[]` entry with the object pose
+transformed into the active workspace map. This is an operator/prototype hint;
+the canonical object detector can replace it later.
+
 ---
 
 ## 3. Recording Sessions
@@ -262,7 +302,7 @@ ros2 bag record -a -o session_$(date +%Y%m%d_%H%M%S)
 Record specific topics only (smaller files):
 
 ```bash
-ros2 bag record /camera/image_raw /camera/camera_info /camera/image_rect /apriltag/detections /tf /align_to_tag/feedback /align_to_tag/result /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status \
+ros2 bag record /camera/image_raw /camera/camera_info /camera/image_rect /apriltag/detections /tf /vision/scene_map /align_to_tag/feedback /align_to_tag/result /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status \
   -o session_$(date +%Y%m%d_%H%M%S)
 ```
 
@@ -292,9 +332,10 @@ ros2 bag record -a -o ~/bags/session_$(date +%Y%m%d_%H%M%S)
 scp -r vexy@vexy.local:~/bags/session_20260623_143012 .
 ```
 
-### Export VEX bridge topics to JSON for LLM analysis
+### Export VEX bridge topics and scene map to JSON for LLM analysis
 
-Extract `/vex/ack`, `/vex/telemetry`, and `/vex/bridge_status` messages to newline-delimited JSON:
+Extract `/vision/scene_map`, `/vex/ack`, `/vex/telemetry`, and
+`/vex/bridge_status` messages to newline-delimited JSON:
 
 ```bash
 ros2 bag convert \
@@ -303,7 +344,7 @@ ros2 bag convert \
   --output-storage sqlite3
 
 # Then extract the string payloads:
-ros2 bag play session_20260623_143012 --topics /vex/ack /vex/telemetry /vex/bridge_status &
+ros2 bag play session_20260623_143012 --topics /vision/scene_map /vex/ack /vex/telemetry /vex/bridge_status &
 ros2 topic echo /vex/ack | while IFS= read -r line; do
   echo "$line" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('data',''))"
 done > ack_$(date +%Y%m%d_%H%M%S).jsonl
@@ -312,12 +353,39 @@ done > ack_$(date +%Y%m%d_%H%M%S).jsonl
 Simpler one-liner (plays bag and writes JSONL):
 
 ```bash
-ros2 bag play session_20260623_143012 --topics /vex/ack /vex/telemetry /vex/bridge_status --rate 10 &
+ros2 bag play session_20260623_143012 --topics /vision/scene_map /vex/ack /vex/telemetry /vex/bridge_status --rate 10 &
 PLAY_PID=$!
 ros2 topic echo --csv /vex/ack > ack_raw.csv
 kill $PLAY_PID
 # Column 2 of ack_raw.csv is the JSON string; strip it with:
 awk -F',' 'NR>1 {gsub(/^"|"$/, "", $2); print $2}' ack_raw.csv > ack.jsonl
+```
+
+### Export contract-valid JSONL
+
+Create a proof bundle JSON containing the final `/vision/scene_map` message,
+the terminal `/align_to_tag/result`, at least one V5 motor sample, and the raw
+bag path. Then export it:
+
+```bash
+PYTHONPATH=/home/vexy/llm-self-model-capstone/contracts/src:$PYTHONPATH \
+  ros2 run vexy_ros vexy_export_contract_jsonl \
+  proof/align_to_tag_bundle.json \
+  --out proof/contract/session_$(date +%Y%m%d_%H%M%S).jsonl
+```
+
+Validate from the repo checkout:
+
+```bash
+cd /home/vexy/llm-self-model-capstone
+uv run --project contracts python - <<'PY'
+from pathlib import Path
+from contracts import ContractLine
+for line in Path("proof/contract").glob("*.jsonl"):
+    for raw in line.read_text().splitlines():
+        ContractLine.model_validate_json(raw)
+print("OK contract JSONL")
+PY
 ```
 
 ---

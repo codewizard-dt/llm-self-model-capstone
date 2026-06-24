@@ -1,0 +1,85 @@
+{
+  "session_id": "session_20260624_align_to_tag_fixture",
+  "generation": 0,
+  "round": 1,
+  "task": "align_to_tag",
+  "raw_session_path": "proof/rosbags/align_to_tag_fixture",
+  "pi_received_ms": 4200,
+  "goal": {
+    "tag_id": 0,
+    "target_distance_m": 0.45
+  },
+  "align_result": {
+    "success": true,
+    "reason": "success",
+    "final_yaw_error_rad": 0.012,
+    "final_lateral_error_m": -0.008,
+    "final_distance_error_m": 0.018
+  },
+  "scene_map": {
+    "frame_id": "map",
+    "stamp_s": 42.0,
+    "camera_pose": {
+      "x_m": 1.12,
+      "y_m": 0.34,
+      "yaw_rad": 0.03
+    },
+    "robot_pose": {
+      "x_m": 1.10,
+      "y_m": 0.34,
+      "yaw_rad": 0.03
+    },
+    "tags": {
+      "0": {
+        "x_m": 0.0,
+        "y_m": 0.0,
+        "yaw_rad": 0.0
+      }
+    },
+    "objects": [
+      {
+        "name": "red_block",
+        "pose": {
+          "x_m": 1.48,
+          "y_m": 0.12,
+          "yaw_rad": 0.0
+        },
+        "source": "operator_indication",
+        "confidence": 0.8
+      }
+    ],
+    "anchor_tag_ids": [0],
+    "observed_tag_ids": [0]
+  },
+  "brain": {
+    "start_ms": 1000,
+    "end_ms": 4200,
+    "telemetry_sample_count": 1
+  },
+  "motor_samples": [
+    {
+      "device": "left_drive",
+      "subsystem": "drivetrain",
+      "api_binding": "vexcode_python",
+      "sample_ms": 4100,
+      "values": {
+        "position_deg": 540.0,
+        "velocity_rpm": 22.0,
+        "current_amp": 1.4,
+        "power_w": 16.8,
+        "torque_nm": 0.5,
+        "efficiency_pct": 70.0,
+        "temperature_c": 35.0
+      },
+      "source_api": {
+        "position_deg": "left_drive.position(DEGREES)",
+        "velocity_rpm": "left_drive.velocity(RPM)",
+        "current_amp": "left_drive.current(AMP)",
+        "power_w": "left_drive.power(WATT)",
+        "torque_nm": "left_drive.torque(NM)",
+        "efficiency_pct": "left_drive.efficiency(PERCENT)",
+        "temperature_c": "left_drive.temperature(CELSIUS)"
+      }
+    }
+  ]
+}
