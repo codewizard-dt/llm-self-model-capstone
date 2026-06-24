@@ -403,9 +403,24 @@ awk -F',' 'NR>1 {gsub(/^"|"$/, "", $2); print $2}' ack_raw.csv > ack.jsonl
 
 ### Export contract-valid JSONL
 
-Create a proof bundle JSON containing the final `/vision/scene_map` message,
-the terminal `/align_to_tag/result`, at least one V5 motor sample, and the raw
-bag path. Then export it:
+For `vexy_tag_action_proof` runs, export directly from the proof directory. The
+command reads `summary.json`, uses `scene_map.final.json` when present, writes
+`tag_action_bundle.json`, and writes contract JSONL under `contract/`:
+
+```bash
+PYTHONPATH=/home/vexy/llm-self-model-capstone/contracts/src:$PYTHONPATH \
+  ros2 run vexy_ros vexy_export_contract_jsonl \
+  --proof-dir proof/tag-approach-scan-YYYYMMDD-HHMMSS \
+  --no-validate
+```
+
+Use `--no-validate` on the Pi when the full `contracts` dependency environment
+is not installed there; validate the copied JSONL from a repo checkout with
+`uv` as shown below.
+
+For manually assembled proof bundles, create a JSON containing the final
+`/vision/scene_map` message, the terminal `/align_to_tag/result`, at least one
+V5 motor sample, and the raw bag path. Then export it:
 
 ```bash
 PYTHONPATH=/home/vexy/llm-self-model-capstone/contracts/src:$PYTHONPATH \

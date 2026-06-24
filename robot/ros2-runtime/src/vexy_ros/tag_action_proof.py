@@ -23,10 +23,12 @@ class TagActionProof(Node):
         self.create_subscription(TFMessage, "/tf", self._on_tf, 10)
         self.create_subscription(String, "/vex/telemetry", self._on_telemetry, 10)
         self.create_subscription(String, "/vex/ack", self._on_ack, 10)
+        self.create_subscription(String, "/vision/scene_map", self._on_scene_map, 10)
         self.latest_by_tag: dict[int, dict[str, float | int]] = {}
         self.observed_tags: set[int] = set()
         self.last_telemetry: dict[str, Any] | None = None
         self.last_ack: dict[str, Any] | None = None
+        self.last_scene_map: dict[str, Any] | None = None
         self.commands_sent = 0
         self.last_command: dict[str, Any] | None = None
         self.seq = 24000
@@ -63,6 +65,12 @@ class TagActionProof(Node):
     def _on_ack(self, msg: String) -> None:
         try:
             self.last_ack = json.loads(msg.data)
+        except json.JSONDecodeError:
+            return
+
+    def _on_scene_map(self, msg: String) -> None:
+        try:
+            self.last_scene_map = json.loads(msg.data)
         except json.JSONDecodeError:
             return
 
@@ -289,6 +297,7 @@ def finalize_summary(node: TagActionProof, summary: dict[str, Any]) -> dict[str,
     summary["observed_tags"] = sorted(node.observed_tags)
     summary["last_ack"] = node.last_ack
     summary["last_telemetry"] = node.last_telemetry
+    summary["last_scene_map"] = getattr(node, "last_scene_map", None)
     summary["commands_sent"] = getattr(node, "commands_sent", None)
     summary["last_command"] = getattr(node, "last_command", None)
     return summary
