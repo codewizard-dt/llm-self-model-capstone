@@ -2,11 +2,12 @@
 
 Defines the closed 6-verb `ControlCommand` discriminated union
 (stop/drive/turn/arm/claw/flywheel), `HeartbeatLine`, the outer `ControlLine`
-wire union (keyed on `type`), and the receipt-only `AckLine` carrying a
-closed-set `FaultCode` `StrEnum`. The module-level clamp constants
-(`MAX_LINEAR`, `MAX_OMEGA`, `MAX_FLYWHEEL_RPM`, `ARM_DEG_MIN`, `ARM_DEG_MAX`,
-`TTL_MS_MAX`) are the single source F20 imports for its Brain-side clamp; the
-existing C++ literals are reconciled to these in F20 (D10/C1).
+wire union (keyed on `type`), and `AckLine` carrying a closed-set `FaultCode`
+`StrEnum`. The module-level wire-limit constants (`MAX_LINEAR`, `MAX_OMEGA`,
+`MAX_FLYWHEEL_RPM`, `ARM_DEG_MIN`, `ARM_DEG_MAX`, `TTL_MS_MAX`) are the Pi-side
+envelope accepted by the online controller. Brain physical clamps are exported
+separately because the guarded V5 firmware intentionally narrows the wire
+envelope at the hardware boundary.
 
 Strictly additive to F1+F2+F3+F4: nothing here touches the frozen telemetry
 schemas. `ControlLine` carries `type ∈ {"cmd", "heartbeat"}` and `AckLine`
@@ -24,14 +25,16 @@ from pydantic import ConfigDict, Discriminator, Field, Tag, model_validator
 from contracts.motor_telemetry import StrictModel
 
 
-# --- Clamp constants (D10 — single source; F20 imports the same numbers) -----
+# --- Wire limits + Brain physical clamps ------------------------------------
 
-MAX_LINEAR = 0.35  # m/s   — matches pros_bridge/src/main.cpp current literal
-MAX_OMEGA = 0.60  # rad/s — matches pros_bridge/src/main.cpp current literal
+MAX_LINEAR = 0.35  # m/s   — ROS/Pi command-envelope maximum.
+MAX_OMEGA = 0.60  # rad/s — ROS/Pi command-envelope maximum.
 MAX_FLYWHEEL_RPM = 3600.0  # output shaft RPM — proposed default; F20 may narrow
 ARM_DEG_MIN = 0.0
 ARM_DEG_MAX = 360.0  # conservative; F20 narrows per assembled build
-TTL_MS_MAX = 1000  # matches bridge.py's ttl_ms clamp
+TTL_MS_MAX = 5000  # ROS bridge envelope; Brain motion commands narrow this.
+BRAIN_MAX_LINEAR = 0.18  # guarded PROS drive clamp for physical Clawbot motion.
+BRAIN_TTL_MS_MAX = 500  # guarded PROS per-motion TTL clamp.
 
 
 # --- FaultCode (D7) — exactly 8 values, closed StrEnum -----------------------
@@ -186,17 +189,17 @@ ControlLine = Annotated[
 ]
 
 
-# --- AckLine — receipt-only (D3) ---------------------------------------------
+# --- AckLine — receipt + lightweight bridge health ---------------------------
 
 
 class AckLine(StrictModel):
     """Brain → Pi receipt for a single command seq.
 
-    Receipt-only (D3): no telemetry-leaking fields. `state` is the closed set
-    {ok, rejected, stale} (D6); the model validator enforces
-    `fault is None iff state == "ok"`, `state == "rejected"` requires a
-    non-null fault, and `state == "stale"` accepts either (typical fault is
-    `ttl_expired`).
+    `state` is the closed set {ok, rejected, stale} (D6); the model validator
+    enforces `fault is None iff state == "ok"`, `state == "rejected"` requires
+    a non-null fault, and `state == "stale"` accepts either (typical fault is
+    `ttl_expired`). The optional health fields match the guarded V5 Brain
+    firmware proven in PR #21; streaming motor samples remain on telemetry.
     """
 
     model_config = ConfigDict(extra="forbid", strict=False)
@@ -207,6 +210,13 @@ class AckLine(StrictModel):
     state: Literal["ok", "rejected", "stale"]
     recv_ms: int = Field(ge=0)
     fault: FaultCode | None = None
+    battery_mv: int | None = Field(default=None, ge=0)
+    battery_pct: float | None = Field(default=None, ge=0.0, le=100.0)
+    watchdog_age_ms: int | None = Field(default=None, ge=0)
+    estop: bool | None = None
+    motion_enabled: bool | None = None
+    drive_ports_ok: bool | None = None
+    motor_ports: list[int] | None = None
 
     @model_validator(mode="after")
     def _enforce_state_fault_invariants(self) -> AckLine:

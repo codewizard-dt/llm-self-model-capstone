@@ -19,6 +19,8 @@ from pydantic import TypeAdapter, ValidationError
 from contracts import (
     ARM_DEG_MAX,
     ARM_DEG_MIN,
+    BRAIN_MAX_LINEAR,
+    BRAIN_TTL_MS_MAX,
     MAX_FLYWHEEL_RPM,
     MAX_LINEAR,
     MAX_OMEGA,
@@ -99,14 +101,13 @@ def test_roundtrip_ack_ok():
     ack = AckLine.model_validate(payload)
     assert ack.state == "ok"
     assert ack.fault is None
-    dumped = ack.model_dump()
+    dumped = ack.model_dump(exclude_none=True)
     assert dumped == {
         "v": 1,
         "type": "ack",
         "ack": 42,
         "state": "ok",
         "recv_ms": 1234,
-        "fault": None,
     }
 
 
@@ -201,7 +202,7 @@ def test_flywheel_rpm_out_of_range_rejected(rpm):
 # --- acc-test-range-ttl -----------------------------------------------------
 
 
-@pytest.mark.parametrize("ttl_ms", [0, -1, TTL_MS_MAX + 1, 5000])
+@pytest.mark.parametrize("ttl_ms", [0, -1, TTL_MS_MAX + 1])
 def test_ttl_ms_out_of_range_rejected(ttl_ms):
     with pytest.raises(ValidationError):
         CONTROL_LINE_TA.validate_python(
@@ -357,6 +358,31 @@ def test_ack_rejected_with_fault_accepted():
     assert ack.fault is FaultCode.OUT_OF_RANGE
 
 
+def test_live_guarded_brain_ack_shape_accepted():
+    ack = AckLine.model_validate(
+        {
+            "v": 1,
+            "ack": 120,
+            "battery_mv": 13421,
+            "battery_pct": 34.0,
+            "drive_ports_ok": True,
+            "estop": False,
+            "fault": None,
+            "motion_enabled": True,
+            "motor_ports": [1, 3, 8, 10],
+            "recv_ms": 20407,
+            "state": "ok",
+            "type": "ack",
+            "watchdog_age_ms": 0,
+        }
+    )
+
+    assert ack.state == "ok"
+    assert ack.battery_mv == 13421
+    assert ack.motion_enabled is True
+    assert ack.motor_ports == [1, 3, 8, 10]
+
+
 # --- acc-test-clamp-identity (D10/C1) ---------------------------------------
 
 
@@ -366,7 +392,9 @@ def test_clamp_constants_bit_for_bit():
     assert MAX_FLYWHEEL_RPM == 3600.0
     assert ARM_DEG_MIN == 0.0
     assert ARM_DEG_MAX == 360.0
-    assert TTL_MS_MAX == 1000
+    assert TTL_MS_MAX == 5000
+    assert BRAIN_MAX_LINEAR == 0.18
+    assert BRAIN_TTL_MS_MAX == 500
 
 
 # --- acc-test-faultcode-closed (D7) -----------------------------------------

@@ -19,7 +19,15 @@ from pathlib import Path
 
 from pydantic import TypeAdapter
 
-from contracts import AckLine, ControlLine, FaultCode, PartsCatalog, SelfModel, validate_config
+from contracts import (
+    TTL_MS_MAX,
+    AckLine,
+    ControlLine,
+    FaultCode,
+    PartsCatalog,
+    SelfModel,
+    validate_config,
+)
 from contracts.validate import main
 
 # contracts/tests/test_validate.py -> parents[1] is the contracts root.
@@ -141,7 +149,7 @@ def test_control_grab_cycle_round_trips():
             seen_cmds.append(cmd)
             # Envelope invariants (D5/D8): v=1, ttl_ms in (0, TTL_MS_MAX]
             assert obj["v"] == 1
-            assert 1 <= obj["ttl_ms"] <= 1000
+            assert 1 <= obj["ttl_ms"] <= TTL_MS_MAX
             assert line is not None
     assert seen_cmds == ["heartbeat", "drive", "arm", "claw", "arm", "stop"]
 

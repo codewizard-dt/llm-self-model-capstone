@@ -28,7 +28,7 @@
           "type": "integer"
         },
         "ttl_ms": {
-          "maximum": 1000,
+          "maximum": 5000,
           "minimum": 1,
           "title": "Ttl Ms",
           "type": "integer"
@@ -109,7 +109,7 @@
           "type": "string"
         },
         "ttl_ms": {
-          "maximum": 1000,
+          "maximum": 5000,
           "minimum": 1,
           "title": "Ttl Ms",
           "type": "integer"
@@ -164,7 +164,7 @@
           "type": "integer"
         },
         "ttl_ms": {
-          "maximum": 1000,
+          "maximum": 5000,
           "minimum": 1,
           "title": "Ttl Ms",
           "type": "integer"
@@ -233,7 +233,7 @@
           "type": "integer"
         },
         "ttl_ms": {
-          "maximum": 1000,
+          "maximum": 5000,
           "minimum": 1,
           "title": "Ttl Ms",
           "type": "integer"
@@ -276,7 +276,7 @@
           "type": "integer"
         },
         "ttl_ms": {
-          "maximum": 1000,
+          "maximum": 5000,
           "minimum": 1,
           "title": "Ttl Ms",
           "type": "integer"
@@ -334,7 +334,7 @@
           "type": "integer"
         },
         "ttl_ms": {
-          "maximum": 1000,
+          "maximum": 5000,
           "minimum": 1,
           "title": "Ttl Ms",
           "type": "integer"
@@ -389,7 +389,7 @@
           "type": "integer"
         },
         "ttl_ms": {
-          "maximum": 1000,
+          "maximum": 5000,
           "minimum": 1,
           "title": "Ttl Ms",
           "type": "integer"

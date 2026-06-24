@@ -10,6 +10,8 @@ from contracts.contract_line import (
 from contracts.control_command import (
     ARM_DEG_MAX,
     ARM_DEG_MIN,
+    BRAIN_MAX_LINEAR,
+    BRAIN_TTL_MS_MAX,
     MAX_FLYWHEEL_RPM,
     MAX_LINEAR,
     MAX_OMEGA,
@@ -81,4 +83,6 @@ __all__ = [
     "ARM_DEG_MIN",
     "ARM_DEG_MAX",
     "TTL_MS_MAX",
+    "BRAIN_MAX_LINEAR",
+    "BRAIN_TTL_MS_MAX",
 ]
