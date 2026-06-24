@@ -1,0 +1,40 @@
+summary: >-
+  F3 slice catalog-model-and-rules (contracts vertical). Added
+  contracts/src/contracts/parts_catalog.py: the pydantic v2 PartsCatalog data
+  model (extra=forbid, schema_version Literal["1.0"]) with one list[Enum] field
+  per axis typed against the IMPORTED contracts.vocabulary enums (D1) plus a typed
+  CatalogConstraints sub-model (ClawMotorBudgetRule + FlywheelCartridgeRule, D4);
+  the Violation/CatalogVerdict pair (D9); and the deterministic
+  validate_config(SelfModelConfig) -> CatalogVerdict buildability engine
+  implementing R1 (CLAW_MOTOR_BUDGET, D7), R2 (scoop/flywheel valid on all three
+  allocations — no allocation-grounds violation), and R3 (FLYWHEEL_CARTRIDGE,
+  forward-only, D8), each violation carrying a human-readable message; plus an
+  enumerate_buildable() helper. Added contracts/src/contracts/catalog.py — a
+  direct-file-write emitter mirroring schema.py (registry + write_text, no stdout
+  redirect, D14) that materializes the six axis arrays from the vocabulary enum
+  members and emits contracts/parts_catalog.json with schema_version + the
+  machine-readable constraints block (D5 — a data document, not a JSON Schema).
+  Added catalog + catalog-check targets to contracts/Makefile (added to .PHONY).
+  Additively exported PartsCatalog, validate_config, and SelfModelConfig from
+  contracts/__init__.py (D11), preserving all F1/F2 exports. Committed the
+  generated contracts/parts_catalog.json. Added contracts/tests/test_parts_catalog.py
+  covering the full acceptance checklist. The full vocabulary cross-product
+  (108 raw) yields exactly 60 buildable configs (claw 12 + scoop 36 + flywheel 12,
+  D13). Strictly additive — ContractLine, SelfModel, contract_line.json,
+  self_model.json, schemas/, and fixtures/ are byte-unchanged. The validate
+  entrypoint extension and root-Makefile delegation are the NEXT slice (D12).
+satisfies:
+  - acc-sync
+  - acc-lint
+  - acc-imports
+  - acc-catalog-emits
+  - acc-catalog-check
+  - acc-drift-guard
+  - acc-gen0-buildable
+  - acc-claw-budget-2free
+  - acc-claw-budget-3drive
+  - acc-flywheel-cartridge
+  - acc-scoop-each-allocation
+  - acc-enum-60
+  - acc-json-roundtrip
+  - acc-no-regression

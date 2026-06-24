@@ -1,0 +1,44 @@
+items:
+  - id: acc-sync
+    verdict: pass
+    notes: "`make sync` (uv sync) exits 0 from contracts/ — resolved 14 packages, checked 13."
+  - id: acc-lint
+    verdict: pass
+    notes: "`make lint` exits 0: ruff check 'All checks passed!' and ruff format --check '18 files already formatted'. uv/ruff only; no pip/poetry/black/isort/flake8."
+  - id: acc-imports
+    verdict: pass
+    notes: "`from contracts import PartsCatalog, validate_config, SelfModelConfig` succeeds under uv run. __init__.py diff is purely additive: SelfModelConfig + PartsCatalog + validate_config added to imports and __all__; all F1/F2 exports preserved (D11)."
+  - id: acc-catalog-emits
+    verdict: pass
+    notes: "`make catalog` exits 0. catalog.py is a direct file-write emitter (registry _build_catalog + Path.write_text, NO stdout redirect, mirrors schema.py per D14). parts_catalog.json is non-empty, lists all six axes plus schema_version='1.0' and a machine-readable constraints block. No JSON Schema emitted (D5); schema.py untouched."
+  - id: acc-catalog-check
+    verdict: pass
+    notes: "`make catalog-check` exits 0 (catalog then git diff --exit-code parts_catalog.json), mirroring schema-check. Independently verified byte-stability: copied the file, regenerated, diff showed BYTE-IDENTICAL. Emit is deterministic (sort_keys, fixed indent)."
+  - id: acc-drift-guard
+    verdict: pass
+    notes: "test_catalog_axes_equal_vocabulary_value_sets compares each loaded catalog axis to [member.value for member in enum_cls] from contracts.vocabulary — a forked/redefined value set would fail. test_motor_allocation_has_no_4drive asserts '4drive' absent both in the enum and the catalog (D1/D6). Catalog axes are materialized via list(EnumCls) in catalog.py, never hardcoded."
+  - id: acc-gen0-buildable
+    verdict: pass
+    notes: "Gen-0 Clawbot (2drive+1arm+1claw / front / claw_grasper / front_omni+rear_standard / 7:1 / 200rpm) -> validate_config returns buildable=True, no violations. Confirmed independently."
+  - id: acc-claw-budget-2free
+    verdict: pass
+    notes: "claw_grasper + 2drive+2free -> buildable=False with violation code='CLAW_MOTOR_BUDGET' (R1/D7). Verified via direct runtime probe and parametrized test."
+  - id: acc-claw-budget-3drive
+    verdict: pass
+    notes: "claw_grasper + 3drive+1manip -> buildable=False with violation code='CLAW_MOTOR_BUDGET' (R1/D7). Verified independently."
+  - id: acc-flywheel-cartridge
+    verdict: pass
+    notes: "flywheel + 200rpm -> buildable=False, code='FLYWHEEL_CARTRIDGE', message contains '600rpm' (R3/D8 forward-only). Confirmed forward-only: claw at 100rpm and scoop at 100rpm both remain buildable (cartridge not judged for non-flywheel). flywheel+600rpm buildable."
+  - id: acc-scoop-each-allocation
+    verdict: pass
+    notes: "scoop buildable=True on all three allocations (2drive+1arm+1claw, 2drive+2free, 3drive+1manip) with no violations (R2 — every remaining allocation supplies >=1 manipulator motor since 4drive dropped). Verified independently."
+  - id: acc-enum-60
+    verdict: pass
+    notes: "enumerate_buildable() filters the live full cross-product (3*2*3*1*2*3 = 108 raw) through validate_config — NOT a hardcoded constant. Returns exactly 60; per-effector breakdown derived from the data = {claw_grasper:12, scoop:36, flywheel:12}. Hand-checked: claw 36/3=12, scoop 36, flywheel 36/3=12. Confirmed live via independent runtime probe."
+  - id: acc-json-roundtrip
+    verdict: pass
+    notes: "test_parts_catalog_json_roundtrips loads parts_catalog.json, validates through PartsCatalog (strict=False coerces JSON strings to StrEnums), and asserts model_dump(mode='json') == payload with no loss; embedded constraints carry both rule codes."
+  - id: acc-no-regression
+    verdict: pass
+    notes: "`make test` exits 0 — 65 passed (F1 motor_telemetry/contract_line, F2 self_model, task_contracts, plus new parts_catalog tests). git status confirms contract_line.json, self_model.json, fixtures/, and .ai-sdd/schemas/ are byte-unchanged; scope is strictly additive."
+verdict: approve

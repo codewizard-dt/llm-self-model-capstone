@@ -1,4 +1,4 @@
-.PHONY: sync test validate lint schema schema-check
+.PHONY: sync test validate lint schema schema-check catalog catalog-check
 
 UV := uv run
 
@@ -20,3 +20,9 @@ schema:
 
 schema-check: schema
 	git diff --exit-code schemas/
+
+catalog:
+	$(UV) python -m contracts.catalog
+
+catalog-check: catalog
+	git diff --exit-code parts_catalog.json
