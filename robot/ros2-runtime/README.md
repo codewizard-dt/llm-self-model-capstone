@@ -182,6 +182,7 @@ ros2 topic hz /camera/image_raw
 | `apriltag` | `apriltag_ros` | /camera/image_rect + /camera/camera_info → /apriltag/detections + /tf |
 | `scene_map` | `vexy_ros` | /tf tag poses + workspace map → /vision/scene_map |
 | `yolo_ncnn` | `vexy_ros` | Optional YOLO NCNN inference over /camera/image_rect → /vision/object_detections |
+| `yellow_ball_detector` | `vexy_ros` | Lightweight HSV yellow ball detector → /vision/object_detections |
 | `object_indication` | `vexy_ros` | Object boxes + /camera/camera_info → /vision/object_indications |
 | `task_plan` | `vexy_ros` | /vision/scene_map + target request → /task_plan/current |
 | `align_to_tag` | `vexy_ros` | Bounded local skill: visible tag + bridge health → /vex/cmd |
@@ -302,6 +303,14 @@ VEXY_MAP=gen0-grab-toss-v1 ros2 launch vexy_ros vexy.launch.py
 | `yolo_input_size` | `640` | Square NCNN input size used for letterbox preprocessing |
 | `yolo_input_name` | auto | Override NCNN input blob name when auto-detection is wrong |
 | `yolo_output_name` | auto | Override NCNN output blob name when auto-detection is wrong |
+| `yellow_ball_detector_enabled` | `true` | Run the lightweight yellow-ball color detector |
+| `yellow_ball_max_hz` | `8.0` | Maximum yellow-ball color detection rate |
+| `yellow_ball_min_area_px` | `200.0` | Minimum yellow blob area accepted as a ball candidate |
+| `yellow_ball_min_circularity` | `0.25` | Minimum contour circularity accepted as a ball candidate |
+| `yellow_ball_max_detections` | `1` | Maximum color-detector ball candidates to publish per frame |
+| `yellow_ball_h_min` / `yellow_ball_h_max` | `20` / `45` | OpenCV HSV hue range for the yellow ball |
+| `yellow_ball_s_min` / `yellow_ball_s_max` | `25` / `255` | OpenCV HSV saturation range for the yellow ball |
+| `yellow_ball_v_min` / `yellow_ball_v_max` | `80` / `255` | OpenCV HSV value range for the yellow ball |
 | `object_dimensions_json` | built-in defaults | Per-class dimensions used to estimate object depth from boxes |
 | `default_object_height_m` | `0.12` | Fallback height for unlisted object classes |
 | `object_min_confidence` | `0.35` | Minimum confidence for object projection into the scene map |
@@ -321,6 +330,11 @@ The node publishes 2D detections. `object_indication` uses calibrated
 positions, which `scene_map` then transforms into map coordinates. This is an
 estimate; for precise object coordinates, tag the object or provide a measured
 operator indication.
+
+The yellow ball has a first-class label, `yellow_ball`, with a default diameter
+of `0.065 m`. The lightweight `yellow_ball_detector` publishes that label even
+when no NCNN model is installed. A future NCNN model can also emit
+`yellow_ball` or `yellow ball`; both labels are mapped.
 
 ---
 
@@ -395,6 +409,8 @@ ros2 topic pub --once /task_plan/request std_msgs/String \
   '{"data":"{\"target\":\"tag:0\",\"action\":\"approach\",\"target_distance_m\":0.8,\"dispatch\":true}"}'
 ros2 topic pub --once /task_plan/request std_msgs/String \
   '{"data":"{\"target\":\"object:bin\",\"action\":\"inspect\"}"}'
+ros2 topic pub --once /task_plan/request std_msgs/String \
+  '{"data":"{\"target\":\"object:yellow_ball\",\"action\":\"inspect\"}"}'
 ```
 
 Tag plans can dispatch through the proven `align_to_tag` primitive. Object plans

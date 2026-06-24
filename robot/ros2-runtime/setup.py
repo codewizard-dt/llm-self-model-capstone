@@ -31,6 +31,7 @@ setup(
             "align_to_tag_node = vexy_ros.align_to_tag_node:main",
             "scene_map_node = vexy_ros.scene_map_node:main",
             "yolo_ncnn_node = vexy_ros.yolo_ncnn_node:main",
+            "yellow_ball_detector_node = vexy_ros.yellow_ball_detector_node:main",
             "object_indication_node = vexy_ros.object_indication_node:main",
             "task_plan_node = vexy_ros.task_plan_node:main",
             "vexy_export_contract_jsonl = vexy_ros.evidence_export:main",

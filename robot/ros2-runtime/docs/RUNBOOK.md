@@ -385,6 +385,13 @@ ros2 topic echo /vision/scene_map --once
 Depth is estimated from calibrated intrinsics and configured class dimensions.
 Use AprilTags or operator-measured indications for precise object coordinates.
 
+The yellow ball does not require a trained NCNN model. The default launch runs a
+lightweight HSV detector that publishes the label `yellow_ball` on
+`/vision/object_detections`; `object_indication` projects it with the default
+`0.065 m` ball diameter. If the live lighting changes, tune it with launch args
+such as `yellow_ball_h_min`, `yellow_ball_h_max`, `yellow_ball_min_area_px`, and
+`yellow_ball_max_detections`.
+
 Dynamic plans accept tag and object targets:
 
 ```bash
@@ -393,6 +400,8 @@ ros2 topic pub --once /task_plan/request std_msgs/String \
   '{"data":"{\"target\":\"tag:0\",\"action\":\"approach\",\"target_distance_m\":0.8,\"dispatch\":true}"}'
 ros2 topic pub --once /task_plan/request std_msgs/String \
   '{"data":"{\"target\":\"object:bin\",\"action\":\"inspect\"}"}'
+ros2 topic pub --once /task_plan/request std_msgs/String \
+  '{"data":"{\"target\":\"object:yellow_ball\",\"action\":\"inspect\"}"}'
 ```
 
 Tag plans can dispatch through `align_to_tag`; object plans are mapped but

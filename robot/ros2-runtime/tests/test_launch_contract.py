@@ -39,6 +39,12 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn("yolo_input_name", launch_text)
         self.assertIn("yolo_output_name", launch_text)
         self.assertIn("yolo_ncnn_node", launch_text)
+        self.assertIn("yellow_ball_detector_enabled", launch_text)
+        self.assertIn("yellow_ball_detector_node", launch_text)
+        self.assertIn("yellow_ball_max_detections", launch_text)
+        self.assertIn("yellow_ball_h_min", launch_text)
+        self.assertIn("yellow_ball_v_max", launch_text)
+        self.assertIn('"yellow_ball":{"diameter_m":0.065}', launch_text)
         self.assertIn("object_indication_node", launch_text)
         self.assertIn("object_dimensions_json", launch_text)
         self.assertIn("task_plan_node", launch_text)
@@ -90,6 +96,10 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn("align_to_tag_node = vexy_ros.align_to_tag_node:main", setup_text)
         self.assertIn("scene_map_node = vexy_ros.scene_map_node:main", setup_text)
         self.assertIn("yolo_ncnn_node = vexy_ros.yolo_ncnn_node:main", setup_text)
+        self.assertIn(
+            "yellow_ball_detector_node = vexy_ros.yellow_ball_detector_node:main",
+            setup_text,
+        )
         self.assertIn(
             "object_indication_node = vexy_ros.object_indication_node:main",
             setup_text,

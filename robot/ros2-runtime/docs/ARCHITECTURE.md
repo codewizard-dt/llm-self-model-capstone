@@ -141,7 +141,7 @@ Ack records are published on `/vex/ack`, keyed by the `ack` sequence. Telemetry/
 | `/camera/image_rect` | `sensor_msgs/Image` | `camera_rectify` | `apriltag`, `yolo_ncnn` | 15 Hz (default) |
 | `/apriltag/detections` | `apriltag_msgs/AprilTagDetectionArray` | `apriltag` | — (bag, controller) | tag dependent |
 | `/tf` | `tf2_msgs/TFMessage` | `apriltag` | — (bag, Foxglove) | tag dependent |
-| `/vision/object_detections` | `std_msgs/String` | `yolo_ncnn` | `object_indication` | model dependent |
+| `/vision/object_detections` | `std_msgs/String` | `yolo_ncnn`, `yellow_ball_detector` | `object_indication` | model/color dependent |
 | `/vision/object_indications` | `std_msgs/String` | operator / `object_indication` | `scene_map` | on-demand |
 | `/vision/scene_map` | `std_msgs/String` | `scene_map` | `task_plan`, bag, operator | tag dependent |
 | `/task_plan/request` | `std_msgs/String` | operator / online loop | `task_plan` | on-demand |
@@ -230,6 +230,9 @@ targets such as `tag:0` or `object:bin`. Tag plans can dispatch to the proven
 `align_to_tag` primitive when `dispatch:true`; object plans are mapped but
 non-dispatchable until a bounded object/go-to-pose controller is implemented
 and proven with MCAP plus `/vex/ack` and `/vex/telemetry`.
+
+The yellow ball is supported as `object:yellow_ball` through a lightweight HSV
+detector, plus the same label can be emitted by a future NCNN model.
 
 ## Package Layout
 
