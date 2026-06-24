@@ -25,10 +25,7 @@ def _load_fixture(name: str) -> dict:
 
 VALID_CONFIG = {
     "motor_allocation": "2drive+1arm+1claw",
-    "arm_position": "front",
     "end_effector": "claw_grasper",
-    "wheel_config": "front_omni+rear_standard",
-    "arm_gear_ratio": "7:1",
     "cartridge": "200rpm",
 }
 
@@ -121,10 +118,7 @@ def test_out_of_vocabulary_config_raises() -> None:
 def test_config_annotations_are_shared_vocabulary_enums() -> None:
     hints = typing.get_type_hints(SelfModelConfig)
     assert hints["motor_allocation"] is vocab.MotorAllocation
-    assert hints["arm_position"] is vocab.ArmPosition
     assert hints["end_effector"] is vocab.EndEffector
-    assert hints["wheel_config"] is vocab.WheelConfig
-    assert hints["arm_gear_ratio"] is vocab.ArmGearRatio
     assert hints["cartridge"] is vocab.Cartridge
 
 

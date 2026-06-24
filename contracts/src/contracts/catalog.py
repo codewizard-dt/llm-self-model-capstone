@@ -2,10 +2,10 @@
 
 `make catalog` invokes this as the single generator: it writes
 `contracts/parts_catalog.json` directly (mirrors `schema.py` — a registry plus
-`write_text`, NO stdout redirect). The six axis arrays are materialized from the
-`contracts.vocabulary` enum members (their values, in declared order) so the file
-can never drift from the vocabulary; the payload also carries `schema_version`
-and the machine-readable `constraints` block (D4).
+`write_text`, NO stdout redirect). The three axis arrays are materialized from
+the `contracts.vocabulary` enum members (their values, in declared order) so the
+file can never drift from the vocabulary; the payload also carries
+`schema_version` and the machine-readable `constraints` block (D4).
 
 `parts_catalog.json` is a DATA document at the contracts root — NOT a JSON
 Schema. No schema is emitted for `PartsCatalog` and `schema.py` is untouched (D5).
@@ -17,24 +17,14 @@ import json
 from pathlib import Path
 
 from contracts.parts_catalog import CatalogConstraints, PartsCatalog
-from contracts.vocabulary import (
-    ArmGearRatio,
-    ArmPosition,
-    Cartridge,
-    EndEffector,
-    MotorAllocation,
-    WheelConfig,
-)
+from contracts.vocabulary import Cartridge, EndEffector, MotorAllocation
 
 
 def _build_catalog() -> PartsCatalog:
     """Materialize the catalog from the vocabulary enum members (declared order)."""
     return PartsCatalog(
         motor_allocation=list(MotorAllocation),
-        arm_position=list(ArmPosition),
         end_effector=list(EndEffector),
-        wheel_config=list(WheelConfig),
-        arm_gear_ratio=list(ArmGearRatio),
         cartridge=list(Cartridge),
         constraints=CatalogConstraints(),
     )

@@ -304,7 +304,7 @@ The online control loop (`F19` → `F20` → `F21` → `m6`) extends the chain p
   "schema_version": "1.0",
   "generation": 0,
   "parent_generation": null,
-  "config": { "motor_allocation": "2drive+1arm+1claw", "arm_position": "front", "end_effector": "claw_grasper", "wheel_config": "front_omni+rear_standard", "arm_gear_ratio": "7:1", "cartridge": "200rpm" },
+  "config": { "motor_allocation": "2drive+1arm+1claw", "end_effector": "claw_grasper", "cartridge": "200rpm" },
   "structural":  { "parts": [], "connections": [] },
   "capability":  { "reach_mm": 0, "max_grip_force_N": 0, "max_pull_force_N": 0, "com_height_mm": 0 },
   "predictive":  { "grab": {}, "pull": {}, "throw": {} },
@@ -313,15 +313,19 @@ The online control loop (`F19` → `F20` → `F21` → `m6`) extends the chain p
 }
 ```
 
-**Parts Catalog Grammar** — `parts_catalog.json` (Starter Kit). Revised 2026-06-23 (PR #13 review) for real hardware feasibility: end effectors are the actual ball-manipulation mechanisms, arm position is trimmed to the feasible mounts, and the cartridge axis carries all three VEX V5 gear cartridges. Amended for F3: `4drive` was dropped from `motor_allocation` (it leaves no motor for a manipulator, and every config now requires a powered end effector). The buildable design space is **60 configs** under F3's valid-config rules (claw needs 2 manipulator motors so it is `2drive+1arm+1claw`-only; flywheel requires `600rpm`); the exact count is enforced by F3's enumeration test. *(Supersedes the earlier "~10–15" estimate, which predated the flywheel/scoop/3-cartridge vocabulary.)*
+**Parts Catalog Grammar** — `parts_catalog.json` (Starter Kit). Narrowed 2026-06-24 (PR #16 post-merge review) to what the V5 Starter Kit can actually build:
+
+- `motor_allocation` is now **effector-encoded** — each value names a concrete build (the claw, scoop, or flywheel variant) rather than an abstract motor budget. `4drive`, `2drive+2free`, and `3drive+1manip` are gone.
+- `arm_position` (fixed to rear — moving it is infeasible), `arm_gear_ratio` (fixed at 7:1 mechanical — the configurable knob is the cartridge), and `wheel_config` (already single-valued) are no longer config axes.
+- `cartridge` drops `100rpm` (not in inventory).
+
+The buildable design space is **4 configs** under F3's rules — claw (1) + scoop (2) + flywheel (1); enforced by F3's enumeration test. The rule set is: R1 `CLAW_MOTOR_BUDGET` (claw ⇒ `2drive+1arm+1claw`), R1b `SCOOP_ALLOCATION` (scoop ⇒ `2drive+1arm`), R1c `FLYWHEEL_ALLOCATION` (flywheel ⇒ `2drive+1flywheel`), R3 `FLYWHEEL_CARTRIDGE` (flywheel ⇒ `600rpm`), R4 `CLAW_CARTRIDGE` (claw ⇒ `200rpm`).
+
 ```json
 {
-  "motor_allocation": ["2drive+1arm+1claw", "2drive+2free", "3drive+1manip"],
-  "arm_position":     ["front", "rear"],
+  "motor_allocation": ["2drive+1arm+1claw", "2drive+1arm", "2drive+1flywheel"],
   "end_effector":     ["claw_grasper", "scoop", "flywheel"],
-  "wheel_config":     ["front_omni+rear_standard"],
-  "arm_gear_ratio":   ["7:1", "1:1"],
-  "cartridge":        ["100rpm", "200rpm", "600rpm"]
+  "cartridge":        ["200rpm", "600rpm"]
 }
 ```
 

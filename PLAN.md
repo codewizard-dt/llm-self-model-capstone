@@ -145,33 +145,28 @@ Two independent power supplies keep the system robust. The V5 battery powers the
 ### 2. Robot Configuration
 
 ```
-parts_catalog.json  ─── the LLM's design vocabulary
+parts_catalog.json  ─── the LLM's design vocabulary (post-PR-#16 narrowing)
         │
-        ├── motor_allocation
-        │     ├── 2drive+1arm+1claw  ← Gen 0 (Clawbot)
-        │     ├── 2drive+2free
-        │     └── 3drive+1manip
-        │
-        ├── arm_position
-        │     ├── front  ← Gen 0
-        │     └── rear
+        ├── motor_allocation                          ← effector-encoded
+        │     ├── 2drive+1arm+1claw  ← claw build (Gen 0)
+        │     ├── 2drive+1arm        ← scoop build (passive scoop)
+        │     └── 2drive+1flywheel   ← flywheel build
         │
         ├── end_effector
         │     ├── claw_grasper  ← Gen 0
         │     ├── scoop
-        │     └── flywheel  ← needs 600rpm cartridge
-        │
-        ├── wheel_config
-        │     └── front_omni+rear_standard  ← only valid with base kit
-        │
-        ├── arm_gear_ratio
-        │     ├── 7:1  ← Gen 0
-        │     └── 1:1
+        │     └── flywheel      ← needs 600rpm cartridge (R3)
         │
         └── cartridge
-              ├── 200rpm  ← base kit
-              ├── 100rpm  ← +$20 add-on
-              └── 600rpm  ← +$20 add-on
+              ├── 200rpm  ← base kit (claw is pinned here, R4)
+              └── 600rpm  ← +$20 add-on (flywheel is pinned here)
+
+# Single-value axes removed from the config (no real design choice):
+#   arm_position = rear (moving the arm is infeasible)
+#   arm_gear_ratio = 7:1 (fixed mechanical; cartridge is the configurable knob)
+#   wheel_config = front_omni+rear_standard (only valid with base kit)
+#
+# Buildable space: 4 configs (claw 1 + scoop 2 + flywheel 1).
 
 Gen 0 telemetry gaps  ──►  LLM proposes mutation  ──►  Gen 1 config
                                                         (different from Gen 0)

@@ -1,21 +1,5 @@
 {
   "$defs": {
-    "ArmGearRatio": {
-      "enum": [
-        "7:1",
-        "1:1"
-      ],
-      "title": "ArmGearRatio",
-      "type": "string"
-    },
-    "ArmPosition": {
-      "enum": [
-        "front",
-        "rear"
-      ],
-      "title": "ArmPosition",
-      "type": "string"
-    },
     "CapabilityLayer": {
       "additionalProperties": false,
       "properties": {
@@ -45,7 +29,6 @@
     },
     "Cartridge": {
       "enum": [
-        "100rpm",
         "200rpm",
         "600rpm"
       ],
@@ -88,8 +71,8 @@
     "MotorAllocation": {
       "enum": [
         "2drive+1arm+1claw",
-        "2drive+2free",
-        "3drive+1manip"
+        "2drive+1arm",
+        "2drive+1flywheel"
       ],
       "title": "MotorAllocation",
       "type": "string"
@@ -116,12 +99,6 @@
     "SelfModelConfig": {
       "additionalProperties": false,
       "properties": {
-        "arm_gear_ratio": {
-          "$ref": "#/$defs/ArmGearRatio"
-        },
-        "arm_position": {
-          "$ref": "#/$defs/ArmPosition"
-        },
         "cartridge": {
           "$ref": "#/$defs/Cartridge"
         },
@@ -130,17 +107,11 @@
         },
         "motor_allocation": {
           "$ref": "#/$defs/MotorAllocation"
-        },
-        "wheel_config": {
-          "$ref": "#/$defs/WheelConfig"
         }
       },
       "required": [
         "motor_allocation",
-        "arm_position",
         "end_effector",
-        "wheel_config",
-        "arm_gear_ratio",
         "cartridge"
       ],
       "title": "SelfModelConfig",
@@ -165,13 +136,6 @@
       },
       "title": "StructuralLayer",
       "type": "object"
-    },
-    "WheelConfig": {
-      "enum": [
-        "front_omni+rear_standard"
-      ],
-      "title": "WheelConfig",
-      "type": "string"
     }
   },
   "additionalProperties": true,

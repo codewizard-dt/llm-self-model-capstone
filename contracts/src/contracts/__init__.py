@@ -18,14 +18,7 @@ from contracts.motor_telemetry import (
 from contracts.parts_catalog import PartsCatalog, validate_config
 from contracts.self_model import SelfModel, SelfModelConfig
 from contracts.task_contracts import ScoreGap, ScoreObserved, ScorePredicted
-from contracts.vocabulary import (
-    ArmGearRatio,
-    ArmPosition,
-    Cartridge,
-    EndEffector,
-    MotorAllocation,
-    WheelConfig,
-)
+from contracts.vocabulary import Cartridge, EndEffector, MotorAllocation
 
 __all__ = [
     "TelemetrySource",
@@ -48,9 +41,6 @@ __all__ = [
     "PartsCatalog",
     "validate_config",
     "MotorAllocation",
-    "ArmPosition",
     "EndEffector",
-    "WheelConfig",
-    "ArmGearRatio",
     "Cartridge",
 ]

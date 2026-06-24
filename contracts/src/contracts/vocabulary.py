@@ -1,17 +1,27 @@
-"""Config-axis vocabulary — one StrEnum per axis.
+"""Config-axis vocabulary — one StrEnum per active config axis.
 
-Seeded from the MASTER_REQUIREMENTS Parts Catalog Grammar, then revised per the
-PR #13 review to keep only realistically feasible options: end effectors are the
-real ball-manipulation mechanisms (claw / scoop / flywheel), arm position is
-trimmed to the two feasible mounts, and the cartridge axis carries all three VEX
-V5 gear cartridges (100 / 200 / 600 rpm). Amended for F3 (parts-catalog-grammar):
-`4drive` was dropped from `MotorAllocation` — it allocates all four motors to the
-drivetrain, leaving none for a manipulator, but every config now requires a
-powered end effector, so no `4drive` config is buildable.
+Seeded from the MASTER_REQUIREMENTS Parts Catalog Grammar, revised per the PR #13
+review, and narrowed again per the PR #16 post-merge review to match what the V5
+Starter Kit can actually build. The active axes are the three the design space
+turns on:
+
+- ``MotorAllocation`` is **effector-encoded**: each value names a concrete build
+  (claw / scoop / flywheel) rather than an abstract motor budget. ``4drive``,
+  ``2drive+2free``, and ``3drive+1manip`` are gone — no `4drive` config is
+  buildable (no manipulator motor), and the `+free` / `+manip` labels collapsed
+  once each effector pinned its own allocation.
+- ``EndEffector`` keeps the three real ball-manipulation mechanisms.
+- ``Cartridge`` drops ``100rpm`` (not in inventory); only ``200rpm`` and
+  ``600rpm`` remain.
+
+The previous ``ArmPosition``, ``ArmGearRatio``, and ``WheelConfig`` enums were
+removed: arm position is fixed to rear (moving it is infeasible), the arm gear
+ratio is fixed at 7:1 mechanical (the configurable knob is the cartridge), and
+the wheel config was already single-valued — none of them carry a design choice.
 
 This module is the single source of truth for the legal per-axis config values.
-F2 (self-model) types `SelfModelConfig` against these enums, and F3
-(parts-catalog-grammar) will import them rather than redefine the value sets.
+F2 (self-model) types ``SelfModelConfig`` against these enums, and F3
+(parts-catalog-grammar) imports them rather than redefining the value sets.
 """
 
 from __future__ import annotations
@@ -21,13 +31,8 @@ from enum import StrEnum
 
 class MotorAllocation(StrEnum):
     DRIVE2_ARM1_CLAW1 = "2drive+1arm+1claw"
-    DRIVE2_FREE2 = "2drive+2free"
-    DRIVE3_MANIP1 = "3drive+1manip"
-
-
-class ArmPosition(StrEnum):
-    FRONT = "front"
-    REAR = "rear"
+    DRIVE2_ARM1 = "2drive+1arm"
+    DRIVE2_FLYWHEEL1 = "2drive+1flywheel"
 
 
 class EndEffector(StrEnum):
@@ -36,16 +41,6 @@ class EndEffector(StrEnum):
     FLYWHEEL = "flywheel"
 
 
-class WheelConfig(StrEnum):
-    FRONT_OMNI_REAR_STANDARD = "front_omni+rear_standard"
-
-
-class ArmGearRatio(StrEnum):
-    SEVEN_TO_ONE = "7:1"
-    ONE_TO_ONE = "1:1"
-
-
 class Cartridge(StrEnum):
-    RPM_100 = "100rpm"
     RPM_200 = "200rpm"
     RPM_600 = "600rpm"

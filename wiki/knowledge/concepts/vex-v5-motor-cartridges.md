@@ -42,7 +42,9 @@ The wiki explicitly identifies the 6:1 cartridge as the required add-on to move 
 
 ## Relation to the Typed Grammar
 
-`cartridge` is a free parameter in the Starter Kit configuration space ([[vex-v5-starter-kit-configurations]]). On the base Starter Kit it is locked to 200 RPM (only one cartridge ships). Adding a 6:1 (for a flywheel launcher) or 36:1 (for a high-torque lift) is a **one-step grammar mutation** the LLM self-model would propose and test against telemetry — Gen N → Gen N+1.
+`cartridge` is a parameter in the Starter Kit configuration space ([[vex-v5-starter-kit-configurations]]). On the base Starter Kit it is locked to 200 RPM (only one cartridge ships). Adding a 6:1 cartridge (for the flywheel launcher) is the one expansion the V5 Starter Kit grammar currently models.
+
+> **Superseded (2026-06-24) — PR #16 post-merge review.** The frozen F3 grammar in `contracts/parts_catalog.json` now lists only two cartridges: `["200rpm", "600rpm"]`. The **36:1 / 100 RPM cartridge is not in inventory** and was dropped from the vocabulary. The cartridge axis is also pinned per effector: rule R3 `FLYWHEEL_CARTRIDGE` requires `flywheel ⇒ 600rpm`; rule R4 `CLAW_CARTRIDGE` requires `claw_grasper ⇒ 200rpm`. The hardware-reference content above (three cartridge types, 36:1 details) is preserved as the V5 product reference — the project's current *design space* uses only two. See [[typed-assembly-grammar]] for the full narrowing.
 
 relates_to::[[vex-v5]]
 relates_to::[[typed-assembly-grammar]]

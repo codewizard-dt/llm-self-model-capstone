@@ -71,20 +71,19 @@ The Starter Kit's design space has been explicitly enumerated. The grammar's voc
 
 Valid combinations ≈ **10–15** (corrected from the prior ~15–30; the true raw slot count is 96, down from 1,152). **This small, finite space is exactly what makes the grammar "typed" in the Lipson sense** — the LLM generator can enumerate and search it exhaustively. The capstone generation ladder maps naturally: [[speedbot]] = Gen 0 (simplest valid sentence), Clawbot = Gen 1 (full vocabulary), mutations = Gen 2–5 (search over the remaining valid sentences).
 
-> **Superseded (2026-06-24) — PR #13 feasibility revision + F3 valid-config rules.** The project's *frozen* vocabulary in `contracts/src/contracts/vocabulary.py` diverged from the 2026-06-17 corrected research blocks above. Substantive changes: `arm_position` trimmed to `{front, rear}` (side/absent dropped — arm is always present); `end_effector` swapped to the real ball-manipulation mechanisms `{claw_grasper, scoop, flywheel}` (bare_arm/none dropped); `cartridge` re-expanded to all three V5 gear cartridges `{100rpm, 200rpm, 600rpm}`; `motor_allocation` dropped `4drive` (every config now requires a powered manipulator, so 4drive — which spends all 4 motors on the drivetrain — leaves no motor for the arm/effector and yields no buildable config). The historical blocks above are preserved as research lineage; the **current frozen vocabulary + buildable design space** is:
+> **Superseded (2026-06-24) — PR #13 feasibility revision + F3 valid-config rules.** The project's *frozen* vocabulary in `contracts/src/contracts/vocabulary.py` diverged from the 2026-06-17 corrected research blocks above. Substantive changes (now itself superseded — see the next callout): `arm_position` trimmed to `{front, rear}`; `end_effector` swapped to `{claw_grasper, scoop, flywheel}`; `cartridge` re-expanded to all three V5 gear cartridges; `motor_allocation` dropped `4drive`. The buildable design space at that point was **60 configs**.
+
+> **Superseded again (2026-06-24) — PR #16 post-merge review by codewizard-dt.** The frozen vocabulary narrowed further to match what the V5 Starter Kit actually builds. The historical blocks above are preserved as research lineage; the **current frozen vocabulary + buildable design space** is:
 >
 > ```json
 > {
->   "motor_allocation": ["2drive+1arm+1claw", "2drive+2free", "3drive+1manip"],
->   "arm_position":     ["front", "rear"],
+>   "motor_allocation": ["2drive+1arm+1claw", "2drive+1arm", "2drive+1flywheel"],
 >   "end_effector":     ["claw_grasper", "scoop", "flywheel"],
->   "wheel_config":     ["front_omni+rear_standard"],
->   "arm_gear_ratio":   ["7:1", "1:1"],
->   "cartridge":        ["100rpm", "200rpm", "600rpm"]
+>   "cartridge":        ["200rpm", "600rpm"]
 > }
 > ```
 >
-> Under F3's valid-config rules (claw needs 2 manipulator motors so it is `2drive+1arm+1claw`-only; flywheel requires `600rpm`; scoop is passive and valid on all three allocations), the buildable design space is **exactly 60 configs** (claw 12 + scoop 36 + flywheel 12), out of 108 raw cross-product slots. The "~10–15" historical estimate predated the flywheel/scoop/3-cartridge vocabulary and is superseded by this enumeration. Authoritative copies: [`MASTER_REQUIREMENTS.md`](../../../MASTER_REQUIREMENTS.md) (frozen block) and [`contracts/parts_catalog.json`](../../../contracts/parts_catalog.json) (runtime data document, drift-free from the vocabulary enums).
+> Key changes: `motor_allocation` is now **effector-encoded** (each value names a concrete build); `arm_position`, `arm_gear_ratio`, and `wheel_config` were removed as config axes (each is single-valued in reality — arm rear, gear 7:1 fixed mechanical, wheel front_omni+rear_standard); `cartridge` dropped `100rpm` (not in inventory). The F3 rule set grew to five rules with per-effector stable codes: R1 `CLAW_MOTOR_BUDGET`, R1b `SCOOP_ALLOCATION`, R1c `FLYWHEEL_ALLOCATION`, R3 `FLYWHEEL_CARTRIDGE`, R4 `CLAW_CARTRIDGE` (claw ⇒ 200rpm). Under these rules the buildable design space is **exactly 4 configs** (claw 1 + scoop 2 + flywheel 1). Authoritative copies: [`MASTER_REQUIREMENTS.md`](../../../MASTER_REQUIREMENTS.md) (frozen block) and [`contracts/parts_catalog.json`](../../../contracts/parts_catalog.json) (runtime data document, drift-free from the vocabulary enums).
 
 ## Concrete Exemplar: VEX V5 Clawbot (276-6009-750 Rev6)
 

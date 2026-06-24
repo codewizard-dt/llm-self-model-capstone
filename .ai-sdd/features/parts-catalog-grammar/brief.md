@@ -141,3 +141,9 @@ Each item is independently runnable from `contracts/` (or repo root, which deleg
 ## Open questions
 
 *(All F3 open questions O-A…O-E are resolved — see Decisions D6–D12.)* Remaining cross-feature follow-ups are tracked as coordination items C2 (the `4drive` vocabulary amendment) and C3 (reconcile MASTER's stale ~10–15 estimate to 60).
+
+---
+
+## Post-merge review (2026-06-24, PR #16)
+
+> **Superseded by post-merge review.** PR #16 merged at commit `610a1b0`; codewizard-dt's 8 inline comments narrowed the grammar substantively. See [requirements.md → Post-merge review](requirements.md) for the full diff. Briefly: `motor_allocation` becomes effector-encoded (`2drive+1arm+1claw` / `2drive+1arm` / `2drive+1flywheel`); `arm_position`, `arm_gear_ratio`, `wheel_config` removed; `cartridge` drops `100rpm`; rule set grows to R1/R1b/R1c/R3/R4; design space collapses from 60 → 4 (claw 1 + scoop 2 + flywheel 1). The narrowing reflects what the V5 Starter Kit can actually build.

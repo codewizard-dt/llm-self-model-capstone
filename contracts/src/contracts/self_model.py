@@ -1,8 +1,10 @@
 """The runtime SelfModel envelope (F2) and its layered sub-models.
 
 Strictly additive over F1: reuses F1's `StrictModel` base and does not touch any
-frozen telemetry contract. `SelfModelConfig` types its six axes against the
-shared `contracts.vocabulary` enums (single source of truth, D1).
+frozen telemetry contract. `SelfModelConfig` types its three axes against the
+shared `contracts.vocabulary` enums (single source of truth, D1). Per the PR #16
+post-merge review the config narrowed to the three axes that carry a real design
+choice — `arm_position`, `arm_gear_ratio`, and `wheel_config` were removed.
 """
 
 from __future__ import annotations
@@ -12,14 +14,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from contracts.motor_telemetry import StrictModel
-from contracts.vocabulary import (
-    ArmGearRatio,
-    ArmPosition,
-    Cartridge,
-    EndEffector,
-    MotorAllocation,
-    WheelConfig,
-)
+from contracts.vocabulary import Cartridge, EndEffector, MotorAllocation
 
 
 class SelfModelConfig(StrictModel):
@@ -27,10 +22,7 @@ class SelfModelConfig(StrictModel):
     # inputs coerce into the StrEnum vocabulary (fixtures are plain JSON).
     model_config = ConfigDict(extra="forbid", strict=False)
     motor_allocation: MotorAllocation
-    arm_position: ArmPosition
     end_effector: EndEffector
-    wheel_config: WheelConfig
-    arm_gear_ratio: ArmGearRatio
     cartridge: Cartridge
 
 

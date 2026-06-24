@@ -1,27 +1,33 @@
 {
-  "arm_gear_ratio": [
-    "7:1",
-    "1:1"
-  ],
-  "arm_position": [
-    "front",
-    "rear"
-  ],
   "cartridge": [
-    "100rpm",
     "200rpm",
     "600rpm"
   ],
   "constraints": {
+    "claw_cartridge": {
+      "code": "CLAW_CARTRIDGE",
+      "requires_cartridge": "200rpm",
+      "when_end_effector": "claw_grasper"
+    },
     "claw_motor_budget": {
       "code": "CLAW_MOTOR_BUDGET",
       "requires_motor_allocation": "2drive+1arm+1claw",
       "when_end_effector": "claw_grasper"
     },
+    "flywheel_allocation": {
+      "code": "FLYWHEEL_ALLOCATION",
+      "requires_motor_allocation": "2drive+1flywheel",
+      "when_end_effector": "flywheel"
+    },
     "flywheel_cartridge": {
       "code": "FLYWHEEL_CARTRIDGE",
       "requires_cartridge": "600rpm",
       "when_end_effector": "flywheel"
+    },
+    "scoop_allocation": {
+      "code": "SCOOP_ALLOCATION",
+      "requires_motor_allocation": "2drive+1arm",
+      "when_end_effector": "scoop"
     }
   },
   "end_effector": [
@@ -31,11 +37,8 @@
   ],
   "motor_allocation": [
     "2drive+1arm+1claw",
-    "2drive+2free",
-    "3drive+1manip"
+    "2drive+1arm",
+    "2drive+1flywheel"
   ],
-  "schema_version": "1.0",
-  "wheel_config": [
-    "front_omni+rear_standard"
-  ]
+  "schema_version": "1.0"
 }
