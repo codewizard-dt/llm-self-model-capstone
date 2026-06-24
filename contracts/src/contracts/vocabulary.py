@@ -4,7 +4,10 @@ Seeded from the MASTER_REQUIREMENTS Parts Catalog Grammar, then revised per the
 PR #13 review to keep only realistically feasible options: end effectors are the
 real ball-manipulation mechanisms (claw / scoop / flywheel), arm position is
 trimmed to the two feasible mounts, and the cartridge axis carries all three VEX
-V5 gear cartridges (100 / 200 / 600 rpm).
+V5 gear cartridges (100 / 200 / 600 rpm). Amended for F3 (parts-catalog-grammar):
+`4drive` was dropped from `MotorAllocation` — it allocates all four motors to the
+drivetrain, leaving none for a manipulator, but every config now requires a
+powered end effector, so no `4drive` config is buildable.
 
 This module is the single source of truth for the legal per-axis config values.
 F2 (self-model) types `SelfModelConfig` against these enums, and F3
@@ -19,7 +22,6 @@ from enum import StrEnum
 class MotorAllocation(StrEnum):
     DRIVE2_ARM1_CLAW1 = "2drive+1arm+1claw"
     DRIVE2_FREE2 = "2drive+2free"
-    DRIVE4 = "4drive"
     DRIVE3_MANIP1 = "3drive+1manip"
 
 

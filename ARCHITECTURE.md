@@ -98,16 +98,16 @@ The data-collection layer. Runs two cooperating Python scripts: `vision_loop.py`
 
 The typed assembly grammar — the bounded vocabulary the LLM searches over. Defining and maintaining this is its own owned work chunk: it is `parts_catalog.json`, and every other component reads from it.
 
-**All options below are achievable with the Starter Kit (276-7010) alone:**
+**The Starter-Kit (276-7010) design vocabulary (PR #13 feasibility revision; `4drive` dropped for F3 since it leaves no motor for a manipulator). The `flywheel` end effector additionally needs an add-on 600 rpm cartridge:**
 
 ```json
 {
-  "motor_allocation": ["2drive+2free", "2drive+1arm+1claw", "4drive", "3drive+1manip"],
-  "arm_position":     ["front", "rear", "side", "absent"],
-  "end_effector":     ["claw_grasper", "bare_arm", "none"],
+  "motor_allocation": ["2drive+1arm+1claw", "2drive+2free", "3drive+1manip"],
+  "arm_position":     ["front", "rear"],
+  "end_effector":     ["claw_grasper", "scoop", "flywheel"],
   "wheel_config":     ["front_omni+rear_standard"],
   "arm_gear_ratio":   ["7:1", "1:1"],
-  "cartridge":        ["200rpm"]
+  "cartridge":        ["100rpm", "200rpm", "600rpm"]
 }
 ```
 
