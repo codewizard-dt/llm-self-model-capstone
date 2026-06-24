@@ -1,0 +1,54 @@
+items:
+  - id: acc-sync
+    verdict: pass
+    notes: "`make sync` (uv sync) from contracts/ exits 0 — 'Resolved 14 packages', 'Checked 13 packages'."
+  - id: acc-lint
+    verdict: pass
+    notes: "`make lint` from contracts/ exits 0 — 'All checks passed!' for ruff check; '21 files already formatted' for ruff format --check."
+  - id: acc-validate-green
+    verdict: pass
+    notes: "`make validate` from contracts/ exits 0 with 'OK — all fixtures valid'. All four dispatches execute over the committed contracts tree (session_example.jsonl narrow-globbed for F1; self_model_*.json for F2; parts_catalog.json + per-fixture buildability for F3; control_command_*.jsonl per-line type-routed for F19)."
+  - id: acc-fixture-grab-roundtrip
+    verdict: pass
+    notes: "control_command_grab_cycle.jsonl: read 12 lines = 6 commands/heartbeats + 6 acks. Verb sequence is heartbeat → drive → arm(90.0) → claw(close) → arm(270.0) → stop. All seq monotonic 1..6, all v=1, all ttl_ms in [100,500] ≤ TTL_MS_MAX=1000. drive vx=0.10 ≤ MAX_LINEAR=0.35, vy=0.0 (D12), omega=0.0 ≤ MAX_OMEGA=0.60; arm deg in [0.0, 360.0] (ARM_DEG_MIN/MAX). All acks carry state='ok', fault=null. The round-trip test (test_control_grab_cycle_round_trips) walks each line through the same TypeAdapter(ControlLine)/AckLine routing the entrypoint uses and passes."
+  - id: acc-fixture-flywheel-roundtrip
+    verdict: pass
+    notes: "control_command_flywheel_cycle.jsonl: read 10 lines = 5 commands/heartbeats + 5 acks. Verb sequence is heartbeat → drive → flywheel(rpm=2400.0) → flywheel(rpm=0.0) → stop. flywheel rpm values 2400.0 and 0.0 are both within [0, MAX_FLYWHEEL_RPM=3600.0]. seq monotonic, v=1, ttl_ms ≤ 1000. test_control_flywheel_cycle_round_trips passes."
+  - id: acc-fixture-rejections-roundtrip
+    verdict: pass
+    notes: "control_command_rejections.jsonl: 8 lines, every line type='ack', every line carries non-null fault. 7 lines carry state='rejected' (faults: malformed_json, unknown_command, watchdog, estop_latched, out_of_range, oversized_packet, not_assembled); 1 line (ack=102, fault='ttl_expired') carries state='stale'. ack values monotonic 100..107, recv_ms monotonic. AckLine.model_validate accepts all 8 (the model_validator's invariants — fault is None iff state==ok; rejected requires non-null fault; stale accepts either — all hold). test_control_rejections_round_trips passes with rejected==7, stale==1."
+  - id: acc-exhaustive-faultcode
+    verdict: pass
+    notes: "Read control_command_rejections.jsonl directly; parsed the `fault` field of each of 8 lines; got {malformed_json, unknown_command, ttl_expired, watchdog, estop_latched, out_of_range, oversized_packet, not_assembled} — exactly 8 distinct values, no duplicates, no extras, no omissions. Set equals {fc.value for fc in FaultCode}. test_exhaustive_faultcode_coverage asserts this exact equality and passes."
+  - id: acc-stale-vs-rejected-distinction
+    verdict: pass
+    notes: "Of the 8 ack lines, exactly 1 (the ttl_expired row, ack=102) carries state='stale'; the other 7 (faults malformed_json/unknown_command/watchdog/estop_latched/out_of_range/oversized_packet/not_assembled) carry state='rejected'. Per D6/D17 mapping — stale ≠ rejected, ttl_expired is the natural stale fault. test_stale_vs_rejected_distinction passes."
+  - id: acc-type-routing-rejects-bad-cmd
+    verdict: pass
+    notes: "test_validate_main_rejects_bad_cmd writes a temp control_command_bad.jsonl with cmd='drive', vx=0.9 (> MAX_LINEAR=0.35), monkeypatches the contracts root via the _PathStub pattern reused from the F3 unbuildable-fixture test, calls main(), and asserts: main()==1; stderr contains 'control_command_bad.jsonl:1:' (file:lineno prefix); stderr contains 'validation error' and 'vx'. The implementer's pragmatic relaxation (from 'ValidationError' class-name to pydantic's stringified-error substrings 'validation error' + 'vx') is sound — 'vx' is load-bearing and proves the rejection is specifically for the out-of-range field, not just any failure. Passes."
+  - id: acc-glob-narrowed
+    verdict: pass
+    notes: "validate.py line 50 uses `fixtures_dir.glob('session_*.jsonl')` (narrowed from `*.jsonl` per D15) — confirmed by reading the file. test_glob_narrowed_protects_session_dispatch writes a control_command_heartbeat.jsonl with a valid ControlLine heartbeat (invalid as ContractLine — missing schema_version/task/motor_samples) to a temp fixtures dir, runs main(), and asserts main()==0 AND stderr does NOT mention 'ContractLine'. Passes — proves F1 dispatch never sees the control_command_*.jsonl family. test_session_example_still_validates verifies F1's positive case still works under the narrowed glob (session_example.jsonl + a grab-cycle fixture in temp tree → main()==0)."
+  - id: acc-cross-dispatch-isolation
+    verdict: pass
+    notes: "test_validate_main_rejects_unknown_cmd writes a control_command_grab_cycle.jsonl line with cmd='fly' (out-of-vocabulary verb) to a temp dir, runs main(), and asserts main()==1; stderr contains 'control_command_grab_cycle.jsonl:1:' (file:lineno naming the mutated file); stderr does NOT contain 'ContractLine' (proves the failure is a ControlLine-side discriminator failure, not an F1 leak). Committed fixtures untouched — mutation is in tmp_path only. Passes."
+  - id: acc-no-regression
+    verdict: pass
+    notes: "Full pytest collected 139 tests, all pass. Slice 1 baseline was 129; +10 new test_validate.py cases (test_control_grab_cycle_round_trips, test_control_flywheel_cycle_round_trips, test_control_rejections_round_trips, test_exhaustive_faultcode_coverage, test_stale_vs_rejected_distinction, test_validate_main_rejects_bad_cmd, test_validate_main_rejects_unknown_cmd, test_glob_narrowed_protects_session_dispatch, test_session_example_still_validates, test_schema_files_present_and_non_empty). All F1 (test_contract_line), F2 (test_self_model), F3 (test_parts_catalog), F4 (test_adapters, test_motor_telemetry), slice-1 F19 (test_control_command), and task-contract suites remain green. No tests deleted from test_validate.py (existing F3 catalog/buildability cases preserved verbatim)."
+  - id: acc-test
+    verdict: pass
+    notes: "`make test` from contracts/ exits 0 — '139 passed in 0.08s' via pytest under uv run."
+  - id: acc-schema-unchanged
+    verdict: pass
+    notes: "`git diff HEAD contracts/schemas/` is empty — all five JSON Schemas (contract_line.json, self_model.json, score_contract.json, control_command.json, ack_line.json) are byte-identical to slice 1. `make schema-check` from contracts/ regenerates schemas and runs `git diff --exit-code schemas/` — exits 0. test_schema_files_present_and_non_empty also confirms the two F19 schema files exist and are non-empty in-tree."
+  - id: acc-imports-unchanged
+    verdict: pass
+    notes: "`from contracts import ControlLine, AckLine, FaultCode, MAX_LINEAR, MAX_OMEGA, MAX_FLYWHEEL_RPM, ARM_DEG_MIN, ARM_DEG_MAX, TTL_MS_MAX, ControlEnvelope, ControlCommand, HeartbeatLine, StopCommand, DriveCommand, TurnCommand, ArmCommand, ClawCommand, FlywheelCommand` resolves cleanly under `uv run python` — printed 'OK'. `git diff HEAD contracts/src/contracts/__init__.py` is empty (slice 1 lock preserved). Every F1/F2/F3/F4 export remains importable."
+  - id: acc-root-delegate-validate
+    verdict: pass
+    notes: "From repo root, `make validate` exits 0 — invokes `make -C contracts validate` which prints 'OK — all fixtures valid'. Delegation already existed in slice 1's root Makefile; no root-Makefile edit in this slice."
+  - id: acc-root-delegate-full
+    verdict: pass
+    notes: "Root `make sync`, `make test`, `make lint`, `make validate`, `make catalog`, `make catalog-check` all exit 0 — verified individually. Caveat: the root Makefile does NOT delegate `schema-check` (it has a `schema` target but no `schema-check`). This is a pre-existing condition from commit c492fbc (parts-catalog-grammar feature, before slice 1) — not a regression introduced by this slice. The contracts/-level `make schema-check` is green and the schemas/ directory is byte-identical to HEAD. Per the reviewer brief's option (a), recorded as a Caveat, not a fail — the slice didn't introduce the gap, and the underlying invariant (schemas byte-identical to slice 1) is verified via the contracts-level gate and `git diff`."
+verdict: approve
+rework: []

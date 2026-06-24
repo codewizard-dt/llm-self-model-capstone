@@ -1,0 +1,174 @@
+summary: >-
+  F19 slice validate-fixtures-and-gates (contracts vertical) — closes the
+  control-grammar feature for m1. Ships THREE control-command fixtures
+  (`control_command_grab_cycle.jsonl` — heartbeat → drive → arm → claw → arm →
+  stop, claw-build cycle; `control_command_flywheel_cycle.jsonl` — heartbeat →
+  drive → flywheel(spin) → flywheel(rpm=0) → stop, flywheel-build cycle;
+  `control_command_rejections.jsonl` — one rejected/stale ack per `FaultCode`
+  value, exhaustive enum coverage). Extends `contracts/src/contracts/validate.py`
+  with the F19 dispatch (the FOURTH dispatch after F1 ContractLine / F2
+  SelfModel / F3 PartsCatalog+buildability): globs
+  `fixtures/control_command_*.jsonl` and per-line routes by the closed `type`
+  discriminator — `type == "ack"` → `AckLine.model_validate`, otherwise
+  `pydantic.TypeAdapter(ControlLine).validate_python` (mirroring slice 1's
+  parsing pattern). One PRINCIPLED narrowing of F1's dispatch (D15 — new this
+  slice): `fixtures_dir.glob("*.jsonl")` → `fixtures_dir.glob("session_*.jsonl")`
+  so the `control_command_*.jsonl` family never falls into F1's `ContractLine`
+  loop; behavioral no-op for the committed fixtures (only `session_example.jsonl`
+  matches both globs today), and mirrors F2's `self_model_*.json` family-glob
+  style. Extends `contracts/tests/test_validate.py` additively with the new
+  dispatch's coverage — round-trip parse of all three fixtures, exhaustive
+  `FaultCode` coverage assertion (parsed `fault` set equals `{fc.value for fc in
+  FaultCode}`), type-routing correctness (a `cmd:"drive"`, `vx:0.9` mutation
+  surfaces as `<file>:<lineno>: <ValidationError>` and `main()` returns 1),
+  glob-narrowing invariant (a control-fixture mutation invalid-as-ContractLine
+  yet valid-as-ControlLine produces only `ControlLine`/`AckLine` errors, never
+  `ContractLine` ones), cross-dispatch isolation (`cmd:"fly"` in a mutated
+  control fixture makes `make validate` exit non-zero; committed fixtures stay
+  green), `state:"stale"` vs `state:"rejected"` distinction (D6), and the full
+  F1+F2+F3+F4+slice-1-F19 no-regression sweep. NO new Makefile targets and NO
+  new source modules — `validate.py` is the only source file changed, and only
+  additively (plus the principled F1 glob narrowing). The contracts/Makefile is
+  untouched; root-Makefile `validate` delegation already exists. Closes F19 for
+  m1.
+
+scope:
+  in:
+    - "Create contracts/fixtures/control_command_grab_cycle.jsonl — claw-build cycle (2drive+1arm+1claw): seq 1 heartbeat → seq 2 drive (vx=0.10, vy=0.0, omega=0.0) → seq 3 arm (deg=90.0) → seq 4 claw (state='close') → seq 5 arm (deg=270.0) → seq 6 stop (reason='operator'), each followed by its matching ack with state='ok', fault=null. Every command's ttl_ms ≤ TTL_MS_MAX (= 1000). Every body value within its Field bounds (slice 1's clamp constants: MAX_LINEAR=0.35, MAX_OMEGA=0.60, ARM_DEG_MIN=0.0, ARM_DEG_MAX=360.0). seq monotonic. Exact wire shape per the slice brief — see the fixture body verbatim in the brief."
+    - "Create contracts/fixtures/control_command_flywheel_cycle.jsonl — flywheel-build cycle (2drive+1flywheel): seq 1 heartbeat → seq 2 drive (vx=0.10, vy=0.0, omega=0.0) → seq 3 flywheel (rpm=2400.0) → seq 4 flywheel (rpm=0.0) → seq 5 stop (reason='operator'), each followed by its matching ack with state='ok', fault=null. Same envelope/bound rules as the grab-cycle fixture. flywheel rpm values within MAX_FLYWHEEL_RPM=3600.0. Exact wire shape per the slice brief."
+    - "Create contracts/fixtures/control_command_rejections.jsonl — one ack line per FaultCode value (exhaustive coverage), in the order: malformed_json (rejected), unknown_command (rejected), ttl_expired (STALE — D6+D17), watchdog (rejected), estop_latched (rejected), out_of_range (rejected), oversized_packet (rejected), not_assembled (rejected). Each line is a valid AckLine — v=1, type='ack', ack monotonically increasing from 100, recv_ms monotonic, fault non-null (matches the ack's FaultCode), state='rejected' (or 'stale' for the ttl_expired row). The ttl_expired row uses state='stale' to exercise D6's stale ≠ rejected distinction; all 7 others use state='rejected'."
+    - "Modify contracts/src/contracts/validate.py — NARROW the F1 dispatch glob from fixtures_dir.glob('*.jsonl') to fixtures_dir.glob('session_*.jsonl') (D15). Behavioral no-op for the committed fixtures (only session_example.jsonl matches today); enables control_command_*.jsonl to live in the same directory without F1's ContractLine loop claiming them. The F2 self_model_*.json and F3 parts_catalog.json + buildability dispatches are NOT touched."
+    - "Modify contracts/src/contracts/validate.py — ADD the F19 dispatch (fourth dispatch) AFTER the F3 dispatch: glob fixtures_dir.glob('control_command_*.jsonl'); for each non-blank line, json.loads → if obj.get('type') == 'ack' then AckLine.model_validate(obj) else TypeAdapter(ControlLine).validate_python(obj); failures reported as f'{path.name}:{lineno}: {exc}' into the existing collect-errors / stderr / exit-1 harness. ControlLine + AckLine + TypeAdapter imports added to the existing `from contracts import ...` line (additive). The docstring header is updated additively to describe the fourth dispatch and the glob narrowing."
+    - "Modify contracts/tests/test_validate.py additively — DO NOT delete any F1/F2/F3 test case. Add: (a) per-fixture round-trip tests that each control fixture parses cleanly via validate.main() (assert main() returns 0 in the committed-fixture scenario); (b) an exhaustive FaultCode coverage test that reads control_command_rejections.jsonl, collects the `fault` field from each ack line, and asserts the resulting set equals {fc.value for fc in FaultCode} — no extras, no omissions; (c) a stale-vs-rejected distinction test asserting the ttl_expired row carries state='stale' while the other 7 carry state='rejected'; (d) a type-routing failure test that writes a mutated control fixture to a temp dir with cmd='drive', vx=0.9 and asserts validate.main() returns 1 with a stderr line shaped `<file>:<lineno>: <ValidationError ...>`; (e) a glob-narrowing invariant test that writes a control fixture line invalid-as-ContractLine yet valid-as-ControlLine to a temp dir and asserts the ONLY errors mention ControlLine/AckLine, never ContractLine; (f) a cross-dispatch isolation test that mutates a grab-cycle line to cmd='fly' (out-of-vocabulary) in a temp dir and asserts validate.main() returns non-zero with a readable reason naming the mutated file and a ControlLine ValidationError. Temp-dir tests use tmp_path + monkeypatch on validate's contracts_root resolution (or equivalent isolation pattern that does not modify the committed fixtures)."
+  out:
+    - "Any change to contracts/src/contracts/control_command.py — slice 1 froze the models (D14); F19 only consumes them via TypeAdapter(ControlLine) / AckLine.model_validate."
+    - "Any change to contracts/src/contracts/schema.py or to the committed JSON Schemas under contracts/schemas/ (contract_line.json, self_model.json, score_contract.json, control_command.json, ack_line.json) — slice 1 froze the schema registry and emitted the two new JSON Schemas; this slice MUST keep all five byte-identical to slice 1's commit."
+    - "Any change to contracts/src/contracts/__init__.py — slice 1 re-exported every F19 public surface (ControlLine, AckLine, FaultCode, MAX_LINEAR, ...); this slice imports them as-is."
+    - "Any change to F1 contract_line.py, F2 self_model.py, F3 parts_catalog.py / catalog.py, F4 adapter interfaces, or contracts.vocabulary."
+    - "Any new Makefile target at either contracts/Makefile or the root Makefile — F19's `make validate` surface lands inside the existing target. Root-Makefile `validate` delegation already exists; no root-Makefile edit."
+    - "F20 Brain-side PROS C++ parser/clamp/ack/watchdog — separate feature."
+    - "F21 online control harness (`pilot` Rx pipeline) — separate feature."
+    - "Cross-build verb applicability enforcement (FaultCode.not_assembled emission) — F20's job (D13). F19 ships the enum value + the rejected-ack fixture row; F20 emits at runtime."
+    - "`make demo` (m2-milestone concern, never a per-slice gate per the plan-feature skill)."
+    - "Anything outside the contracts/ vertical — hardware, network, transport selection (USB serial vs RS-485), ROS message bindings, binary protocol-v2, reactivex operators / Subjects, ControlSink adapter protocol."
+
+acceptance:
+  - id: acc-sync
+    description: "`make sync` (uv sync) exits 0 from contracts/."
+  - id: acc-lint
+    description: "`make lint` (ruff check + ruff format --check over src/ and tests/) exits 0."
+  - id: acc-validate-green
+    description: "`make validate` exits 0 — all FOUR dispatches green: F1 session_*.jsonl → ContractLine (now narrowed), F2 self_model_*.json → SelfModel, F3 parts_catalog.json → PartsCatalog + per-fixture buildability via validate_config, F19 control_command_*.jsonl → ControlLine | AckLine routed by the closed `type` discriminator. All three committed control fixtures round-trip cleanly."
+  - id: acc-fixture-grab-roundtrip
+    description: "control_command_grab_cycle.jsonl round-trips line-by-line through the F19 dispatch: heartbeat → drive → arm → claw → arm → stop, each followed by its ack. Command lines parse via TypeAdapter(ControlLine).validate_python; ack lines parse via AckLine.model_validate. Every command has ttl_ms ≤ TTL_MS_MAX; every body field within its Field bound; seq monotonic."
+  - id: acc-fixture-flywheel-roundtrip
+    description: "control_command_flywheel_cycle.jsonl round-trips line-by-line through the F19 dispatch: heartbeat → drive → flywheel(rpm=2400.0) → flywheel(rpm=0.0) → stop, each followed by its ack. flywheel rpm values within [0, MAX_FLYWHEEL_RPM]; same envelope/bound invariants as the grab cycle."
+  - id: acc-fixture-rejections-roundtrip
+    description: "control_command_rejections.jsonl round-trips line-by-line: every line is a valid AckLine. Seven lines carry state='rejected' with a non-null fault; one line (the ttl_expired row) carries state='stale' with fault='ttl_expired'. The model-validator's invariants (fault is None iff state == 'ok'; rejected requires non-null fault; stale accepts either) all hold."
+  - id: acc-exhaustive-faultcode
+    description: "Test asserts that the set of `fault` values parsed from control_command_rejections.jsonl equals {fc.value for fc in FaultCode} exactly — no FaultCode value is missing, none is duplicated, none is extra. This is the exhaustive enum-coverage gate that closes D7."
+  - id: acc-stale-vs-rejected-distinction
+    description: "Test asserts the ttl_expired ack row in control_command_rejections.jsonl carries state='stale' (D6/D17 — distinct from rejected so F20 can log without re-stopping); every other rejected-fault row carries state='rejected'. Exercises both ack-state paths in the same fixture."
+  - id: acc-type-routing-rejects-bad-cmd
+    description: "Test writes a mutated control_command_*.jsonl line to a temp dir with type='cmd', cmd='drive', vx=0.9 (> MAX_LINEAR), runs validate.main() against that temp contracts root, and asserts (a) main() returns 1; (b) at least one stderr line matches the pattern `<file>:<lineno>: ...ValidationError...` naming the mutated file. Proves the F19 dispatch's per-line error reporting wires into the existing collect-errors / stderr / exit-1 harness."
+  - id: acc-glob-narrowed
+    description: "Test (D15 invariant) writes a control_command_*.jsonl line that is INVALID as ContractLine yet VALID as ControlLine to a temp dir, runs validate.main(), and asserts (a) errors (if any) mention ControlLine or AckLine, NEVER ContractLine; (b) session_example.jsonl-equivalent content in the same temp dir still parses cleanly through the narrowed F1 dispatch. Proves the F1 glob narrowing keeps F1 behavior intact for committed fixtures while preventing F1 from trying to parse F19 lines."
+  - id: acc-cross-dispatch-isolation
+    description: "Test writes a mutated grab-cycle line to a temp dir with cmd='fly' (out-of-vocabulary verb), runs validate.main(), and asserts main() returns non-zero with a readable reason naming the mutated file and surfacing a ControlLine ValidationError (the inner cmd discriminator's closed-vocabulary rejection). Committed fixtures stay green — the test mutates a copy in tmp_path, never the committed files."
+  - id: acc-no-regression
+    description: "Full F1 + F2 + F3 + F4 + slice-1 F19 test suites still pass — no count regression, no behavioral change. The committed contracts/tests/ files (test_contract_line.py, test_self_model.py, test_parts_catalog.py, test_adapters.py, test_motor_telemetry.py, test_task_contracts.py, test_control_command.py) all remain green; this slice only EXTENDS test_validate.py with new cases. The full suite count is at least 129 + the new test cases added in this slice."
+  - id: acc-test
+    description: "`make test` exits 0 from contracts/ (pytest under uv run)."
+  - id: acc-schema-unchanged
+    description: "`make schema-check` exits 0 — all five committed JSON Schemas under contracts/schemas/ (contract_line.json, self_model.json, score_contract.json, control_command.json, ack_line.json) are BYTE-IDENTICAL to slice 1's committed versions. This slice MUST NOT regenerate or modify any schema file; the gate guards against accidental drift from a stale local cache."
+  - id: acc-imports-unchanged
+    description: "`from contracts import ControlLine, AckLine, FaultCode, MAX_LINEAR, MAX_OMEGA, MAX_FLYWHEEL_RPM, ARM_DEG_MIN, ARM_DEG_MAX, TTL_MS_MAX, ControlEnvelope, ControlCommand, HeartbeatLine, StopCommand, DriveCommand, TurnCommand, ArmCommand, ClawCommand, FlywheelCommand` still resolves cleanly in `uv run python` after sync — slice 1's __init__.py re-exports are untouched. Every F1/F2/F3/F4 export remains importable."
+  - id: acc-root-delegate-validate
+    description: "Root `make validate` (delegating from the repo root into contracts/) exits 0. The delegation already exists in the root Makefile; this slice doesn't add or modify any root-Makefile target — the gate just confirms the existing delegation still works after the F19 fourth dispatch lands."
+  - id: acc-root-delegate-full
+    description: "Root `make sync`, `make test`, `make lint`, `make schema-check`, `make catalog`, `make catalog-check` all exit 0 after this slice lands. Confirms the full root-delegated gate sweep is green — F1, F2, F3, and F19 are all reachable from the repo root via the existing delegations."
+
+decisions:
+  - id: D1
+    decision: "Command vocabulary is the closed 6-verb set {stop, drive, turn, arm, claw, flywheel}, spanning the 3 post-PR #18 buildable motor topologies (claw_grasper, scoop, flywheel). Slice 1 froze the models; this slice exercises them in fixtures."
+    grounding: ".ai-sdd/features/control-grammar/requirements.md decision D1; brief 'Scope-shaping precondition'; MASTER_REQUIREMENTS Components → Control grammar + ADR-19."
+    status: closed
+  - id: D2
+    decision: "The outer stream discriminator is the closed `type: Literal['cmd', 'heartbeat', 'ack']`. The F19 validate dispatch routes per-line by `type` — `type == 'ack'` → AckLine; otherwise → ControlLine (which itself sub-routes type ∈ {cmd, heartbeat})."
+    grounding: ".ai-sdd/features/control-grammar/requirements.md decision D2; BRAIN_INTERFACE.md §3.3 Option 1; slice brief 'validate.py changes'."
+    status: closed
+  - id: D3
+    decision: "AckLine is receipt-only: state + fault + ack + recv_ms + v + type. The rejections fixture's 8 ack lines carry no telemetry-leaking fields; only the documented AckLine surface."
+    grounding: ".ai-sdd/features/control-grammar/requirements.md decision D3; slice brief In-scope (AckLine bullet)."
+    status: closed
+  - id: D4
+    decision: "Discriminator placement is two-level: outer `type` at the wire-line, inner `cmd` inside cmd-typed lines. The F19 validate dispatch leans on this — top-level `type` is the demux; `TypeAdapter(ControlLine)` then sub-discriminates by `cmd` for `type=='cmd'` lines."
+    grounding: ".ai-sdd/features/control-grammar/requirements.md decision D4; slice 1 ControlLine implementation."
+    status: closed
+  - id: D5
+    decision: "Wire bounds are ttl_ms ∈ [1, TTL_MS_MAX=1000] and seq ∈ [0, 2**32). Every command line in the grab-cycle and flywheel-cycle fixtures carries a ttl_ms within this range; seq is monotonic from 1 per fixture."
+    grounding: ".ai-sdd/features/control-grammar/requirements.md decision D5; BRAIN_INTERFACE.md §3.1."
+    status: closed
+  - id: D6
+    decision: "Ack state values are {ok, rejected, stale}. The rejections fixture exercises both `rejected` (7 rows) and `stale` (1 row — the ttl_expired ack); acc-stale-vs-rejected-distinction asserts the distinction explicitly."
+    grounding: ".ai-sdd/features/control-grammar/requirements.md decision D6; slice brief Fixtures (control_command_rejections.jsonl)."
+    status: closed
+  - id: D7
+    decision: "FaultCode is a closed StrEnum of EXACTLY 8 values. The rejections fixture carries one ack per value (exhaustive); acc-exhaustive-faultcode asserts the parsed `fault` set equals `{fc.value for fc in FaultCode}` — no extras, no omissions."
+    grounding: ".ai-sdd/features/control-grammar/requirements.md decision D7; slice brief Acceptance §4 'Exhaustive FaultCode coverage'."
+    status: closed
+  - id: D8
+    decision: "Wire version is `v: Literal[1] = 1` on every line. Every fixture line carries v:1."
+    grounding: ".ai-sdd/features/control-grammar/requirements.md decision D8."
+    status: closed
+  - id: D9
+    decision: "Module + schema file names are unchanged (slice 1 froze them). This slice creates only fixtures (control_command_*.jsonl) and touches only validate.py + test_validate.py."
+    grounding: ".ai-sdd/features/control-grammar/requirements.md decision D9; slice 1 changeset."
+    status: closed
+  - id: D10
+    decision: "Clamp constants are imported from `contracts` and never redefined. Fixture values are inside the Field bounds; the mutation test in acc-type-routing-rejects-bad-cmd uses vx=0.9 > MAX_LINEAR=0.35 to trigger a ValidationError, exercising the same constants slice 1 wired."
+    grounding: ".ai-sdd/features/control-grammar/requirements.md decision D10; slice 1 control_command.py module."
+    status: closed
+  - id: D11
+    decision: "Out-of-range values are REJECTED (ValidationError) at F19. The acc-type-routing-rejects-bad-cmd test depends on this: vx=0.9 → ValidationError, surfaced as `<file>:<lineno>: <ValidationError>` on stderr."
+    grounding: ".ai-sdd/features/control-grammar/requirements.md decision D11; ADR-19 bounded + interruptible."
+    status: closed
+  - id: D12
+    decision: "DriveCommand.vy is locked to 0 via Field(default=0.0, ge=0.0, le=0.0). Every drive line in the two cycle fixtures carries vy=0.0 explicitly to document the constraint at the fixture level."
+    grounding: ".ai-sdd/features/control-grammar/requirements.md decision D12."
+    status: closed
+  - id: D13
+    decision: "Cross-build verb applicability is F20's job. F19's rejections fixture includes `not_assembled` as a FaultCode value (one of the 8 exhaustive ack lines), proving the wire carries the code today; F20 emits it at runtime."
+    grounding: ".ai-sdd/features/control-grammar/requirements.md decision D13; F19 D7."
+    status: closed
+  - id: D14
+    decision: "Slice decomposition: models-and-schemas (LANDED at commit 263c1d6) → validate-fixtures-and-gates (THIS SLICE). This slice closes F19 for m1."
+    grounding: ".ai-sdd/features/control-grammar/requirements.md decision D14; slice 1 commit log."
+    status: closed
+  - id: D15
+    decision: "NEW THIS SLICE — narrow F1's fixture glob from `fixtures_dir.glob('*.jsonl')` to `fixtures_dir.glob('session_*.jsonl')`. Rationale: the existing F1 dispatch iterates every *.jsonl in contracts/fixtures/ and parses each line as ContractLine. Adding control_command_*.jsonl into the same directory under the wildcard glob would force F1's dispatch to try parsing F19 lines as ContractLine and fail. Three options were considered: (a) put control fixtures under a sibling directory contracts/fixtures-control/ — rejected: doubles the fixture-root concept, complicates F20/F21's discovery surface, and is asymmetric with F2's self_model_*.json + F3's parts_catalog.json which all live under contracts/fixtures/ or contracts/; (b) special-case files inside the F1 loop with `if path.name.startswith('control_command_'): continue` — rejected: imperative skip-list at the consumer is uglier than declarative glob-narrowing at the producer, and the skip-list grows with every new fixture family; (c) NARROW F1's glob to the existing `session_*.jsonl` canonical telemetry name (the only *.jsonl committed today is session_example.jsonl, which already matches the narrower glob). Option (c) is BEHAVIORAL NO-OP for the committed fixtures, mirrors F2's `self_model_*.json` family-glob style exactly, and is the minimum-surface principled fix. This is the one principled cost of the strictly-additive F19 dispatch."
+    grounding: "Slice brief 'validate.py changes' §1 (the principled glob narrowing); existing F2 dispatch glob `self_model_*.json`; only existing *.jsonl is session_example.jsonl (verified)."
+    status: closed
+  - id: D16
+    decision: "NEW THIS SLICE — F19's per-line dispatch uses `pydantic.TypeAdapter(ControlLine).validate_python(obj)` for non-ack lines, mirroring slice 1's parsing pattern (slice 1's tests use the same TypeAdapter pattern because ControlLine is a discriminated-union TYPE ALIAS — `Annotated[Union[...], Field(discriminator='type')]` — not a BaseModel subclass; you cannot call `.model_validate` on a type alias directly). Ack lines use the plain `AckLine.model_validate(obj)` (AckLine IS a StrictModel subclass). The per-line algorithm is: json.loads(line) → if obj.get('type') == 'ack': AckLine.model_validate(obj); else: TypeAdapter(ControlLine).validate_python(obj). Failures are caught and appended to the existing `errors` list as `f'{path.name}:{lineno}: {exc}'` — same shape as the F1 dispatch's per-line reports."
+    grounding: "Slice 1 control_command.py (ControlLine is `Annotated[Union[...], Field(discriminator='type')]`); slice 1 test_control_command.py TypeAdapter usage; slice brief 'validate.py changes' §2."
+    status: closed
+  - id: D17
+    decision: "NEW THIS SLICE — the rejection fixture uses state='stale' for the ttl_expired row and state='rejected' for the other 7. Rationale: D6 defines `stale` as the case where the Brain receives a command after its TTL has expired — distinct from `rejected` (Brain refuses to act on a malformed/unauthorized/out-of-range command). The exhaustive FaultCode coverage requirement alone could be satisfied with all 8 rows as state='rejected', but that would never exercise the model-validator's `stale accepts either fault state` branch. Pairing ttl_expired with state='stale' is the natural mapping (the only fault that semantically IS the stale condition) and proves both ack-state paths fire in the same fixture. acc-stale-vs-rejected-distinction asserts this explicitly."
+    grounding: ".ai-sdd/features/control-grammar/requirements.md decision D6 (stale vs rejected); slice 1 AckLine model_validator (`stale accepts either`); slice brief Fixtures § (the ttl_expired row uses state='stale')."
+    status: closed
+
+files:
+  - contracts/fixtures/control_command_grab_cycle.jsonl
+  - contracts/fixtures/control_command_flywheel_cycle.jsonl
+  - contracts/fixtures/control_command_rejections.jsonl
+  - contracts/src/contracts/validate.py
+  - contracts/tests/test_validate.py
+
+tests:
+  - "uv sync"
+  - "make sync"
+  - "make validate"
+  - "make test"
+  - "make lint"
+  - "make schema-check"
