@@ -1,0 +1,77 @@
+summary: Add TelemetrySource and VisionSource runtime-checkable Protocol classes to a new adapters.py module, wire them into the contracts package exports, add reactivex as a dependency, and cover them with conformance and smoke tests.
+
+scope:
+  in:
+    - contracts/src/contracts/adapters.py (new) — TelemetrySource and VisionSource Protocol classes
+    - contracts/src/contracts/__init__.py (extend) — export TelemetrySource and VisionSource
+    - contracts/pyproject.toml (extend) — add reactivex dependency via uv add
+    - contracts/tests/test_adapters.py (new) — conformance isinstance checks and cold-observable smoke test
+  out:
+    - Any new schema file or Pydantic model (no new schema in this slice)
+    - Any changes to operator, pilot, robot, or other stacks
+    - Lifecycle management methods on protocols (deferred by D3)
+    - Hot Subject wiring (implementation detail for downstream adapters, not F4)
+    - Changes to existing F1 or F2 source files beyond __init__.py additive exports
+
+acceptance:
+  - id: A1
+    description: "`make sync` exits 0 — reactivex resolves and installs without error under the contracts venv"
+  - id: A2
+    description: "`make lint` exits 0 — ruff check and ruff format --check both pass with no violations"
+  - id: A3
+    description: "`make test` exits 0 with test_telemetry_source_isinstance_pass passing"
+  - id: A4
+    description: "`make test` exits 0 with test_telemetry_source_isinstance_fail_missing_observe passing"
+  - id: A5
+    description: "`make test` exits 0 with test_vision_source_isinstance_pass passing"
+  - id: A6
+    description: "`make test` exits 0 with test_vision_source_isinstance_fail_missing_observe passing"
+  - id: A7
+    description: "`make test` exits 0 with test_cold_telemetry_source_emits_record_and_completes passing"
+  - id: A8
+    description: "`make test` exits 0 with test_top_level_import passing — `from contracts import TelemetrySource, VisionSource` resolves"
+  - id: A9
+    description: "All pre-existing F1 tests (test_contract_line.py, test_motor_telemetry.py) continue to pass"
+  - id: A10
+    description: "All pre-existing F2 tests (test_self_model.py) continue to pass"
+  - id: A11
+    description: "Root-level make sync, make test, and make lint delegate correctly and exit 0"
+
+decisions:
+  - id: D1
+    title: Observable stream model
+    resolution: Use reactivex.Observable as the return type for both protocol observe() methods
+    rationale: Chosen in ADR-20; provides composable, lazy stream semantics compatible with cold replay and hot Subject patterns used by downstream adapters
+    status: closed
+  - id: D2
+    title: Protocol mechanism
+    resolution: Use typing.Protocol decorated with @runtime_checkable for TelemetrySource and VisionSource
+    rationale: Enables structural subtyping (duck-typing) without inheritance and allows isinstance() checks at runtime, satisfying conformance test requirements without coupling adapters to a concrete base class
+    status: closed
+  - id: D3
+    title: No lifecycle methods in protocol
+    resolution: Protocols expose only observe(); no connect(), disconnect(), or context-manager methods
+    rationale: Lifecycle management is adapter-specific and would overconstrain implementations; downstream adapters add lifecycle as needed without breaking the protocol contract
+    status: closed
+  - id: D4
+    title: VisionSource observable element type
+    resolution: observe() returns Observable[VisionBlock] — never Optional, never nullable
+    rationale: VisionBlock (from F1) is always the unit of vision data; nullable streams would force every consumer to unwrap; absences are modelled as stream termination or filtering upstream
+    status: closed
+  - id: D5
+    title: Cold vs hot observable pattern
+    resolution: Cold observables (replay/synthetic) are the default for testing; hot Subject-based observables are left to Serial/Camera adapter implementations downstream
+    rationale: Documented here for F4 reference only; the protocol itself is agnostic to temperature — this distinction is an implementation detail for future adapter slices
+    status: closed
+
+files:
+  - contracts/src/contracts/adapters.py
+  - contracts/src/contracts/__init__.py
+  - contracts/pyproject.toml
+  - contracts/uv.lock
+  - contracts/tests/test_adapters.py
+
+tests:
+  - make sync
+  - make lint
+  - make test

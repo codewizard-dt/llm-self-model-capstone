@@ -55,7 +55,7 @@ By the demo, the system closes the generational self-model loop **in software** 
 
 **Hardware-access split .** Erick is the only member with no robot access and works entirely off the hardware (system design, contracts, synthetic oracle). The software telemetry sources (`Synthetic` oracle, `Replay` reader) live in the `contracts` vertical so they stay off the hardware critical path. Per-feature owners are **TBD** (see *Sub-features*), with the exception of Erick's contracts + oracle work.
 
-- `contracts` — Python 3.12 · uv · ruff · pydantic v2 · dev-machine · the cross-vertical source of truth + adapter interfaces + the **control grammar** + the `Synthetic` oracle and `Replay` sources.
+- `contracts` — Python 3.12 · uv · ruff · pydantic v2 · **reactivex** · dev-machine · the cross-vertical source of truth + adapter interfaces + the **control grammar** + the `Synthetic` oracle and `Replay` sources.
   - root: `contracts/` · ignore_folders: `.venv`, `__pycache__`, `dist`, `.pytest_cache`, `captures` · 
 - `operator` — Python 3.12 · uv · ruff · Claude Code skills (Generator + Critic) · dev-machine · the **offline self-model loop** (authoring/critique/replay/presentation).
   - root: `operator/` · ignore_folders: `.venv`, `__pycache__`, `.claude`, `out`, `.pytest_cache` · Owner: **TBD**
@@ -76,7 +76,7 @@ By the demo, the system closes the generational self-model loop **in software** 
 - **Self-model schema** `(contracts)` — owns the versioned 4-layer + `reasoning` self-model document shape.
 - **Control grammar** `(contracts)` — owns `control-command`: the fixed command vocabulary + command/ack envelope the online loop uses to drive the robot (draft; ADR-19). *(TBD)*
 - **Parts catalog grammar** `(contracts)` — owns `parts_catalog.json`, the finite typed design vocabulary (~10–15 valid configs). *(TBD)*
-- **Adapter interfaces** `(contracts)` — owns `TelemetrySource` and `VisionSource` protocol definitions that decouple the loop from hardware. *(TBD)*
+- **Adapter interfaces** `(contracts)` — owns `TelemetrySource` and `VisionSource` `@runtime_checkable` Protocol definitions; each exposes a single `observe()` method returning a `reactivex.Observable` stream (`Observable[ContractLine]` and `Observable[VisionBlock]` respectively). Cold observables for `Replay`/`Synthetic` sources; hot observables (bridged via `Subject`) for `Serial`/`Camera` sources. Decouples every consumer from hardware; swapping an implementation is a config flag with no pipeline change (ADR-20). *(TBD)*
 - **Synthetic oracle** `(contracts)` — owns `SyntheticTelemetrySource`: a parametric hidden-ground-truth forward model (friction, effective arm length, torque constant, mass) + measured noise; the LLM-information-separation rule applies (Constraints → Oracle grounding).
 - **Replay source** `(contracts)` — owns `ReplayTelemetrySource` / `ReplayVisionSource`: deterministic file readers over recorded `session_*.jsonl`. *(TBD)*
 - **Live hardware sources** `(coprocessor)` — owns `SerialTelemetrySource` (V5 @115,200) and `CameraVisionSource` (Pi camera feed into the vision pipeline). *(TBD)*
@@ -363,6 +363,7 @@ Closed decisions use definitive language — no "if needed / or / prefer / may b
 | ADR-17 | Synthetic telemetry | **Parametric hidden-ground-truth oracle** (closed-form forward model + measured noise) as `SyntheticTelemetrySource` | Honest gap — the LLM recovers hidden parameters it never sees; cheap; not a physics engine | Hand-authored `observed` values (rigged); robot/physics simulator (out of scope) |
 | ADR-18 | Hardware access & ownership | **Erick is off-hardware (contracts + oracle); all other vertical/feature owners are TBD** | Erick has no robot access; the rest of the split is deferred until the team confirms it | Erick on hardware |
 | ADR-19 | Online control loop | **First-class: an on-Pi LLM (`pilot`) issues fixed control-grammar commands in real time** | Adds the autonomous online loop alongside the offline self-model loop | Real-time control left V2-only |
+| ADR-20 | Adapter pipeline model | **`reactivex` Observable streams at the adapter boundary** — `TelemetrySource.observe() -> Observable[ContractLine]`; `VisionSource.observe() -> Observable[VisionBlock]`; `serial_bridge.py` merges via `rx.zip`; the `pilot` real-time loop uses `flat_map` / `take_until` | The whole pipeline is inherently reactive: motors push hot 20 ms ticks, camera pushes hot frames, the bridge zips and buffers, the online control loop is a real-time reactive fan-out. `zip`, `buffer`, `flat_map`, `take_until` are first-class primitives, not one-offs to hand-implement. Cold/hot split (D5 in F4 brief): `Replay`/`Synthetic` are cold; `Serial`/`Camera` are hot via Subject | Discrete `read()`/`state()` per call — would require reimplementing zip, buffer, and take_until by hand across serial_bridge, gap-analyzer, and pilot |
 
 ### Integration Boundaries & Swap Paths
 
@@ -370,8 +371,8 @@ Every shortcut sits behind a protocol/adapter boundary in `contracts` and has a 
 
 | Boundary (interface in `contracts`) | MVP implementation (shortcut) | Production replacement (swap path) |
 |---|---|---|
-| `TelemetrySource.read() -> ContractLine` | `ReplayTelemetrySource` (recorded JSONL) · `SyntheticTelemetrySource` | `SerialTelemetrySource` — V5 over `/dev/ttyACM0` @115,200; **swap = config flag, no contract change** |
-| `VisionSource.state() -> VisionBlock` | `ReplayVisionSource` (recorded frames/state) · `SyntheticVisionSource` | `CameraVisionSource` — Pi camera + YOLO11n + AprilTag |
+| `TelemetrySource.observe() -> Observable[ContractLine]` | `ReplayTelemetrySource` (cold Observable over recorded JSONL, `on_completed` at EOF) · `SyntheticTelemetrySource` (cold Observable) | `SerialTelemetrySource` — hot Observable via Subject on `/dev/ttyACM0` @115,200; **swap = config flag, no pipeline change** |
+| `VisionSource.observe() -> Observable[VisionBlock]` | `ReplayVisionSource` (cold Observable over recorded frames/state) · `SyntheticVisionSource` (cold Observable) | `CameraVisionSource` — hot Observable via Subject on Pi camera + YOLO11n + AprilTag |
 | Operator host | Single dev machine | On-Pi / two-machine deployment |
 | Transport | USB serial | RS-485 Smart Port (Stage 2) — same JSON, different baud |
 | `LLMRuntime` | Claude Code interactive (authoring) + cached transcripts for replay | Same runtime; replay reapplies recorded revisions deterministically |

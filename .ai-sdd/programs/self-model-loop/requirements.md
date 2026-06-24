@@ -27,7 +27,7 @@ their vertical lead at runtime (ADR-0027). Erick is fixed by ADR-18.
 | 1 | F1 | `telemetry-contract` | contracts | freeze predicted/observed/gap/vision JSON line | **Erick** |
 | 2 | F2 | `self-model-schema` | contracts | freeze versioned 4-layer + reasoning self-model | **Erick** |
 | 3 | F3 | `parts-catalog-grammar` | contracts | freeze `parts_catalog.json` vocabulary + valid-config rules | TBD |
-| 4 | F4 | `adapter-interfaces` | contracts | `TelemetrySource`/`VisionSource` protocols | TBD |
+| 4 | F4 | `adapter-interfaces` | contracts | `TelemetrySource.observe()`/`VisionSource.observe()` → `reactivex.Observable` streams | TBD |
 | 5 | F19 | `control-grammar` | contracts | freeze `control-command` vocabulary + command/ack (draft) | TBD |
 | 6 | F14 | `synthetic-oracle` | contracts | hidden-ground-truth `SyntheticTelemetrySource` | **Erick** |
 | 7 | F15 | `replay-source` | contracts | `Replay` telemetry/vision readers over recorded sessions | TBD |
@@ -75,8 +75,8 @@ their vertical lead at runtime (ADR-0027). Erick is fixed by ADR-18.
   Self-Model Schema, Parts Catalog Grammar, plus the draft Control-Command grammar.
 - **Toolchain:** Python 3.11/3.12 · `uv` (no pip/poetry) · `ruff` (no black/isort/flake8) on the Python
   verticals; **PROS C++** on `brain` (arm-none-eabi; `uv`-managed `pros-cli` dev-only).
-- **Adapter boundary:** the MVP depends only on `TelemetrySource`/`VisionSource` interfaces in
-  `contracts`, never a concrete provider; live hardware is an implementation swap, not a redesign.
+- **Adapter boundary (ADR-20):** the MVP depends only on `TelemetrySource.observe() -> Observable[ContractLine]` and `VisionSource.observe() -> Observable[VisionBlock]` in `contracts`, never a concrete provider. Live hardware is an implementation swap, not a pipeline change. `serial_bridge.py` merges via `rx.zip`; the `pilot` real-time loop uses `flat_map` + `take_until`. Cold observables for `Replay`/`Synthetic`; hot observables (via `Subject`) for `Serial`/`Camera` — this split is a correctness constraint documented in the F4 brief (D5).
+- **`reactivex` dependency:** added to `contracts/pyproject.toml`. All verticals that consume or implement the adapter protocols (`coprocessor`, `pilot`) must also carry `reactivex` in their own `pyproject.toml`.
 - **Oracle information separation (non-negotiable):** the oracle's true parameters are hidden from the
   Generator; gap-tightening must come from the self-model converging on hidden truth, not steering.
 - **No schema defined outside `contracts`.**
@@ -94,6 +94,7 @@ their vertical lead at runtime (ADR-0027). Erick is fixed by ADR-18.
 | O2 | "Gap tightened" definition | Generator's estimate of the oracle's hidden parameter recovered within **≤10%** across ≥2 generations; finalize the band at m1b once the oracle is calibrated. | ✅ confirmed |
 | O3 | Grounded re-run | **Required** — the demo presents **grounded** results: m4 (real baseline capture F16 + oracle recalibration F18) must complete before m5. Ungrounded-synthetic is no longer an acceptable demo state. | ✅ confirmed |
 | O4 | Critical-path split | When owners are assigned, **keep F5 (vision) and F7 (brain firmware) on different people** so the two critical-path items run in parallel. | ✅ confirmed |
+| D5 | Adapter pipeline model | **`reactivex` Observable streams** — `TelemetrySource.observe() -> Observable[ContractLine]`; `VisionSource.observe() -> Observable[VisionBlock]`; `rx.zip` merge in `serial_bridge`; `flat_map`/`take_until` in `pilot`. Cold for `Replay`/`Synthetic`; hot (via Subject) for `Serial`/`Camera`. The whole pipeline is reactive by nature (20 ms hot motor ticks, hot camera frames, real-time LLM fan-out); `reactivex` is the right primitive, not an over-engineering choice (ADR-20). | ✅ confirmed |
 
 > **Deadline note (D3 + O3).** Both confirmations push hardware onto the critical path for the
 > **2026-06-29** demo: O3 makes m4 (real V5 + Pi capture, F16) a hard prerequisite of demo-signoff, and

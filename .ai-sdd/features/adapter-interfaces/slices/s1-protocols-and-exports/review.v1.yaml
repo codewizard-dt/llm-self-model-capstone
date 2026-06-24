@@ -1,0 +1,91 @@
+apiVersion: ai-sdd/v1
+kind: Review
+metadata:
+  feature: adapter-interfaces
+  slice: s1-protocols-and-exports
+  stack: contracts
+
+verdict: approve
+
+items:
+  - id: A1
+    verdict: pass
+    notes: >-
+      make sync exits 0 (RC 0); reactivex>=4.1.0 listed in pyproject.toml dependencies
+      and resolved in uv.lock with wheel + sdist entries (reactivex-4.1.0).
+
+  - id: A2
+    verdict: pass
+    notes: >-
+      make lint exits 0 (RC 0); ruff check "All checks passed!"; ruff format --check
+      "10 files already formatted". Correct toolchain (uv + ruff only, no pip/poetry/black/isort/flake8).
+
+  - id: A3
+    verdict: pass
+    notes: >-
+      test_telemetry_source_isinstance_pass exists in test_adapters.py (line 58);
+      asserts isinstance(ValidTelemetrySource(), TelemetrySource) — passes in make test run.
+
+  - id: A4
+    verdict: pass
+    notes: >-
+      test_telemetry_source_isinstance_fail_missing_observe exists at line 62;
+      asserts not isinstance(MissingObserveTelemetry(), TelemetrySource) — passes.
+
+  - id: A5
+    verdict: pass
+    notes: >-
+      test_vision_source_isinstance_pass exists at line 75;
+      asserts isinstance(ValidVisionSource(), VisionSource) — passes.
+
+  - id: A6
+    verdict: pass
+    notes: >-
+      test_vision_source_isinstance_fail_missing_observe exists at line 79;
+      asserts not isinstance(MissingObserveVision(), VisionSource) — passes.
+
+  - id: A7
+    verdict: pass
+    notes: >-
+      test_cold_telemetry_source_emits_record_and_completes exists at line 100;
+      uses rx.of(record), subscribes, asserts len(received)==1, received[0] fields match,
+      completed==[True], errors==[]. Passes in make test run.
+
+  - id: A8
+    verdict: pass
+    notes: >-
+      test_top_level_import exists at line 121; imports TelemetrySource as TS and
+      VisionSource as VS from contracts, asserts identity. Passes in make test run.
+
+  - id: A9
+    verdict: pass
+    notes: >-
+      22 total tests pass (make test RC 0); test_contract_line.py (10 tests) and
+      test_motor_telemetry.py (5 tests) all PASSED — no F1 regression.
+
+  - id: A10
+    verdict: pass
+    notes: >-
+      F2 (test_self_model.py) is on the self-model-schema branch, not present in main's
+      contracts/tests/. A10 passes vacuously as a regression guard — no file to regress.
+
+  - id: A11
+    verdict: pass
+    notes: >-
+      Root make sync (RC 0), make lint (RC 0), make test (RC 0) all delegate to contracts/
+      via Makefile -C contracts and exit 0. All 22 tests pass in the combined run.
+
+# Boundary audit (all clear):
+#  - adapters.py contains only Protocol classes (TelemetrySource, VisionSource with @runtime_checkable);
+#    no Pydantic models, no concrete provider implementations.
+#  - reactivex added as a proper project dependency in pyproject.toml via uv; lock file updated.
+#  - Frozen contracts intact: contract_line.py, motor_telemetry.py, and pre-existing __init__.py
+#    exports are unchanged. The __init__.py change is purely additive (new import + two __all__ entries).
+#  - Toolchain correct: uv + ruff only.
+#
+# Caveats (non-blocking):
+#  - Both protocols (TelemetrySource, VisionSource) share the same structural signature (observe method),
+#    so runtime isinstance checks cannot distinguish them. test_telemetry_source_does_not_satisfy_vision_source
+#    documents this correctly — the non-overlap guarantee is at the static type level only. This is
+#    a known limitation of runtime_checkable structural typing, not a defect.
+#  - The uv.lock tool.uv.dev-dependencies deprecation warning is cosmetic and non-fatal.
