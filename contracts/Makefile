@@ -1,4 +1,4 @@
-.PHONY: sync test validate lint schema
+.PHONY: sync test validate lint schema schema-check
 
 UV := uv run
 
@@ -16,4 +16,7 @@ lint:
 	$(UV) ruff format --check src/ tests/
 
 schema:
-	$(UV) python -m contracts.schema > schemas/contract_line.json
+	$(UV) python -m contracts.schema
+
+schema-check: schema
+	git diff --exit-code schemas/

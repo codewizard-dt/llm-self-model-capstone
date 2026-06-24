@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0",
+  "generation": 1,
+  "parent_generation": 0,
+  "config": {
+    "motor_allocation": "2drive+1arm+1claw",
+    "arm_position": "front",
+    "end_effector": "claw_grasper",
+    "wheel_config": "front_omni+rear_standard",
+    "arm_gear_ratio": "7:1",
+    "cartridge": "200rpm"
+  },
+  "structural": {
+    "parts": [
+      { "id": "left_drive", "type": "drive_motor" },
+      { "id": "right_drive", "type": "drive_motor" },
+      { "id": "arm_motor", "type": "arm_motor" },
+      { "id": "claw_motor", "type": "claw_motor" }
+    ],
+    "connections": [
+      { "source": "left_drive", "target": "right_drive", "kind": "drivetrain" },
+      { "source": "arm_motor", "target": "claw_motor", "kind": "manipulator" }
+    ]
+  },
+  "capability": {
+    "reach_mm": 420.0,
+    "max_grip_force_N": 15.0,
+    "max_pull_force_N": 32.0,
+    "com_height_mm": 110.0
+  },
+  "predictive": {
+    "grab": { "grip_force_N": 11.6, "duration_s": 1.3, "success": true }
+  },
+  "gap_model": {
+    "grab": { "force_error_N": -0.3, "duration_error_s": 0.1 }
+  },
+  "reasoning": {
+    "predictive.grab.grip_force_N": "Lowered 14.7 -> 11.6 toward the ~11.3 N implied by the Gen-0 force_error_N -3.4 residual; the self-model overpredicted grip force.",
+    "capability.max_grip_force_N": "Trimmed 18.0 -> 15.0 to match the corrected manipulator estimate.",
+    "gap_model.grab": "With the prediction moved toward reality the residual collapses: force_error_N -3.4 -> -0.3, duration_error_s 0.2 -> 0.1 — self-knowledge improving across the generation boundary."
+  }
+}

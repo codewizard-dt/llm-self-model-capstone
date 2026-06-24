@@ -1,0 +1,128 @@
+apiVersion: ai-sdd/v1
+kind: Review
+metadata:
+  feature: self-model-schema
+  slice: fixtures-and-gates
+  stack: contracts
+
+verdict: approve
+
+items:
+  - id: AC1
+    verdict: pass
+    notes: >-
+      validate-self-models — `make validate` from REPO ROOT exits 0 ("OK — all
+      fixtures valid"). validate.py gained a SECOND dispatch beside the unchanged
+      `*.jsonl → ContractLine` loop: glob `fixtures/self_model_*.json` (sorted, same
+      parents[2]/fixtures resolution), validate each whole-file document via
+      `SelfModel.model_validate_json`, collect failures as `name: error` (no lineno)
+      on stderr, return 1 on any failure. NEGATIVE TEST verified independently: I
+      created `contracts/fixtures/self_model_bad.json` (empty reasoning + empty
+      objects); `make validate` printed `self_model_bad.json: 1 validation error for
+      SelfModel / reasoning String should have at least 1 character` on stderr and
+      exited non-zero (main() returns 1; make wraps to RC 2). After DELETING the temp
+      file, `make validate` returned to exit 0. The `*.jsonl → ContractLine` path's
+      `name:lineno: error` format and OK line are byte-for-byte unchanged (diff is
+      purely additive); both gen fixtures + the existing session_example.jsonl all
+      validate on the same run.
+  - id: AC2
+    verdict: pass
+    notes: >-
+      fixtures-conform-to-frozen-seed-schema — independently ran
+      `ai-sdd check .ai-sdd/schemas/self-model.schema.yaml <fixture>` for BOTH
+      fixtures: gen0 RC 0 ("✓ satisfies self-model.v1"), gen1 RC 0. schema_version
+      "1.0" matches `^[0-9]+\.[0-9]+$`; generation 0/1 non-negative; parent_generation
+      null (gen0) / 0 (gen1); config/structural/capability/predictive/gap_model are
+      each non-empty objects (predictive and gap_model both carry a populated `grab`
+      block per PD1, so neither is the forbidden empty object); reasoning non-empty in
+      both. Both also validate against the runtime `SelfModel` (round-trip tests +
+      make validate).
+  - id: AC3
+    verdict: pass
+    notes: >-
+      gen1-revision-shape — gen1 has generation:1, parent_generation:0, same config
+      axes as gen0. Numbers verified directly: capability.max_grip_force_N 18.0 → 15.0
+      AND predictive.grab.grip_force_N 14.7 → 11.6 (both moved toward observed
+      reality). gap_model.grab keyed exactly with F1's frozen grab residual keys
+      {force_error_N, duration_error_s} (subset check True). Residual shrank toward
+      0: force_error_N -3.4 → -0.3, duration_error_s 0.2 → 0.1. gen1.reasoning cites
+      the Gen-0 force_error_N -3.4 residual as the evidence that drove the change
+      ("The Gen-0 gap_model.grab residual force_error_N -3.4 showed the self-model
+      overpredicted grip force by ~3.4 N ... so this generation lowers
+      predictive.grab.grip_force_N from 14.7 to 11.6").
+  - id: AC4
+    verdict: pass
+    notes: >-
+      test-diff-assertion-green — `make test` exits 0: 33 passed in 0.04s (30 prior +
+      3 new). New tests: `test_self_model_fixture_round_trips` parametrized over
+      gen0/gen1 (round-trip through SelfModel via model_validate_json /
+      model_dump_json, re-parse equality), and `test_gen1_revision_closes_the_grab_gap`
+      asserting generation/parent, a changed capability OR predictive.grab value, the
+      gap-key subset `set(gen1.gap_model['grab'].keys()) <= {force_error_N,
+      duration_error_s}`, and the residual shrinking. FIXTURES_DIR resolves via
+      parents[1]/fixtures (cwd-robust). No existing test removed or weakened — the full
+      landed validator matrix (test_self_model 16 prior items + F1 suites) still passes.
+  - id: AC5
+    verdict: pass
+    notes: >-
+      lint-clean — `make lint` exits 0. `uv run ruff check src/ tests/` → "All checks
+      passed!"; `uv run ruff format --check src/ tests/` → "11 files already
+      formatted" (covers the changed validate.py and test_self_model.py). ruff is the
+      only lint/format tool invoked; no pip/poetry/black/isort/flake8. Only the
+      cosmetic tool.uv.dev-dependencies deprecation warning is emitted (non-fatal).
+  - id: AC6
+    verdict: pass
+    notes: >-
+      no-schema-drift — `make schema` exits 0; `git diff --stat contracts/schemas/` is
+      EMPTY and `git status --porcelain contracts/schemas/` is empty — zero drift. This
+      slice touches no pydantic model / schema.py / Makefile, so the committed
+      schemas/self_model.json and schemas/contract_line.json remain byte-identical to
+      the regenerated output.
+  - id: AC7
+    verdict: pass
+    notes: >-
+      root-delegation-and-no-f1-regression — root `make sync` (RC 0; "Resolved 12
+      packages", "Checked 11 packages"), `make lint` (RC 0), `make test` (RC 0),
+      `make validate` (RC 0), `make schema` (RC 0) all delegate into contracts/ and
+      pass. No F1 regression: F1's suites pass in the same run
+      (test_contract_line.py 10 items incl. 4 jsonl round-trips, test_motor_telemetry.py
+      5 items, all PASSED), and the `*.jsonl → ContractLine` validate path stays green.
+      `git status --porcelain` over session_example.jsonl, contract_line.py,
+      schemas/contract_line.json, and .ai-sdd/schemas/ is EMPTY (all untouched). The
+      change is strictly additive — git status shows only the 4 in-scope files
+      (validate.py + test_self_model.py modified; 2 new fixtures untracked).
+  - id: AC8
+    verdict: pass
+    notes: >-
+      gen1-reads-as-self-knowledge-improving — manual reviewer read of the Gen-1 → Gen-0
+      diff confirms self-knowledge visibly improving across the generation boundary:
+      predictive.grab.grip_force_N moved 14.7 → 11.6 and capability.max_grip_force_N
+      18.0 → 15.0 toward telemetry-observed reality, while the gap_model.grab residual
+      collapsed (force_error_N -3.4 → -0.3, duration_error_s 0.2 → 0.1). The gen1
+      `reasoning` prose explains why ("the self-model overpredicted grip force by
+      ~3.4 N against observed telemetry ... With the prediction moved toward reality the
+      residual collapses ... the self-model's self-knowledge improving"). The closing
+      gap is readable in both prose and numbers.
+
+# Boundary / toolchain audit (all clear):
+#  - No schema/model defined outside contracts/ — validate.py imports SelfModel from
+#    contracts; the fixtures are data files under contracts/fixtures/. Confirmed.
+#  - Correct toolchain: uv + ruff + pydantic v2 only; no pip/poetry/black/isort/flake8.
+#  - Frozen contracts intact: .ai-sdd/schemas/** UNTOUCHED (git status --porcelain
+#    empty); both fixtures conform to .ai-sdd/schemas/self-model.schema.yaml
+#    (ai-sdd check RC 0 each); contract_line.json / self_model.json byte-stable
+#    (no schema drift).
+#  - Out-of-scope files UNCHANGED: self_model.py / vocabulary.py / schema.py / Makefile
+#    are NOT in the diff; git status shows exactly the 4 plan `files`.
+#  - F1 regression check: session_example.jsonl + contract_line.py + contract_line.json
+#    untouched; F1 tests green; *.jsonl → ContractLine validate path green.
+#
+# Caveats (non-blocking):
+#  - The two new fixtures are untracked at review time; the ai-sdd engine commits the
+#    completed slice post-approval (mirrors prior slice).
+#  - `uv sync`/`uv run` emit the cosmetic tool.uv.dev-dependencies deprecation warning;
+#    every gate still exits 0.
+#  - Temp negative-test fixture self_model_bad.json was created to confirm the validate
+#    dispatch fails (exit 1, name: error on stderr), then DELETED; the tree was left
+#    exactly as found (make validate back to exit 0; fixtures dir shows only gen0/gen1 +
+#    session_example.jsonl).

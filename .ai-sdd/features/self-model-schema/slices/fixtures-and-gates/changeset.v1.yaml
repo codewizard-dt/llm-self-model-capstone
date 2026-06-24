@@ -1,0 +1,72 @@
+apiVersion: ai-sdd/v1
+kind: Changeset
+metadata:
+  feature: self-model-schema
+  slice: fixtures-and-gates
+  stack: contracts
+
+summary: >-
+  Strictly-additive close of F2 over the landed `vocabulary-and-model` slice: two
+  hand-authored self-model fixtures plus the `validate` dispatch and tests that gate
+  them, with no F1 regression and a byte-stable schemas/ (no model touched).
+  NEW `contracts/fixtures/self_model_gen0.json` — the Gen-0 authored Clawbot
+  (generation:0, parent_generation:null, the Clawbot `config` selection
+  2drive+1arm+1claw / front / claw_grasper / front_omni+rear_standard / 7:1 / 200rpm),
+  with a populated `structural` (4 parts: left/right drive + arm + claw motors; 2
+  connections: drivetrain, manipulator), research-grounded `capability`
+  (reach_mm 420, max_grip_force_N 18, max_pull_force_N 32, com_height_mm 110),
+  `predictive.grab` {grip_force_N 14.7, duration_s 1.2, success true}, `gap_model.grab`
+  keyed with F1's frozen grab residual keys {force_error_N -3.4, duration_error_s 0.2},
+  and non-empty `reasoning` explaining the structural choices. NEW
+  `contracts/fixtures/self_model_gen1.json` — the Gen-1 gap-driven revision
+  (generation:1, parent_generation:0, same `config`): predictive.grab.grip_force_N
+  lowered 14.7 -> 11.6 and capability.max_grip_force_N lowered 18 -> 15 toward the
+  telemetry-observed reality, with gap_model.grab residual shrunk toward 0
+  (force_error_N -3.4 -> -0.3, duration_error_s 0.2 -> 0.1) and `reasoning` citing the
+  Gen-0 force_error_N -3.4 residual as the evidence that drove the change. Both
+  fixtures validate against the runtime `SelfModel` AND conform to the frozen seed
+  schema (every required object non-empty; reasoning non-empty; parent_generation
+  null on gen0). CHANGED `contracts/src/contracts/validate.py` — added a SECOND
+  dispatch beside the unchanged `fixtures/*.jsonl -> ContractLine` loop: glob
+  `fixtures/self_model_*.json` (sorted, same parents[2]/fixtures resolution), validate
+  each whole-file document via `SelfModel.model_validate_json`, collect failures as
+  `name: error` (no lineno) on stderr and exit 1 on any failure; imported `SelfModel`
+  alongside the existing `ContractLine` import. The jsonl path's `name:lineno: error`
+  format, OK line, and empty-dir-exits-0 behaviour are byte-for-byte unchanged.
+  CHANGED `contracts/tests/test_self_model.py` — appended (no existing test removed): a
+  parametrized round-trip parse of both fixtures through `SelfModel`, and a Gen-1-vs-Gen-0
+  assertion that a capability OR predictive.grab value changed, that
+  `set(gen1.gap_model['grab'].keys())` is a subset of {force_error_N, duration_error_s},
+  and that the force_error_N residual shrank toward 0; fixture paths resolved relative to
+  the contracts root (parents[1]/fixtures), robust to cwd. Verified from repo root: make
+  sync / lint / test (33 passed: 30 prior + 3 new) / validate / schema all exit 0; the
+  new dispatch rejects a lineage-violating self-model (name: error, exit 1); git diff
+  --stat contracts/schemas/ EMPTY (zero drift).
+
+satisfies:
+  - AC1
+  - AC2
+  - AC3
+  - AC4
+  - AC5
+  - AC6
+  - AC7
+  - AC8
+
+files:
+  created:
+    - contracts/fixtures/self_model_gen0.json
+    - contracts/fixtures/self_model_gen1.json
+  modified:
+    - contracts/src/contracts/validate.py
+    - contracts/tests/test_self_model.py
+
+gates:
+  make_sync: 0
+  make_lint: 0
+  make_test: 0
+  make_validate: 0
+  make_schema: 0
+  tests_run: 33
+  schema_drift: false
+  validator_rejects_bad_self_model: true

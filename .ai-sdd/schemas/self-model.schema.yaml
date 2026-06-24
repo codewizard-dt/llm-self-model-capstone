@@ -44,6 +44,6 @@ spec:
       required: true
       invariants: [{ nonEmpty: true }]
     reasoning:
-      type: string
+      type: object
       required: true
       invariants: [{ nonEmpty: true }]

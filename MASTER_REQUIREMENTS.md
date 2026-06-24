@@ -309,21 +309,23 @@ The online control loop (`F19` → `F20` → `F21` → `m6`) extends the chain p
   "capability":  { "reach_mm": 0, "max_grip_force_N": 0, "max_pull_force_N": 0, "com_height_mm": 0 },
   "predictive":  { "grab": {}, "pull": {}, "throw": {} },
   "gap_model":   { "grab": {}, "pull": {}, "throw": {} },
-  "reasoning":   "Why each structural choice was made and what gap evidence drove each parameter change."
+  "reasoning":   { "end_effector": "claw_grasper chosen to grasp game objects", "cartridge": "200rpm balances drivetrain speed and torque" }
 }
 ```
 
-**Parts Catalog Grammar** — `parts_catalog.json` (Starter Kit, ~10–15 valid configs):
+**Parts Catalog Grammar** — `parts_catalog.json` (Starter Kit, ~10–15 valid configs). Revised 2026-06-23 (PR #13 review) for real hardware feasibility: end effectors are the actual ball-manipulation mechanisms, arm position is trimmed to the feasible mounts, and the cartridge axis carries all three VEX V5 gear cartridges:
 ```json
 {
   "motor_allocation": ["2drive+1arm+1claw", "2drive+2free", "4drive", "3drive+1manip"],
-  "arm_position":     ["front", "rear", "side", "absent"],
-  "end_effector":     ["claw_grasper", "bare_arm", "none"],
+  "arm_position":     ["front", "rear"],
+  "end_effector":     ["claw_grasper", "scoop", "flywheel"],
   "wheel_config":     ["front_omni+rear_standard"],
   "arm_gear_ratio":   ["7:1", "1:1"],
-  "cartridge":        ["200rpm"]
+  "cartridge":        ["100rpm", "200rpm", "600rpm"]
 }
 ```
+
+> The `reasoning` field is a **`dict[str, str]`** — one keyed rationale per structural choice (Gen 0) or per changed parameter (each revision); see the canonical pydantic copy in `contracts/`.
 
 ### Closed Decisions (ADR / trade-off log)
 

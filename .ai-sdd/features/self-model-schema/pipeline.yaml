@@ -1,0 +1,10 @@
+apiVersion: ai-sdd/v1
+kind: Pipeline
+metadata: { name: self-model-schema, version: 1 }
+spec:
+  semantics: enabler
+  nodes:
+    - { id: vocabulary-and-model, kind: pipeline, pipeline: ../.., stack: contracts }
+    - { id: fixtures-and-gates,   kind: pipeline, pipeline: ../.., stack: contracts }
+  edges:
+    - { from: vocabulary-and-model, to: fixtures-and-gates }

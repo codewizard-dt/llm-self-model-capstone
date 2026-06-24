@@ -1,8 +1,8 @@
 {
   "motor_allocation": ["2drive+1arm+1claw", "2drive+2free", "4drive", "3drive+1manip"],
-  "arm_position": ["front", "rear", "side", "absent"],
-  "end_effector": ["claw_grasper", "bare_arm", "none"],
+  "arm_position": ["front", "rear"],
+  "end_effector": ["claw_grasper", "scoop", "flywheel"],
   "wheel_config": ["front_omni+rear_standard"],
   "arm_gear_ratio": ["7:1", "1:1"],
-  "cartridge": ["200rpm"]
+  "cartridge": ["100rpm", "200rpm", "600rpm"]
 }
