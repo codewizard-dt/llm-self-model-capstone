@@ -20,6 +20,7 @@ floor arena with 200 mm `tag36h11` tags.
 `scene_map_node` subscribes to:
 
 - `/apriltag/detections`
+- `/tf`
 - `/vision/object_indications`
 
 It publishes:
@@ -66,6 +67,9 @@ ros2 topic echo /camera/camera_info --once | grep -E 'k:|p:'
 ros2 topic echo /apriltag/detections --once
 ros2 topic echo /tf --once
 ```
+
+`/apriltag/detections` proves detector activity and tag IDs/corners; `/tf`
+contains the camera-to-tag transform used by `scene_map_node`.
 
 4. Scene map:
 

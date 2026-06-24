@@ -185,12 +185,14 @@ The bag captures all topics simultaneously — camera frames, VEX telemetry, any
 ```
 /camera/image_raw  ──▶  image_proc  ──▶  /camera/image_rect  ──▶  apriltag_ros  ──▶  /apriltag/detections
 /camera/camera_info ──▶
+                                                                     └──────▶  /tf
 ```
 
 ### SceneMap — Workspace Coordinates
 
-`scene_map` consumes `/apriltag/detections` and the active workspace JSON map,
-then publishes `/vision/scene_map`. The default map is
+`scene_map` consumes `/tf` tag transforms and the active workspace JSON map,
+then publishes `/vision/scene_map`. `/apriltag/detections` is still recorded as
+the detector activity/ID stream. The default map is
 `config/maps/table-grab-toss-v1.json`, which follows the wiki reference in
 `wiki/knowledge/concepts/apriltag-workspace-layout.md` and
 `wiki/knowledge/sources/apriltag-larger-workspace-map.md`: a 150 cm x 200 cm

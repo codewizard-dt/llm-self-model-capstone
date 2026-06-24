@@ -55,12 +55,14 @@ class LaunchContractTests(unittest.TestCase):
 
     def test_package_declares_runtime_dependencies_and_config_install(self) -> None:
         package = ET.parse(ROOT / "package.xml").getroot()
+        depends = {node.text for node in package.findall("depend")}
         exec_depends = {node.text for node in package.findall("exec_depend")}
         setup_text = (ROOT / "setup.py").read_text()
 
         self.assertIn("apriltag_ros", exec_depends)
         self.assertIn("apriltag_msgs", exec_depends)
         self.assertIn("image_proc", exec_depends)
+        self.assertIn("tf2_msgs", depends | exec_depends)
         self.assertIn('glob("config/*.yaml")', setup_text)
         self.assertIn('glob("config/maps/*.json")', setup_text)
         self.assertIn("align_to_tag_node = vexy_ros.align_to_tag_node:main", setup_text)

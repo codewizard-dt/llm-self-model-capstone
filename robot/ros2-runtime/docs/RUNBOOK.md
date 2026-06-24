@@ -187,6 +187,7 @@ ros2 topic echo /tf --once
 ```
 
 Expected: `/camera/image_rect` runs at the camera rate. With a printed tag36h11 ID `0` visible and the physical tag size matching `config/apriltag_36h11.yaml`, `/apriltag/detections` publishes an `AprilTagDetectionArray`; `/tf` includes a transform for `tag36h11_0` when pose estimation succeeds.
+`scene_map_node` uses the `/tf` transform, not the detection array, for pose.
 
 ### 2.6 VEX bridge connected to Brain
 
@@ -261,6 +262,7 @@ the wiki-backed 150 cm x 200 cm arena with 200 mm tag36h11 tags:
 With a fixed anchor tag visible:
 
 ```bash
+ros2 topic echo /tf --once
 ros2 topic echo /vision/scene_map --once
 ```
 

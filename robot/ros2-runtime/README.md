@@ -180,7 +180,7 @@ ros2 topic hz /camera/image_raw
 | `camera` | `camera_ros` | Camera Module 3 → /camera/image_raw + /camera/camera_info |
 | `camera_rectify` | `image_proc` | /camera/image_raw + /camera/camera_info → /camera/image_rect |
 | `apriltag` | `apriltag_ros` | /camera/image_rect + /camera/camera_info → /apriltag/detections + /tf |
-| `scene_map` | `vexy_ros` | /apriltag/detections + workspace map → /vision/scene_map |
+| `scene_map` | `vexy_ros` | /tf tag poses + workspace map → /vision/scene_map |
 | `align_to_tag` | `vexy_ros` | Bounded local skill: visible tag + bridge health → /vex/cmd |
 | `vex_bridge` | `vexy_ros` | USB serial ↔ /vex/cmd + /vex/ack + /vex/telemetry + /vex/bridge_status |
 | `foxglove_bridge` | `foxglove_bridge` | WebSocket bridge at port 8765 for Foxglove Studio |
@@ -192,8 +192,8 @@ ros2 topic hz /camera/image_raw
 | `/camera/image_raw` | `sensor_msgs/Image` | pub (camera) | Raw frames at configured FPS |
 | `/camera/camera_info` | `sensor_msgs/CameraInfo` | pub (camera) | Calibration/intrinsics loaded from `camera_info_url` |
 | `/camera/image_rect` | `sensor_msgs/Image` | pub (camera_rectify) | Rectified frames from `image_proc` |
-| `/apriltag/detections` | `apriltag_msgs/AprilTagDetectionArray` | pub (apriltag) | Tag detections from rectified frames |
-| `/tf` | `tf2_msgs/TFMessage` | pub (apriltag) | Tag transforms when pose estimation succeeds |
+| `/apriltag/detections` | `apriltag_msgs/AprilTagDetectionArray` | pub (apriltag) | Tag IDs/corners from rectified frames |
+| `/tf` | `tf2_msgs/TFMessage` | pub (apriltag), sub (scene_map) | Tag transforms when pose estimation succeeds |
 | `/vision/object_indications` | `std_msgs/String` | sub (scene_map) | JSON object hints in camera-relative coordinates |
 | `/vision/scene_map` | `std_msgs/String` | pub (scene_map) | JSON robot/tag/object coordinates in the active workspace map |
 | `/align_to_tag/goal` | `std_msgs/String` | sub (align_to_tag) | JSON goal for a bounded local align run |

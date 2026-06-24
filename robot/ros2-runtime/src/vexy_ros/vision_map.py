@@ -220,6 +220,18 @@ def camera_from_apriltag_translation(
     return Pose2D(x_m=float(optical_z_m), y_m=-float(optical_x_m), yaw_rad=yaw_rad)
 
 
+def tag_id_from_frame_id(frame_id: str, *, family: str = "tag36h11") -> int | None:
+    frame = frame_id.strip().lstrip("/")
+    prefixes = (f"{family}_", "tag_")
+    for prefix in prefixes:
+        if not frame.startswith(prefix):
+            continue
+        suffix = frame.removeprefix(prefix)
+        if suffix.isdigit():
+            return int(suffix)
+    return None
+
+
 def estimate_camera_pose(
     anchors: Mapping[int, TagAnchor],
     detections: list[TagDetection2D],

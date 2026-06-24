@@ -295,6 +295,8 @@ ros2 topic echo /tf --once
 ```
 
 The default config expects tag family `36h11`, tag ID `0`, physical size `0.200` m, and frame name `tag36h11_0`.
+`/apriltag/detections` carries tag IDs/corners; `scene_map_node` uses `/tf`
+for the pose transform that anchors `/vision/scene_map`.
 
 ---
 

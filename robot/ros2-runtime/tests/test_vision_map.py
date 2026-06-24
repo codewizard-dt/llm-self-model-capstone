@@ -16,6 +16,7 @@ from vexy_ros.vision_map import (
     camera_from_apriltag_translation,
     parse_tag_anchors,
     pose_from_mapping,
+    tag_id_from_frame_id,
 )
 
 
@@ -63,6 +64,12 @@ class VisionMapTests(unittest.TestCase):
 
         self.assertEqual(pose.x_m, 1.2)
         self.assertEqual(pose.y_m, -0.25)
+
+    def test_parses_apriltag_tf_frame_id(self) -> None:
+        self.assertEqual(tag_id_from_frame_id("tag36h11_0"), 0)
+        self.assertEqual(tag_id_from_frame_id("/tag36h11_12"), 12)
+        self.assertEqual(tag_id_from_frame_id("tag_3"), 3)
+        self.assertIsNone(tag_id_from_frame_id("camera_optical_frame"))
 
     def test_parse_tag_anchors_accepts_json_map(self) -> None:
         anchors = parse_tag_anchors('{"0":{"x_m":1.0,"y_m":2.0,"yaw_rad":0.3}}')
