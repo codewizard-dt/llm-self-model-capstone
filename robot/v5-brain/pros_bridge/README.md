@@ -1,12 +1,29 @@
-# Brain Bridge Notes
+# V5 Brain Bridge
 
-This is a starter sketch for the V5 Brain side. It is intentionally conservative because the Brain is not physically here yet.
+Buildable PROS project for the V5 Brain side of the Pi/ROS serial bridge.
 
-The Pi side is ready to speak newline-delimited JSON over the V5 USB user/console serial port. Tomorrow we need to verify the exact PROS stream setup on the physical Brain.
+This bridge is intentionally conservative for the first physical ack/telemetry proof:
 
-Useful confirmed references:
+- `USE_PACKAGE:=0` monolith build, matching the proven `v5-test` workaround for this Brain.
+- COBS disabled in `initialize()` so the Pi reads raw newline-delimited JSON.
+- `heartbeat` and `stop` packets ack `state:"ok"`.
+- `drive`, `turn`, and `set_goal` packets ack `state:"rejected"` with `fault:"motion_disabled"` until motor ports and safety limits are mapped.
+- A separate telemetry task emits `type:"telemetry"` records every 500 ms so the ROS bridge can prove `/vex/telemetry` independently from `/vex/ack`.
 
-- VEX exposes a second console serial port over USB for V5 Brain console/user output.
-- PROS can interact with serial streams through file-style `stdin`, `stdout`, and related stream identifiers.
-- PROS documents `SERCTL_DISABLE_COBS`; use it when reading serial yourself instead of using `pros terminal`.
+Build from this directory:
 
+```bash
+source ../.venv/bin/activate
+pros conductor apply kernel@4.2.2 liblvgl@9.2.0 --force-apply
+pros make clean && pros make
+```
+
+The host must use the full Arm GNU embedded toolchain from the `gcc-arm-embedded`
+cask. Homebrew's `arm-none-eabi-gcc` formula is built without the standard
+newlib/libstdc++ headers and fails on PROS headers such as `<cerrno>`.
+
+Upload/run only when the V5 Brain is connected to the host running PROS:
+
+```bash
+pros upload --after run
+```

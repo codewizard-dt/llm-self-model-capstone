@@ -23,6 +23,9 @@ brew install --cask gcc-arm-embedded
 ```
 
 This installs a `.pkg` via `sudo` — run it in an interactive terminal (not a background shell).
+Do **not** substitute Homebrew's `arm-none-eabi-gcc` formula; it is built without
+the standard newlib/libstdc++ headers PROS expects and fails on headers such as
+`<cerrno>`.
 
 Verify:
 
