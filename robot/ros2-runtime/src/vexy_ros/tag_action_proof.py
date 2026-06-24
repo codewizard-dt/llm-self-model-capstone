@@ -27,6 +27,8 @@ class TagActionProof(Node):
         self.observed_tags: set[int] = set()
         self.last_telemetry: dict[str, Any] | None = None
         self.last_ack: dict[str, Any] | None = None
+        self.commands_sent = 0
+        self.last_command: dict[str, Any] | None = None
         self.seq = 24000
 
     def _on_tf(self, msg: TFMessage) -> None:
@@ -113,6 +115,8 @@ class TagActionProof(Node):
             packet["omega"] = omega
         if reason:
             packet["reason"] = reason
+        self.commands_sent += 1
+        self.last_command = dict(packet)
         self._cmd_pub.publish(String(data=json.dumps(packet, separators=(",", ":"))))
 
     def stop(self, reason: str) -> None:
@@ -184,7 +188,9 @@ def approach_tag(
     return False, "timeout", last_tag
 
 
-def visual_one_foot_scan(node: TagActionProof, args: argparse.Namespace) -> dict[str, Any]:
+def visual_one_foot_scan(
+    node: TagActionProof, args: argparse.Namespace
+) -> dict[str, Any]:
     node.spin_for(args.settle_s)
     start = reacquire_visible_tag(
         node,
@@ -196,18 +202,25 @@ def visual_one_foot_scan(node: TagActionProof, args: argparse.Namespace) -> dict
 
     summary: dict[str, Any] = {
         "proof_kind": "visual_one_foot_and_scan",
+        "closure_m": args.closure_m,
+        "min_distance_m": args.min_distance_m,
+        "scan_duration_s": args.scan_duration_s,
+        "scan_omega": args.scan_omega,
         "visible_tag": None if start is None else int(start["tag_id"]),
         "start_distance_m": None if start is None else float(start["distance_m"]),
         "target_distance_m": None,
         "post_drive_distance_m": None,
+        "distance_closed_m": None,
         "approach_reached_target": False,
         "approach_reason": "no_tag_reacquired" if start is None else None,
+        "observed_tags_after_reacquire": sorted(node.observed_tags),
+        "observed_tags_after_approach": None,
+        "observed_tags_after_scan": None,
     }
     if start is not None:
         tag_id = int(start["tag_id"])
-        target_distance_m = max(
-            args.min_distance_m, float(start["distance_m"]) - args.closure_m
-        )
+        start_distance_m = float(start["distance_m"])
+        target_distance_m = max(args.min_distance_m, start_distance_m - args.closure_m)
         reached, reason, post_tag = approach_tag(
             node,
             tag_id=tag_id,
@@ -220,14 +233,19 @@ def visual_one_foot_scan(node: TagActionProof, args: argparse.Namespace) -> dict
         )
         node.stop("approach_complete")
         post_tag = node.fresh_tag(tag_id=tag_id, max_age_s=1.0) or post_tag
+        post_distance_m = None if post_tag is None else float(post_tag["distance_m"])
         summary.update(
             {
                 "target_distance_m": target_distance_m,
-                "post_drive_distance_m": (
-                    None if post_tag is None else float(post_tag["distance_m"])
+                "post_drive_distance_m": post_distance_m,
+                "distance_closed_m": (
+                    None
+                    if post_distance_m is None
+                    else start_distance_m - post_distance_m
                 ),
                 "approach_reached_target": reached,
                 "approach_reason": reason,
+                "observed_tags_after_approach": sorted(node.observed_tags),
             }
         )
 
@@ -239,6 +257,7 @@ def visual_one_foot_scan(node: TagActionProof, args: argparse.Namespace) -> dict
     )
     node.stop("scan_complete")
     node.spin_for(args.settle_s)
+    summary["observed_tags_after_scan"] = sorted(node.observed_tags)
     return finalize_summary(node, summary)
 
 
@@ -253,12 +272,15 @@ def scan_only(node: TagActionProof, args: argparse.Namespace) -> dict[str, Any]:
     )
     node.stop("scan_complete")
     node.spin_for(args.settle_s)
+    after = sorted(node.observed_tags)
     return finalize_summary(
         node,
         {
             "proof_kind": "scan_only",
             "observed_tags_before_scan": before,
+            "observed_tags_after_scan": after,
             "scan_duration_s": args.scan_duration_s,
+            "scan_omega": args.scan_omega,
         },
     )
 
@@ -267,6 +289,8 @@ def finalize_summary(node: TagActionProof, summary: dict[str, Any]) -> dict[str,
     summary["observed_tags"] = sorted(node.observed_tags)
     summary["last_ack"] = node.last_ack
     summary["last_telemetry"] = node.last_telemetry
+    summary["commands_sent"] = getattr(node, "commands_sent", None)
+    summary["last_command"] = getattr(node, "last_command", None)
     return summary
 
 
