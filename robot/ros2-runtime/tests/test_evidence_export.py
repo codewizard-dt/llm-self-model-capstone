@@ -42,6 +42,34 @@ class EvidenceExportTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             contract_jsonl_from_bundle(bundle, validate=False)
 
+    def test_live_shape_top_level_motor_samples_are_normalized(self) -> None:
+        bundle = json.loads(FIXTURE.read_text())
+        bundle["motor_samples"] = [
+            {
+                "device": "left_drive",
+                "subsystem": "drivetrain",
+                "sample_ms": 4100,
+                "values": {
+                    "position_deg": 540.0,
+                    "velocity_rpm": 22.0,
+                    "current_amp": 1.4,
+                    "power_w": 16.8,
+                    "torque_nm": 0.5,
+                    "efficiency_pct": 70.0,
+                    "temperature_c": 35.0,
+                },
+            }
+        ]
+
+        line = contract_jsonl_from_bundle(bundle)
+        model = ContractLine.model_validate_json(line)
+
+        self.assertEqual(model.motor_samples[0].api_binding, "vexcode_python")
+        self.assertEqual(
+            model.motor_samples[0].source_api["position_deg"],
+            "left_drive.position(DEGREES)",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
