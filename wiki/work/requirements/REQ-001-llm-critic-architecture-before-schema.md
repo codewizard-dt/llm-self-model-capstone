@@ -3,7 +3,7 @@ id: REQ-001
 title: LLM and Critic Architecture Before Schema
 status: draft
 created: 2026-06-23
-updated: 2026-06-23
+updated: 2026-06-24
 owner: Grace Huang
 stakeholders:
   - codewizard-dt
@@ -31,6 +31,14 @@ This requirement must stay aligned with the current GitHub state, especially mer
 ## Current GitHub Snapshot
 
 Checked on 2026-06-23 after PR #9 merged into `main`.
+
+Update on 2026-06-24: PR #13 `self-model-schema` and PR #14
+`adapter-interfaces` are merged, so this requirement no longer has to treat F2
+and F4 as hypothetical. The architecture brief should consume
+`contracts.SelfModel`, `contracts.vocabulary`, and the `TelemetrySource` /
+`VisionSource` adapter protocols directly. PR #15 `ROS 2 align-to-tag bridge
+and tag slices` has software/docs approval; hardware proof remains a separate
+truth gate.
 
 | PR | State | Review | Author | Assignee | Alignment note |
 |---|---|---|---|---|---|
@@ -272,7 +280,7 @@ Therefore the Generator's `reasoning` field and the Critic rationales are not co
 
 ### Deliverable A: Architecture Brief
 
-Path recommendation: `operator/docs/llm_critic_architecture.md` once `operator/` exists, or a wiki work/roadmap page before then.
+Path: `operator/docs/llm_critic_architecture.md`.
 
 Must include:
 
