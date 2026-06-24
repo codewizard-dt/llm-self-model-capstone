@@ -1,0 +1,16 @@
+apiVersion: ai-sdd/v1
+kind: Pipeline
+metadata: { name: ros2-align-to-tag, version: 1 }
+spec:
+  semantics: enabler
+  nodes:
+    - { id: bridge-demux-and-faults, kind: pipeline, pipeline: ../.., stack: coprocessor }
+    - { id: camera-rectified-tags, kind: pipeline, pipeline: ../.., stack: coprocessor }
+    - { id: align-to-tag-action, kind: pipeline, pipeline: ../.., stack: coprocessor }
+    - { id: mcap-contract-export, kind: pipeline, pipeline: ../.., stack: coprocessor }
+    - { id: hardware-proof-runbook, kind: pipeline, pipeline: ../.., stack: coprocessor }
+  edges:
+    - { from: bridge-demux-and-faults, to: align-to-tag-action }
+    - { from: camera-rectified-tags, to: align-to-tag-action }
+    - { from: align-to-tag-action, to: mcap-contract-export }
+    - { from: mcap-contract-export, to: hardware-proof-runbook }

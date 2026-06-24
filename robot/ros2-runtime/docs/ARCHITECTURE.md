@@ -14,7 +14,7 @@ The original `robot/pi-runtime` was written in Python against Bookworm/picamera2
 | AprilTag localization | Hand-rolled, no calibration model | `apriltag_ros` consumes `/camera/camera_info` natively |
 | Headless visualization | SSH + custom scripts | `foxglove_bridge` → browser UI, zero local display needed |
 
-The wire protocol to the V5 Brain is intentionally unchanged (protocol version 1, newline-delimited JSON). The `vex_bridge_node.py` is a direct port of `vexy_system2` from pi-runtime so no PROS firmware changes are required.
+The wire protocol to the V5 Brain is intentionally unchanged (protocol version 1, newline-delimited JSON). The ROS bridge uses a continuous reader thread so Brain acknowledgements, streaming telemetry, and bridge faults are demultiplexed before any motion proof is interpreted.
 
 ## Two-Computer Model
 
@@ -30,7 +30,9 @@ The wire protocol to the V5 Brain is intentionally unchanged (protocol version 1
 │  └─────────────┘  └──────────────┘  │                          └─────────────────────────┘
 │         │                │          │
 │  /camera/image_raw   /vex/cmd       │
-│  /camera/camera_info /vex/telemetry │
+│  /camera/camera_info /vex/ack       │
+│                      /vex/telemetry │
+│                      /vex/bridge_status │
 │         │                │          │
 │  ┌──────┴────────────────┴────────┐ │
 │  │       ROS 2 topic graph        │ │
@@ -75,10 +77,12 @@ vex_bridge_node
     │  writes to serial @ 115200 baud
     ▼
 auto-detected V5 user serial ──USB──▶ V5 Brain
-    ◀──────────────── ack JSON
+    ◀──────────────── newline-delimited JSON
     │
     ▼
+/vex/ack (std_msgs/String)
 /vex/telemetry (std_msgs/String)
+/vex/bridge_status (std_msgs/String)
 ```
 
 ### Protocol v1 — Outbound Commands
@@ -109,6 +113,8 @@ Command-specific fields (`type == "cmd"`):
 {"v":1,"ack":1,"type":"ack","state":"ok","recv_ms":124,"battery_mv":12300,"heading_deg":0.0,"fault":null}
 ```
 
+Ack records are published on `/vex/ack`, keyed by the `ack` sequence. Telemetry/sample/event records are published on `/vex/telemetry`. Malformed JSON, unsupported protocol versions, missing acks, stale telemetry, and serial disconnects are published on `/vex/bridge_status`.
+
 ### Heartbeat
 
 `vex_bridge_node` fires a heartbeat automatically every 150 ms when no command has been sent. This keeps the V5 Brain's watchdog alive and prevents an automatic motor stop.
@@ -120,7 +126,9 @@ Command-specific fields (`type == "cmd"`):
 | `/camera/image_raw` | `sensor_msgs/Image` | `camera` | — (bag, apriltag, yolo) | 15 Hz (default) |
 | `/camera/camera_info` | `sensor_msgs/CameraInfo` | `camera` | — (bag, apriltag) | 15 Hz (default) |
 | `/vex/cmd` | `std_msgs/String` | external / LLM loop | `vex_bridge` | on-demand |
-| `/vex/telemetry` | `std_msgs/String` | `vex_bridge` | — (bag) | on-demand |
+| `/vex/ack` | `std_msgs/String` | `vex_bridge` | — (bag, controller) | heartbeat/cmd dependent |
+| `/vex/telemetry` | `std_msgs/String` | `vex_bridge` | — (bag) | Brain sample dependent |
+| `/vex/bridge_status` | `std_msgs/String` | `vex_bridge` | — (bag, controller) | fault/status dependent |
 
 ## LLM Self-Model Feedback Loop
 

@@ -2,7 +2,7 @@
 
 ROS 2 Jazzy coprocessor stack for the Raspberry Pi 5 (`vexy`). Replaces `robot/pi-runtime` (Bookworm + picamera2).
 
-**What it does:** Runs two nodes on the Pi — a camera pipeline publishing raw frames from the Camera Module 3, and a serial bridge forwarding JSON command packets to the VEX V5 Brain and relaying telemetry back. Foxglove Studio connects over WebSocket for real-time visualization, and `ros2 bag` captures sessions for the LLM feedback loop.
+**What it does:** Runs two nodes on the Pi — a camera pipeline publishing raw frames from the Camera Module 3, and a serial bridge forwarding JSON command packets to the VEX V5 Brain. The bridge publishes command acknowledgements, telemetry samples, and bridge fault/status separately so serial proof is not confused with motion proof. Foxglove Studio connects over WebSocket for real-time visualization, and `ros2 bag` captures sessions for the LLM feedback loop.
 
 ---
 
@@ -82,7 +82,8 @@ ros2 launch vexy_ros vexy.launch.py
 ```bash
 source ~/ros2_ws/install/setup.bash
 ros2 topic hz /camera/image_raw   # should show ~15 Hz (default) or ~30 Hz (configured)
-ros2 topic echo /vex/telemetry    # should show heartbeat acks from Brain
+ros2 topic echo /vex/ack --once   # should show heartbeat/command acks from Brain
+ros2 topic echo /vex/bridge_status --once  # bridge state/faults when present
 ```
 
 ---
@@ -172,7 +173,7 @@ ros2 topic hz /camera/image_raw
 | Node name | Package | Role |
 |-----------|---------|------|
 | `camera` | `camera_ros` | Camera Module 3 → /camera/image_raw |
-| `vex_bridge` | `vexy_ros` | USB serial ↔ /vex/cmd + /vex/telemetry |
+| `vex_bridge` | `vexy_ros` | USB serial ↔ /vex/cmd + /vex/ack + /vex/telemetry + /vex/bridge_status |
 | `foxglove_bridge` | `foxglove_bridge` | WebSocket bridge at port 8765 for Foxglove Studio |
 
 ### Topics
@@ -182,7 +183,9 @@ ros2 topic hz /camera/image_raw
 | `/camera/image_raw` | `sensor_msgs/Image` | pub (camera) | Raw frames at configured FPS |
 | `/camera/camera_info` | `sensor_msgs/CameraInfo` | pub (camera) | Intrinsics (uncalibrated by default) |
 | `/vex/cmd` | `std_msgs/String` | sub (vex_bridge) | JSON command packet to Brain |
-| `/vex/telemetry` | `std_msgs/String` | pub (vex_bridge) | JSON ack/state from Brain |
+| `/vex/ack` | `std_msgs/String` | pub (vex_bridge) | JSON ack from Brain, keyed by `ack` sequence |
+| `/vex/telemetry` | `std_msgs/String` | pub (vex_bridge) | JSON telemetry/sample/event records from Brain |
+| `/vex/bridge_status` | `std_msgs/String` | pub (vex_bridge) | JSON bridge status/fault records |
 
 ### Wire protocol (v1)
 
@@ -193,9 +196,21 @@ ros2 topic hz /camera/image_raw
 
 Supported `cmd` values: `stop`, `drive`, `turn`, `set_goal`
 
-**Telemetry** (`/vex/telemetry`):
+**Ack** (`/vex/ack`):
 ```json
 {"v":1,"ack":1,"type":"ack","state":"ok","recv_ms":124,"battery_mv":12300,"heading_deg":0.0,"fault":null}
+```
+
+Ack records may include state fields from the current Brain firmware. They are still command acknowledgements, not proof that a streaming telemetry topic is healthy.
+
+**Telemetry** (`/vex/telemetry`):
+```json
+{"v":1,"type":"telemetry","battery_mv":12300,"heading_deg":0.0}
+```
+
+**Bridge status** (`/vex/bridge_status`):
+```json
+{"v":1,"type":"bridge_status","state":"fault","reason":"missing_ack","seq":42,"message":"no ack received before the bridge timeout"}
 ```
 
 **Heartbeat:** `vex_bridge_node` automatically sends a heartbeat every 150 ms when no command arrives. This keeps the V5 Brain's watchdog alive and prevents an automatic motor stop. You do not need to send heartbeats from your controller.
@@ -257,7 +272,7 @@ Then open **https://app.foxglove.dev** in a browser and connect:
 | Yes (default) | `ws://vexy.local:8765` |
 | No (mDNS fails on some networks) | `ws://10.10.3.4:8765` |
 
-Useful panels: **Image** (subscribe `/camera/image_raw`), **Raw Messages** (subscribe `/vex/telemetry`), **Topic Graph**.
+Useful panels: **Image** (subscribe `/camera/image_raw`), **Raw Messages** (subscribe `/vex/ack`, `/vex/telemetry`, and `/vex/bridge_status`), **Topic Graph**.
 
 ---
 
@@ -269,8 +284,8 @@ Useful panels: **Image** (subscribe `/camera/image_raw`), **Raw Messages** (subs
 # Record everything
 ros2 bag record -a -o session_$(date +%Y%m%d_%H%M%S)
 
-# Record only camera + telemetry (smaller files)
-ros2 bag record /camera/image_raw /vex/telemetry /vex/cmd \
+# Record only camera + VEX bridge topics (smaller files)
+ros2 bag record /camera/image_raw /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status \
     -o session_$(date +%Y%m%d_%H%M%S)
 
 # Inspect a recorded bag

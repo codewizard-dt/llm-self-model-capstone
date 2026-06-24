@@ -119,21 +119,26 @@ Expected output when the full stack is running:
 /parameter_events
 /rosout
 /vex/cmd
+/vex/ack
 /vex/telemetry
+/vex/bridge_status
 ```
 
 ### Check frame rate
 
 ```bash
 ros2 topic hz /camera/image_raw
-ros2 topic hz /vex/telemetry
+ros2 topic hz /vex/ack
 ```
 
 ### Inspect live messages
 
 ```bash
-# Watch VEX telemetry (acks from Brain)
-ros2 topic echo /vex/telemetry
+# Watch VEX acks from Brain
+ros2 topic echo /vex/ack
+
+# Watch bridge status/faults
+ros2 topic echo /vex/bridge_status
 
 # Watch commands being sent (useful when another node publishes them)
 ros2 topic echo /vex/cmd
@@ -178,7 +183,7 @@ ros2 topic pub --once /vex/cmd std_msgs/String \
 - `omega`: clamped to ±0.60 rad/s
 - `ttl_ms`: clamped to 1–5000 ms
 
-The Brain will echo an ack on `/vex/telemetry`:
+The Brain will echo an ack on `/vex/ack`:
 
 ```json
 {"v":1,"ack":2,"type":"ack","state":"ok","recv_ms":124,"battery_mv":12300,"heading_deg":45.2,"fault":null}
@@ -227,7 +232,8 @@ For a simpler one-liner extraction of string topics (works without plugins):
 
 ```bash
 ros2 bag play session_20260623_143000/ &
-ros2 topic echo /vex/telemetry --no-arr > telemetry.txt
+ros2 topic echo /vex/ack --no-arr > ack.txt
+ros2 topic echo /vex/bridge_status --no-arr > bridge_status.txt
 ros2 topic echo /vex/cmd --no-arr > commands.txt
 ```
 
@@ -334,11 +340,11 @@ After connecting to `ws://vexy.local:8765`:
 2. Set **Topic** to `/camera/image_raw`.
 3. The camera stream appears live at the configured FPS.
 
-### Raw Messages panel (VEX telemetry)
+### Raw Messages panel (VEX bridge)
 
 1. Click **+** → select **Raw Messages**.
-2. Set **Topic** to `/vex/telemetry`.
-3. Each ack from the Brain is displayed as formatted JSON.
+2. Set **Topic** to `/vex/ack`, `/vex/telemetry`, or `/vex/bridge_status`.
+3. Ack, telemetry, and bridge status records are displayed as formatted JSON.
 
 ### Raw Messages panel (commands)
 

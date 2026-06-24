@@ -6,7 +6,7 @@ Nodes launched:
                   Publishes: /camera/image_raw, /camera/camera_info
   vex_bridge       — USB serial bridge to V5 Brain
                      Subscribes: /vex/cmd
-                     Publishes:  /vex/telemetry
+                     Publishes:  /vex/ack, /vex/telemetry, /vex/bridge_status
   foxglove_bridge  — WebSocket bridge for Foxglove Studio
                      Connect at: ws://<Pi-IP>:8765
 
