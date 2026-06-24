@@ -86,6 +86,22 @@ class VisionMapTests(unittest.TestCase):
         self.assertAlmostEqual(anchors[0].map_from_tag.y_m, 0.75)
         self.assertAlmostEqual(anchors[0].map_from_tag.yaw_rad, math.pi)
 
+    def test_parse_gen0_workspace_map_from_current_pr(self) -> None:
+        raw = (
+            Path(__file__).resolve().parents[1]
+            / "config"
+            / "maps"
+            / "gen0-grab-toss-v1.json"
+        ).read_text()
+
+        anchors = parse_tag_anchors(raw)
+
+        self.assertEqual(sorted(anchors), [0, 1, 2])
+        self.assertEqual(anchors[0].label, "bin")
+        self.assertAlmostEqual(anchors[0].map_from_tag.x_m, 0.813)
+        self.assertAlmostEqual(anchors[1].map_from_tag.y_m, 1.473)
+        self.assertAlmostEqual(anchors[2].map_from_tag.yaw_rad, 3 * math.pi / 2)
+
     def test_pose_json_emits_wiki_mm_fields_and_ros_meter_fields(self) -> None:
         payload = Pose2D(1.5, 0.25, math.pi / 2).to_json()
 

@@ -261,6 +261,9 @@ ros2 launch vexy_ros vexy.launch.py \
     baud_rate:=115200 \
     camera_width:=1280 camera_height:=720 camera_fps:=30 \
     camera_info_url:=file:///home/vexy/calibration/imx708_wide_1280x720.yaml
+
+# Select the Gen0 50x108 in arena map by id
+VEXY_MAP=gen0-grab-toss-v1 ros2 launch vexy_ros vexy.launch.py
 ```
 
 ### All launch arguments
@@ -275,7 +278,8 @@ ros2 launch vexy_ros vexy.launch.py \
 | `camera_frame_id` | `camera_optical_frame` | Frame ID stamped into camera messages |
 | `camera_info_url` | package config URL | Must be a URL such as `file:///...`; replace the starter file with measured calibration before tag-pose proof |
 | `apriltag_config` | package config path | YAML for tag family, ID, frame name, and physical size |
-| `workspace_map_path` | package `table-grab-toss-v1.json` | Wiki-backed 1500 x 2000 mm AprilTag workspace map |
+| `workspace_map_name` | `VEXY_MAP` or `table-grab-toss-v1` | Map id under package `config/maps`; use `gen0-grab-toss-v1` for the 50 x 108 in arena |
+| `workspace_map_path` | derived from `workspace_map_name` | Explicit workspace map JSON path; overrides `workspace_map_name` |
 | `camera_in_robot_json` | `{"x_m":0.0,"y_m":0.0,"yaw_rad":0.0}` | Measured camera pose in the robot body frame |
 
 ---

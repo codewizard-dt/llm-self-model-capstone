@@ -253,7 +253,9 @@ In Foxglove Studio (browser or desktop):
 
 The scene map turns the fixed AprilTag workspace layout into robot/object map
 coordinates. The default map is `config/maps/table-grab-toss-v1.json`, matching
-the wiki-backed 150 cm x 200 cm arena with 200 mm tag36h11 tags:
+the wiki-backed 150 cm x 200 cm arena with 200 mm tag36h11 tags. For the Gen0
+50 x 108 in arena from PR #20, launch with `VEXY_MAP=gen0-grab-toss-v1` or pass
+the installed `workspace_map_path` explicitly.
 
 - tag `0`: bin
 - tag `1`: ball staging

@@ -26,8 +26,11 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn('executable="apriltag_node"', launch_text)
         self.assertIn('("detections", "/apriltag/detections")', launch_text)
         self.assertIn('executable="scene_map_node"', launch_text)
+        self.assertIn("workspace_map_name", launch_text)
         self.assertIn("workspace_map_path", launch_text)
-        self.assertIn("table-grab-toss-v1.json", launch_text)
+        self.assertIn("VEXY_MAP", launch_text)
+        self.assertIn("table-grab-toss-v1", launch_text)
+        self.assertIn("workspace map does not exist", launch_text)
         self.assertIn("camera_in_robot_json", launch_text)
         self.assertIn('executable="align_to_tag_node"', launch_text)
 
