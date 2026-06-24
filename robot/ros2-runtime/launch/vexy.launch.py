@@ -8,6 +8,8 @@ Nodes launched:
                   Publishes: /camera/image_rect
   apriltag      — AprilTag 36h11 detector over rectified camera stream
                   Publishes: /apriltag/detections, /tf
+  scene_map     — AprilTag detections + workspace map → robot/object map coordinates
+                  Publishes: /vision/scene_map
   align_to_tag  — bounded local-control skill for visible AprilTag alignment
                   Subscribes: /align_to_tag/goal, /apriltag/detections, /vex/ack, /vex/bridge_status
                   Publishes: /vex/cmd, /align_to_tag/feedback, /align_to_tag/result
@@ -61,6 +63,8 @@ def _launch_nodes(context, *args, **kwargs):
 
     camera_frame_id = LaunchConfiguration("camera_frame_id").perform(context)
     apriltag_config = LaunchConfiguration("apriltag_config").perform(context)
+    workspace_map_path = LaunchConfiguration("workspace_map_path").perform(context)
+    camera_in_robot_json = LaunchConfiguration("camera_in_robot_json").perform(context)
 
     return [
         # ----------------------------------------------------------
@@ -110,6 +114,24 @@ def _launch_nodes(context, *args, **kwargs):
                 ("image_rect", "/camera/image_rect"),
                 ("camera_info", "/camera/camera_info"),
                 ("detections", "/apriltag/detections"),
+            ],
+        ),
+        # ----------------------------------------------------------
+        # Scene map: fixed AprilTag anchors + current detections into
+        # workspace coordinates. The default map follows
+        # wiki/knowledge/concepts/apriltag-workspace-layout.md and
+        # wiki/knowledge/sources/apriltag-larger-workspace-map.md.
+        # ----------------------------------------------------------
+        Node(
+            package="vexy_ros",
+            executable="scene_map_node",
+            name="scene_map",
+            parameters=[
+                {
+                    "workspace_map_path": workspace_map_path,
+                    "map_frame": "map",
+                    "camera_in_robot_json": camera_in_robot_json,
+                }
             ],
         ),
         # ----------------------------------------------------------
@@ -178,6 +200,17 @@ def generate_launch_description():
                     package_config,
                     TextSubstitution(text="/apriltag_36h11.yaml"),
                 ],
+            ),
+            DeclareLaunchArgument(
+                "workspace_map_path",
+                default_value=[
+                    package_config,
+                    TextSubstitution(text="/maps/table-grab-toss-v1.json"),
+                ],
+            ),
+            DeclareLaunchArgument(
+                "camera_in_robot_json",
+                default_value='{"x_m":0.0,"y_m":0.0,"yaw_rad":0.0}',
             ),
             OpaqueFunction(function=_launch_nodes),
         ]

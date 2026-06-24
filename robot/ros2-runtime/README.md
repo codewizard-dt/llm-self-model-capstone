@@ -180,6 +180,7 @@ ros2 topic hz /camera/image_raw
 | `camera` | `camera_ros` | Camera Module 3 → /camera/image_raw + /camera/camera_info |
 | `camera_rectify` | `image_proc` | /camera/image_raw + /camera/camera_info → /camera/image_rect |
 | `apriltag` | `apriltag_ros` | /camera/image_rect + /camera/camera_info → /apriltag/detections + /tf |
+| `scene_map` | `vexy_ros` | /tf tag poses + workspace map → /vision/scene_map |
 | `align_to_tag` | `vexy_ros` | Bounded local skill: visible tag + bridge health → /vex/cmd |
 | `vex_bridge` | `vexy_ros` | USB serial ↔ /vex/cmd + /vex/ack + /vex/telemetry + /vex/bridge_status |
 | `foxglove_bridge` | `foxglove_bridge` | WebSocket bridge at port 8765 for Foxglove Studio |
@@ -191,8 +192,10 @@ ros2 topic hz /camera/image_raw
 | `/camera/image_raw` | `sensor_msgs/Image` | pub (camera) | Raw frames at configured FPS |
 | `/camera/camera_info` | `sensor_msgs/CameraInfo` | pub (camera) | Calibration/intrinsics loaded from `camera_info_url` |
 | `/camera/image_rect` | `sensor_msgs/Image` | pub (camera_rectify) | Rectified frames from `image_proc` |
-| `/apriltag/detections` | `apriltag_msgs/AprilTagDetectionArray` | pub (apriltag) | Tag detections from rectified frames |
-| `/tf` | `tf2_msgs/TFMessage` | pub (apriltag) | Tag transforms when pose estimation succeeds |
+| `/apriltag/detections` | `apriltag_msgs/AprilTagDetectionArray` | pub (apriltag) | Tag IDs/corners from rectified frames |
+| `/tf` | `tf2_msgs/TFMessage` | pub (apriltag), sub (scene_map) | Tag transforms when pose estimation succeeds |
+| `/vision/object_indications` | `std_msgs/String` | sub (scene_map) | JSON object hints in camera-relative coordinates |
+| `/vision/scene_map` | `std_msgs/String` | pub (scene_map) | JSON robot/tag/object coordinates in the active workspace map |
 | `/align_to_tag/goal` | `std_msgs/String` | sub (align_to_tag) | JSON goal for a bounded local align run |
 | `/align_to_tag/cancel` | `std_msgs/String` | sub (align_to_tag) | Cancel the current align run |
 | `/align_to_tag/feedback` | `std_msgs/String` | pub (align_to_tag) | JSON feedback with tag errors, ack state, and fault state |
@@ -272,6 +275,8 @@ ros2 launch vexy_ros vexy.launch.py \
 | `camera_frame_id` | `camera_optical_frame` | Frame ID stamped into camera messages |
 | `camera_info_url` | package config URL | Must be a URL such as `file:///...`; replace the starter file with measured calibration before tag-pose proof |
 | `apriltag_config` | package config path | YAML for tag family, ID, frame name, and physical size |
+| `workspace_map_path` | package `table-grab-toss-v1.json` | Wiki-backed 1500 x 2000 mm AprilTag workspace map |
+| `camera_in_robot_json` | `{"x_m":0.0,"y_m":0.0,"yaw_rad":0.0}` | Measured camera pose in the robot body frame |
 
 ---
 
@@ -291,7 +296,7 @@ Then open **https://app.foxglove.dev** in a browser and connect:
 | Yes (default) | `ws://vexy.local:8765` |
 | No (mDNS fails on some networks) | `ws://10.10.3.4:8765` |
 
-Useful panels: **Image** (subscribe `/camera/image_raw` or `/camera/image_rect`), **Raw Messages** (subscribe `/apriltag/detections`, `/vex/ack`, `/vex/telemetry`, and `/vex/bridge_status`), **3D** (show `/tf`), **Topic Graph**.
+Useful panels: **Image** (subscribe `/camera/image_raw` or `/camera/image_rect`), **Raw Messages** (subscribe `/apriltag/detections`, `/vision/scene_map`, `/vex/ack`, `/vex/telemetry`, and `/vex/bridge_status`), **3D** (show `/tf`), **Topic Graph**.
 
 ---
 
@@ -304,7 +309,7 @@ Useful panels: **Image** (subscribe `/camera/image_raw` or `/camera/image_rect`)
 ros2 bag record -a -o session_$(date +%Y%m%d_%H%M%S)
 
 # Record only camera, tag, and VEX bridge topics (smaller files)
-ros2 bag record /camera/image_raw /camera/camera_info /camera/image_rect /apriltag/detections /tf /align_to_tag/feedback /align_to_tag/result /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status \
+ros2 bag record /camera/image_raw /camera/camera_info /camera/image_rect /apriltag/detections /tf /vision/scene_map /align_to_tag/feedback /align_to_tag/result /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status \
     -o session_$(date +%Y%m%d_%H%M%S)
 
 # Inspect a recorded bag
@@ -315,6 +320,19 @@ ros2 bag play session_20260623_143000/
 ```
 
 Bags are written to the current directory. Transfer them off the Pi via `scp` or mount a USB drive beforehand.
+
+For the semantic handoff into the self-model loop, build a proof bundle JSON
+from the bag extracts, then export one or more `ContractLine` records:
+
+```bash
+PYTHONPATH=/home/vexy/llm-self-model-capstone/contracts/src:$PYTHONPATH \
+  ros2 run vexy_ros vexy_export_contract_jsonl \
+  proof/align_to_tag_bundle.json \
+  --out proof/contract/session_$(date +%Y%m%d_%H%M%S).jsonl
+```
+
+The exporter validates against `contracts.ContractLine` when the `contracts`
+package is importable. Use `--no-validate` only for a raw diagnostic dump.
 
 ---
 

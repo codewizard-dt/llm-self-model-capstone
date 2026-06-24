@@ -70,6 +70,10 @@ image_proc rectify_node
 apriltag_ros apriltag_node
     ├─▶ /apriltag/detections    (apriltag_msgs/AprilTagDetectionArray)
     └─▶ /tf                     (tf2_msgs/TFMessage)
+          │
+          ▼
+vexy_ros scene_map_node
+    └─▶ /vision/scene_map       (std_msgs/String JSON map coordinates)
 ```
 
 The RPi libcamera fork is built from source inside the colcon workspace (`~/ros2_ws`) rather than installed via apt. This is required because the apt package (`libcamera0`) ships the upstream version, which does not include the IMX708 pipeline handler needed for Camera Module 3. `camera_ros` loads calibration through `camera_info_url`; the launch file sets libcamera frame timing with `FrameDurationLimits` because frame rate is exposed as a duration control rather than a direct `fps` parameter.
@@ -137,6 +141,8 @@ Ack records are published on `/vex/ack`, keyed by the `ack` sequence. Telemetry/
 | `/camera/image_rect` | `sensor_msgs/Image` | `camera_rectify` | `apriltag` | 15 Hz (default) |
 | `/apriltag/detections` | `apriltag_msgs/AprilTagDetectionArray` | `apriltag` | — (bag, controller) | tag dependent |
 | `/tf` | `tf2_msgs/TFMessage` | `apriltag` | — (bag, Foxglove) | tag dependent |
+| `/vision/object_indications` | `std_msgs/String` | operator / detector | `scene_map` | on-demand |
+| `/vision/scene_map` | `std_msgs/String` | `scene_map` | — (bag, operator) | tag dependent |
 | `/align_to_tag/goal` | `std_msgs/String` | operator / controller | `align_to_tag` | on-demand |
 | `/align_to_tag/cancel` | `std_msgs/String` | operator / controller | `align_to_tag` | on-demand |
 | `/align_to_tag/feedback` | `std_msgs/String` | `align_to_tag` | — (bag, Foxglove) | control-period dependent |
@@ -179,7 +185,29 @@ The bag captures all topics simultaneously — camera frames, VEX telemetry, any
 ```
 /camera/image_raw  ──▶  image_proc  ──▶  /camera/image_rect  ──▶  apriltag_ros  ──▶  /apriltag/detections
 /camera/camera_info ──▶
+                                                                     └──────▶  /tf
 ```
+
+### SceneMap — Workspace Coordinates
+
+`scene_map` consumes `/tf` tag transforms and the active workspace JSON map,
+then publishes `/vision/scene_map`. `/apriltag/detections` is still recorded as
+the detector activity/ID stream. The default map is
+`config/maps/table-grab-toss-v1.json`, which follows the wiki reference in
+`wiki/knowledge/concepts/apriltag-workspace-layout.md` and
+`wiki/knowledge/sources/apriltag-larger-workspace-map.md`: a 150 cm x 200 cm
+floor arena, 200 mm `tag36h11` tags, tag `0` at the bin, tag `1` at ball
+staging, and tag `2` at home. The published JSON carries ROS-friendly
+meter/radian values and wiki-friendly `x_mm`, `y_mm`, `heading_deg` values.
+
+The node also accepts `/vision/object_indications` for operator- or
+detector-provided untagged object hints in camera-relative coordinates. That is
+the interim interop point until YOLO/object tracking is wired into the same map
+surface.
+
+The `camera_in_robot_json` launch argument records the measured PiCam2 mount
+offset in the robot body frame, so the node can publish robot-center
+coordinates instead of only camera coordinates.
 
 ### AlignToTag — Bounded Local Control
 
@@ -199,12 +227,16 @@ robot/ros2-runtime/
 ├── setup.py / setup.cfg
 ├── config/
 │   ├── apriltag_36h11.yaml
-│   └── imx708_wide_640x480.yaml
+│   ├── imx708_wide_640x480.yaml
+│   └── maps/table-grab-toss-v1.json
 ├── launch/
 │   └── vexy.launch.py          ← main entry point
 ├── scripts/
 │   └── setup_pi.sh             ← one-time Pi setup (builds libcamera fork)
 ├── src/vexy_ros/
+│   ├── scene_map_node.py       ← AprilTag map-coordinate publisher
+│   ├── vision_map.py           ← pure map geometry helpers
+│   ├── evidence_export.py      ← proof bundle → ContractLine JSONL
 │   └── vex_bridge_node.py      ← USB serial ↔ ROS 2 bridge
 └── docs/
     ├── ARCHITECTURE.md         ← this file
