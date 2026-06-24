@@ -25,9 +25,13 @@ Usage:
   ros2 launch vexy_ros vexy.launch.py camera_width:=1280 camera_height:=720
 """
 
+from pathlib import Path
+
+from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import (
+    EnvironmentVariable,
     LaunchConfiguration,
     PathJoinSubstitution,
     TextSubstitution,
@@ -64,6 +68,26 @@ def _launch_nodes(context, *args, **kwargs):
     camera_frame_id = LaunchConfiguration("camera_frame_id").perform(context)
     apriltag_config = LaunchConfiguration("apriltag_config").perform(context)
     workspace_map_path = LaunchConfiguration("workspace_map_path").perform(context)
+    workspace_map_name = LaunchConfiguration("workspace_map_name").perform(context)
+    if not workspace_map_path:
+        if "/" in workspace_map_name or "\\" in workspace_map_name:
+            raise RuntimeError(
+                "workspace_map_name must be a map id; use workspace_map_path for paths"
+            )
+        map_filename = (
+            workspace_map_name
+            if workspace_map_name.endswith(".json")
+            else f"{workspace_map_name}.json"
+        )
+        map_path = (
+            Path(get_package_share_directory("vexy_ros"))
+            / "config"
+            / "maps"
+            / map_filename
+        )
+        if not map_path.exists():
+            raise RuntimeError(f"workspace map does not exist: {map_path}")
+        workspace_map_path = str(map_path)
     camera_in_robot_json = LaunchConfiguration("camera_in_robot_json").perform(context)
 
     return [
@@ -202,11 +226,14 @@ def generate_launch_description():
                 ],
             ),
             DeclareLaunchArgument(
+                "workspace_map_name",
+                default_value=EnvironmentVariable(
+                    "VEXY_MAP", default_value="table-grab-toss-v1"
+                ),
+            ),
+            DeclareLaunchArgument(
                 "workspace_map_path",
-                default_value=[
-                    package_config,
-                    TextSubstitution(text="/maps/table-grab-toss-v1.json"),
-                ],
+                default_value="",
             ),
             DeclareLaunchArgument(
                 "camera_in_robot_json",

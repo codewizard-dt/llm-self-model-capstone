@@ -26,8 +26,11 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn('executable="apriltag_node"', launch_text)
         self.assertIn('("detections", "/apriltag/detections")', launch_text)
         self.assertIn('executable="scene_map_node"', launch_text)
+        self.assertIn("workspace_map_name", launch_text)
         self.assertIn("workspace_map_path", launch_text)
-        self.assertIn("table-grab-toss-v1.json", launch_text)
+        self.assertIn("VEXY_MAP", launch_text)
+        self.assertIn("table-grab-toss-v1", launch_text)
+        self.assertIn("workspace map does not exist", launch_text)
         self.assertIn("camera_in_robot_json", launch_text)
         self.assertIn('executable="align_to_tag_node"', launch_text)
 
@@ -39,9 +42,16 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn("size: 0.200", config_text)
         self.assertIn("refine: true", config_text)
         self.assertIn("debug: false", config_text)
-        self.assertIn("ids: [0]", config_text)
-        self.assertIn("frames: [tag36h11_0]", config_text)
-        self.assertIn("sizes: [0.200]", config_text)
+        self.assertIn("ids: [0, 1, 2]", config_text)
+        self.assertIn("frames: [tag36h11_0, tag36h11_1, tag36h11_2]", config_text)
+        self.assertIn("sizes: [0.200, 0.200, 0.200]", config_text)
+
+    def test_align_to_tag_consumes_tf_pose_source(self) -> None:
+        node_text = (ROOT / "src" / "vexy_ros" / "align_to_tag_node.py").read_text()
+
+        self.assertIn("TFMessage", node_text)
+        self.assertIn('"/tf"', node_text)
+        self.assertIn("tag_id_from_frame_id", node_text)
 
     def test_camera_info_config_is_nonzero_and_marked_as_starter(self) -> None:
         config_text = (ROOT / "config" / "imx708_wide_640x480.yaml").read_text()
@@ -69,6 +79,9 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn("scene_map_node = vexy_ros.scene_map_node:main", setup_text)
         self.assertIn(
             "vexy_export_contract_jsonl = vexy_ros.evidence_export:main", setup_text
+        )
+        self.assertIn(
+            "vexy_tag_action_proof = vexy_ros.tag_action_proof:main", setup_text
         )
 
 

@@ -6,7 +6,7 @@ package_name = "vexy_ros"
 
 setup(
     name=package_name,
-    version="0.2.0",
+    version="0.3.0",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     data_files=[
@@ -31,6 +31,7 @@ setup(
             "align_to_tag_node = vexy_ros.align_to_tag_node:main",
             "scene_map_node = vexy_ros.scene_map_node:main",
             "vexy_export_contract_jsonl = vexy_ros.evidence_export:main",
+            "vexy_tag_action_proof = vexy_ros.tag_action_proof:main",
         ],
     },
 )

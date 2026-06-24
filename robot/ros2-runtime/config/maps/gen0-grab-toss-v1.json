@@ -1,0 +1,39 @@
+{
+  "map_id": "gen0-grab-toss-v1",
+  "map_version": "0.1",
+  "description": "50 in x 108 in floor arena (1270x2743mm); bin at south, ball on east wall, home at north",
+  "arena": {
+    "width_mm": 1270,
+    "height_mm": 2743,
+    "origin": "bottom-left",
+    "shape": "rectangle"
+  },
+  "tag_family": "tag36h11",
+  "tag_size_mm": 200,
+  "tags": [
+    {
+      "id": 0,
+      "role": "bin",
+      "description": "South wall, faces north into arena",
+      "pose": { "x_mm": 813, "y_mm": 0, "heading_deg": 90 }
+    },
+    {
+      "id": 1,
+      "role": "ball_staging",
+      "description": "East wall, faces west into arena",
+      "pose": { "x_mm": 1270, "y_mm": 1473, "heading_deg": 180 }
+    },
+    {
+      "id": 2,
+      "role": "home",
+      "description": "North wall, faces south into arena",
+      "pose": { "x_mm": 1168, "y_mm": 2743, "heading_deg": 270 }
+    }
+  ],
+  "waypoints": {
+    "home":          { "x_mm": 1050, "y_mm": 2550, "heading_deg": 270 },
+    "ball_approach": { "x_mm": 900,  "y_mm": 1473, "heading_deg": 0   },
+    "ball_pickup":   { "x_mm": 1150, "y_mm": 1473, "heading_deg": 0   },
+    "drop_point":    { "x_mm": 813,  "y_mm": 150,  "heading_deg": 270 }
+  }
+}
