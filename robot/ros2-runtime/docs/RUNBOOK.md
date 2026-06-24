@@ -233,26 +233,39 @@ ros2 topic pub --once /align_to_tag/cancel std_msgs/String '{"data":"operator_ca
 
 ### 2.8 Guarded tag approach + scan proof
 
-Only run this after 2.4 through 2.7 are green and the robot has clear floor space. Record the proof first:
+Only run this after 2.4 through 2.7 are green and the robot has clear floor space.
+Record the proof first:
 
 ```bash
-mkdir -p ~/proof/tag-approach-scan-$(date +%Y%m%d-%H%M%S)
-ros2 bag record -s mcap -o ~/proof/tag-approach-scan-$(date +%Y%m%d-%H%M%S)/mcap \
+proof=~/proof/tag-approach-scan-$(date +%Y%m%d-%H%M%S)
+mkdir -p "$proof"
+ros2 bag record -s mcap -o "$proof/mcap" \
   /tf /apriltag/detections /vision/scene_map /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status
 ```
 
-Then publish bounded commands from another sourced shell. Use fresh sequence numbers for each command and send a final `stop`:
+Then run one bounded packaged proof from another sourced shell:
 
 ```bash
-ros2 topic pub --once /vex/cmd std_msgs/String \
-  '{"data":"{\"v\":1,\"seq\":101,\"type\":\"cmd\",\"cmd\":\"drive\",\"sent_ms\":0,\"ttl_ms\":250,\"vx\":0.18,\"vy\":0.0,\"omega\":0.0}"}'
-ros2 topic pub --once /vex/cmd std_msgs/String \
-  '{"data":"{\"v\":1,\"seq\":102,\"type\":\"cmd\",\"cmd\":\"turn\",\"sent_ms\":0,\"ttl_ms\":250,\"omega\":0.45}"}'
-ros2 topic pub --once /vex/cmd std_msgs/String \
-  '{"data":"{\"v\":1,\"seq\":103,\"type\":\"cmd\",\"cmd\":\"stop\",\"sent_ms\":0,\"ttl_ms\":200,\"reason\":\"operator_stop\"}"}'
+proof=~/proof/tag-approach-scan-<timestamp-from-recording-shell>
+ros2 run vexy_ros vexy_tag_action_proof \
+  --mode visual-one-foot-scan \
+  --summary-out "$proof/summary.json"
 ```
 
-Expected: `/vex/ack` reports `state:"ok"`, `/vex/telemetry` returns zero drive velocity after the stop, and `/vision/scene_map`/`/tf` show the visible tag IDs observed during the scan.
+Expected: the summary reports `approach_reached_target: true`, `/vex/ack`
+reports `state:"ok"`, `/vex/telemetry` returns zero drive velocity after the
+stop, and `/vision/scene_map`/`/tf` show the visible tag IDs observed during the
+scan.
+
+For scan-only tag visibility checks:
+
+```bash
+proof=~/proof/tag-approach-scan-<timestamp-from-recording-shell>
+ros2 run vexy_ros vexy_tag_action_proof \
+  --mode scan-only \
+  --scan-duration-s 20 \
+  --summary-out "$proof/scan-summary.json"
+```
 
 ### 2.9 Foxglove bridge reachable
 

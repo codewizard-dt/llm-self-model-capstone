@@ -80,6 +80,9 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn(
             "vexy_export_contract_jsonl = vexy_ros.evidence_export:main", setup_text
         )
+        self.assertIn(
+            "vexy_tag_action_proof = vexy_ros.tag_action_proof:main", setup_text
+        )
 
 
 if __name__ == "__main__":

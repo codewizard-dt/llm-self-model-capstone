@@ -31,6 +31,7 @@ setup(
             "align_to_tag_node = vexy_ros.align_to_tag_node:main",
             "scene_map_node = vexy_ros.scene_map_node:main",
             "vexy_export_contract_jsonl = vexy_ros.evidence_export:main",
+            "vexy_tag_action_proof = vexy_ros.tag_action_proof:main",
         ],
     },
 )
