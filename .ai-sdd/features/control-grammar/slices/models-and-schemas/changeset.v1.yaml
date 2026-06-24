@@ -1,0 +1,86 @@
+summary: >-
+  F19 slice models-and-schemas (contracts vertical). Added
+  contracts/src/contracts/control_command.py — the pydantic v2 control-grammar
+  wire models: the ControlEnvelope base (StrictModel, extra='forbid', v:
+  Literal[1], seq ∈ [0, 2**32), sent_ms ≥ 0, ttl_ms ∈ [1, TTL_MS_MAX=1000]);
+  the closed 6-verb command bodies StopCommand / DriveCommand / TurnCommand /
+  ArmCommand / ClawCommand / FlywheelCommand (each carrying type: Literal['cmd']
+  and its own cmd discriminator + body fields with Field(ge=, le=) bounds — incl.
+  the D12 vy lock via Field(default=0.0, ge=0.0, le=0.0)); the inner ControlCommand
+  Annotated discriminated union (Field(discriminator='cmd')); HeartbeatLine
+  (envelope-only, type: Literal['heartbeat']); the outer ControlLine union
+  expressed with pydantic v2's callable Discriminator + Tag pattern (per D4 — the
+  6 command leaves share type='cmd', which collides on a flat discriminator;
+  callable + Tag routes 'cmd' → ControlCommand and 'heartbeat' → HeartbeatLine
+  with the wire shape preserved exactly, no internal wrapper visible on the
+  JSON); AckLine (StrictModel, type: Literal['ack'], state ∈ {ok, rejected,
+  stale}, fault: FaultCode | None, model_validator enforcing the D6 state/fault
+  invariant — fault is None iff state == 'ok', rejected requires non-null fault,
+  stale accepts either); the closed 8-value FaultCode StrEnum incl.
+  'not_assembled' (D7); and the module-level clamp constants MAX_LINEAR=0.35,
+  MAX_OMEGA=0.60, MAX_FLYWHEEL_RPM=3600.0, ARM_DEG_MIN=0.0, ARM_DEG_MAX=360.0,
+  TTL_MS_MAX=1000 (D10/C1 — the single source F20 will import). Extended
+  contracts/src/contracts/schema.py additively by exactly two SCHEMAS entries
+  ('control_command.json': ControlLine, 'ack_line.json': AckLine) and added a
+  TypeAdapter fallback branch in _render so the discriminated-union ControlLine
+  alias renders to JSON Schema cleanly; the existing 3 entries and their bytes
+  are unchanged. Committed the generated contracts/schemas/control_command.json
+  and contracts/schemas/ack_line.json (non-empty; type / cmd / state / fault
+  discriminators surface as JSON-Schema const + enum forms). Additively
+  re-exported the full new public surface from contracts/__init__.py
+  (ControlEnvelope, ControlLine, ControlCommand, HeartbeatLine, AckLine, all 6
+  command body classes, FaultCode, and the 6 clamp constants) — every existing
+  F1/F2/F3/F4 export is preserved verbatim. Added contracts/tests/test_control_command.py
+  (55 tests, all passing) covering every acceptance id: round-trip parse of each
+  of the 7 line shapes via TypeAdapter(ControlLine) on both Python dicts and
+  JSON strings, AckLine round-trip, discriminator failures (unknown cmd,
+  unknown type, missing cmd, missing body fields), per-command range bounds
+  incl. the D12 vy lock at both signs, envelope shape (v != 1, extras forbidden
+  on every model, seq bounds, ttl_ms bounds), ack invariants (all 5 combos),
+  bit-for-bit clamp-constant identity, the closed-set FaultCode assertion, and
+  the cross-contract demux invariant (D2 — a ContractLine fixture parses as
+  ContractLine and FAILS as ControlLine, proving the type discriminator is
+  mutually exclusive on the shared USB user-port stream). All five contracts
+  gates pass: `make sync`, `make lint`, `make schema`, `make schema-check`
+  (existing contract_line.json / self_model.json / score_contract.json
+  byte-IDENTICAL — F1/F2/F3 incl. PR #18's re-emitted self_model.json baseline
+  preserved), `make test` (129 tests pass — full F1+F2+F3+F4+F19 suite), and
+  `make validate` (existing F1/F2/F3 dispatches unchanged — validate.py was not
+  touched in this slice). Strictly additive — nothing outside the plan's `files`
+  scope was modified. Fixtures (3 jsonl files), the validate.py third dispatch
+  routing control_command_*.jsonl by `type` to ControlLine vs AckLine, and the
+  exhaustive FaultCode coverage assertion against the rejections fixture are
+  explicitly deferred to the NEXT slice (validate-fixtures-and-gates, D14);
+  contracts/Makefile and contracts/fixtures/ are untouched. F20 Brain-side PROS
+  C++ parser/clamp/ack/watchdog and F21 online control harness remain separate
+  features, out of this vertical.
+satisfies:
+  - acc-sync
+  - acc-lint
+  - acc-test-roundtrip-commands
+  - acc-test-roundtrip-heartbeat
+  - acc-test-roundtrip-ack
+  - acc-test-discriminator-unknown-cmd
+  - acc-test-discriminator-unknown-type
+  - acc-test-discriminator-missing-cmd
+  - acc-test-discriminator-missing-body-field
+  - acc-test-range-vx
+  - acc-test-vy-locked
+  - acc-test-range-omega
+  - acc-test-range-arm
+  - acc-test-range-flywheel
+  - acc-test-range-ttl
+  - acc-test-envelope-v
+  - acc-test-envelope-extras
+  - acc-test-envelope-seq
+  - acc-test-ack-ok-with-fault
+  - acc-test-ack-rejected-without-fault
+  - acc-test-ack-stale-with-fault
+  - acc-test-ack-ok-no-fault
+  - acc-test-clamp-identity
+  - acc-test-faultcode-closed
+  - acc-test-cross-contract-demux
+  - acc-schema-emit
+  - acc-schema-check
+  - acc-imports
+  - acc-no-regression

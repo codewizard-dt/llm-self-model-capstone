@@ -1,0 +1,90 @@
+items:
+  - id: acc-sync
+    verdict: pass
+    notes: "Ran `make sync` from contracts/ — exits 0; `uv sync` resolved 14 packages and reports `Checked 13 packages`."
+  - id: acc-lint
+    verdict: pass
+    notes: "Ran `make lint` from contracts/ — exits 0; `ruff check` says 'All checks passed!' and `ruff format --check` reports '21 files already formatted'."
+  - id: acc-test-roundtrip-commands
+    verdict: pass
+    notes: "Re-ran `uv run pytest tests/test_control_command.py::test_roundtrip_each_command_verb` — all 8 parametrized cases (stop, drive, turn, arm, arm+vel_rpm, claw open, claw close+grip_force_N, flywheel) pass; wire shape `{v, seq, type:'cmd', sent_ms, ttl_ms, cmd, ...body}` is asserted preserved via model_dump and also via JSON-string round-trip through `TypeAdapter(ControlLine).validate_json`."
+  - id: acc-test-roundtrip-heartbeat
+    verdict: pass
+    notes: "`test_roundtrip_heartbeat` passes; dumped payload asserted equal to `{v:1, seq:7, sent_ms:1000, ttl_ms:500, type:'heartbeat'}` with `cmd` explicitly NOT in dumped dict."
+  - id: acc-test-roundtrip-ack
+    verdict: pass
+    notes: "`test_roundtrip_ack_ok` passes; AckLine.model_validate({v:1, type:'ack', ack:42, state:'ok', recv_ms:1234}) round-trips with fault=None."
+  - id: acc-test-discriminator-unknown-cmd
+    verdict: pass
+    notes: "`test_unknown_cmd_rejected` passes. Independently probed `TypeAdapter(ControlLine).validate_python({'v':1,'seq':1,'type':'cmd','cmd':'fly','sent_ms':1,'ttl_ms':500})` — raises ValidationError. The inner cmd discriminator is closed."
+  - id: acc-test-discriminator-unknown-type
+    verdict: pass
+    notes: "`test_unknown_type_rejected` passes (type='telemetry' rejected). The outer callable-Discriminator + Tag pattern in control_command.py routes only 'cmd' → ControlCommand and 'heartbeat' → HeartbeatLine; everything else falls through to ValidationError."
+  - id: acc-test-discriminator-missing-cmd
+    verdict: pass
+    notes: "`test_missing_cmd_on_cmd_line_rejected` passes — a `type:'cmd'` line with no `cmd` key raises ValidationError from the inner discriminated union."
+  - id: acc-test-discriminator-missing-body-field
+    verdict: pass
+    notes: "Both `test_drive_missing_vx_rejected` and `test_drive_missing_omega_rejected` pass — DriveCommand requires both fields (no defaults for vx/omega in the model)."
+  - id: acc-test-range-vx
+    verdict: pass
+    notes: "`test_drive_vx_out_of_range_rejected` parametrized over [MAX_LINEAR+1e-6, -MAX_LINEAR-1e-6, 1.0, -1.0] — all 4 reject. D11 (reject not clamp) honored; `Field(ge=-MAX_LINEAR, le=MAX_LINEAR)` on DriveCommand.vx."
+  - id: acc-test-vy-locked
+    verdict: pass
+    notes: "`test_drive_vy_must_be_zero` parametrized over [0.01, -0.01, 0.1, -0.1] — all 4 reject. Independently probed vy=0.01 and vy=-0.01 directly: both raise ValidationError; vy=0.0 explicit and vy default (omitted) both accept. D12 enforced via `Field(default=0.0, ge=0.0, le=0.0)`."
+  - id: acc-test-range-omega
+    verdict: pass
+    notes: "Both `test_drive_omega_out_of_range_rejected` and `test_turn_omega_out_of_range_rejected` pass — each parametrized over [MAX_OMEGA+1e-6, -MAX_OMEGA-1e-6]; both verbs use `Field(ge=-MAX_OMEGA, le=MAX_OMEGA)`."
+  - id: acc-test-range-arm
+    verdict: pass
+    notes: "`test_arm_deg_out_of_range_rejected` parametrized over [-1e-6, 360.000001, -1.0, 361.0] — all 4 reject. ArmCommand.deg uses `Field(ge=ARM_DEG_MIN, le=ARM_DEG_MAX)`."
+  - id: acc-test-range-flywheel
+    verdict: pass
+    notes: "`test_flywheel_rpm_out_of_range_rejected` parametrized over [-0.1, 3600.1, -1.0] — all 3 reject. FlywheelCommand.rpm uses `Field(ge=0.0, le=MAX_FLYWHEEL_RPM)`."
+  - id: acc-test-range-ttl
+    verdict: pass
+    notes: "`test_ttl_ms_out_of_range_rejected` covers [0, -1, TTL_MS_MAX+1, 5000]; `test_ttl_ms_boundaries_accepted` confirms ttl_ms=1 and ttl_ms=TTL_MS_MAX=1000 are accepted. D5 envelope bound enforced."
+  - id: acc-test-envelope-v
+    verdict: pass
+    notes: "`test_v_must_be_one` checks v=2 on a cmd line, v=0 on heartbeat, and v=2 on AckLine — all raise ValidationError. `v: Literal[1] = 1` locked on every wire model (D8)."
+  - id: acc-test-envelope-extras
+    verdict: pass
+    notes: "`test_extras_forbidden_on_every_model` exercises extras on envelope-level, heartbeat, drive body, AND AckLine — all reject. `ConfigDict(extra='forbid')` set on ControlEnvelope and AckLine; StrictModel base inherited by command subclasses."
+  - id: acc-test-envelope-seq
+    verdict: pass
+    notes: "`test_seq_out_of_range_rejected` covers [-1, 2**32, 2**32+1]; `test_seq_boundaries_accepted` confirms seq=0 and seq=2**32-1 accepted. D5 enforced via `Field(ge=0, lt=2**32)`."
+  - id: acc-test-ack-ok-with-fault
+    verdict: pass
+    notes: "`test_ack_ok_with_fault_rejected` passes — AckLine(state='ok', fault='ttl_expired') raises ValidationError. The `@model_validator(mode='after')` in AckLine enforces `fault is None iff state == 'ok'`."
+  - id: acc-test-ack-rejected-without-fault
+    verdict: pass
+    notes: "`test_ack_rejected_without_fault_rejected` passes with both implicit-null (no fault key) and explicit fault=None cases — both raise ValidationError. Model validator's 'rejected requires non-null fault' branch fires."
+  - id: acc-test-ack-stale-with-fault
+    verdict: pass
+    notes: "`test_ack_stale_with_fault_accepted` passes — AckLine(state='stale', fault='ttl_expired') validates and ack.fault is FaultCode.TTL_EXPIRED. D6 — stale accepts either."
+  - id: acc-test-ack-ok-no-fault
+    verdict: pass
+    notes: "`test_ack_ok_no_fault_accepted` passes — AckLine(state='ok', fault=None) validates cleanly. Sibling case `test_ack_rejected_with_fault_accepted` also confirms rejected+fault works."
+  - id: acc-test-clamp-identity
+    verdict: pass
+    notes: "`test_clamp_constants_bit_for_bit` passes. Independently imported each from `contracts` (top-level) and confirmed: MAX_LINEAR=0.35, MAX_OMEGA=0.6, MAX_FLYWHEEL_RPM=3600.0, ARM_DEG_MIN=0.0, ARM_DEG_MAX=360.0, TTL_MS_MAX=1000 — exact values per D10/C1."
+  - id: acc-test-faultcode-closed
+    verdict: pass
+    notes: "`test_faultcode_is_closed_8_value_strenum` asserts `{m.value for m in FaultCode}` equals the documented 8-element set exactly (no extras, no omissions) and confirms StrEnum semantics (member == string-value). Includes the new D7 `not_assembled`."
+  - id: acc-test-cross-contract-demux
+    verdict: pass
+    notes: "`test_cross_contract_demux_against_contract_line` reads the first non-empty line of `contracts/fixtures/session_example.jsonl`, asserts `ContractLine.model_validate(payload)` succeeds, and asserts `TypeAdapter(ControlLine).validate_python(payload)` raises ValidationError. D2 demux invariant holds — the `type` discriminator is mutually exclusive across F1 telemetry and F19 control on the shared USB user-port stream."
+  - id: acc-schema-emit
+    verdict: pass
+    notes: "Ran `make schema` — exits 0 and produces non-empty `contracts/schemas/control_command.json` (10572 bytes, 458 lines) and `contracts/schemas/ack_line.json` (1689 bytes, 73 lines). Walked the emitted JSON Schemas: cmd-verb literals (stop/drive/turn/arm/claw/flywheel), type values ('cmd', 'heartbeat', 'ack'), claw state ('open'/'close'), ack state ('ok'/'rejected'/'stale'), and the 8-value FaultCode all surface as JSON-Schema `const` / `enum` arrays as required. Files are present and non-empty in the working tree (engine commits at slice close)."
+  - id: acc-schema-check
+    verdict: pass
+    notes: "Ran `make schema-check` — exits 0 (regen + `git diff --exit-code schemas/`). Verified directly via `git diff HEAD -- contracts/schemas/contract_line.json contracts/schemas/self_model.json contracts/schemas/score_contract.json` — empty output, confirming the 3 pre-existing schemas (incl. PR #18's re-emitted self_model.json baseline) are byte-IDENTICAL to their committed versions."
+  - id: acc-imports
+    verdict: pass
+    notes: "Ran `uv run python -c` importing every new symbol (ControlEnvelope, ControlLine, ControlCommand, HeartbeatLine, AckLine, all 6 command bodies, FaultCode, and all 6 clamp constants) PLUS every pre-existing F1/F2/F3/F4 export (ContractLine, ScoreContractLine, SelfModel, MotorApiSample, VisionBlock, PartsCatalog, MotorAllocation, EndEffector, Cartridge, ContractSource) from `contracts` — all succeed. `__all__` in __init__.py is additively extended verbatim."
+  - id: acc-no-regression
+    verdict: pass
+    notes: "Ran `make test` — 129 passed in 0.08s (full F1+F2+F3+F4+F19 suite, incl. the 55 new test_control_command.py cases). Ran `make validate` — exits 0 with `OK — all fixtures valid`. `git diff` on `contracts/src/contracts/validate.py` is empty (validate.py was not touched, as required by D14)."
+verdict: approve
+rework: []

@@ -1,0 +1,458 @@
+{
+  "$defs": {
+    "ArmCommand": {
+      "additionalProperties": false,
+      "description": "Arm verb \u2014 absolute target angle in degrees, optional vel_rpm.",
+      "properties": {
+        "cmd": {
+          "const": "arm",
+          "default": "arm",
+          "title": "Cmd",
+          "type": "string"
+        },
+        "deg": {
+          "maximum": 360.0,
+          "minimum": 0.0,
+          "title": "Deg",
+          "type": "number"
+        },
+        "sent_ms": {
+          "minimum": 0,
+          "title": "Sent Ms",
+          "type": "integer"
+        },
+        "seq": {
+          "exclusiveMaximum": 4294967296,
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "ttl_ms": {
+          "maximum": 1000,
+          "minimum": 1,
+          "title": "Ttl Ms",
+          "type": "integer"
+        },
+        "type": {
+          "const": "cmd",
+          "default": "cmd",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        },
+        "vel_rpm": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vel Rpm"
+        }
+      },
+      "required": [
+        "seq",
+        "sent_ms",
+        "ttl_ms",
+        "deg"
+      ],
+      "title": "ArmCommand",
+      "type": "object"
+    },
+    "ClawCommand": {
+      "additionalProperties": false,
+      "description": "Claw verb \u2014 open/close, optional grip force.",
+      "properties": {
+        "cmd": {
+          "const": "claw",
+          "default": "claw",
+          "title": "Cmd",
+          "type": "string"
+        },
+        "grip_force_N": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Grip Force N"
+        },
+        "sent_ms": {
+          "minimum": 0,
+          "title": "Sent Ms",
+          "type": "integer"
+        },
+        "seq": {
+          "exclusiveMaximum": 4294967296,
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "state": {
+          "enum": [
+            "open",
+            "close"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "ttl_ms": {
+          "maximum": 1000,
+          "minimum": 1,
+          "title": "Ttl Ms",
+          "type": "integer"
+        },
+        "type": {
+          "const": "cmd",
+          "default": "cmd",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "seq",
+        "sent_ms",
+        "ttl_ms",
+        "state"
+      ],
+      "title": "ClawCommand",
+      "type": "object"
+    },
+    "DriveCommand": {
+      "additionalProperties": false,
+      "description": "Drive verb \u2014 planar velocity command.\n\n`vy` is wire-locked to 0 (D12): every post-PR-#18 buildable config uses\n`front_omni+rear_standard`, so a holonomic axis is structurally inapplicable\ntoday. Keeping the field forward-compats a future holonomic kit \u2014 drop the\n`le=0` bound, no wire addition.",
+      "properties": {
+        "cmd": {
+          "const": "drive",
+          "default": "drive",
+          "title": "Cmd",
+          "type": "string"
+        },
+        "omega": {
+          "maximum": 0.6,
+          "minimum": -0.6,
+          "title": "Omega",
+          "type": "number"
+        },
+        "sent_ms": {
+          "minimum": 0,
+          "title": "Sent Ms",
+          "type": "integer"
+        },
+        "seq": {
+          "exclusiveMaximum": 4294967296,
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "ttl_ms": {
+          "maximum": 1000,
+          "minimum": 1,
+          "title": "Ttl Ms",
+          "type": "integer"
+        },
+        "type": {
+          "const": "cmd",
+          "default": "cmd",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        },
+        "vx": {
+          "maximum": 0.35,
+          "minimum": -0.35,
+          "title": "Vx",
+          "type": "number"
+        },
+        "vy": {
+          "default": 0.0,
+          "maximum": 0.0,
+          "minimum": 0.0,
+          "title": "Vy",
+          "type": "number"
+        }
+      },
+      "required": [
+        "seq",
+        "sent_ms",
+        "ttl_ms",
+        "vx",
+        "omega"
+      ],
+      "title": "DriveCommand",
+      "type": "object"
+    },
+    "FlywheelCommand": {
+      "additionalProperties": false,
+      "description": "Flywheel verb \u2014 target output-shaft RPM (non-negative).",
+      "properties": {
+        "cmd": {
+          "const": "flywheel",
+          "default": "flywheel",
+          "title": "Cmd",
+          "type": "string"
+        },
+        "rpm": {
+          "maximum": 3600.0,
+          "minimum": 0.0,
+          "title": "Rpm",
+          "type": "number"
+        },
+        "sent_ms": {
+          "minimum": 0,
+          "title": "Sent Ms",
+          "type": "integer"
+        },
+        "seq": {
+          "exclusiveMaximum": 4294967296,
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "ttl_ms": {
+          "maximum": 1000,
+          "minimum": 1,
+          "title": "Ttl Ms",
+          "type": "integer"
+        },
+        "type": {
+          "const": "cmd",
+          "default": "cmd",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "seq",
+        "sent_ms",
+        "ttl_ms",
+        "rpm"
+      ],
+      "title": "FlywheelCommand",
+      "type": "object"
+    },
+    "HeartbeatLine": {
+      "additionalProperties": false,
+      "description": "Heartbeat line \u2014 envelope-only, no `cmd` field.",
+      "properties": {
+        "sent_ms": {
+          "minimum": 0,
+          "title": "Sent Ms",
+          "type": "integer"
+        },
+        "seq": {
+          "exclusiveMaximum": 4294967296,
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "ttl_ms": {
+          "maximum": 1000,
+          "minimum": 1,
+          "title": "Ttl Ms",
+          "type": "integer"
+        },
+        "type": {
+          "const": "heartbeat",
+          "default": "heartbeat",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "seq",
+        "sent_ms",
+        "ttl_ms"
+      ],
+      "title": "HeartbeatLine",
+      "type": "object"
+    },
+    "StopCommand": {
+      "additionalProperties": false,
+      "description": "Stop verb \u2014 graceful halt with a structured reason.",
+      "properties": {
+        "cmd": {
+          "const": "stop",
+          "default": "stop",
+          "title": "Cmd",
+          "type": "string"
+        },
+        "reason": {
+          "enum": [
+            "operator_estop",
+            "operator",
+            "watchdog_self",
+            "fault"
+          ],
+          "title": "Reason",
+          "type": "string"
+        },
+        "sent_ms": {
+          "minimum": 0,
+          "title": "Sent Ms",
+          "type": "integer"
+        },
+        "seq": {
+          "exclusiveMaximum": 4294967296,
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "ttl_ms": {
+          "maximum": 1000,
+          "minimum": 1,
+          "title": "Ttl Ms",
+          "type": "integer"
+        },
+        "type": {
+          "const": "cmd",
+          "default": "cmd",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "seq",
+        "sent_ms",
+        "ttl_ms",
+        "reason"
+      ],
+      "title": "StopCommand",
+      "type": "object"
+    },
+    "TurnCommand": {
+      "additionalProperties": false,
+      "description": "Turn verb \u2014 yaw-rate command (no linear component).",
+      "properties": {
+        "cmd": {
+          "const": "turn",
+          "default": "turn",
+          "title": "Cmd",
+          "type": "string"
+        },
+        "omega": {
+          "maximum": 0.6,
+          "minimum": -0.6,
+          "title": "Omega",
+          "type": "number"
+        },
+        "sent_ms": {
+          "minimum": 0,
+          "title": "Sent Ms",
+          "type": "integer"
+        },
+        "seq": {
+          "exclusiveMaximum": 4294967296,
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "ttl_ms": {
+          "maximum": 1000,
+          "minimum": 1,
+          "title": "Ttl Ms",
+          "type": "integer"
+        },
+        "type": {
+          "const": "cmd",
+          "default": "cmd",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "seq",
+        "sent_ms",
+        "ttl_ms",
+        "omega"
+      ],
+      "title": "TurnCommand",
+      "type": "object"
+    }
+  },
+  "oneOf": [
+    {
+      "discriminator": {
+        "mapping": {
+          "arm": "#/$defs/ArmCommand",
+          "claw": "#/$defs/ClawCommand",
+          "drive": "#/$defs/DriveCommand",
+          "flywheel": "#/$defs/FlywheelCommand",
+          "stop": "#/$defs/StopCommand",
+          "turn": "#/$defs/TurnCommand"
+        },
+        "propertyName": "cmd"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/StopCommand"
+        },
+        {
+          "$ref": "#/$defs/DriveCommand"
+        },
+        {
+          "$ref": "#/$defs/TurnCommand"
+        },
+        {
+          "$ref": "#/$defs/ArmCommand"
+        },
+        {
+          "$ref": "#/$defs/ClawCommand"
+        },
+        {
+          "$ref": "#/$defs/FlywheelCommand"
+        }
+      ]
+    },
+    {
+      "$ref": "#/$defs/HeartbeatLine"
+    }
+  ]
+}

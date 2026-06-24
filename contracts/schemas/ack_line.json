@@ -1,0 +1,73 @@
+{
+  "$defs": {
+    "FaultCode": {
+      "description": "Closed receipt-fault vocabulary (D7). F20 emits; F19 ships the values.",
+      "enum": [
+        "malformed_json",
+        "unknown_command",
+        "ttl_expired",
+        "watchdog",
+        "estop_latched",
+        "out_of_range",
+        "oversized_packet",
+        "not_assembled"
+      ],
+      "title": "FaultCode",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Brain \u2192 Pi receipt for a single command seq.\n\nReceipt-only (D3): no telemetry-leaking fields. `state` is the closed set\n{ok, rejected, stale} (D6); the model validator enforces\n`fault is None iff state == \"ok\"`, `state == \"rejected\"` requires a\nnon-null fault, and `state == \"stale\"` accepts either (typical fault is\n`ttl_expired`).",
+  "properties": {
+    "ack": {
+      "exclusiveMaximum": 4294967296,
+      "minimum": 0,
+      "title": "Ack",
+      "type": "integer"
+    },
+    "fault": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/FaultCode"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "recv_ms": {
+      "minimum": 0,
+      "title": "Recv Ms",
+      "type": "integer"
+    },
+    "state": {
+      "enum": [
+        "ok",
+        "rejected",
+        "stale"
+      ],
+      "title": "State",
+      "type": "string"
+    },
+    "type": {
+      "const": "ack",
+      "default": "ack",
+      "title": "Type",
+      "type": "string"
+    },
+    "v": {
+      "const": 1,
+      "default": 1,
+      "title": "V",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "ack",
+    "state",
+    "recv_ms"
+  ],
+  "title": "AckLine",
+  "type": "object"
+}
