@@ -72,7 +72,10 @@ Default launch parameters:
 | `baud_rate` | `115200` | Do not change |
 | `camera_width` | `640` | |
 | `camera_height` | `480` | |
-| `camera_fps` | `15` | Up to 30 for IMX708 |
+| `camera_fps` | `15` | Converted to libcamera `FrameDurationLimits` |
+| `camera_frame_id` | `camera_optical_frame` | Camera optical frame stamped into messages |
+| `camera_info_url` | package config URL | Must be `file:///...`; replace starter config with measured calibration |
+| `apriltag_config` | package config path | Tag family/ID/size YAML |
 
 ### Start individual nodes
 
@@ -156,7 +159,7 @@ Expected: `vexy_ros` appears in output. If not, run `source ~/ros2_ws/install/se
 ros2 node list
 ```
 
-Expected: `/camera`, `/vex_bridge`, and `/foxglove_bridge` are all listed.
+Expected: `/camera`, `/camera_rectify`, `/apriltag`, `/align_to_tag`, `/vex_bridge`, and `/foxglove_bridge` are all listed.
 
 ### 2.4 Camera publishing
 
@@ -170,12 +173,25 @@ Also verify camera info is publishing:
 
 ```bash
 ros2 topic hz /camera/camera_info
+ros2 topic echo /camera/camera_info --once | grep -E 'k:|d:|p:'
 ```
 
-### 2.5 VEX bridge connected to Brain
+Expected: `/camera/camera_info` publishes nonzero `k` and `p` matrix values. If the matrices are zero, the calibration URL did not load and tag-pose proof is not valid.
+
+### 2.5 Rectification and AprilTag proof
 
 ```bash
-ros2 topic echo /vex/telemetry --once
+ros2 topic hz /camera/image_rect
+ros2 topic echo /apriltag/detections --once
+ros2 topic echo /tf --once
+```
+
+Expected: `/camera/image_rect` runs at the camera rate. With a printed tag36h11 ID `0` visible and the physical tag size matching `config/apriltag_36h11.yaml`, `/apriltag/detections` publishes an `AprilTagDetectionArray`; `/tf` includes a transform for `tag36h11_0` when pose estimation succeeds.
+
+### 2.6 VEX bridge connected to Brain
+
+```bash
+ros2 topic echo /vex/ack --once
 ```
 
 Expected: A JSON ack from the Brain, e.g.:
@@ -187,12 +203,34 @@ Check for heartbeat timeouts in the node log:
 
 ```bash
 ros2 node info /vex_bridge
-ros2 topic hz /vex/telemetry
+ros2 topic hz /vex/ack
+ros2 topic echo /vex/bridge_status --once
 ```
 
 Expected: ~6–7 Hz (heartbeat fires at 0.15 s interval).
 
-### 2.6 Foxglove bridge reachable
+`/vex/ack` proves the Brain is receiving heartbeats/commands. `/vex/telemetry` is reserved for streaming telemetry/sample/event records; if the current Brain firmware only emits ack records, `/vex/bridge_status` may report `no_telemetry` until telemetry streaming is added.
+
+### 2.7 AlignToTag bounded local skill
+
+Only run this with the robot on blocks or in a safe fixture after camera, tag, and `/vex/ack` proof are green.
+
+```bash
+ros2 topic echo /align_to_tag/feedback &
+ros2 topic echo /align_to_tag/result --once &
+ros2 topic pub --once /align_to_tag/goal std_msgs/String \
+  '{"data":"{\"tag_id\":0,\"target_distance_m\":0.45,\"yaw_tolerance_rad\":0.05,\"lateral_tolerance_m\":0.03,\"timeout_s\":5.0,\"max_step_ms\":150}"}'
+```
+
+Expected: feedback reports tag visibility plus yaw/lateral/distance error; result is either `success` or an explicit bounded failure such as `stale_tag`, `stale_ack`, `bridge_fault`, `timeout`, or `cancelled`. The node sends a final `stop` command on every terminal result.
+
+Cancel an active run:
+
+```bash
+ros2 topic pub --once /align_to_tag/cancel std_msgs/String '{"data":"operator_cancel"}'
+```
+
+### 2.8 Foxglove bridge reachable
 
 ```bash
 # From the Pi:
@@ -208,7 +246,7 @@ In Foxglove Studio (browser or desktop):
 1. Open `https://app.foxglove.dev`
 2. Click **Open connection** → **Foxglove WebSocket**
 3. Enter `ws://vexy.local:8765` (or `ws://<IP>:8765` if mDNS fails)
-4. Confirm topics `/camera/image_raw`, `/vex/telemetry`, etc. appear in the topic list
+4. Confirm topics `/camera/image_raw`, `/camera/image_rect`, `/apriltag/detections`, `/align_to_tag/feedback`, `/align_to_tag/result`, `/vex/ack`, `/vex/telemetry`, `/vex/bridge_status`, etc. appear in the topic list
 
 ---
 
@@ -224,7 +262,7 @@ ros2 bag record -a -o session_$(date +%Y%m%d_%H%M%S)
 Record specific topics only (smaller files):
 
 ```bash
-ros2 bag record /camera/image_raw /vex/telemetry /vex/cmd \
+ros2 bag record /camera/image_raw /camera/camera_info /camera/image_rect /apriltag/detections /tf /align_to_tag/feedback /align_to_tag/result /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status \
   -o session_$(date +%Y%m%d_%H%M%S)
 ```
 
@@ -254,9 +292,9 @@ ros2 bag record -a -o ~/bags/session_$(date +%Y%m%d_%H%M%S)
 scp -r vexy@vexy.local:~/bags/session_20260623_143012 .
 ```
 
-### Export telemetry to JSON for LLM analysis
+### Export VEX bridge topics to JSON for LLM analysis
 
-Extract `/vex/telemetry` messages to newline-delimited JSON:
+Extract `/vex/ack`, `/vex/telemetry`, and `/vex/bridge_status` messages to newline-delimited JSON:
 
 ```bash
 ros2 bag convert \
@@ -265,21 +303,21 @@ ros2 bag convert \
   --output-storage sqlite3
 
 # Then extract the string payloads:
-ros2 bag play session_20260623_143012 --topics /vex/telemetry &
-ros2 topic echo /vex/telemetry | while IFS= read -r line; do
+ros2 bag play session_20260623_143012 --topics /vex/ack /vex/telemetry /vex/bridge_status &
+ros2 topic echo /vex/ack | while IFS= read -r line; do
   echo "$line" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('data',''))"
-done > telemetry_$(date +%Y%m%d_%H%M%S).jsonl
+done > ack_$(date +%Y%m%d_%H%M%S).jsonl
 ```
 
 Simpler one-liner (plays bag and writes JSONL):
 
 ```bash
-ros2 bag play session_20260623_143012 --topics /vex/telemetry --rate 10 &
+ros2 bag play session_20260623_143012 --topics /vex/ack /vex/telemetry /vex/bridge_status --rate 10 &
 PLAY_PID=$!
-ros2 topic echo --csv /vex/telemetry > raw.csv
+ros2 topic echo --csv /vex/ack > ack_raw.csv
 kill $PLAY_PID
-# Column 2 of raw.csv is the JSON string; strip it with:
-awk -F',' 'NR>1 {gsub(/^"|"$/, "", $2); print $2}' raw.csv > telemetry.jsonl
+# Column 2 of ack_raw.csv is the JSON string; strip it with:
+awk -F',' 'NR>1 {gsub(/^"|"$/, "", $2); print $2}' ack_raw.csv > ack.jsonl
 ```
 
 ---
@@ -480,12 +518,13 @@ sudo reboot
 
 ### 4.7 Heartbeat timeout from Brain
 
-**Symptom:** `vex_bridge_node` logs `timeout: no ack from V5 Brain` repeatedly; `/vex/telemetry` stops publishing.
+**Symptom:** `/vex/bridge_status` reports `missing_ack` or `serial_disconnect`; `/vex/ack` stops publishing.
 
 **Diagnosis:**
 
 ```bash
-ros2 topic hz /vex/telemetry
+ros2 topic hz /vex/ack
+ros2 topic echo /vex/bridge_status --once
 # If rate is 0 or node is absent:
 ros2 node list | grep vex_bridge
 ```
@@ -725,8 +764,9 @@ ros2 node list
 # Camera health
 ros2 topic hz /camera/image_raw
 
-# VEX telemetry
-ros2 topic echo /vex/telemetry --once
+# VEX serial ack proof
+ros2 topic echo /vex/ack --once
+ros2 topic echo /vex/bridge_status --once
 
 # Foxglove bridge
 ros2 launch vexy_ros vexy.launch.py  # foxglove_bridge starts automatically

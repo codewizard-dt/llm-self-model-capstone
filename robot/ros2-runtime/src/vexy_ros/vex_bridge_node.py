@@ -6,7 +6,9 @@ Topics
 Subscribed:
   /vex/cmd  (std_msgs/String) — newline-delimited JSON command packet
 Published:
-  /vex/telemetry  (std_msgs/String) — JSON ack/telemetry from the Brain
+  /vex/ack  (std_msgs/String) — JSON acknowledgement from the Brain
+  /vex/telemetry  (std_msgs/String) — JSON telemetry/sample/event from the Brain
+  /vex/bridge_status  (std_msgs/String) — bridge fault/status JSON
 
 The node also publishes a heartbeat every HEARTBEAT_INTERVAL_S if no command
 arrives, keeping the Brain's watchdog alive and preventing it from issuing a
@@ -29,23 +31,15 @@ import serial
 from rclpy.node import Node
 from std_msgs.msg import String
 
-PROTOCOL_VERSION = 1
-MAX_LINEAR = 0.35
-MAX_OMEGA = 0.6
-DEFAULT_TTL_MS = 200
+from .bridge_demux import BrainStreamDemux, DemuxEvent, bridge_status
+from .bridge_protocol import (
+    BridgeProtocolError,
+    encode_packet,
+    heartbeat_packet,
+    normalize_outbound,
+)
+
 HEARTBEAT_INTERVAL_S = 0.15  # send heartbeat if idle > this many seconds
-
-
-def _now_ms() -> int:
-    return int(time.monotonic() * 1000)
-
-
-def _encode(packet: dict) -> bytes:
-    return (json.dumps(packet, separators=(",", ":"), sort_keys=True) + "\n").encode("utf-8")
-
-
-def _clamp(v: float, lo: float, hi: float) -> float:
-    return max(lo, min(hi, v))
 
 
 class VexBridgeNode(Node):
@@ -54,27 +48,69 @@ class VexBridgeNode(Node):
 
         self.declare_parameter("serial_port", "")
         self.declare_parameter("baud_rate", 115200)
-        self.declare_parameter("serial_timeout", 0.4)
+        self.declare_parameter("serial_timeout", 0.1)
+        self.declare_parameter("ack_timeout_s", 0.4)
+        self.declare_parameter("telemetry_stale_s", 2.0)
 
-        configured_port = self.get_parameter("serial_port").get_parameter_value().string_value
+        configured_port = (
+            self.get_parameter("serial_port").get_parameter_value().string_value
+        )
         port = self._resolve_serial_port(configured_port)
         baud = self.get_parameter("baud_rate").get_parameter_value().integer_value
-        timeout = self.get_parameter("serial_timeout").get_parameter_value().double_value
+        timeout = (
+            self.get_parameter("serial_timeout").get_parameter_value().double_value
+        )
+        ack_timeout_s = (
+            self.get_parameter("ack_timeout_s").get_parameter_value().double_value
+        )
+        telemetry_stale_s = (
+            self.get_parameter("telemetry_stale_s").get_parameter_value().double_value
+        )
 
         self._seq = 0
-        self._lock = threading.Lock()
+        self._write_lock = threading.Lock()
         self._last_cmd_time = time.monotonic()
+        self._stop_reader = threading.Event()
+        self._reader_thread: threading.Thread | None = None
+        self._serial: serial.Serial | None = None
+        self._demux = BrainStreamDemux(
+            ack_timeout_s=ack_timeout_s,
+            telemetry_stale_s=telemetry_stale_s,
+        )
+        self._last_status_signature: tuple[object, ...] | None = None
+        self._last_status_emit_s = 0.0
+
+        self._ack_pub = self.create_publisher(String, "/vex/ack", 10)
+        self._telem_pub = self.create_publisher(String, "/vex/telemetry", 10)
+        self._status_pub = self.create_publisher(String, "/vex/bridge_status", 10)
+        self._cmd_sub = self.create_subscription(String, "/vex/cmd", self._on_cmd, 10)
+        self._heartbeat_timer = self.create_timer(
+            HEARTBEAT_INTERVAL_S, self._maybe_heartbeat
+        )
+        self._health_timer = self.create_timer(0.1, self._check_bridge_health)
 
         try:
-            self._serial = serial.Serial(port=port, baudrate=baud, timeout=timeout, write_timeout=timeout)
+            self._serial = serial.Serial(
+                port=port, baudrate=baud, timeout=timeout, write_timeout=timeout
+            )
             self.get_logger().info(f"connected to V5 Brain on {port} @ {baud}")
+            self._publish_status(
+                bridge_status(
+                    "serial_connected",
+                    "connected to V5 Brain serial port",
+                    state="ok",
+                    port=port,
+                    baud_rate=baud,
+                )
+            )
+            self._start_reader()
         except serial.SerialException as exc:
             self.get_logger().error(f"cannot open {port}: {exc}")
-            self._serial = None
-
-        self._telem_pub = self.create_publisher(String, "/vex/telemetry", 10)
-        self._cmd_sub = self.create_subscription(String, "/vex/cmd", self._on_cmd, 10)
-        self._heartbeat_timer = self.create_timer(HEARTBEAT_INTERVAL_S, self._maybe_heartbeat)
+            self._publish_status(
+                bridge_status(
+                    "serial_unavailable", f"cannot open {port}: {exc}", port=port
+                )
+            )
 
     def _resolve_serial_port(self, configured_port: str) -> str:
         if configured_port and configured_port.lower() != "auto":
@@ -106,6 +142,9 @@ class VexBridgeNode(Node):
             packet = json.loads(msg.data)
         except json.JSONDecodeError as exc:
             self.get_logger().warn(f"bad JSON on /vex/cmd: {exc}")
+            self._publish_status(
+                bridge_status("bad_command_json", f"bad JSON on /vex/cmd: {exc}")
+            )
             return
 
         validated = self._validate(packet)
@@ -113,7 +152,7 @@ class VexBridgeNode(Node):
             return
 
         self._last_cmd_time = time.monotonic()
-        self._send_and_publish(validated)
+        self._send_packet(validated)
 
     # ------------------------------------------------------------------
     # Heartbeat timer — fires every HEARTBEAT_INTERVAL_S
@@ -122,78 +161,140 @@ class VexBridgeNode(Node):
     def _maybe_heartbeat(self) -> None:
         if time.monotonic() - self._last_cmd_time >= HEARTBEAT_INTERVAL_S:
             self._seq += 1
-            hb = {
-                "v": PROTOCOL_VERSION,
-                "seq": self._seq,
-                "type": "heartbeat",
-                "sent_ms": _now_ms(),
-                "ttl_ms": DEFAULT_TTL_MS,
-            }
-            self._send_and_publish(hb)
+            self._send_packet(heartbeat_packet(self._seq))
 
     # ------------------------------------------------------------------
     # Validate outbound packet (mirrors protocol.validate_outbound)
     # ------------------------------------------------------------------
 
     def _validate(self, packet: dict) -> dict | None:
-        if packet.get("v") != PROTOCOL_VERSION:
-            self.get_logger().warn(f"unsupported protocol version: {packet.get('v')}")
-            return None
-        if not isinstance(packet.get("seq"), int):
-            self.get_logger().warn("seq must be an integer")
-            return None
-        ptype = packet.get("type")
-        if ptype not in {"cmd", "heartbeat"}:
-            self.get_logger().warn(f"type must be cmd or heartbeat, got: {ptype!r}")
-            return None
-
-        ttl = int(packet.get("ttl_ms", DEFAULT_TTL_MS))
-        packet["ttl_ms"] = max(1, min(ttl, 5000))
-
-        if ptype == "heartbeat":
-            return packet
-
-        cmd = packet.get("cmd")
-        if cmd not in {"stop", "drive", "turn", "set_goal"}:
-            self.get_logger().warn(f"unsupported cmd: {cmd!r}")
-            return None
-
-        if cmd == "drive":
-            packet["vx"] = _clamp(float(packet.get("vx", 0.0)), -MAX_LINEAR, MAX_LINEAR)
-            packet["vy"] = _clamp(float(packet.get("vy", 0.0)), -MAX_LINEAR, MAX_LINEAR)
-            packet["omega"] = _clamp(float(packet.get("omega", 0.0)), -MAX_OMEGA, MAX_OMEGA)
-        elif cmd == "turn":
-            packet["omega"] = _clamp(float(packet.get("omega", 0.0)), -MAX_OMEGA, MAX_OMEGA)
-
-        return packet
-
-    # ------------------------------------------------------------------
-    # Serial send + publish ack
-    # ------------------------------------------------------------------
-
-    def _send_and_publish(self, packet: dict) -> None:
-        if self._serial is None:
-            return
-
         try:
-            with self._lock:
-                self._serial.write(_encode(packet))
-                self._serial.flush()
-                line = self._serial.readline()
+            return normalize_outbound(packet)
+        except (BridgeProtocolError, TypeError, ValueError) as exc:
+            self.get_logger().warn(str(exc))
+            self._publish_status(
+                bridge_status("invalid_command", str(exc), command=packet)
+            )
+            return None
 
-            if not line:
-                self.get_logger().warn("timeout: no ack from V5 Brain")
+    # ------------------------------------------------------------------
+    # Serial reader + writer
+    # ------------------------------------------------------------------
+
+    def _start_reader(self) -> None:
+        self._reader_thread = threading.Thread(
+            target=self._reader_loop, name="vex-serial-reader", daemon=True
+        )
+        self._reader_thread.start()
+
+    def _reader_loop(self) -> None:
+        while not self._stop_reader.is_set():
+            serial_obj = self._serial
+            if serial_obj is None:
+                return
+            try:
+                line = serial_obj.readline()
+            except serial.SerialException as exc:
+                self._mark_serial_fault(serial_obj, f"serial read error: {exc}")
                 return
 
-            ack = json.loads(line.decode("utf-8").strip())
-            self._telem_pub.publish(String(data=json.dumps(ack)))
+            if not line:
+                continue
 
+            for event in self._demux.consume_line(line):
+                self._publish_event(event)
+
+    def _send_packet(self, packet: dict) -> None:
+        serial_obj = self._serial
+        if serial_obj is None or not serial_obj.is_open:
+            self._publish_status(
+                bridge_status("serial_unavailable", "serial port is not open")
+            )
+            return
+
+        seq = packet.get("seq")
+        if isinstance(seq, int):
+            self._demux.register_sent(packet)
+
+        try:
+            with self._write_lock:
+                serial_obj = self._serial
+                if serial_obj is None or not serial_obj.is_open:
+                    self._publish_status(
+                        bridge_status("serial_unavailable", "serial port is not open")
+                    )
+                    if isinstance(seq, int):
+                        self._demux.forget(seq)
+                    return
+                serial_obj.write(encode_packet(packet))
+                serial_obj.flush()
         except serial.SerialException as exc:
-            self.get_logger().error(f"serial error: {exc}")
-        except json.JSONDecodeError as exc:
-            self.get_logger().warn(f"bad JSON from Brain: {exc}")
+            if isinstance(seq, int):
+                self._demux.forget(seq)
+            self._mark_serial_fault(serial_obj, f"serial write error: {exc}")
+
+    def _check_bridge_health(self) -> None:
+        for event in self._demux.check_timeouts():
+            self._publish_event(event)
+
+    def _publish_event(self, event: DemuxEvent) -> None:
+        if event.kind == "ack":
+            self._ack_pub.publish(
+                String(data=json.dumps(event.payload, sort_keys=True))
+            )
+            return
+        if event.kind == "telemetry":
+            self._telem_pub.publish(
+                String(data=json.dumps(event.payload, sort_keys=True))
+            )
+            return
+        self._publish_status(event.payload)
+
+    def _publish_status(self, payload: dict) -> None:
+        now_s = time.monotonic()
+        signature = (
+            payload.get("state"),
+            payload.get("reason"),
+            payload.get("seq"),
+            payload.get("message"),
+        )
+        if (
+            signature == self._last_status_signature
+            and now_s - self._last_status_emit_s < 1.0
+        ):
+            return
+        self._last_status_signature = signature
+        self._last_status_emit_s = now_s
+        self._status_pub.publish(String(data=json.dumps(payload, sort_keys=True)))
+
+        reason = payload.get("reason")
+        message = payload.get("message")
+        state = payload.get("state")
+        if state == "fault":
+            self.get_logger().warn(f"bridge fault: {reason}: {message}")
+        elif state == "warn":
+            self.get_logger().warn(f"bridge warning: {reason}: {message}")
+        else:
+            self.get_logger().info(f"bridge status: {reason}: {message}")
+
+    def _mark_serial_fault(
+        self, serial_obj: serial.Serial | None, message: str
+    ) -> None:
+        self.get_logger().error(message)
+        with self._write_lock:
+            if serial_obj is not None and self._serial is serial_obj:
+                self._serial = None
+        if serial_obj is not None and serial_obj.is_open:
+            try:
+                serial_obj.close()
+            except serial.SerialException:
+                pass
+        self._publish_status(bridge_status("serial_disconnect", message))
 
     def destroy_node(self) -> None:
+        self._stop_reader.set()
+        if self._reader_thread and self._reader_thread.is_alive():
+            self._reader_thread.join(timeout=1.0)
         if self._serial and self._serial.is_open:
             self._serial.close()
         super().destroy_node()

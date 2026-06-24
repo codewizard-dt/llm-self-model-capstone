@@ -116,24 +116,34 @@ Expected output when the full stack is running:
 ```
 /camera/camera_info
 /camera/image_raw
+/camera/image_rect
+/apriltag/detections
+/align_to_tag/feedback
+/align_to_tag/result
 /parameter_events
 /rosout
 /vex/cmd
+/vex/ack
 /vex/telemetry
+/vex/bridge_status
 ```
 
 ### Check frame rate
 
 ```bash
 ros2 topic hz /camera/image_raw
-ros2 topic hz /vex/telemetry
+ros2 topic hz /camera/image_rect
+ros2 topic hz /vex/ack
 ```
 
 ### Inspect live messages
 
 ```bash
-# Watch VEX telemetry (acks from Brain)
-ros2 topic echo /vex/telemetry
+# Watch VEX acks from Brain
+ros2 topic echo /vex/ack
+
+# Watch bridge status/faults
+ros2 topic echo /vex/bridge_status
 
 # Watch commands being sent (useful when another node publishes them)
 ros2 topic echo /vex/cmd
@@ -178,7 +188,7 @@ ros2 topic pub --once /vex/cmd std_msgs/String \
 - `omega`: clamped to ±0.60 rad/s
 - `ttl_ms`: clamped to 1–5000 ms
 
-The Brain will echo an ack on `/vex/telemetry`:
+The Brain will echo an ack on `/vex/ack`:
 
 ```json
 {"v":1,"ack":2,"type":"ack","state":"ok","recv_ms":124,"battery_mv":12300,"heading_deg":45.2,"fault":null}
@@ -187,6 +197,22 @@ The Brain will echo an ack on `/vex/telemetry`:
 ---
 
 ## 5. Recording a Session and Exporting for LLM Analysis
+
+### Align to a visible tag
+
+The `align_to_tag` node is a bounded local-control skill. It does not call an LLM. It refuses to start unless a current configured tag and current VEX ack are both present.
+
+```bash
+ros2 topic echo /align_to_tag/result --once &
+ros2 topic pub --once /align_to_tag/goal std_msgs/String \
+  '{"data":"{\"tag_id\":0,\"target_distance_m\":0.45,\"yaw_tolerance_rad\":0.05,\"lateral_tolerance_m\":0.03,\"timeout_s\":5.0,\"max_step_ms\":150}"}'
+```
+
+Cancel:
+
+```bash
+ros2 topic pub --once /align_to_tag/cancel std_msgs/String '{"data":"operator_cancel"}'
+```
 
 ### Record all topics
 
@@ -227,7 +253,9 @@ For a simpler one-liner extraction of string topics (works without plugins):
 
 ```bash
 ros2 bag play session_20260623_143000/ &
-ros2 topic echo /vex/telemetry --no-arr > telemetry.txt
+ros2 topic echo /vex/ack --no-arr > ack.txt
+ros2 topic echo /vex/bridge_status --no-arr > bridge_status.txt
+ros2 topic echo /align_to_tag/result --no-arr > align_result.txt
 ros2 topic echo /vex/cmd --no-arr > commands.txt
 ```
 
@@ -235,42 +263,38 @@ Combine into a structured payload and pass to the Claude API for self-model revi
 
 ---
 
-## 6. Adding apriltag_ros for Workspace Localization
+## 6. AprilTag Workspace Localization
 
-### Install
+The launch file starts `image_proc` rectification and `apriltag_ros` by default. The detector consumes `/camera/image_rect` plus `/camera/camera_info`, then publishes `/apriltag/detections` and `/tf`.
+
+Before accepting tag pose as proof, replace `config/imx708_wide_640x480.yaml` with measured Camera Module 3 calibration from `camera_calibration`.
+
+### Calibrate/load Camera Module 3
 
 ```bash
-sudo apt install -y ros-jazzy-apriltag-ros
+sudo apt install -y ros-jazzy-camera-calibration
+ros2 run camera_calibration cameracalibrator \
+  --size 8x6 --square 0.025 \
+  image:=/camera/image_raw camera:=/camera
 ```
 
-### Add to vexy.launch.py
+Save the output as a camera-info YAML and relaunch with a URL:
 
-Insert the following `Node` block into the `LaunchDescription` list in `launch/vexy.launch.py`:
-
-```python
-Node(
-    package="apriltag_ros",
-    executable="apriltag_node",
-    name="apriltag",
-    remappings=[
-        ("image_rect", "/camera/image_raw"),
-        ("camera_info", "/camera/camera_info"),
-    ],
-    parameters=[{
-        "family": "36h11",
-        "size": 0.200,  # tag physical size in metres (200 mm tags)
-    }],
-),
+```bash
+ros2 launch vexy_ros vexy.launch.py \
+  camera_info_url:=file:///home/vexy/calibration/imx708_wide_640x480.yaml
 ```
 
 ### Verify
 
 ```bash
-ros2 topic list | grep detections
-ros2 topic echo /detections
+ros2 topic hz /camera/image_rect
+ros2 topic echo /camera/camera_info --once | grep -E 'k:|p:'
+ros2 topic echo /apriltag/detections --once
+ros2 topic echo /tf --once
 ```
 
-The node publishes `apriltag_msgs/AprilTagDetectionArray` on `/detections` with calibration-aware 6-DOF poses. Tag family `36h11` matches the printed tags in `raw/research/apriltag-prints/`.
+The default config expects tag family `36h11`, tag ID `0`, physical size `0.160` m, and frame name `tag36h11_0`.
 
 ---
 
@@ -334,11 +358,11 @@ After connecting to `ws://vexy.local:8765`:
 2. Set **Topic** to `/camera/image_raw`.
 3. The camera stream appears live at the configured FPS.
 
-### Raw Messages panel (VEX telemetry)
+### Raw Messages panel (VEX bridge)
 
 1. Click **+** → select **Raw Messages**.
-2. Set **Topic** to `/vex/telemetry`.
-3. Each ack from the Brain is displayed as formatted JSON.
+2. Set **Topic** to `/vex/ack`, `/vex/telemetry`, or `/vex/bridge_status`.
+3. Ack, telemetry, and bridge status records are displayed as formatted JSON.
 
 ### Raw Messages panel (commands)
 
@@ -360,7 +384,10 @@ Click the layout name at the top → **Save layout** → give it a name (e.g. `v
 | `baud_rate` | `115200` | Serial baud rate — must match PROS firmware |
 | `camera_width` | `640` | Camera capture width in pixels |
 | `camera_height` | `480` | Camera capture height in pixels |
-| `camera_fps` | `15` | Camera frames per second |
+| `camera_fps` | `15` | Camera frames per second; launch converts this to libcamera `FrameDurationLimits` |
+| `camera_frame_id` | `camera_optical_frame` | Frame ID for camera messages |
+| `camera_info_url` | package config URL | Calibration URL; must use `file:///...` format |
+| `apriltag_config` | package config path | YAML with tag family/ID/size settings |
 
 **`vex_bridge_node` internal parameters** (set via `--ros-args -p` when running the node directly):
 
@@ -368,7 +395,9 @@ Click the layout name at the top → **Save layout** → give it a name (e.g. `v
 |---|---|---|
 | `serial_port` | `auto` | Passed through from launch arg |
 | `baud_rate` | `115200` | Passed through from launch arg |
-| `serial_timeout` | `0.4` | Serial read/write timeout in seconds |
+| `serial_timeout` | `0.1` | Serial read/write timeout in seconds |
+| `ack_timeout_s` | `0.4` | Pending command ack timeout |
+| `telemetry_stale_s` | `2.0` | Bridge status threshold for missing/stale telemetry samples |
 
 **Velocity clamp constants** (code-level, not launch parameters):
 

@@ -21,6 +21,9 @@ sudo apt-get install -y \
     libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
     libcamera-dev libyaml-dev \
     python3-rosdep python3-serial \
+    ros-jazzy-apriltag-ros \
+    ros-jazzy-camera-calibration \
+    ros-jazzy-image-proc \
     ros-jazzy-foxglove-bridge
 
 sudo usermod -aG video,render,dialout "$USER"

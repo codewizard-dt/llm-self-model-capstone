@@ -14,7 +14,7 @@ The original `robot/pi-runtime` was written in Python against Bookworm/picamera2
 | AprilTag localization | Hand-rolled, no calibration model | `apriltag_ros` consumes `/camera/camera_info` natively |
 | Headless visualization | SSH + custom scripts | `foxglove_bridge` → browser UI, zero local display needed |
 
-The wire protocol to the V5 Brain is intentionally unchanged (protocol version 1, newline-delimited JSON). The `vex_bridge_node.py` is a direct port of `vexy_system2` from pi-runtime so no PROS firmware changes are required.
+The wire protocol to the V5 Brain is intentionally unchanged (protocol version 1, newline-delimited JSON). The ROS bridge uses a continuous reader thread so Brain acknowledgements, streaming telemetry, and bridge faults are demultiplexed before any motion proof is interpreted.
 
 ## Two-Computer Model
 
@@ -30,7 +30,9 @@ The wire protocol to the V5 Brain is intentionally unchanged (protocol version 1
 │  └─────────────┘  └──────────────┘  │                          └─────────────────────────┘
 │         │                │          │
 │  /camera/image_raw   /vex/cmd       │
-│  /camera/camera_info /vex/telemetry │
+│  /camera/camera_info /vex/ack       │
+│                      /vex/telemetry │
+│                      /vex/bridge_status │
 │         │                │          │
 │  ┌──────┴────────────────┴────────┐ │
 │  │       ROS 2 topic graph        │ │
@@ -59,9 +61,18 @@ camera_ros (camera_node)    ← github.com/christianrauch/camera_ros
     │                         wraps libcamera; exposes standard ROS 2 topics
     ├─▶ /camera/image_raw       (sensor_msgs/Image,      15–30 Hz)
     └─▶ /camera/camera_info     (sensor_msgs/CameraInfo, 15–30 Hz)
+          │
+          ▼
+image_proc rectify_node
+    └─▶ /camera/image_rect      (sensor_msgs/Image,      15–30 Hz)
+          │
+          ▼
+apriltag_ros apriltag_node
+    ├─▶ /apriltag/detections    (apriltag_msgs/AprilTagDetectionArray)
+    └─▶ /tf                     (tf2_msgs/TFMessage)
 ```
 
-The RPi libcamera fork is built from source inside the colcon workspace (`~/ros2_ws`) rather than installed via apt. This is required because the apt package (`libcamera0`) ships the upstream version, which does not include the IMX708 pipeline handler needed for Camera Module 3.
+The RPi libcamera fork is built from source inside the colcon workspace (`~/ros2_ws`) rather than installed via apt. This is required because the apt package (`libcamera0`) ships the upstream version, which does not include the IMX708 pipeline handler needed for Camera Module 3. `camera_ros` loads calibration through `camera_info_url`; the launch file sets libcamera frame timing with `FrameDurationLimits` because frame rate is exposed as a duration control rather than a direct `fps` parameter.
 
 ## VEX Serial Bridge
 
@@ -75,10 +86,12 @@ vex_bridge_node
     │  writes to serial @ 115200 baud
     ▼
 auto-detected V5 user serial ──USB──▶ V5 Brain
-    ◀──────────────── ack JSON
+    ◀──────────────── newline-delimited JSON
     │
     ▼
+/vex/ack (std_msgs/String)
 /vex/telemetry (std_msgs/String)
+/vex/bridge_status (std_msgs/String)
 ```
 
 ### Protocol v1 — Outbound Commands
@@ -109,6 +122,8 @@ Command-specific fields (`type == "cmd"`):
 {"v":1,"ack":1,"type":"ack","state":"ok","recv_ms":124,"battery_mv":12300,"heading_deg":0.0,"fault":null}
 ```
 
+Ack records are published on `/vex/ack`, keyed by the `ack` sequence. Telemetry/sample/event records are published on `/vex/telemetry`. Malformed JSON, unsupported protocol versions, missing acks, stale telemetry, and serial disconnects are published on `/vex/bridge_status`.
+
 ### Heartbeat
 
 `vex_bridge_node` fires a heartbeat automatically every 150 ms when no command has been sent. This keeps the V5 Brain's watchdog alive and prevents an automatic motor stop.
@@ -119,8 +134,17 @@ Command-specific fields (`type == "cmd"`):
 |---|---|---|---|---|
 | `/camera/image_raw` | `sensor_msgs/Image` | `camera` | — (bag, apriltag, yolo) | 15 Hz (default) |
 | `/camera/camera_info` | `sensor_msgs/CameraInfo` | `camera` | — (bag, apriltag) | 15 Hz (default) |
+| `/camera/image_rect` | `sensor_msgs/Image` | `camera_rectify` | `apriltag` | 15 Hz (default) |
+| `/apriltag/detections` | `apriltag_msgs/AprilTagDetectionArray` | `apriltag` | — (bag, controller) | tag dependent |
+| `/tf` | `tf2_msgs/TFMessage` | `apriltag` | — (bag, Foxglove) | tag dependent |
+| `/align_to_tag/goal` | `std_msgs/String` | operator / controller | `align_to_tag` | on-demand |
+| `/align_to_tag/cancel` | `std_msgs/String` | operator / controller | `align_to_tag` | on-demand |
+| `/align_to_tag/feedback` | `std_msgs/String` | `align_to_tag` | — (bag, Foxglove) | control-period dependent |
+| `/align_to_tag/result` | `std_msgs/String` | `align_to_tag` | — (bag, Foxglove) | terminal |
 | `/vex/cmd` | `std_msgs/String` | external / LLM loop | `vex_bridge` | on-demand |
-| `/vex/telemetry` | `std_msgs/String` | `vex_bridge` | — (bag) | on-demand |
+| `/vex/ack` | `std_msgs/String` | `vex_bridge` | — (bag, controller) | heartbeat/cmd dependent |
+| `/vex/telemetry` | `std_msgs/String` | `vex_bridge` | — (bag) | Brain sample dependent |
+| `/vex/bridge_status` | `std_msgs/String` | `vex_bridge` | — (bag, controller) | fault/status dependent |
 
 ## LLM Self-Model Feedback Loop
 
@@ -146,16 +170,20 @@ Command-specific fields (`type == "cmd"`):
 
 The bag captures all topics simultaneously — camera frames, VEX telemetry, any additional sensor topics — providing a complete, time-synchronized ground truth for the LLM to compare against the robot's prior predictions.
 
-## Planned Additions
+## Vision Extensions
 
 ### apriltag_ros — Workspace Localization
 
-`apriltag_ros` subscribes to `/camera/image_raw` and `/camera/camera_info` and publishes calibration-aware 6-DOF tag poses. Because `camera_ros` already publishes `CameraInfo`, no extra calibration wiring is needed.
+`apriltag_ros` subscribes to `/camera/image_rect` and `/camera/camera_info` and publishes calibration-aware 6-DOF tag poses. Tag-pose proof is only valid once `/camera/camera_info` contains nonzero measured calibration values.
 
 ```
-/camera/image_raw  ──▶  apriltag_ros  ──▶  /detections  (apriltag_msgs/AprilTagDetectionArray)
+/camera/image_raw  ──▶  image_proc  ──▶  /camera/image_rect  ──▶  apriltag_ros  ──▶  /apriltag/detections
 /camera/camera_info ──▶
 ```
+
+### AlignToTag — Bounded Local Control
+
+`align_to_tag` is the first local-control skill. It consumes `/apriltag/detections`, `/vex/ack`, and `/vex/bridge_status`; publishes bounded fixed-grammar `/vex/cmd` packets; and emits JSON feedback/result topics. It sends a final `stop` command on success, cancel, timeout, stale tag, stale ack, or bridge fault. No LLM or API call is in this loop.
 
 ### yolo_ros — Object Detection
 
@@ -169,6 +197,9 @@ robot/ros2-runtime/
 ├── README.md
 ├── package.xml
 ├── setup.py / setup.cfg
+├── config/
+│   ├── apriltag_36h11.yaml
+│   └── imx708_wide_640x480.yaml
 ├── launch/
 │   └── vexy.launch.py          ← main entry point
 ├── scripts/
