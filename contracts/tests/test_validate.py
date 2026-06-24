@@ -65,7 +65,7 @@ def test_unbuildable_fixture_makes_entrypoint_exit_nonzero(tmp_path, monkeypatch
     fixtures.mkdir()
     (tmp_path / "parts_catalog.json").write_text(CATALOG_JSON.read_text())
     unbuildable = json.loads((FIXTURES_DIR / "self_model_gen0.json").read_text())["config"]
-    unbuildable["motor_allocation"] = "3drive+1manip"
+    unbuildable["motor_allocation"] = "2drive+1flywheel"
     unbuildable["end_effector"] = "flywheel"
     unbuildable["cartridge"] = "200rpm"
     _write_self_model(fixtures / "self_model_bad.json", unbuildable)

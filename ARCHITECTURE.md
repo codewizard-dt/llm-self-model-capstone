@@ -98,20 +98,17 @@ The data-collection layer. Runs two cooperating Python scripts: `vision_loop.py`
 
 The typed assembly grammar — the bounded vocabulary the LLM searches over. Defining and maintaining this is its own owned work chunk: it is `parts_catalog.json`, and every other component reads from it.
 
-**The Starter-Kit (276-7010) design vocabulary (PR #13 feasibility revision; `4drive` dropped for F3 since it leaves no motor for a manipulator). The `flywheel` end effector additionally needs an add-on 600 rpm cartridge:**
+**The Starter-Kit (276-7010) design vocabulary (post-PR-#16 narrowing — effector-encoded `motor_allocation`; single-value axes removed; `100rpm` dropped). The `flywheel` effector requires the 600 rpm cartridge; the `claw` requires the 200 rpm cartridge:**
 
 ```json
 {
-  "motor_allocation": ["2drive+1arm+1claw", "2drive+2free", "3drive+1manip"],
-  "arm_position":     ["front", "rear"],
+  "motor_allocation": ["2drive+1arm+1claw", "2drive+1arm", "2drive+1flywheel"],
   "end_effector":     ["claw_grasper", "scoop", "flywheel"],
-  "wheel_config":     ["front_omni+rear_standard"],
-  "arm_gear_ratio":   ["7:1", "1:1"],
-  "cartridge":        ["100rpm", "200rpm", "600rpm"]
+  "cartridge":        ["200rpm", "600rpm"]
 }
 ```
 
-Valid configurations: **~10–15** (96 raw slots; many mechanically invalid).
+Valid configurations: **4** (claw 1 + scoop 2 + flywheel 1) under F3's rule set — `CLAW_MOTOR_BUDGET`, `SCOOP_ALLOCATION`, `FLYWHEEL_ALLOCATION`, `FLYWHEEL_CARTRIDGE`, `CLAW_CARTRIDGE`.
 
 Generational ladder:
 
@@ -127,11 +124,10 @@ Add-ons that extend the vocabulary without replacing the base kit. Each row is a
 
 | Add-on | Cost | Vocabulary entry unlocked |
 |--------|------|--------------------------|
-| 36:1 cartridge (100 RPM) | ~$20 | `"cartridge": "100rpm"` — higher arm torque, heavier lifts |
-| 6:1 cartridge (600 RPM) | ~$20 | `"cartridge": "600rpm"` — faster intake/flywheel mechanisms |
-| 2× additional omni wheels | ~$15 | `"wheel_config": "all_omni"` |
+| 6:1 cartridge (600 RPM) | ~$20 | `"cartridge": "600rpm"` — required by the flywheel effector |
+| 2× additional omni wheels | ~$15 | Future `wheel_config` axis if reinstated |
 | HS aluminum shafts | ~$10 | Longer arm reach, multi-stage linkages |
-| 3D-printed end-effector | $3–5 | `"end_effector": "scoop_cup"` or other custom type — produces telemetry the claw cannot |
+| 3D-printed end-effector | $3–5 | New `end_effector` value — produces telemetry the claw cannot |
 
 3D-printed parts are the highest-leverage expansion: a scoop-cup end-effector is a genuine new vocabulary entry, can be iterated cheaply per generation, and produces continuous-contact telemetry vs. the claw's discrete jaw-close signal.
 

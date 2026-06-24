@@ -547,40 +547,31 @@
     <section>
       <h3>2. Robot Configuration</h3>
       <figure class="diagram">
-        <pre>parts_catalog.json  ─── the LLM's design vocabulary
+        <pre>parts_catalog.json  ─── the LLM's design vocabulary (post-PR-#16 narrowing)
         │
-        ├── motor_allocation
-        │     ├── 2drive+1arm+1claw  ← Gen 0 (Clawbot)
-        │     ├── 2drive+2free
-        │     └── 3drive+1manip
-        │
-        ├── arm_position
-        │     ├── front  ← Gen 0
-        │     └── rear
+        ├── motor_allocation                          ← effector-encoded
+        │     ├── 2drive+1arm+1claw  ← claw build (Gen 0)
+        │     ├── 2drive+1arm        ← scoop build (passive scoop)
+        │     └── 2drive+1flywheel   ← flywheel build
         │
         ├── end_effector
         │     ├── claw_grasper  ← Gen 0
         │     ├── scoop
-        │     └── flywheel  ← needs 600rpm cartridge
-        │
-        ├── wheel_config
-        │     └── front_omni+rear_standard  ← only valid with base kit
-        │
-        ├── arm_gear_ratio
-        │     ├── 7:1  ← Gen 0
-        │     └── 1:1
+        │     └── flywheel      ← needs 600rpm cartridge (R3)
         │
         └── cartridge
-              ├── 200rpm  ← base kit
-              ├── 100rpm  ← +$20 add-on
-              └── 600rpm  ← +$20 add-on
+              ├── 200rpm  ← base kit (claw is pinned here, R4)
+              └── 600rpm  ← +$20 add-on (flywheel is pinned here)
+
+# Single-value axes removed from the config (no real design choice):
+#   arm_position = rear, arm_gear_ratio = 7:1, wheel_config = front_omni+rear_standard
 
 Gen 0 telemetry gaps  ──►  LLM proposes mutation  ──►  Gen 1 config
                                                         (different from Gen 0)</pre>
       </figure>
-      <p>The vocabulary yields 60 valid configurations under F3's valid-config rules. That count is small enough to
-        sample meaningfully across a handful of generations and large enough to produce behavioral differences worth
-        measuring.</p>
+      <p>The vocabulary yields 4 valid configurations under F3's rule set (claw 1 + scoop 2 + flywheel 1). The
+        post-PR-#16 narrowing trades raw search size for accuracy — every config now corresponds to a build the
+        Starter Kit can actually produce.</p>
     </section>
 
     <section>

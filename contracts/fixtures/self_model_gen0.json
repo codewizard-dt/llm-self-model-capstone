@@ -4,10 +4,7 @@
   "parent_generation": null,
   "config": {
     "motor_allocation": "2drive+1arm+1claw",
-    "arm_position": "front",
     "end_effector": "claw_grasper",
-    "wheel_config": "front_omni+rear_standard",
-    "arm_gear_ratio": "7:1",
     "cartridge": "200rpm"
   },
   "structural": {
@@ -35,10 +32,9 @@
     "grab": { "force_error_N": -3.4, "duration_error_s": 0.2 }
   },
   "reasoning": {
-    "motor_allocation": "2drive+1arm+1claw pairs a front_omni+rear_standard drivetrain with a single arm+claw manipulator for grab and pull primitives.",
+    "motor_allocation": "2drive+1arm+1claw dedicates two motors to the drivetrain and two to the arm+claw manipulator for grab and pull primitives.",
     "end_effector": "claw_grasper chosen to grasp game objects (balls).",
-    "arm_gear_ratio": "7:1 on the arm trades speed for the torque needed to lift and grasp.",
-    "cartridge": "200rpm balances drivetrain speed against torque for this build.",
+    "cartridge": "200rpm trades drivetrain speed for the torque the claw needs to lift and grasp (R4 pins claw to 200rpm).",
     "capability": "reach_mm/max_grip_force_N/max_pull_force_N/com_height_mm are research-grounded starting figures for a VEX-class build at this gearing.",
     "predictive.grab": "Starting grasp prediction (grip_force_N 14.7, duration_s 1.2) to be corrected by Replay/Synthetic telemetry."
   }

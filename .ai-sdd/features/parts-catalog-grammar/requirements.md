@@ -91,3 +91,25 @@ Runnable from `contracts/` (or root, which delegates):
 | D13 | Design space size (was O-A d / C3) | **60 valid configs** (claw 12 + scoop 36 + flywheel 12). MASTER's stale "~10–15" reconciled to 60 in `s0`. Asserted by the enumeration test. | `closed` |
 
 > All decisions were settled with the maintainer across the briefing turns (O-A…O-E → D6–D13); the `s0` vocabulary amendment is already committed. This requirements draft awaits explicit approval before slices + `pipeline.yaml` are emitted (planning gate).
+
+---
+
+## Post-merge review (2026-06-24, PR #16)
+
+After PR #16 merged, codewizard-dt left 8 inline comments narrowing the grammar to what the V5 Starter Kit can actually build. D1–D13 above are preserved as the planning history that produced the merged shape; the **current** grammar is the narrowed one below. Branch: `parts-catalog-grammar-fixes`.
+
+**Changes:**
+
+- **D6 (4drive removal) preserved.** `MotorAllocation` is now **effector-encoded**: `["2drive+1arm+1claw", "2drive+1arm", "2drive+1flywheel"]`. `2drive+2free` and `3drive+1manip` are gone — each effector now has its own concrete allocation. (Replaces D7's framing: the rule is still claw ⇒ `2drive+1arm+1claw`, but scoop and flywheel each get their own identity rule rather than being permitted on all three allocations.)
+- **`arm_position`, `arm_gear_ratio`, `wheel_config` removed** from `SelfModelConfig` and `PartsCatalog`. Each is single-valued in reality (arm rear, gear 7:1 fixed mechanical, wheel front_omni+rear_standard) and no longer carries a design choice. Breaking change to F2's frozen `self_model.json` schema — accepted by maintainer since the original PR was already amending F2's vocabulary (4drive removal).
+- **`cartridge` drops `100rpm`** (not in inventory). New value set: `["200rpm", "600rpm"]`.
+- **Rule set grew** to five rules with per-effector stable codes:
+  - R1 `CLAW_MOTOR_BUDGET` (claw ⇒ `2drive+1arm+1claw`) — unchanged.
+  - R1b `SCOOP_ALLOCATION` (scoop ⇒ `2drive+1arm`) — new.
+  - R1c `FLYWHEEL_ALLOCATION` (flywheel ⇒ `2drive+1flywheel`) — new.
+  - R3 `FLYWHEEL_CARTRIDGE` (flywheel ⇒ `600rpm`) — unchanged.
+  - R4 `CLAW_CARTRIDGE` (claw ⇒ `200rpm`) — new; reverses D8's forward-only stance for the claw specifically.
+  - R2 retired as a positive rule (effector↔allocation identity makes it redundant).
+- **Design space: 4 configs** (claw 1 + scoop 2 + flywheel 1). Supersedes D13's 60.
+
+Fixtures, schemas, and docs reconciled in the same branch.
