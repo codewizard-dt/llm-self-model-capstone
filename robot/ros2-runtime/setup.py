@@ -35,6 +35,7 @@ setup(
             "object_indication_node = vexy_ros.object_indication_node:main",
             "task_plan_node = vexy_ros.task_plan_node:main",
             "survey_scan_node = vexy_ros.survey_scan_node:main",
+            "vexy_operator_node = vexy_ros.operator.node:main",
             "vexy_export_contract_jsonl = vexy_ros.evidence_export:main",
             "vexy_tag_action_proof = vexy_ros.tag_action_proof:main",
             "vexy_deliver_ball = vexy_ros.deliver_ball:main",

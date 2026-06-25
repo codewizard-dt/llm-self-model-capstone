@@ -110,6 +110,7 @@ class LaunchContractTests(unittest.TestCase):
         )
         self.assertIn("task_plan_node = vexy_ros.task_plan_node:main", setup_text)
         self.assertIn("survey_scan_node = vexy_ros.survey_scan_node:main", setup_text)
+        self.assertIn("vexy_operator_node = vexy_ros.operator.node:main", setup_text)
         self.assertIn(
             "vexy_export_contract_jsonl = vexy_ros.evidence_export:main", setup_text
         )
