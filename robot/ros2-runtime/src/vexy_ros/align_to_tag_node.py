@@ -174,6 +174,8 @@ class AlignToTagNode(Node):
         }
         if command.cmd == "drive":
             packet.update({"vx": command.vx, "vy": command.vy, "omega": command.omega})
+        if command.cmd == "turn":
+            packet["omega"] = command.omega
         if command.reason:
             packet["reason"] = command.reason
         self._cmd_pub.publish(

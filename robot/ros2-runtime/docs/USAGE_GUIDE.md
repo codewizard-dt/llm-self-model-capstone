@@ -226,6 +226,17 @@ ros2 topic pub --once /align_to_tag/goal std_msgs/String \
   '{"data":"{\"tag_id\":0,\"target_distance_m\":0.45,\"yaw_tolerance_rad\":0.05,\"lateral_tolerance_m\":0.03,\"timeout_s\":5.0,\"max_step_ms\":150}"}'
 ```
 
+For the current claw-to-AprilTag-1 center proof, the measured contact standoff
+is `0.67 m` with `camera_in_robot_json={"x_m":0.12,"y_m":0.0,"yaw_rad":0.0}`.
+Use the tank-drive centering parameters so the robot turns to center the tag
+before driving:
+
+```bash
+ros2 topic echo /align_to_tag/result --once &
+ros2 topic pub --once /align_to_tag/goal std_msgs/String \
+  '{"data":"{\"tag_id\":1,\"target_distance_m\":0.67,\"yaw_tolerance_rad\":0.035,\"lateral_tolerance_m\":0.025,\"distance_tolerance_m\":0.02,\"timeout_s\":16.0,\"max_step_ms\":150,\"max_vx\":0.08,\"min_vx\":0.08,\"max_omega\":0.60,\"min_turn_omega\":0.45,\"ack_stale_s\":1.0}"}'
+```
+
 Cancel:
 
 ```bash
