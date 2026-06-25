@@ -13,6 +13,7 @@ sources:
   - ../../../raw/research/vex-order-2026-06-25/index.md
   - ../../../raw/research/home-depot-inventory-2026-06-25/index.md
   - ../../../raw/research/flywheel-arm-retrofit/index.md
+  - ../../../raw/research/vex-smart-motor-hs-shaft-flywheel/index.md
 tags: [tool, hardware, vex, platform, robotics]
 ---
 
@@ -131,6 +132,12 @@ Structural companion to the Launch-Disc section above. **The Starter Kit's stand
 All screws, standoffs, keps/nylock nuts are in the Starter Kit. Motor mounts directly to C-channel with 4× standard #8-32 screws; no special motor bracket needed. Backplate = any existing steel plate from kit.
 
 derived_from::[[vex-flywheel-structure-parts]]
+
+### Smart Motor + Compression Wheel Fit Correction — 2026-06-25
+
+derived_from::[[vex-smart-motor-hs-shaft-flywheel]] clarifies the fit issue for the current foam golf ball launcher. The V5 Smart Motor socket accepts both standard 1/8 in shafts and 1/4 in High Strength shafts, so the motor can drive either. The conflict is structural: a 1/4 in HS shaft cannot pass through normal VEX steel plate holes without a 5/16 in / 8 mm clearance hole or a no-drill HS bearing sandwich where the shaft stays between the plates.
+
+The ordered 276-8882 2 in, 60A compression wheel kit includes adapters for both paths: 1/4 in square-bore VersaHex adapters and 1/2 in hex to 1/8 in square adapters. For the foam golf ball prototype, the first build should therefore use the **1/8 in standard shaft path** through unmodified VEX plate holes. The HS shaft path is a fallback if the 1/8 in shaft flexes or slips.
 
 ## Known Physical Inventory — 2026-06-25 Order
 

@@ -8,6 +8,7 @@ sources:
   - ../../raw/research/vex-order-2026-06-25/index.md
   - ../../raw/research/flywheel-arm-retrofit/index.md
   - ../../raw/research/flywheel-plate-recut-plan/index.md
+  - ../../raw/research/vex-smart-motor-hs-shaft-flywheel/index.md
 tags: [vex-v5, flywheel, disc-launcher, mechanism, morphology, task-primitive]
 ---
 
@@ -45,6 +46,12 @@ See relates_to::[[vex-v5-motor-cartridges]] for full cartridge comparison.
 | 5 | **276-8794** | V5 Flywheel Weight 2-pack | RPM stability between shots | Optional |
 
 **Note:** 2" flex wheels (217-6354) avoid the VersaHub requirement, simplifying the assembly — the wheel mounts directly at the motor output shaft via two VersaHex adapters only.
+
+### Foam Golf Ball Prototype — 2026-06-25 Correction
+
+derived_from::[[vex-smart-motor-hs-shaft-flywheel]] corrects the immediate build path for the now-selected foam golf ball. The V5 Smart Motor socket accepts both 1/8 in standard shafts and 1/4 in High Strength shafts, so the motor is not the fit problem. The problem is that a 1/4 in HS shaft does **not** pass through normal VEX steel plate holes unless a 5/16 in / 8 mm clearance hole is drilled or notched.
+
+For the foam golf ball prototype, use the **standard 1/8 in shaft path first**: motor outside the blue VEX plate, 1/8 in shaft through the normal plate hole into the motor socket, and the 2 in compression wheel mounted with the 276-8882 kit's 1/2 in hex to 1/8 in square adapters. Start the wheel-rim-to-backplate gap at **37 mm**, adjustable from **34-39 mm** for a golf-ball-sized foam ball. Switch to the HS shaft path only if the 1/8 in shaft visibly bends, slips, or wobbles.
 
 ## Task Telemetry for `launch_disc`
 
@@ -142,7 +149,11 @@ derived_from::[[flywheel-arm-retrofit]] adds a variant for the case where the Cl
 
 The important constraint is that the old arm motor is only an actuator, not a structural lock. If it is unplugged or removed, the arm must be braced with structural metal before the flywheel cassette is attached. This preserves the same flywheel principles already documented here — 600 RPM cartridge, two-sided shaft support, and rigid plate spacing — while changing the mounting interface from "arm C-channels become the frame" to "fixed arm carries a removable cassette."
 
-![Fixed-arm 5x10 flywheel side layout](assets/fixed-arm-flywheel-5x10-side-layout.svg)
+The next review-round drawing uses a revised layout: Home Depot steel straps extend the arm forward, and VEX plates form a blue launcher box at the front of those extensions. For the racquetball, the blue plate inside spacing target is 65 mm and the wheel-rim-to-backplate starting gap is 51 mm. This keeps the red straps out of the ball path and gives the blue VEX plates the motor-mounting role.
+
+![Flywheel arm-extension side layout](assets/flywheel-arm-extension-side-layout.svg)
+
+![Flywheel racquetball spacing detail](assets/flywheel-arm-extension-spacing-detail.svg)
 
 ## Indexer (from [[vex-flywheel-indexer]])
 
@@ -181,3 +192,4 @@ relates_to::[[llm-authored-self-model]]
 relates_to::[[game-object-selection]]
 relates_to::[[fixed-arm-flywheel-retrofit]]
 relates_to::[[flywheel-plate-recut-plan]]
+relates_to::[[vex-smart-motor-hs-shaft-flywheel]]

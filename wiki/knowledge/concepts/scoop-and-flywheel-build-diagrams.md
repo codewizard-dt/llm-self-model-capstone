@@ -11,6 +11,7 @@ sources:
   - ../../raw/research/game-object-selection/index.md
   - ../../raw/research/flywheel-arm-retrofit/index.md
   - ../../raw/research/flywheel-plate-recut-plan/index.md
+  - ../../raw/research/vex-smart-motor-hs-shaft-flywheel/index.md
 tags: [vex-v5, hardware, diagram, scoop, flywheel]
 ---
 
@@ -56,7 +57,25 @@ All `5xN` labels in these diagrams are VEX hole-grid counts, not inch dimensions
 
 ## Fixed-Arm Cassette Variant
 
-derived_from::[[flywheel-arm-retrofit]] adds a second diagram pattern for mounting the flywheel frame onto a stationary arm. Instead of assuming the arm is removed and harvested for C-channel, the arm is fixed at a chosen angle, braced back to the chassis/tower, and used as the mounting tower for an adapter-plate layer. The flywheel plate-spacer frame then bolts to that adapter layer as a removable cassette.
+derived_from::[[flywheel-arm-retrofit]] adds a second diagram pattern for mounting the flywheel frame onto a stationary arm. Instead of assuming the arm is removed and harvested for C-channel, the arm is fixed at a chosen angle, braced back to the chassis/tower, and used as the mounting tower for an adapter-plate layer. The older rear-tower cassette drawings are preserved below as an alternate branch of the plan.
+
+## Current Preferred Flywheel: Red Arm Extensions + Blue Launcher Box
+
+The current preferred hypothesis uses the Home Depot steel straps as **red arm extensions**, not as launcher side walls. These straps bolt flat along the existing arm channels and extend the launcher forward past the wheels. The VEX plates become the **blue launcher box** at the front of those extensions: two flat side plates spaced for a racquetball, with the motor mounted outside one plate and the wheel inside the box.
+
+For a standard 57 mm racquetball, set the blue VEX plate inside spacing to **65 mm target** with **60-70 mm workable**. Set the wheel-rim-to-backplate starting gap to **51 mm**. The ordered 2 in HS shaft may be too short for full two-side bearing support at a 65 mm plate gap, so the physical mockup should either use one-side motor support for review or source a longer shaft/bolt if two-side support is required.
+
+For the current **foam golf ball** revision, the racquetball geometry is superseded as the immediate prototype. Use a golf-ball-sized target of about **42.7 mm** diameter, keep the launcher box near **2 in / 50.8 mm** inside spacing, and start the wheel-rim-to-backplate gap at **37 mm** with a **34-39 mm** adjustment range. Because the ball is smaller and softer, the first build should use the compression wheel kit's **1/8 in shaft adapter path** through normal VEX plate holes. The 1/4 in HS shaft does not fit unmodified plate holes and should be used only as a fallback with a no-drill bearing sandwich or a drilled/notched clearance hole.
+
+![Flywheel arm-extension side layout](assets/flywheel-arm-extension-side-layout.svg)
+
+![Flywheel arm-extension top section](assets/flywheel-arm-extension-top-section.svg)
+
+![Flywheel arm-extension exploded stack](assets/flywheel-arm-extension-exploded-stack.svg)
+
+![Flywheel racquetball spacing detail](assets/flywheel-arm-extension-spacing-detail.svg)
+
+## Alternate: Rear-Tower Cassette Variant
 
 This variant is the safer interpretation when the user wants to leave the arm physically present but take the arm motor out of commission. The diagram's assembly order is: existing chassis/tower → mechanically fixed arm → cross/diagonal brace → inner adapter plate → #8-32 screws through existing arm holes → outer adapter/nut side → standoff-spaced flywheel plates → bearings, shaft, collars/spacers, wheel, and flywheel motor.
 
@@ -76,3 +95,4 @@ derived_from::[[vex-flywheel-structure-parts]]
 relates_to::[[vex-flywheel-disc-launcher]]  
 relates_to::[[game-object-selection]]
 relates_to::[[fixed-arm-flywheel-retrofit]]
+relates_to::[[vex-smart-motor-hs-shaft-flywheel]]
