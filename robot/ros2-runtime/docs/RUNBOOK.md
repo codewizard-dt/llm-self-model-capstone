@@ -406,9 +406,12 @@ ros2 topic pub --once /task_plan/request std_msgs/String \
   '{"data":"{\"target\":\"survey:all\",\"action\":\"survey_all\"}"}'
 ros2 topic pub --once /task_plan/request std_msgs/String \
   '{"data":"{\"target\":\"survey:all\",\"action\":\"survey_all\",\"dispatch\":true,\"survey_duration_s\":3.0,\"survey_omega_rad_s\":0.22}"}'
+ros2 topic pub --once /task_plan/request std_msgs/String \
+  '{"data":"{\"target\":\"home:tag\",\"action\":\"return_home\",\"target_distance_m\":0.45,\"dispatch\":true}"}'
 ```
 
-Tag plans can dispatch through `align_to_tag`; object plans are mapped but
+Tag and home plans can dispatch through `align_to_tag`; home defaults to the
+workspace home anchor, AprilTag `2`. Object plans are mapped but
 non-dispatchable until a bounded object/go-to-pose controller is implemented and
 proven. Survey plans dispatch through `survey_scan` when `dispatch:true`; that
 controller refuses to start without fresh `/vex/ack`, `/vex/telemetry`, motion
