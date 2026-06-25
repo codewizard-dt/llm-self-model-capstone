@@ -6,6 +6,8 @@ updated: 2026-06-25
 sources:
   - ../../raw/research/vex-launch-disc-parts/index.md
   - ../../raw/research/vex-order-2026-06-25/index.md
+  - ../../raw/research/flywheel-arm-retrofit/index.md
+  - ../../raw/research/flywheel-plate-recut-plan/index.md
 tags: [vex-v5, flywheel, disc-launcher, mechanism, morphology, task-primitive]
 ---
 
@@ -124,6 +126,24 @@ derived_from::[[vex-order-2026-06-25]] changes the immediate build assumption: t
 
 The same principle applies to the scoop: without spare C-channel, a non-VEX perforated plate can serve as the clamp adapter spine for a spoon or dustpan, but it should not be treated as precision VEX structure until measured.
 
+### Recut 5x15 Plate Layouts
+
+derived_from::[[flywheel-plate-recut-plan]] refines the inventory-constrained frame once the two VEX 5x15 plates are available. Treat each 5x15 plate as a 5-hole by 15-hole precision grid, not as inch dimensions; VEX pitch is 0.5 in, so the nominal 5x15 grid span is 2.5 in x 7.5 in. The safest cuts are full-width cross-cuts between hole rows; avoid lengthwise strip cuts for bearing plates because they are more likely to twist or lose shaft alignment.
+
+**Recommended layout: 5x8 + 5x7 from each plate.** The two 5x8 pieces are the matched side plates for the flywheel bearings. The two 5x7 pieces become the adjustable backplate, chute wall, bridge, lower rail, or motor brace. This is the best first build because it makes a compact cassette and leaves useful VEX-grid material for the ball guide.
+
+**Alternate layout: 5x10 + 5x5 hole-grid pieces from each plate.** The two 5x10 pieces, nominally 2.5 in x 5.0 in by hole-count times pitch, are longer matched side plates with more fore-aft adjustment for the motor, shaft, fixed-arm adapter, and ball path. The two 5x5 pieces, nominally 2.5 in x 2.5 in, become gussets or motor brackets. Use a Home Depot strap as the long adjustable backplate because the 5x5 leftovers are too short for that role.
+
+Do not start with a 5x6 + 5x5 + 5x4 split unless the first cassette has already proven the shaft and ball path. It creates many small brackets but no clearly strong matched side plates.
+
+## Fixed-Arm Retrofit Variant
+
+derived_from::[[flywheel-arm-retrofit]] adds a variant for the case where the Clawbot arm is not fully disassembled into flywheel side plates. In this pattern, the former arm is mechanically locked at the desired angle and treated as a tower. Adapter plates bolt through the existing arm holes, then a two-plate standoff cassette carries the flywheel shaft, bearings, collars/spacers, wheel, and motor.
+
+The important constraint is that the old arm motor is only an actuator, not a structural lock. If it is unplugged or removed, the arm must be braced with structural metal before the flywheel cassette is attached. This preserves the same flywheel principles already documented here — 600 RPM cartridge, two-sided shaft support, and rigid plate spacing — while changing the mounting interface from "arm C-channels become the frame" to "fixed arm carries a removable cassette."
+
+![Fixed-arm 5x10 flywheel side layout](assets/fixed-arm-flywheel-5x10-side-layout.svg)
+
 ## Indexer (from [[vex-flywheel-indexer]])
 
 The indexer holds the game piece in staging and pushes it into the flywheel on command. Type depends on motor budget:
@@ -159,3 +179,5 @@ relates_to::[[vex-v5-motor-cartridges]]
 relates_to::[[task-telemetry-contract]]
 relates_to::[[llm-authored-self-model]]
 relates_to::[[game-object-selection]]
+relates_to::[[fixed-arm-flywheel-retrofit]]
+relates_to::[[flywheel-plate-recut-plan]]

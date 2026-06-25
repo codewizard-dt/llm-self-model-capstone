@@ -12,6 +12,7 @@ sources:
   - ../../../raw/research/vex-3wire-port-spec/index.md
   - ../../../raw/research/vex-order-2026-06-25/index.md
   - ../../../raw/research/home-depot-inventory-2026-06-25/index.md
+  - ../../../raw/research/flywheel-arm-retrofit/index.md
 tags: [tool, hardware, vex, platform, robotics]
 ---
 
@@ -148,6 +149,12 @@ The current build inventory note in derived_from::[[vex-order-2026-06-25]] super
 | Non-VEX perforated steel plate, about 1.5 in x 12 in | non-VEX | unknown | Available |
 
 Known absences for this planning pass: **no spare U-channels and no spare C-channels**. This shifts the flywheel frame from a C-channel side-plate design to a plate-and-spacer sandwich using the ordered 5x15 plates. The non-VEX perforated steel should be used for bracing, chute walls, backplates, or scoop adapter spines unless its hole spacing is measured and confirmed.
+
+### Fixed-Arm Flywheel Retrofit — 2026-06-25
+
+derived_from::[[flywheel-arm-retrofit]] clarifies the retrofit path if the Clawbot arm remains physically present but the arm motor is taken out of commission. The arm can become a stationary mounting tower for the flywheel only after it is mechanically locked and braced; unplugging or removing the motor does not immobilize the arm. The flywheel should mount as a cassette: adapter plates bolt through existing arm holes, standoffs space the flywheel plates, bearings support both shaft ends, and collars/spacers control side play.
+
+This preserves the existing VEX flywheel assumptions — 600 RPM flywheel motor, rigid side plates, and two-sided shaft support — while changing the integration point from "reuse arm C-channels as the frame" to "use a braced fixed arm as the cassette mount." See relates_to::[[fixed-arm-flywheel-retrofit]] for the build checklist.
 
 ### Supplemental Home Depot Inventory — 2026-06-25
 
