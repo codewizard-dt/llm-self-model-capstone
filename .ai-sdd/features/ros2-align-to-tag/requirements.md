@@ -7,6 +7,7 @@
 | Root | `robot/ros2-runtime/` |
 | Stack | Python 3.11 on Ubuntu 24.04 + ROS 2 Jazzy |
 | Status | Approved for slice planning |
+| Assignee | Jake |
 | Source | `raw/research/ros2-jazzy-supervisory-control-plan/index.md` |
 
 ---
