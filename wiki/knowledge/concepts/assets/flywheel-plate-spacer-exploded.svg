@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="820" viewBox="0 0 1200 820" role="img" aria-labelledby="title desc">
+  <title id="title">Flywheel plate-spacer frame exploded view</title>
+  <desc id="desc">Exploded front view showing left 12 inch strap side plate, spacers, flywheel shaft with bearings collars and wheel, right side plate, motor, and backplate chute.</desc>
+  <defs>
+    <style>
+      .part{fill:none;stroke:#111827;stroke-width:3;stroke-linejoin:round;stroke-linecap:round}
+      .thin{fill:none;stroke:#374151;stroke-width:2;stroke-linecap:round}
+      .dash{fill:none;stroke:#6b7280;stroke-width:2;stroke-dasharray:8 7}
+      .metal{fill:#f3f4f6;stroke:#111827;stroke-width:3}
+      .wheel{fill:#ecfdf5;stroke:#047857;stroke-width:3}
+      .bearing{fill:#eff6ff;stroke:#2563eb;stroke-width:3}
+      .collar{fill:#fffbeb;stroke:#b45309;stroke-width:3}
+      .label{font:18px ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#111827}
+      .small{font:15px ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#374151}
+    </style>
+  </defs>
+  <rect x="20" y="20" width="1160" height="780" fill="#fff" stroke="#d1d5db" stroke-width="2"/>
+  <text x="50" y="62" class="label" style="font-size:28px;font-weight:700">Flywheel plate-spacer frame - exploded front view</text>
+  <text x="50" y="92" class="small">True orientation: two long 12 in straps stand as parallel side plates; shaft runs perpendicular through both plates; wheel is a vertical disk between plates.</text>
+
+  <!-- left side plate -->
+  <rect x="80" y="170" width="130" height="510" rx="12" class="metal"/>
+  <g class="thin">
+    <circle cx="145" cy="220" r="12"/><circle cx="145" cy="285" r="12"/><circle cx="145" cy="350" r="12"/>
+    <circle cx="145" cy="415" r="12"/><circle cx="145" cy="480" r="12"/><circle cx="145" cy="545" r="12"/><circle cx="145" cy="610" r="12"/>
+  </g>
+  <text x="70" y="145" class="label">A. left 12 in strap side plate</text>
+
+  <!-- spacers and bolts -->
+  <g>
+    <rect x="260" y="220" width="70" height="30" rx="14" fill="#fff" stroke="#111827" stroke-width="3"/>
+    <rect x="260" y="600" width="70" height="30" rx="14" fill="#fff" stroke="#111827" stroke-width="3"/>
+    <rect x="260" y="300" width="55" height="24" rx="12" fill="#fff" stroke="#111827" stroke-width="3"/>
+    <rect x="260" y="520" width="55" height="24" rx="12" fill="#fff" stroke="#111827" stroke-width="3"/>
+  </g>
+  <text x="245" y="190" class="label">B. spacers</text>
+  <text x="245" y="665" class="small">1/2 in spacers for frame corners; 3/8 in spacers where shorter gap helps</text>
+
+  <!-- center shaft assembly -->
+  <line x1="390" y1="415" x2="705" y2="415" class="part"/>
+  <circle cx="435" cy="415" r="35" class="bearing"/>
+  <circle cx="660" cy="415" r="35" class="bearing"/>
+  <rect x="475" y="390" width="30" height="50" rx="8" class="collar"/>
+  <rect x="590" y="390" width="30" height="50" rx="8" class="collar"/>
+  <circle cx="548" cy="415" r="78" class="wheel"/>
+  <circle cx="548" cy="415" r="28" fill="#fff" stroke="#047857" stroke-width="3"/>
+  <text x="400" y="300" class="label">C. shaft assembly</text>
+  <text x="400" y="328" class="small">HS shaft + bearing + collar + 60A wheel + collar + bearing</text>
+  <text x="420" y="535" class="small">wheel plane is vertical; shaft axis points left-right through both side plates</text>
+
+  <!-- right side plate -->
+  <rect x="775" y="170" width="130" height="510" rx="12" class="metal"/>
+  <g class="thin">
+    <circle cx="840" cy="220" r="12"/><circle cx="840" cy="285" r="12"/><circle cx="840" cy="350" r="12"/>
+    <circle cx="840" cy="415" r="12"/><circle cx="840" cy="480" r="12"/><circle cx="840" cy="545" r="12"/><circle cx="840" cy="610" r="12"/>
+  </g>
+  <text x="750" y="145" class="label">D. right 12 in strap side plate</text>
+
+  <!-- motor -->
+  <rect x="60" y="700" width="170" height="65" rx="10" class="bearing"/>
+  <line x1="230" y1="732" x2="390" y2="415" class="dash"/>
+  <text x="250" y="728" class="label">E. V5 motor with 600 RPM cartridge</text>
+  <text x="250" y="753" class="small">mount to one side plate; coupling depends on wheel kit hardware</text>
+
+  <!-- backplate -->
+  <rect x="980" y="270" width="80" height="300" rx="8" class="metal"/>
+  <text x="945" y="230" class="label">F. adjustable backplate / chute wall</text>
+  <text x="945" y="610" class="small">8 in strap or measured non-VEX plate</text>
+  <line x1="980" y1="420" x2="905" y2="420" class="dash"/>
+
+  <rect x="70" y="105" width="1030" height="48" fill="#f9fafb" stroke="#111827" stroke-width="2"/>
+  <text x="90" y="136" class="small">Assembly direction: A + B + C + D collapse together into a rigid ladder frame. E mounts to one side. F is adjustable and sets ball compression.</text>
+</svg>

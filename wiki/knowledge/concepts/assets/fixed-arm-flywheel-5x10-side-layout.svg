@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="820" viewBox="0 0 1200 820" role="img" aria-labelledby="title desc">
+  <title id="title">Fixed-arm flywheel 5x10 side layout based on Clawbot side profile</title>
+  <desc id="desc">Accurate side layout based on the photographed Clawbot: long chassis, front lower arm pivot, two diagonal arm channels rising to a rear tower, and a 5x10 flywheel cassette mounted to the braced rear tower.</desc>
+  <defs>
+    <style>
+      .metal{fill:#f3f4f6;stroke:#111827;stroke-width:3;stroke-linejoin:round}
+      .channel{fill:#e5e7eb;stroke:#374151;stroke-width:4;stroke-linejoin:round}
+      .dark{fill:#111827;stroke:#111827;stroke-width:3}
+      .gear{fill:#fee2e2;stroke:#b91c1c;stroke-width:3}
+      .adapter{fill:#eff6ff;stroke:#2563eb;stroke-width:3;stroke-linejoin:round}
+      .gusset{fill:#ede9fe;stroke:#7c3aed;stroke-width:3;stroke-linejoin:round}
+      .wheel{fill:#ecfdf5;stroke:#047857;stroke-width:3}
+      .bearing{fill:#fff;stroke:#2563eb;stroke-width:3}
+      .motor{fill:#eff6ff;stroke:#2563eb;stroke-width:3}
+      .backplate{fill:#e5e7eb;stroke:#4b5563;stroke-width:3}
+      .part{fill:none;stroke:#111827;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+      .dash{fill:none;stroke:#6b7280;stroke-width:2;stroke-dasharray:9 7}
+      .danger{fill:none;stroke:#dc2626;stroke-width:3;stroke-linecap:round}
+      .hole{fill:#fff;stroke:#6b7280;stroke-width:2}
+      .label{font:18px ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#111827}
+      .small{font:15px ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#374151}
+    </style>
+  </defs>
+  <rect x="20" y="20" width="1160" height="780" fill="#fff" stroke="#d1d5db" stroke-width="2"/>
+  <text x="50" y="62" class="label" style="font-size:28px;font-weight:700">Fixed-arm flywheel cassette - photo-true side layout</text>
+  <text x="50" y="92" class="small">Side view based on the photographed Clawbot: front is left, rear tower is right, arm channels slope upward toward the rear tower.</text>
+
+  <!-- photographed chassis silhouette -->
+  <rect x="105" y="620" width="760" height="74" rx="8" class="metal"/>
+  <rect x="165" y="690" width="160" height="22" rx="7" class="dark"/>
+  <rect x="625" y="690" width="170" height="22" rx="7" class="dark"/>
+  <circle cx="190" cy="690" r="98" fill="#f9fafb" stroke="#111827" stroke-width="4"/>
+  <circle cx="765" cy="690" r="98" fill="#f9fafb" stroke="#111827" stroke-width="4"/>
+  <circle cx="190" cy="690" r="25" fill="#111827"/>
+  <circle cx="765" cy="690" r="25" fill="#111827"/>
+  <text x="105" y="735" class="small">long Clawbot chassis and wheelbase from photo</text>
+
+  <!-- rear tower and red arm gear/motor area -->
+  <rect x="745" y="270" width="82" height="365" rx="8" class="metal"/>
+  <rect x="815" y="300" width="62" height="330" rx="8" class="metal"/>
+  <circle cx="745" cy="448" r="82" class="gear"/>
+  <circle cx="745" cy="448" r="38" fill="#fff" stroke="#b91c1c" stroke-width="3"/>
+  <text x="720" y="245" class="label">rear tower / arm gear area</text>
+
+  <!-- existing arm: two diagonal parallel channels rising to the rear tower -->
+  <polygon points="245,585 690,365 706,400 260,620" class="channel"/>
+  <polygon points="318,642 735,470 748,504 331,676" class="channel"/>
+  <circle cx="260" cy="604" r="31" class="bearing"/>
+  <circle cx="332" cy="657" r="27" class="bearing"/>
+  <circle cx="704" cy="384" r="28" class="bearing"/>
+  <circle cx="742" cy="487" r="28" class="bearing"/>
+  <text x="340" y="362" class="label">upper diagonal arm channel</text>
+  <text x="405" y="570" class="label">lower diagonal arm channel</text>
+  <text x="205" y="550" class="small">front lower arm pivots</text>
+
+  <!-- lock/bracing added for unmotorized fixed arm -->
+  <line x1="335" y1="640" x2="808" y2="610" class="part"/>
+  <line x1="352" y1="666" x2="826" y2="635" class="part"/>
+  <line x1="560" y1="585" x2="825" y2="345" class="part"/>
+  <text x="420" y="705" class="label">added fixed-arm brace: arm cannot drift by hand</text>
+
+  <!-- adapter plates at rear tower/arm interface -->
+  <polygon points="825,335 900,350 884,570 810,555" class="adapter"/>
+  <text x="845" y="320" class="label">adapter plate layer</text>
+  <polygon points="852,560 945,575 882,668" class="gusset"/>
+  <polygon points="882,350 975,368 912,465" class="gusset"/>
+  <text x="900" y="646" class="label">5x5 gussets</text>
+
+  <!-- flywheel cassette, mounted off the rear side -->
+  <polygon points="950,300 1110,330 1078,622 918,592" class="metal"/>
+  <text x="912" y="275" class="label">5x10 VEX-hole flywheel side plate</text>
+  <text x="912" y="298" class="small">nominal 2.5 in x 5.0 in grid span</text>
+  <rect x="855" y="408" width="94" height="82" rx="12" class="motor"/>
+  <text x="850" y="392" class="small">V5 motor, 600 RPM</text>
+  <line x1="948" y1="448" x2="1018" y2="462" class="part"/>
+  <circle cx="1018" cy="462" r="76" class="wheel"/>
+  <circle cx="1018" cy="462" r="25" fill="#fff" stroke="#047857" stroke-width="3"/>
+  <circle cx="1018" cy="462" r="35" class="bearing"/>
+  <polygon points="1084,385 1128,394 1104,590 1060,581" class="backplate"/>
+  <path d="M980 515 C1030 505 1085 480 1140 440" class="dash"/>
+  <circle cx="1070" cy="490" r="28" fill="#fff7ed" stroke="#ea580c" stroke-width="3"/>
+  <path d="M1140 440 l-24 -3 l14 18" class="part"/>
+  <text x="1070" y="650" class="small">ball exits rear/right in this mount</text>
+
+  <!-- warning -->
+  <line x1="690" y1="315" x2="805" y2="540" class="danger"/>
+  <line x1="805" y1="315" x2="690" y2="540" class="danger"/>
+  <text x="50" y="145" class="label">Arm motor torque is not the lock</text>
+  <text x="50" y="171" class="small">The two diagonal arm channels are shown in their actual side-view orientation; add metal bracing before using them as a tower.</text>
+</svg>

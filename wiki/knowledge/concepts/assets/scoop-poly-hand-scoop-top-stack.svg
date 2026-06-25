@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="900" viewBox="0 0 1500 900">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#111827"/>
+    </marker>
+    <style>
+      .title { font: 700 34px Arial, sans-serif; fill: #111827; }
+      .subtitle { font: 400 18px Arial, sans-serif; fill: #4b5563; }
+      .label { font: 700 17px Arial, sans-serif; fill: #111827; }
+      .small { font: 400 14px Arial, sans-serif; fill: #374151; }
+      .dim { font: 700 15px Arial, sans-serif; fill: #111827; }
+      .note { font: 700 18px Arial, sans-serif; fill: #dc2626; }
+      .strap { fill: #dbeafe; stroke: #2563eb; stroke-width: 4; }
+      .scoop { fill: #dcfce7; stroke: #047857; stroke-width: 4; }
+      .mount { fill: #bfdbfe; stroke: #2563eb; stroke-width: 4; }
+      .tie { fill: none; stroke: #7c3aed; stroke-width: 8; stroke-linecap: round; }
+      .dimline { fill: none; stroke: #111827; stroke-width: 2; marker-start: url(#arrow); marker-end: url(#arrow); }
+      .dash { fill: none; stroke: #6b7280; stroke-width: 2; stroke-dasharray: 8 7; }
+    </style>
+  </defs>
+
+  <rect x="25" y="25" width="1450" height="850" fill="#fff" stroke="#d1d5db" stroke-width="2"/>
+  <text x="70" y="82" class="title">Passive scoop - top/stack layout</text>
+  <text x="70" y="114" class="subtitle">Top view shows why a 3.5 in hand scoop is better than a spoon: wide ball capture, flat spine, and two anti-rotation clamp stations.</text>
+
+  <!-- Existing claw mount -->
+  <rect x="90" y="330" width="150" height="190" rx="10" class="mount"/>
+  <circle cx="165" cy="380" r="11" fill="#fff" stroke="#1d4ed8" stroke-width="3"/>
+  <circle cx="165" cy="470" r="11" fill="#fff" stroke="#1d4ed8" stroke-width="3"/>
+  <text x="82" y="305" class="label">existing claw mount</text>
+  <text x="82" y="546" class="small">1 in bracket gap</text>
+
+  <!-- Strap spine -->
+  <rect x="235" y="372" width="520" height="106" rx="8" class="strap"/>
+  <text x="360" y="348" class="label">8 in strap spine</text>
+  <text x="330" y="502" class="small">flat steel backbone; clamp target is the scoop handle/neck</text>
+
+  <!-- holes on strap -->
+  <g fill="#fff" stroke="#2563eb" stroke-width="3">
+    <circle cx="290" cy="425" r="14"/>
+    <circle cx="365" cy="425" r="14"/>
+    <circle cx="440" cy="425" r="14"/>
+    <circle cx="515" cy="425" r="14"/>
+    <circle cx="590" cy="425" r="14"/>
+    <circle cx="665" cy="425" r="14"/>
+    <circle cx="730" cy="425" r="14"/>
+  </g>
+
+  <!-- Liner -->
+  <rect x="385" y="386" width="340" height="78" rx="8" fill="#111827"/>
+  <text x="430" y="372" class="small">rubber/friction liner under handle</text>
+
+  <!-- Scoop handle -->
+  <rect x="450" y="400" width="360" height="50" rx="10" fill="#bbf7d0" stroke="#047857" stroke-width="3"/>
+  <text x="500" y="435" class="small">scoop handle / neck</text>
+
+  <!-- Scoop bowl top -->
+  <path d="M790 330 C945 270 1190 290 1310 420 C1190 555 945 575 790 520 C840 465 840 382 790 330 Z" class="scoop"/>
+  <path d="M842 370 C975 330 1168 346 1262 423 C1165 500 980 515 842 482" class="dash"/>
+  <text x="885" y="276" class="label">3.5 in poly hand scoop bowl</text>
+  <text x="975" y="604" class="small">wide enough to capture foam golf ball with side clearance</text>
+
+  <!-- Foam ball -->
+  <circle cx="1120" cy="425" r="43" fill="#fef3c7" stroke="#d97706" stroke-width="4"/>
+  <text x="1070" y="368" class="label">foam golf ball</text>
+
+  <!-- Ties -->
+  <path d="M435 365 C410 425 412 485 440 545" class="tie"/>
+  <path d="M640 365 C615 425 617 485 645 545" class="tie"/>
+  <text x="385" y="585" class="label" fill="#7c3aed">two separated ties prevent rotation</text>
+
+  <!-- Anti slide stop -->
+  <rect x="430" y="365" width="20" height="120" rx="5" fill="#dc2626"/>
+  <text x="285" y="640" class="note">hard stop behind handle shoulder</text>
+
+  <!-- Width dimension -->
+  <line x1="920" y1="700" x2="1280" y2="700" class="dimline"/>
+  <line x1="920" y1="665" x2="920" y2="718" stroke="#111827" stroke-width="2"/>
+  <line x1="1280" y1="665" x2="1280" y2="718" stroke="#111827" stroke-width="2"/>
+  <text x="1015" y="730" class="dim">3.5 in mouth target</text>
+
+  <!-- Ball clearance dimension -->
+  <line x1="1077" y1="640" x2="1163" y2="640" class="dimline"/>
+  <text x="1040" y="670" class="dim">foam golf ball about 1.68 in</text>
+
+  <!-- Notes -->
+  <rect x="70" y="760" width="1360" height="72" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="95" y="790" class="label">Buying rule</text>
+  <text x="205" y="790" class="small">Choose a rigid 3-4 in poly hand scoop with a flat handle/neck. Avoid soft rubber grips, oversized dustpans, and deep seed scoops.</text>
+  <text x="95" y="813" class="small">If the handle is rounded, clamp over a rubber liner and add the rear hard stop; do not depend on friction alone.</text>
+</svg>

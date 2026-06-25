@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="820" viewBox="0 0 1200 820" role="img" aria-labelledby="title desc">
+  <title id="title">Flywheel arm-extension side layout</title>
+  <desc id="desc">Side view of the next flywheel plan: red Home Depot steel straps extend the existing arm forward past the wheels, and blue VEX plates form the racquetball launcher box and motor mount.</desc>
+  <defs>
+    <style>
+      .metal{fill:#f3f4f6;stroke:#111827;stroke-width:3;stroke-linejoin:round}
+      .chassis{fill:#e5e7eb;stroke:#111827;stroke-width:3;stroke-linejoin:round}
+      .arm{fill:#e5e7eb;stroke:#374151;stroke-width:4;stroke-linejoin:round}
+      .red{fill:#fee2e2;stroke:#dc2626;stroke-width:5;stroke-linejoin:round}
+      .blue{fill:#dbeafe;stroke:#2563eb;stroke-width:4;stroke-linejoin:round}
+      .wheel{fill:#ecfdf5;stroke:#047857;stroke-width:4}
+      .ball{fill:#fff7ed;stroke:#ea580c;stroke-width:4}
+      .backplate{fill:#e5e7eb;stroke:#4b5563;stroke-width:3}
+      .motor{fill:#eff6ff;stroke:#2563eb;stroke-width:4}
+      .gear{fill:#fee2e2;stroke:#b91c1c;stroke-width:3}
+      .part{fill:none;stroke:#111827;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+      .dash{fill:none;stroke:#6b7280;stroke-width:2;stroke-dasharray:9 7}
+      .label{font:18px ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#111827}
+      .small{font:15px ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#374151}
+    </style>
+  </defs>
+  <rect x="20" y="20" width="1160" height="780" fill="#fff" stroke="#d1d5db" stroke-width="2"/>
+  <text x="50" y="62" class="label" style="font-size:28px;font-weight:700">Current flywheel hypothesis - red arm extensions, blue launcher box</text>
+  <text x="50" y="92" class="small">Side view. Red straps are only arm extensions. Blue VEX plates become the actual motor mount and racquetball launcher side plates.</text>
+
+  <!-- chassis and wheels -->
+  <rect x="315" y="610" width="600" height="78" rx="8" class="chassis"/>
+  <circle cx="395" cy="685" r="85" fill="#f9fafb" stroke="#111827" stroke-width="4"/>
+  <circle cx="825" cy="685" r="85" fill="#f9fafb" stroke="#111827" stroke-width="4"/>
+  <circle cx="395" cy="685" r="24" fill="#111827"/>
+  <circle cx="825" cy="685" r="24" fill="#111827"/>
+  <text x="370" y="765" class="small">front wheel</text>
+  <text x="800" y="765" class="small">rear wheel / tower area</text>
+
+  <!-- existing Clawbot arm form -->
+  <rect x="795" y="290" width="72" height="335" rx="8" class="metal"/>
+  <circle cx="780" cy="450" r="72" class="gear"/>
+  <text x="735" y="260" class="label">red arm gear clearance zone</text>
+  <polygon points="390,610 750,420 765,454 405,645" class="arm"/>
+  <polygon points="445,665 800,505 815,538 460,700" class="arm"/>
+  <text x="505" y="430" class="small">existing diagonal arm channels</text>
+
+  <!-- red Home Depot extensions -->
+  <polygon points="95,660 445,485 462,522 110,700" class="red"/>
+  <polygon points="120,720 472,542 492,580 138,758" class="red"/>
+  <text x="70" y="620" class="label" fill="#dc2626">red Home Depot steel strap extensions</text>
+  <text x="70" y="645" class="small">extend forward past wheels; not launcher side walls</text>
+
+  <!-- blue VEX launcher box at front -->
+  <polygon points="120,470 310,545 270,725 80,650" class="blue"/>
+  <polygon points="268,445 458,520 418,700 228,625" class="blue" opacity="0.82"/>
+  <text x="85" y="425" class="label" fill="#2563eb">blue VEX side plates</text>
+  <text x="85" y="450" class="small">flat launcher box and motor mounting surface</text>
+
+  <!-- motor outside plate and flywheel inside -->
+  <rect x="265" y="545" width="110" height="78" rx="12" class="motor"/>
+  <text x="254" y="533" class="small">motor outside blue plate</text>
+  <circle cx="205" cy="600" r="58" class="wheel"/>
+  <circle cx="205" cy="600" r="20" fill="#fff" stroke="#047857" stroke-width="3"/>
+  <polygon points="92,535 122,548 92,690 62,678" class="backplate"/>
+  <circle cx="132" cy="617" r="32" class="ball"/>
+  <path d="M120 625 C170 610 232 585 315 540" class="dash"/>
+  <path d="M315 540 l-24 -3 l13 18" class="part"/>
+  <text x="62" y="735" class="small">racquetball path between blue plates</text>
+
+  <!-- spacing callout -->
+  <rect x="50" y="135" width="505" height="118" fill="#f9fafb" stroke="#111827" stroke-width="2"/>
+  <text x="70" y="165" class="label">Racquetball-only spacing</text>
+  <text x="70" y="193" class="small">blue plate inside spacing target: 65 mm, workable 60-70 mm</text>
+  <text x="70" y="220" class="small">wheel rim to backplate start gap: 51 mm for 57 mm racquetball</text>
+  <text x="70" y="247" class="small">2 in HS shaft may be too short for two-side support at 65 mm</text>
+</svg>

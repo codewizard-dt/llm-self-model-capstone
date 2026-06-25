@@ -2,10 +2,11 @@
 id: game-object-selection
 title: "Research: Game Object Selection — Graspability, Scoopability, Launchability"
 aliases: [Game Object Research, Ball Selection, Object Selection Research]
-updated: 2026-06-22
+updated: 2026-06-25
 sources:
   - ../../raw/research/game-object-selection/index.md
   - ../../raw/research/game-object-selection/sources.md
+  - ../../raw/research/home-depot-inventory-2026-06-25/index.md
 tags: [source, vex-v5, hardware, morphology, game-object, clawbot, flywheel]
 ---
 
@@ -65,5 +66,9 @@ VEX Nothing But Net teams used **0.35–0.5" (9–13 mm) compression** on 4" foa
 2. **Claw**: set `max_torque` to ~50% stall to grip without deforming; log `claw_motor.position()` as ball-width proxy
 3. **Scoop**: angle bowl 10–15° upward; approach slowly (< 50% drive) so ball rolls onto bowl rather than being pushed off
 4. **Flywheel**: backplate gap ≈ 51 mm from wheel rim; target 560–600 RPM; adjust ±1 mm if ball skips (gap too wide) or motor stalls (gap too narrow)
+
+## 2026-06-25 Foam Ball Update
+
+derived_from::[[home-depot-inventory-2026-06-25]] adds very soft foam balls that compress almost flat. These are useful for low-risk scoop pickup and flywheel feed-path tests, but they are **not a strong launch-data candidate** unless testing shows elastic rebound. A flywheel needs the object to compress and then recover; a ball that collapses nearly to zero thickness will likely absorb energy, produce low/inconsistent exit velocity, and hide useful compression-gap telemetry.
 
 relates_to::[[game-object-selection]]

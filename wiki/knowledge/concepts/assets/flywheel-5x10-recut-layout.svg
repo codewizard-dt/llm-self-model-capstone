@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">Alternate flywheel recut layout: two VEX 5x15 plates cut into 5x10 and 5x5 pieces</title>
+  <desc id="desc">Line drawing showing each VEX 5x15 plate cross-cut into one 5x10 long side plate and one 5x5 bracket or gusset piece.</desc>
+  <defs>
+    <style>
+      .plate{fill:#f3f4f6;stroke:#111827;stroke-width:3;rx:8}
+      .cut{stroke:#dc2626;stroke-width:4;stroke-dasharray:10 8}
+      .hole{fill:#fff;stroke:#374151;stroke-width:2}
+      .label{font:19px ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#111827}
+      .small{font:15px ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#374151}
+      .useA{fill:#fef3c7;stroke:#d97706;stroke-width:3}
+      .useB{fill:#ede9fe;stroke:#7c3aed;stroke-width:3}
+    </style>
+  </defs>
+  <rect x="20" y="20" width="1160" height="720" fill="#fff" stroke="#d1d5db" stroke-width="2"/>
+  <text x="50" y="62" class="label" style="font-size:28px;font-weight:700">Plan B: cut each VEX 5x15 plate into 5x10 + 5x5</text>
+  <text x="50" y="92" class="small">Use when the flywheel needs more fore-aft adjustment or a larger fixed-arm mounting footprint.</text>
+
+  <g transform="translate(115,140)">
+    <text x="0" y="-20" class="label">Plate 1 before cut</text>
+    <rect x="0" y="0" width="300" height="500" class="plate"/>
+    <rect x="0" y="0" width="300" height="333" class="useA" opacity="0.36"/>
+    <rect x="0" y="333" width="300" height="167" class="useB" opacity="0.34"/>
+    <line x1="-10" y1="333" x2="310" y2="333" class="cut"/>
+    <text x="318" y="175" class="label">5x10 long side plate</text>
+    <text x="318" y="425" class="label">5x5 bracket/gusset</text>
+    <g>
+      <circle cx="50" cy="33" r="8" class="hole"/><circle cx="100" cy="33" r="8" class="hole"/><circle cx="150" cy="33" r="8" class="hole"/><circle cx="200" cy="33" r="8" class="hole"/><circle cx="250" cy="33" r="8" class="hole"/>
+      <circle cx="50" cy="67" r="8" class="hole"/><circle cx="100" cy="67" r="8" class="hole"/><circle cx="150" cy="67" r="8" class="hole"/><circle cx="200" cy="67" r="8" class="hole"/><circle cx="250" cy="67" r="8" class="hole"/>
+      <circle cx="50" cy="100" r="8" class="hole"/><circle cx="100" cy="100" r="8" class="hole"/><circle cx="150" cy="100" r="8" class="hole"/><circle cx="200" cy="100" r="8" class="hole"/><circle cx="250" cy="100" r="8" class="hole"/>
+      <circle cx="50" cy="133" r="8" class="hole"/><circle cx="100" cy="133" r="8" class="hole"/><circle cx="150" cy="133" r="8" class="hole"/><circle cx="200" cy="133" r="8" class="hole"/><circle cx="250" cy="133" r="8" class="hole"/>
+      <circle cx="50" cy="167" r="8" class="hole"/><circle cx="100" cy="167" r="8" class="hole"/><circle cx="150" cy="167" r="8" class="hole"/><circle cx="200" cy="167" r="8" class="hole"/><circle cx="250" cy="167" r="8" class="hole"/>
+      <circle cx="50" cy="200" r="8" class="hole"/><circle cx="100" cy="200" r="8" class="hole"/><circle cx="150" cy="200" r="8" class="hole"/><circle cx="200" cy="200" r="8" class="hole"/><circle cx="250" cy="200" r="8" class="hole"/>
+      <circle cx="50" cy="233" r="8" class="hole"/><circle cx="100" cy="233" r="8" class="hole"/><circle cx="150" cy="233" r="8" class="hole"/><circle cx="200" cy="233" r="8" class="hole"/><circle cx="250" cy="233" r="8" class="hole"/>
+      <circle cx="50" cy="267" r="8" class="hole"/><circle cx="100" cy="267" r="8" class="hole"/><circle cx="150" cy="267" r="8" class="hole"/><circle cx="200" cy="267" r="8" class="hole"/><circle cx="250" cy="267" r="8" class="hole"/>
+      <circle cx="50" cy="300" r="8" class="hole"/><circle cx="100" cy="300" r="8" class="hole"/><circle cx="150" cy="300" r="8" class="hole"/><circle cx="200" cy="300" r="8" class="hole"/><circle cx="250" cy="300" r="8" class="hole"/>
+      <circle cx="50" cy="333" r="8" class="hole"/><circle cx="100" cy="333" r="8" class="hole"/><circle cx="150" cy="333" r="8" class="hole"/><circle cx="200" cy="333" r="8" class="hole"/><circle cx="250" cy="333" r="8" class="hole"/>
+      <circle cx="50" cy="367" r="8" class="hole"/><circle cx="100" cy="367" r="8" class="hole"/><circle cx="150" cy="367" r="8" class="hole"/><circle cx="200" cy="367" r="8" class="hole"/><circle cx="250" cy="367" r="8" class="hole"/>
+      <circle cx="50" cy="400" r="8" class="hole"/><circle cx="100" cy="400" r="8" class="hole"/><circle cx="150" cy="400" r="8" class="hole"/><circle cx="200" cy="400" r="8" class="hole"/><circle cx="250" cy="400" r="8" class="hole"/>
+      <circle cx="50" cy="433" r="8" class="hole"/><circle cx="100" cy="433" r="8" class="hole"/><circle cx="150" cy="433" r="8" class="hole"/><circle cx="200" cy="433" r="8" class="hole"/><circle cx="250" cy="433" r="8" class="hole"/>
+      <circle cx="50" cy="467" r="8" class="hole"/><circle cx="100" cy="467" r="8" class="hole"/><circle cx="150" cy="467" r="8" class="hole"/><circle cx="200" cy="467" r="8" class="hole"/><circle cx="250" cy="467" r="8" class="hole"/>
+    </g>
+  </g>
+
+  <g transform="translate(690,140)">
+    <text x="0" y="-20" class="label">Plate 2: same cut for long matched side plates</text>
+    <rect x="0" y="0" width="300" height="500" class="plate"/>
+    <rect x="0" y="0" width="300" height="333" class="useA" opacity="0.36"/>
+    <rect x="0" y="333" width="300" height="167" class="useB" opacity="0.34"/>
+    <line x1="-10" y1="333" x2="310" y2="333" class="cut"/>
+    <text x="318" y="175" class="label">second 5x10 side plate</text>
+    <text x="318" y="425" class="label">second 5x5 gusset</text>
+    <g>
+      <circle cx="50" cy="33" r="8" class="hole"/><circle cx="100" cy="33" r="8" class="hole"/><circle cx="150" cy="33" r="8" class="hole"/><circle cx="200" cy="33" r="8" class="hole"/><circle cx="250" cy="33" r="8" class="hole"/>
+      <circle cx="50" cy="67" r="8" class="hole"/><circle cx="100" cy="67" r="8" class="hole"/><circle cx="150" cy="67" r="8" class="hole"/><circle cx="200" cy="67" r="8" class="hole"/><circle cx="250" cy="67" r="8" class="hole"/>
+      <circle cx="50" cy="100" r="8" class="hole"/><circle cx="100" cy="100" r="8" class="hole"/><circle cx="150" cy="100" r="8" class="hole"/><circle cx="200" cy="100" r="8" class="hole"/><circle cx="250" cy="100" r="8" class="hole"/>
+      <circle cx="50" cy="133" r="8" class="hole"/><circle cx="100" cy="133" r="8" class="hole"/><circle cx="150" cy="133" r="8" class="hole"/><circle cx="200" cy="133" r="8" class="hole"/><circle cx="250" cy="133" r="8" class="hole"/>
+      <circle cx="50" cy="167" r="8" class="hole"/><circle cx="100" cy="167" r="8" class="hole"/><circle cx="150" cy="167" r="8" class="hole"/><circle cx="200" cy="167" r="8" class="hole"/><circle cx="250" cy="167" r="8" class="hole"/>
+      <circle cx="50" cy="200" r="8" class="hole"/><circle cx="100" cy="200" r="8" class="hole"/><circle cx="150" cy="200" r="8" class="hole"/><circle cx="200" cy="200" r="8" class="hole"/><circle cx="250" cy="200" r="8" class="hole"/>
+      <circle cx="50" cy="233" r="8" class="hole"/><circle cx="100" cy="233" r="8" class="hole"/><circle cx="150" cy="233" r="8" class="hole"/><circle cx="200" cy="233" r="8" class="hole"/><circle cx="250" cy="233" r="8" class="hole"/>
+      <circle cx="50" cy="267" r="8" class="hole"/><circle cx="100" cy="267" r="8" class="hole"/><circle cx="150" cy="267" r="8" class="hole"/><circle cx="200" cy="267" r="8" class="hole"/><circle cx="250" cy="267" r="8" class="hole"/>
+      <circle cx="50" cy="300" r="8" class="hole"/><circle cx="100" cy="300" r="8" class="hole"/><circle cx="150" cy="300" r="8" class="hole"/><circle cx="200" cy="300" r="8" class="hole"/><circle cx="250" cy="300" r="8" class="hole"/>
+      <circle cx="50" cy="333" r="8" class="hole"/><circle cx="100" cy="333" r="8" class="hole"/><circle cx="150" cy="333" r="8" class="hole"/><circle cx="200" cy="333" r="8" class="hole"/><circle cx="250" cy="333" r="8" class="hole"/>
+      <circle cx="50" cy="367" r="8" class="hole"/><circle cx="100" cy="367" r="8" class="hole"/><circle cx="150" cy="367" r="8" class="hole"/><circle cx="200" cy="367" r="8" class="hole"/><circle cx="250" cy="367" r="8" class="hole"/>
+      <circle cx="50" cy="400" r="8" class="hole"/><circle cx="100" cy="400" r="8" class="hole"/><circle cx="150" cy="400" r="8" class="hole"/><circle cx="200" cy="400" r="8" class="hole"/><circle cx="250" cy="400" r="8" class="hole"/>
+      <circle cx="50" cy="433" r="8" class="hole"/><circle cx="100" cy="433" r="8" class="hole"/><circle cx="150" cy="433" r="8" class="hole"/><circle cx="200" cy="433" r="8" class="hole"/><circle cx="250" cy="433" r="8" class="hole"/>
+      <circle cx="50" cy="467" r="8" class="hole"/><circle cx="100" cy="467" r="8" class="hole"/><circle cx="150" cy="467" r="8" class="hole"/><circle cx="200" cy="467" r="8" class="hole"/><circle cx="250" cy="467" r="8" class="hole"/>
+    </g>
+  </g>
+  <rect x="55" y="675" width="1090" height="38" fill="#f9fafb" stroke="#111827" stroke-width="2"/>
+  <text x="75" y="700" class="small">Result: 2 matched 5x10 long side plates + 2 matched 5x5 gussets. Use Home Depot strap for a long adjustable backplate.</text>
+</svg>

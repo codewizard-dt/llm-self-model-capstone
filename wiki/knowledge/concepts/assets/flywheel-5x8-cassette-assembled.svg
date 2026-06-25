@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="820" viewBox="0 0 1200 820" role="img" aria-labelledby="title desc">
+  <title id="title">Recommended 5x8 flywheel cassette assembled view</title>
+  <desc id="desc">Three-dimensional line drawing of the recommended flywheel cassette using two 5x8 side plates and two 5x7 guide pieces.</desc>
+  <defs>
+    <style>
+      .metal{fill:#f3f4f6;stroke:#111827;stroke-width:3;stroke-linejoin:round}
+      .guide{fill:#eff6ff;stroke:#2563eb;stroke-width:3;stroke-linejoin:round}
+      .wheel{fill:#ecfdf5;stroke:#047857;stroke-width:3}
+      .bearing{fill:#fff;stroke:#2563eb;stroke-width:3}
+      .collar{fill:#fffbeb;stroke:#b45309;stroke-width:3}
+      .part{fill:none;stroke:#111827;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+      .thin{fill:none;stroke:#4b5563;stroke-width:2;stroke-linecap:round}
+      .dash{fill:none;stroke:#6b7280;stroke-width:2;stroke-dasharray:8 7}
+      .label{font:18px ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#111827}
+      .small{font:15px ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#374151}
+    </style>
+  </defs>
+  <rect x="20" y="20" width="1160" height="780" fill="#fff" stroke="#d1d5db" stroke-width="2"/>
+  <text x="50" y="62" class="label" style="font-size:28px;font-weight:700">Plan A assembled: compact 5x8 flywheel cassette</text>
+  <text x="50" y="92" class="small">Two 5x8 VEX plates are the precision bearing side plates. The 5x7 leftovers become the backplate/chute and bridge/brace.</text>
+
+  <polygon points="210,180 500,140 500,545 210,585" class="metal"/>
+  <polygon points="610,210 900,170 900,575 610,615" class="metal"/>
+  <line x1="500" y1="140" x2="900" y2="170" class="part"/>
+  <line x1="500" y1="545" x2="900" y2="575" class="part"/>
+  <line x1="210" y1="180" x2="610" y2="210" class="part"/>
+  <line x1="210" y1="585" x2="610" y2="615" class="part"/>
+
+  <text x="185" y="150" class="label">left 5x8 side plate</text>
+  <text x="735" y="152" class="label">right 5x8 side plate</text>
+  <text x="470" y="680" class="small">corner spacers or stacked Home Depot nylon spacers set side-plate separation</text>
+
+  <line x1="350" y1="375" x2="760" y2="405" class="part"/>
+  <circle cx="350" cy="375" r="34" class="bearing"/>
+  <circle cx="760" cy="405" r="34" class="bearing"/>
+  <circle cx="555" cy="390" r="92" class="wheel"/>
+  <circle cx="555" cy="390" r="30" fill="#fff" stroke="#047857" stroke-width="3"/>
+  <rect x="410" y="352" width="34" height="56" rx="8" class="collar" transform="rotate(4 427 380)"/>
+  <rect x="665" y="372" width="34" height="56" rx="8" class="collar" transform="rotate(4 682 400)"/>
+  <text x="410" y="300" class="label">HS shaft + bearings + collars + 60A wheel</text>
+
+  <polygon points="810,290 895,278 895,520 810,532" class="guide"/>
+  <text x="915" y="345" class="label">5x7 adjustable backplate</text>
+  <text x="915" y="372" class="small">slot by choosing different VEX holes</text>
+  <path d="M710 438 C770 430 820 420 880 395" class="dash"/>
+  <circle cx="780" cy="425" r="36" fill="#fff7ed" stroke="#ea580c" stroke-width="3"/>
+  <text x="900" y="445" class="small">ball pinches between wheel and backplate</text>
+
+  <polygon points="210,612 610,642 900,602 500,572" class="guide" opacity="0.72"/>
+  <text x="120" y="655" class="label">second 5x7 piece as bridge, lower rail, or motor brace</text>
+
+  <rect x="120" y="325" width="90" height="115" rx="12" fill="#eff6ff" stroke="#2563eb" stroke-width="3"/>
+  <line x1="210" y1="382" x2="350" y2="375" class="part"/>
+  <text x="105" y="300" class="label">V5 motor</text>
+  <text x="105" y="465" class="small">600 RPM cartridge</text>
+
+  <rect x="55" y="720" width="1090" height="48" fill="#f9fafb" stroke="#111827" stroke-width="2"/>
+  <text x="75" y="750" class="small">Best first build: compact, rigid, and preserves two useful VEX-grid guide parts for tuning the ball path.</text>
+</svg>

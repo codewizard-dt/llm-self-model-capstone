@@ -2,7 +2,7 @@
 id: vex-v5
 title: VEX V5
 aliases: [VEX V5, VEX]
-updated: 2026-06-21
+updated: 2026-06-25
 sources:
   - ../../../raw/Feasibility of a Human-Built Generational Robot Software Factory.pdf
   - ../../../raw/Feasibility of a Software-Factory Approach to Learning Robots That Assemble Additional Robots from M.pdf
@@ -10,6 +10,10 @@ sources:
   - ../../../raw/research/vex-v5-classroom-starter-kit/index-2.md
   - ../../../raw/276-6009-750-Rev6.pdf
   - ../../../raw/research/vex-3wire-port-spec/index.md
+  - ../../../raw/research/vex-order-2026-06-25/index.md
+  - ../../../raw/research/home-depot-inventory-2026-06-25/index.md
+  - ../../../raw/research/flywheel-arm-retrofit/index.md
+  - ../../../raw/research/vex-smart-motor-hs-shaft-flywheel/index.md
 tags: [tool, hardware, vex, platform, robotics]
 ---
 
@@ -128,6 +132,52 @@ Structural companion to the Launch-Disc section above. **The Starter Kit's stand
 All screws, standoffs, keps/nylock nuts are in the Starter Kit. Motor mounts directly to C-channel with 4× standard #8-32 screws; no special motor bracket needed. Backplate = any existing steel plate from kit.
 
 derived_from::[[vex-flywheel-structure-parts]]
+
+### Smart Motor + Compression Wheel Fit Correction — 2026-06-25
+
+derived_from::[[vex-smart-motor-hs-shaft-flywheel]] clarifies the fit issue for the current foam golf ball launcher. The V5 Smart Motor socket accepts both standard 1/8 in shafts and 1/4 in High Strength shafts, so the motor can drive either. The conflict is structural: a 1/4 in HS shaft cannot pass through normal VEX steel plate holes without a 5/16 in / 8 mm clearance hole or a no-drill HS bearing sandwich where the shaft stays between the plates.
+
+The ordered 276-8882 2 in, 60A compression wheel kit includes adapters for both paths: 1/4 in square-bore VersaHex adapters and 1/2 in hex to 1/8 in square adapters. For the foam golf ball prototype, the first build should therefore use the **1/8 in standard shaft path** through unmodified VEX plate holes. The HS shaft path is a fallback if the 1/8 in shaft flexes or slips.
+
+## Known Physical Inventory — 2026-06-25 Order
+
+The current build inventory note in derived_from::[[vex-order-2026-06-25]] supersedes any planning assumption that spare U-channel or C-channel is available. The next physical design pass must distinguish **ordered parts** from parts already on hand until delivery and the next inventory count are confirmed.
+
+| Item | SKU | Qty | Status |
+|---|---:|---:|---|
+| Smart Motor 6:1 Cartridge (600 RPM) | 276-5842 | 2 | Ordered |
+| 5x15 Steel Plate (2-pack) | 275-2023 | 1 | Ordered |
+| Compression Wheel Kit (60 durometer) | 276-8882 | 1 | Ordered |
+| 2" High Strength Shaft (4-Pack) | 276-3440 | 1 | Ordered |
+| High Strength Shaft Bearing (10-Pack) | 276-3521 | 2 | Ordered |
+| High Strength Star Drive Clamping Shaft Collar (10-pack) | 276-6102 | 1 | Ordered |
+| Extra spacers | unknown | unknown | Available |
+| Non-VEX perforated steel plate, about 1.5 in x 8 in | non-VEX | unknown | Available |
+| Non-VEX perforated steel plate, about 1.5 in x 12 in | non-VEX | unknown | Available |
+
+Known absences for this planning pass: **no spare U-channels and no spare C-channels**. This shifts the flywheel frame from a C-channel side-plate design to a plate-and-spacer sandwich using the ordered 5x15 plates. The non-VEX perforated steel should be used for bracing, chute walls, backplates, or scoop adapter spines unless its hole spacing is measured and confirmed.
+
+### Fixed-Arm Flywheel Retrofit — 2026-06-25
+
+derived_from::[[flywheel-arm-retrofit]] clarifies the retrofit path if the Clawbot arm remains physically present but the arm motor is taken out of commission. The arm can become a stationary mounting tower for the flywheel only after it is mechanically locked and braced; unplugging or removing the motor does not immobilize the arm. The flywheel should mount as a cassette: adapter plates bolt through existing arm holes, standoffs space the flywheel plates, bearings support both shaft ends, and collars/spacers control side play.
+
+This preserves the existing VEX flywheel assumptions — 600 RPM flywheel motor, rigid side plates, and two-sided shaft support — while changing the integration point from "reuse arm C-channels as the frame" to "use a braced fixed arm as the cassette mount." See relates_to::[[fixed-arm-flywheel-retrofit]] for the build checklist.
+
+### Supplemental Home Depot Inventory — 2026-06-25
+
+derived_from::[[home-depot-inventory-2026-06-25]] adds confirmed on-hand hardware:
+
+| Item | Marking | Qty | Status |
+|---|---|---:|---|
+| 12 in galvanized strap plate | Simpson Strong-Tie HRS12 | 2 | On hand |
+| 8 in galvanized strap plate | Simpson Strong-Tie HRS | 1 | On hand |
+| Nylon spacer, 11/64 in ID x 1/4 in OD x 3/8 in long | Everbilt 595237 | 4 | On hand |
+| Nylon spacer, 0.171 in ID x 3/8 in OD x 1/2 in long | Everbilt 595254 | 4 | On hand |
+| Zip ties | user-confirmed | plenty | On hand |
+| Velcro straps | user-confirmed | plenty | On hand |
+| Very soft foam balls | user-confirmed | available | On hand |
+
+No more VEX parts will be ordered. More Home Depot spacers can be purchased as needed. The 8 in strap is the preferred scoop clamp spine; the two 12 in straps can prototype flywheel side plates if hole alignment is measured.
 
 ## Flywheel Indexer (from [[vex-flywheel-indexer]])
 
