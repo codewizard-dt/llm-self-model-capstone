@@ -2,9 +2,10 @@
 id: vex-flywheel-disc-launcher
 title: VEX Flywheel Disc Launcher
 aliases: [Disc Launcher, Flywheel Launcher, Launch Disc Configuration]
-updated: 2026-06-19
+updated: 2026-06-25
 sources:
   - ../../raw/research/vex-launch-disc-parts/index.md
+  - ../../raw/research/vex-order-2026-06-25/index.md
 tags: [vex-v5, flywheel, disc-launcher, mechanism, morphology, task-primitive]
 ---
 
@@ -110,6 +111,18 @@ The structural frame for a single flywheel consists of two C-channel side plates
 **Standoff sandwich trick:** 2"/3"/4" HS shafts are ~1mm shorter than same-size #8-32 standoffs. Using standoffs to space the two C-channels lets the shaft rest on HS Shaft Bearings without drilling any new holes in the structural metal.
 
 The motor mounts directly to C-channel with 4× standard #8-32 screws already in the kit. The backplate is any existing steel plate from the kit. Standoffs, screws, keps and nylock nuts are all in the Starter Kit.
+
+### Inventory-Constrained Frame — 2026-06-25
+
+derived_from::[[vex-order-2026-06-25]] changes the immediate build assumption: there are **no spare U-channels or C-channels**. For the next build pass, use a **plate-and-spacer sandwich frame**:
+
+- Use the ordered 5x15 steel plates (SKU 275-2023) as the precision side plates.
+- Use existing spacers/standoffs to set the plate separation.
+- Mount ordered HS Shaft Bearings (276-3521) to matching plate holes and run the 2" HS shaft (276-3440) through them.
+- Retain the shaft with ordered HS clamping collars (276-6102).
+- Use non-VEX perforated steel only for a backplate, chute wall, brace, or scoop adapter spine unless its hole spacing is measured and confirmed.
+
+The same principle applies to the scoop: without spare C-channel, a non-VEX perforated plate can serve as the clamp adapter spine for a spoon or dustpan, but it should not be treated as precision VEX structure until measured.
 
 ## Indexer (from [[vex-flywheel-indexer]])
 

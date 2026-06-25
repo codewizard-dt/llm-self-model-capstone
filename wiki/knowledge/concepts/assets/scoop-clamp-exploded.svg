@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">Scoop clamp adapter exploded view</title>
+  <desc id="desc">Exploded top view showing Clawbot mount, 8 inch strap spine, rubber liner, spoon, zip ties, Velcro strap, and anti-slide stop.</desc>
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#111827;stroke-width:3;stroke-linejoin:round}
+      .part{fill:none;stroke:#111827;stroke-width:3;stroke-linejoin:round;stroke-linecap:round}
+      .thin{fill:none;stroke:#374151;stroke-width:2;stroke-linecap:round}
+      .dash{fill:none;stroke:#6b7280;stroke-width:2;stroke-dasharray:8 7}
+      .metal{fill:#f3f4f6;stroke:#111827;stroke-width:3}
+      .liner{fill:#e5e7eb;stroke:#4b5563;stroke-width:2}
+      .tie{fill:none;stroke:#2563eb;stroke-width:5}
+      .strap{fill:none;stroke:#7c3aed;stroke-width:6}
+      .label{font:18px ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#111827}
+      .small{font:15px ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#374151}
+      .tiny{font:13px ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#374151}
+    </style>
+  </defs>
+  <rect x="20" y="20" width="1160" height="720" fill="#fff" stroke="#d1d5db" stroke-width="2"/>
+  <text x="50" y="62" class="label" style="font-size:28px;font-weight:700">Scoop clamp adapter - exploded top view</text>
+  <text x="50" y="92" class="small">All parts are separated along the assembly direction. The old blue part is now explicitly labeled: it is the existing Clawbot claw mount.</text>
+
+  <!-- Clawbot mount -->
+  <rect x="70" y="275" width="130" height="170" rx="8" class="metal"/>
+  <circle cx="135" cy="325" r="14" class="box"/>
+  <circle cx="135" cy="395" r="14" class="box"/>
+  <text x="60" y="250" class="label">A. Existing Clawbot claw mount</text>
+  <text x="60" y="472" class="small">two original #8-32 mount holes</text>
+  <text x="60" y="496" class="small">this is the robot-side bracket</text>
+
+  <!-- bolts -->
+  <line x1="205" y1="325" x2="290" y2="325" class="part"/>
+  <line x1="205" y1="395" x2="290" y2="395" class="part"/>
+  <circle cx="230" cy="325" r="10" class="box"/>
+  <circle cx="230" cy="395" r="10" class="box"/>
+  <text x="214" y="290" class="label">B. original screws</text>
+  <text x="214" y="420" class="small">use if holes align; otherwise lash spine to bracket</text>
+
+  <!-- strap spine -->
+  <rect x="315" y="300" width="340" height="120" rx="10" class="metal"/>
+  <g class="thin">
+    <circle cx="365" cy="360" r="13"/><circle cx="425" cy="360" r="13"/><circle cx="485" cy="360" r="13"/>
+    <circle cx="545" cy="360" r="13"/><circle cx="605" cy="360" r="13"/>
+  </g>
+  <text x="335" y="270" class="label">C. 8 in Simpson strap spine</text>
+  <text x="335" y="448" class="small">flat adapter plate; scattered holes are not assumed VEX pitch</text>
+
+  <!-- liner -->
+  <rect x="690" y="332" width="250" height="56" rx="12" class="liner"/>
+  <text x="700" y="305" class="label">D. rubber/friction liner</text>
+  <text x="700" y="415" class="small">tape, rubber band strip, shelf liner, or inner tube</text>
+
+  <!-- spoon -->
+  <path d="M985 345 C1040 330 1105 316 1138 335 C1172 355 1166 411 1125 426 C1083 441 1032 417 1000 393 L760 393 L760 345 Z" fill="#fff" stroke="#111827" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M1016 382 C1050 398 1102 398 1134 374" class="thin"/>
+  <text x="965" y="285" class="label">E. spoon or dustpan scoop</text>
+  <text x="965" y="455" class="small">handle/neck lies on liner; bowl points forward and slightly up</text>
+
+  <!-- zip ties and velcro -->
+  <ellipse cx="515" cy="360" rx="36" ry="78" class="tie"/>
+  <ellipse cx="835" cy="360" rx="36" ry="78" class="tie"/>
+  <path d="M470 245 H900" class="strap"/>
+  <path d="M470 235 l-20 10 l20 10" class="strap"/>
+  <path d="M900 235 l20 10 l-20 10" class="strap"/>
+  <text x="470" y="225" class="label">F. zip ties or Velcro straps</text>
+  <text x="470" y="610" class="small">two separated clamp stations resist rotation better than one strap near the spoon handle</text>
+
+  <!-- stop -->
+  <rect x="720" y="318" width="28" height="84" rx="6" fill="#fffbeb" stroke="#b45309" stroke-width="3"/>
+  <text x="690" y="535" class="label">G. anti-slide stop</text>
+  <text x="690" y="560" class="small">small screw, spacer stack, or tape collar behind bowl neck</text>
+  <line x1="735" y1="402" x2="760" y2="520" stroke="#b45309" stroke-width="2"/>
+
+  <rect x="65" y="640" width="1020" height="58" fill="#f9fafb" stroke="#111827" stroke-width="2"/>
+  <text x="84" y="674" class="small">Build order: mount/secure spine to Clawbot bracket -> add liner -> lay spoon handle on liner -> add anti-slide stop -> tighten two clamp stations -> twist/pull test.</text>
+</svg>

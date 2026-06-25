@@ -1,6 +1,6 @@
 ---
 title: Wiki Index
-updated: 2026-06-19
+updated: 2026-06-25
 ---
 
 # Wiki Index — Home Map
@@ -59,6 +59,8 @@ The wiki is split into two domains with opposite organizing laws:
 - [Research: VEX V5 Minimum Parts for a Launch-Disc Configuration](knowledge/sources/vex-launch-disc-parts.md) — 3 minimum SKUs: 276-5842 (6:1 cartridge), 217-6449 (3" 60A flex wheel), 217-7947 (VersaHex adapters); adds `launch_disc` to the morphology vocabulary as exclusive arm-motor swap
 - [Research: VEX V5 Minimal Structural Parts for a Flywheel Setup](knowledge/sources/vex-flywheel-structure-parts.md) — structural companion to vex-launch-disc-parts; 3 purchase lines (276-3521 HS bearing, 276-6102 HS collar, 276-3440 2" HS shaft); arm C-channels reused; standoff sandwich trick avoids drilling
 - [Research: VEX V5 Flywheel Indexer Mechanisms](knowledge/sources/vex-flywheel-indexer.md) — holds piece in staging, fires on command; 1-motor flywheel frees claw motor → roller indexer, zero new parts; 2-motor flywheel → ratchet (Motor Clutch 276-1098) or 5th motor
+- [VEX Order and Known Build Inventory, 2026-06-25](knowledge/sources/vex-order-2026-06-25.md) — ordered flywheel/scoop parts and current known inventory constraint: no spare U- or C-channels; use plates, spacers, and measured perforated steel
+- [Home Depot Supplemental Build Inventory, 2026-06-25](knowledge/sources/home-depot-inventory-2026-06-25.md) — confirmed Simpson strap plates, Everbilt nylon spacers, zip ties, Velcro straps, and very soft foam balls for the scoop/flywheel prototypes
 - [Research: VEXcode V5 Python vs C++ API — Thorough Comparison](knowledge/sources/research-vexcode-python-vs-cpp.md) — Python/C++ functionally equivalent bindings; MicroPython ~10–300× slower for tight loops; codebase uses PROS C++ (contradicts prior Python-on-Brain recommendation); full linked doc-tree reference
 - [Research: V5 Brain Program — Python vs PROS C++ (Both Sides)](knowledge/sources/v5-brain-python-vs-pros.md) — thin-executor architecture already settled; VEXcode Python stdin receiving unconfirmed; PROS C++ bidirectional serial community-confirmed; LemLib out of scope; 10-line empirical test resolves the question on first bringup
 - [Research: V5 User Programs — Why They're Mandatory and How Simple They Can Be](knowledge/sources/v5-user-programs.md) — RPi cannot bypass user program (proprietary RS-485, inert user port); no competition infrastructure needed; minimum Brain program is ~50–100 lines; upload once, tap slot to run
@@ -100,6 +102,7 @@ The wiki is split into two domains with opposite organizing laws:
 - [Simulation & Prediction — What's Spec'd vs. What's Missing](knowledge/concepts/simulation-prediction-gap.md) — prediction schemas are solid (contract formulas + PID gap table); simulation step is a named placeholder with no tool, pipeline, or prompt design
 - [VEX Flywheel Disc Launcher](knowledge/concepts/vex-flywheel-disc-launcher.md) — single/double flywheel mechanism; `launch_disc` morphology primitive; minimum 3 SKUs; 276-8402 ball bearings halve current draw; exclusive arm-motor swap on Clawbot
 - [VEX Flywheel Indexer](knowledge/concepts/vex-flywheel-indexer.md) — holds game piece in staging then fires on command; motor budget determines type (roller vs ratchet vs pneumatic); 1-motor flywheel enables zero-purchase roller indexer via freed claw motor
+- [Scoop and Flywheel Build Diagrams](knowledge/concepts/scoop-and-flywheel-build-diagrams.md) — exploded and assembled line drawings for the inventory-aware scoop clamp adapter and flywheel plate-and-spacer frame
 - [PROS Dependency & Build Compatibility](knowledge/concepts/pros-dependency-compatibility.md) — rules for adding ANY PROS library on this Brain: pin kernel-4.x, build as monolith (`USE_PACKAGE:=0`); hot/cold split is silently broken (program runs but display + serial no-op)
 - [VEX V5 3-Wire Servo Port](knowledge/concepts/vex-v5-3wire-servo.md) — 2.54 mm keyed connector; GND·+5V·Signal pinout; 5 V @ 2 A shared; JR RC servos direct-fit; no encoder feedback (use Smart Motors for telemetered axes)
 - [AprilTag Workspace Layout for Manipulation Tasks](knowledge/concepts/apriltag-workspace-layout.md) — **updated** 150×200cm arena, 200mm tags (corrects prior 80cm/100mm); checkpoint re-fix pattern; 3 purpose-assigned tags (bin/staging/home); matte paper; robot localization for grab-and-toss task

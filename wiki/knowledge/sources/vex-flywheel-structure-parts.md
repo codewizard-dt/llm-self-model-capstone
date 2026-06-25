@@ -1,9 +1,10 @@
 ---
 id: vex-flywheel-structure-parts
 title: Research — VEX V5 Minimal Structural Parts for a Flywheel Setup
-updated: 2026-06-19
+updated: 2026-06-25
 sources:
   - ../../raw/research/vex-flywheel-structure-parts/index.md
+  - ../../raw/research/vex-order-2026-06-25/index.md
 tags: [vex-v5, flywheel, structure, hardware, morphology, bom]
 ---
 
@@ -22,6 +23,8 @@ A single-flywheel disc launcher requires five structural sub-systems:
 5. **Backplate** — any flat steel/aluminum plate from the existing kit; no additional purchase.
 
 **The V5 Smart Motor mounts directly to a C-channel** using 4× standard #8-32 screws (already in kit). No special motor bracket or adapter is needed.
+
+> **Inventory update, 2026-06-25:** derived_from::[[vex-order-2026-06-25]] records that the current known build inventory has **no spare U-channels and no spare C-channels**. The C-channel side-plate approach below remains valid when arm C-channels are available, but the immediate build plan must use a plate-and-spacer sandwich based on the ordered 5x15 steel plates, available spacers, and measured non-VEX perforated steel where appropriate.
 
 ## The Standoff Sandwich Trick
 
