@@ -84,7 +84,7 @@ By the demo, the system closes the generational self-model loop **in software** 
 - **Serial bridge / merge** `(coprocessor)` — owns `vex_bridge_node` ack/telemetry/fault demux, raw MCAP episode recording, and `vexy_export_contract_jsonl` export into existing `contracts.ContractLine` JSONL. *(TBD)*
 - **Baseline capture** `(coprocessor)` — owns the one-off real grab/pull capture run that grounds the oracle; delivers recorded JSONL to Erick. *(TBD)*
 - **Brain telemetry firmware** `(brain)` — owns the PROS C++ program (`robot/v5-brain/`) that reads the motor API and emits contract JSON lines on a 20 ms tick; motor wiring, port assignments, bumper config. *(TBD)*
-- **Brain command bridge** `(brain)` — owns the bidirectional PROS C++ path: receive clamped control-grammar commands, ack, and watchdog-stop (two-task FreeRTOS). *(TBD)*
+- **Brain command bridge** `(brain)` — owns the bidirectional PROS C++ path: receive clamped control-grammar commands, ack, watchdog-stop, and fixed bounded routine slots (`2` 720 spin, `3` arm up/down, `4` one-foot forward/back). *(TBD)*
 - **Generator** `(operator)` — owns the Claude Code workflow/prompts that author and revise the self-model from gap residuals. *(TBD)*
 - **Critic panel** `(operator)` — owns three stateless pre-build critics (physics validity · torque budget · CoM/geometry) returning pass/flag + rationale. *(TBD)*
 - **Gap analyzer** `(operator)` — owns residual computation and the deterministic replay harness. *(TBD)*

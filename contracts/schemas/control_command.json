@@ -306,6 +306,61 @@
       "title": "HeartbeatLine",
       "type": "object"
     },
+    "RoutineCommand": {
+      "additionalProperties": false,
+      "description": "Routine verb \u2014 run one bounded Brain-side routine slot.\n\nSlots are intentionally narrow and fixed in the Brain bridge:\n2 = 720 spin, 3 = arm up/down proof, 4 = one-foot forward/back proof.\nThe Brain rejects unavailable ports, active routines, estop, and out-of-range\nslots before starting motion.",
+      "properties": {
+        "cmd": {
+          "const": "routine",
+          "default": "routine",
+          "title": "Cmd",
+          "type": "string"
+        },
+        "sent_ms": {
+          "minimum": 0,
+          "title": "Sent Ms",
+          "type": "integer"
+        },
+        "seq": {
+          "exclusiveMaximum": 4294967296,
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "slot": {
+          "maximum": 4,
+          "minimum": 2,
+          "title": "Slot",
+          "type": "integer"
+        },
+        "ttl_ms": {
+          "maximum": 5000,
+          "minimum": 1,
+          "title": "Ttl Ms",
+          "type": "integer"
+        },
+        "type": {
+          "const": "cmd",
+          "default": "cmd",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "seq",
+        "sent_ms",
+        "ttl_ms",
+        "slot"
+      ],
+      "title": "RoutineCommand",
+      "type": "object"
+    },
     "StopCommand": {
       "additionalProperties": false,
       "description": "Stop verb \u2014 graceful halt with a structured reason.",
@@ -429,6 +484,7 @@
           "claw": "#/$defs/ClawCommand",
           "drive": "#/$defs/DriveCommand",
           "flywheel": "#/$defs/FlywheelCommand",
+          "routine": "#/$defs/RoutineCommand",
           "stop": "#/$defs/StopCommand",
           "turn": "#/$defs/TurnCommand"
         },
@@ -452,6 +508,9 @@
         },
         {
           "$ref": "#/$defs/FlywheelCommand"
+        },
+        {
+          "$ref": "#/$defs/RoutineCommand"
         }
       ]
     },

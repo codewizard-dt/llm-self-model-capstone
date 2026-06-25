@@ -234,7 +234,7 @@ ros2 topic echo /vex/bridge_status --once
 
 Expected: ~6–7 Hz (heartbeat fires at 0.15 s interval).
 
-`/vex/ack` proves the Brain is receiving heartbeats/commands. `/vex/telemetry` should publish separately and include `motion_enabled`, `drive_ports_ok`, `motor_ports`, and `motor_samples` for the left/right drive motors when the guarded PROS bridge is loaded.
+`/vex/ack` proves the Brain is receiving heartbeats/commands. `/vex/telemetry` should publish separately and include `motion_enabled`, `drive_ports_ok`, `arm_port_ok`, `routine_active`, `motor_ports`, and `motor_samples` for the left/right drive motors plus the arm motor when the guarded PROS bridge is loaded.
 
 ### 2.7 AlignToTag bounded local skill
 
@@ -406,6 +406,12 @@ ros2 topic pub --once /task_plan/request std_msgs/String \
   '{"data":"{\"target\":\"survey:all\",\"action\":\"survey_all\"}"}'
 ros2 topic pub --once /task_plan/request std_msgs/String \
   '{"data":"{\"target\":\"survey:all\",\"action\":\"survey_all\",\"dispatch\":true,\"survey_duration_s\":3.0,\"survey_omega_rad_s\":0.22}"}'
+ros2 topic pub --once /task_plan/request std_msgs/String \
+  '{"data":"{\"target\":\"routine:2\",\"action\":\"spin_720\",\"dispatch\":true}"}'
+ros2 topic pub --once /task_plan/request std_msgs/String \
+  '{"data":"{\"target\":\"routine:3\",\"action\":\"arm_full_cycle\",\"dispatch\":true}"}'
+ros2 topic pub --once /task_plan/request std_msgs/String \
+  '{"data":"{\"target\":\"routine:4\",\"action\":\"one_foot_forward_back\",\"dispatch\":true}"}'
 ```
 
 Tag plans can dispatch through `align_to_tag`; object plans are mapped but
@@ -414,6 +420,34 @@ proven. Survey plans dispatch through `survey_scan` when `dispatch:true`; that
 controller refuses to start without fresh `/vex/ack`, `/vex/telemetry`, motion
 enabled, no estop, and healthy drive ports. Use the short duration/omega override
 for supervised checks, then omit it for the default full scan.
+
+Routine plans dispatch directly to the Brain through `/vex/cmd` and do not need
+a scene map. The fixed routine slots are Brain-side routine IDs inside the
+running `pros_bridge` program, not separate VEXos upload slots:
+
+| Slot | Routine | What it does |
+|------|---------|--------------|
+| 2 | `spin_720` | bounded 720 degree in-place spin |
+| 3 | `arm_full_cycle` | arm to bounded top target, pause, back to rest |
+| 4 | `one_foot_forward_back` | one foot forward, pause, one foot back |
+
+For a direct command without the task planner, publish a routine packet:
+
+```bash
+ros2 topic pub --once /vex/cmd std_msgs/String \
+  '{"data":"{\"v\":1,\"seq\":200002,\"type\":\"cmd\",\"cmd\":\"routine\",\"sent_ms\":1,\"ttl_ms\":500,\"slot\":2}"}'
+```
+
+Use a different `seq` for each manual command. Cancel any active routine:
+
+```bash
+ros2 topic pub --once /vex/cmd std_msgs/String \
+  '{"data":"{\"v\":1,\"seq\":200099,\"type\":\"cmd\",\"cmd\":\"stop\",\"sent_ms\":1,\"ttl_ms\":500,\"reason\":\"operator\"}"}'
+```
+
+Only run routine slots on blocks or clear floor with an operator present, and
+record `/vex/cmd`, `/vex/ack`, `/vex/telemetry`, `/vex/bridge_status`, `/tf`,
+`/apriltag/detections`, and `/vision/scene_map` so the action has MCAP evidence.
 
 For the first morning check, capture the no-motion vision/planning proof:
 

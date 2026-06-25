@@ -39,8 +39,7 @@ robot/v5-brain/
 │   ├── include/        # depot-managed headers (gitignored; restore with `pros conductor apply`)
 │   ├── firmware/       # depot-managed libs/linker scripts (gitignored)
 │   └── project.pros    # PROS project manifest (kernel@4.2.2, liblvgl)
-└── pros_bridge/        # SKETCH ONLY — bidirectional command bridge (src/main.cpp + README).
-                        # Not yet a buildable project (no Makefile/firmware/include). See §8.
+└── pros_bridge/        # buildable guarded Pi↔Brain bridge with ack, telemetry, watchdog, routine slots.
 ```
 
 `firmware/` and `include/` are gitignored because they are large depot artifacts. After a
@@ -264,14 +263,21 @@ PY
 
 ---
 
-## 8. The command-receive direction (not done yet)
+## 8. The guarded command bridge
 
-`pros_bridge/` holds a starter sketch for the **Pi→Brain command** path (receive
-newline JSON over `getchar()`, ack, watchdog-stop on timeout). It is **not yet a buildable
-project** — it has only `src/main.cpp` + `README.md`, no `Makefile`/`firmware`/`include`.
-To make it real: `pros conductor new-project pros_bridge v5`, set `USE_PACKAGE:=0`, then
-port the sketch in. The interface design, the two-task pattern, and the open questions for
-bidirectional comms are documented on the Pi side:
+`pros_bridge/` is the active buildable **Pi→Brain command** path: receive
+newline JSON over `getchar()`, ack by sequence, stream separate telemetry
+records, watchdog-stop on timeout, and run fixed Brain routine slots. It stays
+monolith (`USE_PACKAGE:=0`) for this Brain. The current routine slots are:
+
+| Slot | Routine |
+|------|---------|
+| 2 | 720 spin |
+| 3 | arm up/down full cycle |
+| 4 | one foot forward/back |
+
+These are routine IDs inside the running bridge program, not separate VEXos
+program upload slots. The interface and Pi-side fallback notes are documented in
 [../pi-runtime/docs/BRAIN_INTERFACE.md](../pi-runtime/docs/BRAIN_INTERFACE.md).
 
 ---

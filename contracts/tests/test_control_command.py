@@ -1,4 +1,4 @@
-"""Tests for the control grammar (F19): envelope, 6-verb union, heartbeat, ack.
+"""Tests for the control grammar (F19): envelope, 7-verb union, heartbeat, ack.
 
 Covers every acceptance id in `.ai-sdd/artifacts/feature-plan.v1.yaml` for the
 models-and-schemas slice: round-trip parse of every wire-line shape, the
@@ -26,6 +26,8 @@ from contracts import (
     MAX_FLYWHEEL_RPM,
     MAX_LINEAR,
     MAX_OMEGA,
+    ROUTINE_SLOT_MAX,
+    ROUTINE_SLOT_MIN,
     TTL_MS_MAX,
     AckLine,
     ArmCommand,
@@ -36,6 +38,7 @@ from contracts import (
     FaultCode,
     FlywheelCommand,
     HeartbeatLine,
+    RoutineCommand,
     StopCommand,
     TurnCommand,
 )
@@ -69,6 +72,8 @@ def _env(**overrides) -> dict:
         (_env(type="cmd", cmd="claw", state="open"), ClawCommand),
         (_env(type="cmd", cmd="claw", state="close", grip_force_N=12.0), ClawCommand),
         (_env(type="cmd", cmd="flywheel", rpm=1800.0), FlywheelCommand),
+        (_env(type="cmd", cmd="routine", slot=2), RoutineCommand),
+        (_env(type="cmd", cmd="routine", slot=4), RoutineCommand),
     ],
 )
 def test_roundtrip_each_command_verb(payload, expected_cls):
@@ -225,6 +230,24 @@ def test_claw_grip_force_boundaries_accepted():
 def test_flywheel_rpm_out_of_range_rejected(rpm):
     with pytest.raises(ValidationError):
         CONTROL_LINE_TA.validate_python(_env(type="cmd", cmd="flywheel", rpm=rpm))
+
+
+# --- acc-test-range-routine-slot --------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "slot",
+    [
+        ROUTINE_SLOT_MIN - 1,
+        ROUTINE_SLOT_MAX + 1,
+        -1,
+        0,
+        99,
+    ],
+)
+def test_routine_slot_out_of_range_rejected(slot):
+    with pytest.raises(ValidationError):
+        CONTROL_LINE_TA.validate_python(_env(type="cmd", cmd="routine", slot=slot))
 
 
 # --- acc-test-range-ttl -----------------------------------------------------
@@ -393,12 +416,14 @@ def test_live_guarded_brain_ack_shape_accepted():
             "ack": 120,
             "battery_mv": 13421,
             "battery_pct": 34.0,
+            "arm_port_ok": True,
             "drive_ports_ok": True,
             "estop": False,
             "fault": None,
             "motion_enabled": True,
             "motor_ports": [1, 3, 8, 10],
             "recv_ms": 20407,
+            "routine_active": False,
             "state": "ok",
             "type": "ack",
             "watchdog_age_ms": 0,
@@ -407,7 +432,9 @@ def test_live_guarded_brain_ack_shape_accepted():
 
     assert ack.state == "ok"
     assert ack.battery_mv == 13421
+    assert ack.arm_port_ok is True
     assert ack.motion_enabled is True
+    assert ack.routine_active is False
     assert ack.motor_ports == [1, 3, 8, 10]
 
 
@@ -420,6 +447,8 @@ def test_clamp_constants_bit_for_bit():
     assert MAX_FLYWHEEL_RPM == 3600.0
     assert MAX_ARM_RPM == 600.0
     assert MAX_CLAW_GRIP_FORCE_N == 100.0
+    assert ROUTINE_SLOT_MIN == 2
+    assert ROUTINE_SLOT_MAX == 4
     assert ARM_DEG_MIN == 0.0
     assert ARM_DEG_MAX == 90.0
     assert TTL_MS_MAX == 5000
@@ -430,7 +459,7 @@ def test_clamp_constants_bit_for_bit():
 # --- acc-test-faultcode-closed (D7) -----------------------------------------
 
 
-def test_faultcode_is_closed_8_value_strenum():
+def test_faultcode_is_closed_9_value_strenum():
     expected = {
         "malformed_json",
         "unknown_command",
@@ -440,6 +469,7 @@ def test_faultcode_is_closed_8_value_strenum():
         "out_of_range",
         "oversized_packet",
         "not_assembled",
+        "busy",
     }
     assert {member.value for member in FaultCode} == expected
     # str-subclass semantics — StrEnum members compare equal to their string value.

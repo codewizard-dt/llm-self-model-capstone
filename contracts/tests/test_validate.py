@@ -173,7 +173,7 @@ def test_control_rejections_round_trips():
     """Every line of control_command_rejections.jsonl parses as `AckLine`."""
 
     objs = _iter_jsonl(REJECTIONS_FIXTURE)
-    assert len(objs) == 8
+    assert len(objs) == 9
     rejected = 0
     stale = 0
     for obj in objs:
@@ -186,7 +186,7 @@ def test_control_rejections_round_trips():
             stale += 1
         else:  # pragma: no cover — rejections fixture never carries state='ok'
             raise AssertionError(f"unexpected state {ack.state!r} in rejections fixture")
-    assert rejected == 7
+    assert rejected == 8
     assert stale == 1
 
 

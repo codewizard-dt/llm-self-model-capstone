@@ -10,7 +10,8 @@
         "estop_latched",
         "out_of_range",
         "oversized_packet",
-        "not_assembled"
+        "not_assembled",
+        "busy"
       ],
       "title": "FaultCode",
       "type": "string"
@@ -24,6 +25,18 @@
       "minimum": 0,
       "title": "Ack",
       "type": "integer"
+    },
+    "arm_port_ok": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Arm Port Ok"
     },
     "battery_mv": {
       "anyOf": [
@@ -118,6 +131,32 @@
       "minimum": 0,
       "title": "Recv Ms",
       "type": "integer"
+    },
+    "routine_active": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Routine Active"
+    },
+    "routine_slot": {
+      "anyOf": [
+        {
+          "maximum": 4,
+          "minimum": 2,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Routine Slot"
     },
     "state": {
       "enum": [

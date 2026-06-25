@@ -186,6 +186,17 @@ ros2 topic pub --once /vex/cmd std_msgs/String \
   '{"data": "{\"v\":1,\"seq\":4,\"type\":\"cmd\",\"cmd\":\"set_goal\",\"sent_ms\":0,\"ttl_ms\":200,\"goal\":\"collect_cube\"}"}'
 ```
 
+### Brain routine slot
+
+Slots `2`, `3`, and `4` are fixed routines inside the running Brain bridge:
+`2` spins 720 degrees, `3` cycles the arm up/down, and `4` drives one foot
+forward/back. These are not separate VEXos upload slots.
+
+```bash
+ros2 topic pub --once /vex/cmd std_msgs/String \
+  '{"data": "{\"v\":1,\"seq\":5,\"type\":\"cmd\",\"cmd\":\"routine\",\"sent_ms\":0,\"ttl_ms\":500,\"slot\":2}"}'
+```
+
 **Velocity limits enforced by `vex_bridge_node`:**
 - `vx`, `vy`: clamped to ±0.35 m/s
 - `omega`: clamped to ±0.60 rad/s
@@ -194,7 +205,7 @@ ros2 topic pub --once /vex/cmd std_msgs/String \
 The Brain will echo an ack on `/vex/ack`:
 
 ```json
-{"v":1,"ack":2,"type":"ack","state":"ok","recv_ms":124,"battery_mv":12300,"heading_deg":45.2,"fault":null}
+{"v":1,"ack":2,"type":"ack","state":"ok","recv_ms":124,"battery_mv":12300,"drive_ports_ok":true,"arm_port_ok":true,"routine_active":false,"fault":null}
 ```
 
 ---

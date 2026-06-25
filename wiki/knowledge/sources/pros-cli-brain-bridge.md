@@ -87,6 +87,22 @@ pros::Motor arm(ARM_PORT);
 
 Confirmed from the official 276-6009-750 Rev6 build instructions wiring diagram.
 
+## Capstone Brain Routine Slots
+
+The live `pros_bridge` program keeps VEXos program upload simple: upload/run the
+bridge, then let the Pi send fixed `cmd:"routine"` packets. Slots 2-4 are
+**routine IDs inside the bridge**, not separate VEXos upload slots:
+
+| Slot | Routine | Purpose |
+|---|---|---|
+| 2 | 720 spin | survey/proof rotation primitive using guarded drive motors |
+| 3 | arm up/down | arm motor proof with bounded target, timeout, and current guard |
+| 4 | one foot forward/back | drivetrain distance proof using the current wheel/encoder constants |
+
+The Brain rejects routine slots outside 2-4, rejects new motion while a routine
+is active with `fault:"busy"`, and cancels the active routine on `stop`,
+operator estop, or watchdog loss.
+
 relates_to::[[pros]]  
 relates_to::[[vex-v5]]  
 relates_to::[[vex-coprocessor-pattern]]  

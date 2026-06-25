@@ -2,7 +2,7 @@
 
 How the Raspberry Pi (`vexy`, System 2) talks to the V5 Brain (System 1) over USB:
 the physical layer, **receiving telemetry** (verified working), and **sending commands**
-(designed but not yet attempted on hardware).
+(now handled by the ROS 2 `vex_bridge_node` live path).
 
 Related docs:
 - [PROTOCOL.md](PROTOCOL.md) — the command/ack wire format (Pi→Brain).
@@ -10,11 +10,10 @@ Related docs:
 - [TOMORROW_BRINGUP.md](TOMORROW_BRINGUP.md) — original first-contact checklist.
 - [../../v5-brain/BRINGUP.md](../../v5-brain/BRINGUP.md) — the Brain/PROS side in detail.
 
-> **Status (2026-06-21):** Telemetry **Brain→Pi** is verified end-to-end (~100 Hz JSON,
-> read live over SSH). Commands **Pi→Brain** are **not yet tried** — the protocol and the
-> `bridge.py serial` path exist, but no Brain-side program has consumed a command yet, and
-> there is an unresolved design tension between continuous telemetry and request/response
-> acks on the single user port (see §3.3).
+> **Status (2026-06-25):** The active live path is ROS 2 Jazzy:
+> `vex_bridge_node` demuxes `/vex/ack`, `/vex/telemetry`, and `/vex/bridge_status`
+> from the guarded PROS `pros_bridge` firmware. The legacy `robot/pi-runtime`
+> protocol remains as a fallback reference only.
 
 ---
 
@@ -97,24 +96,25 @@ the Task Telemetry Contract / Claude loop (Mode A real-time or Mode B batch). Se
 
 ---
 
-## 3. Sending commands (Pi → Brain) — NOT YET ATTEMPTED
+## 3. Sending commands (Pi → Brain)
 
-The command path is designed but unproven on hardware. Here's what exists and what's open.
+The command path uses tagged JSON records on the V5 user serial port.
 
 ### 3.1 Wire format (see [PROTOCOL.md](PROTOCOL.md))
 Pi→Brain commands are newline-delimited JSON with `v`/`seq`/`type`/`sent_ms`/`ttl_ms`:
 ```json
 {"v":1,"seq":2,"type":"cmd","cmd":"drive","sent_ms":...,"ttl_ms":200,"vx":0.1,"vy":0.0,"omega":0.0}
+{"v":1,"seq":3,"type":"cmd","cmd":"routine","sent_ms":...,"ttl_ms":500,"slot":2}
 {"v":1,"seq":4,"type":"heartbeat","sent_ms":...,"ttl_ms":200}
 ```
 Brain→Pi ack:
 ```json
-{"v":1,"ack":2,"type":"ack","state":"ok","recv_ms":...,"battery_mv":12300,"heading_deg":12.3,"fault":null}
+{"v":1,"ack":2,"type":"ack","state":"ok","recv_ms":...,"battery_mv":12300,"drive_ports_ok":true,"arm_port_ok":true,"routine_active":false,"fault":null}
 ```
-`src/vexy_system2/protocol.py` already builds/validates/clamps these
-(`MAX_LINEAR=0.35`, `MAX_OMEGA=0.6`, `ttl_ms` clamped to ≤1000). For our capstone the
-first real command will more likely be an **arm action** (e.g. `{"cmd":"arm","deg":300}`) —
-the `drive`/`turn` vocabulary is drivetrain-oriented and will need extending for the arm.
+`src/vexy_system2/protocol.py` builds/validates/clamps the legacy fallback shape.
+The active ROS validator in `robot/ros2-runtime/src/vexy_ros/bridge_protocol.py`
+accepts `stop`, `drive`, `turn`, `set_goal`, and the fixed `routine` slots `2`,
+`3`, and `4`.
 
 ### 3.2 Pi side: `bridge.py --mode serial`
 `SerialV5Brain.handle()` does `serial.write(encode(packet)); flush(); line = readline()`
@@ -129,38 +129,19 @@ then `scripts/serial_ping_test.sh`. **Note:** the repo is **not currently on the
 use `bridge.py`/scripts you'd clone it there (or scp the `src/` tree). For telemetry-only,
 the repo is not needed (see §2.3).
 
-### 3.3 ⚠️ The core unresolved tension: telemetry stream vs. request/response acks
-The two directions both use the **same single user port**, and they assume conflicting I/O
-models:
-- **Telemetry** (today) = the Brain *continuously pushes* JSON lines at ~100 Hz.
-- **Commands** (`bridge.py`) = the Pi writes one packet and `readline()`s **the next line**
-  as the ack.
+### 3.3 Tagged multiplexing
+The ROS bridge resolved the original telemetry/ack tension with tagged
+multiplexing: the Brain emits `type:"ack"`, `type:"telemetry"`, and
+`type:"bridge_status"` records, and the Pi demuxes by `type` instead of assuming
+"next line = ack".
 
-If both run at once, `bridge.py`'s `readline()` will grab whatever telemetry line happens
-to be next, not the ack. This must be reconciled before commands will work. Options:
-1. **Tagged multiplexing (recommended):** keep one stream; the Brain tags every line
-   (`"type":"telemetry"` vs `"type":"ack"`), and the Pi reader demuxes by `type` instead of
-   "next line = ack". Requires replacing `bridge.py`'s naive write-then-readline with a
-   reader thread + a `seq→ack` map.
-2. **Quiet-during-command:** Brain only streams telemetry during actions and goes silent
-   otherwise (the test already does this) so acks for idle-time commands aren't interleaved
-   — fragile once an action *is* running.
-3. **Second channel:** move high-rate telemetry to a **Smart Port RS-485** link (PROS
-   `pros::Serial`, up to 921,600 baud) and keep USB for command/ack. Cleanest separation,
-   most hardware work (RS-485↔TTL adapter to the Pi UART). See wiki
-   `vex-coprocessor-pattern`.
-
-### 3.4 Brain side: required program structure (the `pros_bridge` sketch)
-`v5-brain/pros_bridge/src/main.cpp` is a starter sketch (not yet a buildable project). The
-proven-correct structure for bidirectional comms is **two FreeRTOS tasks** so a blocked
-read can't starve safety:
+### 3.4 Brain side: required program structure (`pros_bridge`)
+`v5-brain/pros_bridge/src/main.cpp` is now a buildable monolith PROS project.
+The structure is multiple FreeRTOS tasks so a blocked read cannot starve safety:
 - **receive task:** `getchar()` loop → assemble line → parse → clamp → act → ack.
 - **watchdog task:** if `millis() - last_packet_ms > WATCHDOG_MS` → stop all motors.
-A single combined loop **deadlocks** (blocked on `getchar()` while needing to send). The
-watchdog must be its own task so it ticks even when the receiver is blocked. When promoting
-the sketch: `pros conductor new-project pros_bridge v5`, set `USE_PACKAGE:=0` (monolith —
-mandatory on this Brain), add `serctl(SERCTL_DISABLE_COBS)`, and decide the §3.3 multiplex
-strategy first.
+- **telemetry task:** emits `type:"telemetry"` records independently from acks.
+- **routine task:** runs fixed Brain routine slots 2-4 without blocking receive/heartbeat reads.
 
 ### 3.5 Safety model (from PROTOCOL.md, enforce on the Brain)
 - Reject malformed JSON and unknown commands (ack `state:"rejected"`).
@@ -173,20 +154,16 @@ strategy first.
 
 ## 4. Bring-up checklist for commands (when we get there)
 
-1. Decide the telemetry/ack multiplex strategy (§3.3) — do this **first**.
-2. Promote `pros_bridge` to a real monolith PROS project; implement the two-task pattern +
-   `serctl(SERCTL_DISABLE_COBS)`.
-3. Extend `protocol.py` (and PROTOCOL.md) with the **arm** command vocabulary.
-4. Put the repo (or just `src/`) on the Pi; set `VEXY_*` in `~/.config/vexy-system2/local`.
-5. Loopback first: `scripts/serial_ping_test.sh` → expect an ack per command, watchdog stop
-   on silence.
-6. Only then connect motors and test a real commanded arm-raise, with the stall-guard +
-   timeout from the telemetry program carried over.
+1. Source the ROS workspace and confirm `/vex/ack` plus `/vex/telemetry`.
+2. Confirm `drive_ports_ok:true`, `arm_port_ok:true` when testing slots that need them.
+3. Record MCAP before dispatching a Brain routine.
+4. Dispatch `routine:2`, `routine:3`, or `routine:4` through `/task_plan/request`
+   or publish `cmd:"routine"` directly to `/vex/cmd`.
+5. Send `cmd:"stop"` to cancel any active routine.
 
 ## 5. Open questions
-- Final command vocabulary for the **arm** (and later drivetrain) — fields, units, TTLs.
-- Multiplex design (§3.3) — tagged single-stream vs. RS-485 second channel.
+- Whether future arm/claw actions should remain fixed Brain routines or graduate
+  to separate `arm`/`claw` command verbs in the live firmware.
 - Where ack/telemetry timestamps are reconciled (`t` is ms-since-boot on the Brain; the Pi
   stamps wall-clock `recv_ms`) for gap/latency analysis.
-- Whether `bridge.py` becomes a reader-thread + seq-map design, or is replaced by a purpose
-  -built duplex client.
+- Whether the legacy `bridge.py` should be retired now that ROS owns the live duplex client.

@@ -224,11 +224,25 @@ ros2 topic hz /camera/image_raw
 {"v":1,"seq":1,"type":"cmd","cmd":"drive","sent_ms":123,"ttl_ms":200,"vx":0.1,"vy":0.0,"omega":0.0}
 ```
 
-Supported `cmd` values: `stop`, `drive`, `turn`, `set_goal`
+Supported `cmd` values: `stop`, `drive`, `turn`, `set_goal`, `routine`
+
+Brain routine command:
+```json
+{"v":1,"seq":2,"type":"cmd","cmd":"routine","sent_ms":123,"ttl_ms":500,"slot":2}
+```
+
+Routine slots are fixed Brain-side routines inside the running `pros_bridge`
+program, not separate VEXos user-program upload slots:
+
+| Slot | Routine | Requires |
+|------|---------|----------|
+| 2 | `spin_720` — bounded 720 degree in-place spin | drive ports 1 and 10 |
+| 3 | `arm_full_cycle` — arm up to the bounded top target and back down | arm port 8 |
+| 4 | `one_foot_forward_back` — one foot forward, pause, one foot back | drive ports 1 and 10 |
 
 **Ack** (`/vex/ack`):
 ```json
-{"v":1,"ack":1,"type":"ack","state":"ok","recv_ms":124,"battery_mv":12300,"motion_enabled":true,"drive_ports_ok":true,"motor_ports":[1,3,8,10],"fault":null}
+{"v":1,"ack":1,"type":"ack","state":"ok","recv_ms":124,"battery_mv":12300,"motion_enabled":true,"drive_ports_ok":true,"arm_port_ok":true,"routine_active":false,"routine_slot":null,"motor_ports":[1,3,8,10],"fault":null}
 ```
 
 **Telemetry** (`/vex/telemetry`):
@@ -239,6 +253,10 @@ Supported `cmd` values: `stop`, `drive`, `turn`, `set_goal`
 The guarded V5 firmware accepts `drive`/`turn` only when the expected drive ports
 are present. It stops on command TTL expiry, watchdog expiry, explicit `stop`, or
 estop.
+
+`routine` is accepted only for slots `2`, `3`, and `4`. The Brain rejects a
+routine while another routine is active (`fault:"busy"`) and cancels any active
+routine on `stop`, watchdog loss, or estop.
 
 Ack records are command acknowledgements; use `/vex/telemetry` for streaming
 health and motor-sample proof.
@@ -420,6 +438,12 @@ ros2 topic pub --once /task_plan/request std_msgs/String \
   '{"data":"{\"target\":\"survey:all\",\"action\":\"survey_all\"}"}'
 ros2 topic pub --once /task_plan/request std_msgs/String \
   '{"data":"{\"target\":\"survey:all\",\"action\":\"survey_all\",\"dispatch\":true,\"survey_duration_s\":3.0,\"survey_omega_rad_s\":0.22}"}'
+ros2 topic pub --once /task_plan/request std_msgs/String \
+  '{"data":"{\"target\":\"routine:2\",\"action\":\"spin_720\",\"dispatch\":true}"}'
+ros2 topic pub --once /task_plan/request std_msgs/String \
+  '{"data":"{\"target\":\"routine:3\",\"action\":\"arm_full_cycle\",\"dispatch\":true}"}'
+ros2 topic pub --once /task_plan/request std_msgs/String \
+  '{"data":"{\"target\":\"routine:4\",\"action\":\"one_foot_forward_back\",\"dispatch\":true}"}'
 ```
 
 Tag plans can dispatch through the proven `align_to_tag` primitive. Object plans
@@ -430,7 +454,12 @@ to start unless `/vex/ack`, `/vex/telemetry`, and drive safety state are fresh.
 Use short `survey_duration_s` / `survey_omega_rad_s` overrides for supervised
 checks, then omit them for the default full scan.
 
-To capture the no-motion proof for tomorrow's first check:
+Routine plans dispatch directly to `/vex/cmd` with `cmd:"routine"` and do not
+require a scene map. Run them only with the same proof discipline as other
+motion: fresh `/vex/ack`, fresh `/vex/telemetry`, operator supervision, and an
+MCAP recording for the routine.
+
+To capture the no-motion vision/planning proof before a motion check:
 
 ```bash
 ros2 run vexy_ros vexy_scene_observation_proof

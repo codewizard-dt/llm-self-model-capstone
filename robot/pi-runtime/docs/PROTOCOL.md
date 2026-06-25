@@ -32,10 +32,25 @@ Turn:
 {"v":1,"seq":3,"type":"cmd","cmd":"turn","sent_ms":1781880000020,"ttl_ms":200,"omega":0.2}
 ```
 
+Brain routine:
+
+```json
+{"v":1,"seq":4,"type":"cmd","cmd":"routine","sent_ms":1781880000030,"ttl_ms":500,"slot":2}
+```
+
+Routine slots are fixed routines inside the running `pros_bridge` program, not
+separate VEXos upload slots:
+
+| Slot | Routine | What it does |
+|------|---------|--------------|
+| 2 | `spin_720` | bounded 720 degree in-place spin |
+| 3 | `arm_full_cycle` | arm to bounded top target, pause, back to rest |
+| 4 | `one_foot_forward_back` | one foot forward, pause, one foot back |
+
 Heartbeat:
 
 ```json
-{"v":1,"seq":4,"type":"heartbeat","sent_ms":1781880000030,"ttl_ms":200}
+{"v":1,"seq":5,"type":"heartbeat","sent_ms":1781880000040,"ttl_ms":200}
 ```
 
 ## V5 Response
@@ -54,8 +69,9 @@ Errors:
 
 - Brain rejects malformed JSON.
 - Brain rejects unknown commands.
+- Brain rejects routine slots outside `2`, `3`, and `4`.
+- Brain rejects new drive/turn/routine commands with `fault:"busy"` while a routine is active.
 - Brain clamps all velocity values.
 - Brain stops if no valid heartbeat or command arrives within the watchdog interval.
 - Brain stops when command TTL expires.
 - Pi treats missing ack as a fault and sends `stop` on reconnect.
-

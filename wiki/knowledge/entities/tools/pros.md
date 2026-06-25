@@ -98,13 +98,13 @@ Use `StaticJsonDocument`, never `DynamicJsonDocument`, in a tight loop to avoid 
 
 ## Community RS-485 Coprocessor Examples (from [[vex-v5-rpi-coprocessor-opensource]])
 
-## Capstone Implementation Status (2026-06-21)
+## Capstone Implementation Status (2026-06-25)
 
-**The PROS Brain bridge is a starter sketch, not yet proven on physical hardware.** `robot/v5-brain/pros_bridge/src/main.cpp` is a PROS sketch using `pros/apix.h`, `pros::millis()`, `pros::delay()`, and `serctl(SERCTL_DISABLE_COBS, nullptr)`. It implements `initialize()` / `opcontrol()` PROS lifecycle entry points, reads newline-delimited JSON from the V5 USB user/console serial port via `std::getchar()`, and acks over `stdout`. A 250 ms watchdog calls `stop_drive()` on packet timeout. Motor port assignments and vx/omega JSON parsing are still TODOs as of this writing.
+**The PROS Brain bridge is now the active guarded firmware.** `robot/v5-brain/pros_bridge/src/main.cpp` is a buildable monolith PROS project using `pros/apix.h`, `pros::millis()`, `pros::delay()`, and `serctl(SERCTL_DISABLE_COBS, nullptr)`. It reads newline-delimited JSON from the V5 USB user/console serial port via `std::getchar()`, emits tagged `ack`/`telemetry`/`bridge_status` records, and watchdog-stops all configured motors on packet loss. The live port map is drive motors on ports 1 and 10 plus arm on port 8.
 
 **Community confirmation of the pattern:** Multiple VEX AI competition teams use `SERCTL_DISABLE_COBS` + `printf()`/`getchar()` for bidirectional JSON over the USB user port (aadishv.dev "Robotics 5", VEX Forum `v5-brain-to-raspberry-pi-communication`). The official VAIC reference architecture (VEX-Robotics/VAIC_23_24 and VAIC_24_25) uses PROS C++ on the Brain with this exact approach.
 
-**Two-task pattern required in practice:** Real-world teams that combined send and receive into a single PROS task hit deadlocks (blocked on `getchar()` while needing to send). The correct pattern is two separate FreeRTOS tasks — one for commands-in (`getchar()` loop), one for telemetry-out — exploiting the preemptive scheduler to run both concurrently. The current single-loop sketch is a stepping stone; splitting is a known TODO before physical demo.
+**Multi-task pattern required in practice:** Real-world teams that combined send and receive into a single PROS task hit deadlocks (blocked on `getchar()` while needing to send). The capstone bridge uses separate FreeRTOS tasks for receive, watchdog, telemetry, and fixed routine slots. Routine slots 2-4 are serial command IDs inside the running bridge program: 2 = 720 spin, 3 = arm up/down, 4 = one foot forward/back.
 
 **PROS C++ vs VEXcode Python (as research, not decision):** PROS C++ bidirectional serial is community-confirmed; VEXcode Python stdin receiving on the Brain is unconfirmed (no community example exists of Python on the Brain receiving from a Pi). See derives_from::[[v5-brain-python-vs-pros]].
 

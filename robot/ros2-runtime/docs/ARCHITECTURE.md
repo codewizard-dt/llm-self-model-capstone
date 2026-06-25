@@ -118,12 +118,13 @@ Command-specific fields (`type == "cmd"`):
 | `drive` | `vx` (m/s, ±0.35), `vy` (m/s, ±0.35), `omega` (rad/s, ±0.60) |
 | `turn` | `omega` (rad/s, ±0.60) |
 | `set_goal` | `goal` (string) |
+| `routine` | `slot` (`2`, `3`, or `4`; Brain-side bounded routine ID) |
 | `heartbeat` | — (can also use `type == "heartbeat"` directly) |
 
 ### Protocol v1 — Inbound Acks
 
 ```json
-{"v":1,"ack":1,"type":"ack","state":"ok","recv_ms":124,"battery_mv":12300,"heading_deg":0.0,"fault":null}
+{"v":1,"ack":1,"type":"ack","state":"ok","recv_ms":124,"battery_mv":12300,"drive_ports_ok":true,"arm_port_ok":true,"routine_active":false,"fault":null}
 ```
 
 Ack records are published on `/vex/ack`, keyed by the `ack` sequence. Telemetry/sample/event records are published on `/vex/telemetry`. Malformed JSON, unsupported protocol versions, missing acks, stale telemetry, and serial disconnects are published on `/vex/bridge_status`.
