@@ -1,0 +1,32 @@
+items:
+  - id: acc-sync
+    verdict: pass
+    notes: "`cd operator && make sync` exits 0 and creates the operator uv environment from `operator/pyproject.toml` / `operator/uv.lock`."
+  - id: acc-test
+    verdict: pass
+    notes: "`cd operator && make test` exits 0: 5 packet-builder tests pass."
+  - id: acc-validate
+    verdict: pass
+    notes: "`cd operator && make validate` exits 0 and builds both contract-fixture and ROS-proof packet fixtures in memory."
+  - id: acc-lint
+    verdict: pass
+    notes: "`cd operator && make lint` exits 0 after ruff formatting."
+  - id: acc-ros-routine
+    verdict: pass
+    notes: "The ROS bundle path calls `contract_jsonl_from_bundle` from `vexy_ros.evidence_export`; tests assert the routine name and `proof/rosbags/align_to_tag_fixture` source appear in the packet."
+  - id: acc-blocked-labels
+    verdict: pass
+    notes: "The exact blocked strings are constants in `operator_llm.packet_builder` and covered by tests for missing F10, missing ContractLine evidence, and missing hardware proof."
+  - id: acc-fixture-backed-gap
+    verdict: pass
+    notes: "Supplying a gap summary path emits `[FIXTURE-BACKED: F10 residual summary]` and serializes the fixture JSON in the packet."
+  - id: acc-parts-verdict
+    verdict: pass
+    notes: "The packet calls `contracts.validate_config`; tests mutate a claw config to an invalid allocation and assert `CLAW_MOTOR_BUDGET` appears."
+  - id: acc-no-operator-schema
+    verdict: pass
+    notes: "No pydantic model or JSON/YAML schema is introduced under `operator/`; durable shapes are imported from `contracts`."
+  - id: acc-root-delegation
+    verdict: pass
+    notes: "Root Makefile now delegates `sync`, `test`, `validate`, and `lint` to `operator/` after `contracts/`; root `make sync`, `make validate`, `make test`, and `make lint` all exit 0."
+verdict: approve

@@ -52,6 +52,29 @@ PROS projects are standard C++ with `include/` and `src/` directories — arbitr
 - Works with VS Code (community extension) or any editor
 - The PROS kernel depends on VEX's proprietary SDK (not fully open at the OS layer)
 
+### PROS CLI on the Raspberry Pi (ARM64)
+
+`pros-cli 3.5.6` is a pure-Python wheel (`py3-none-any`) — it installs on ARM64 Ubuntu 24.04 with no native-extension issues. The Pi (`vexy`) is `aarch64`, Python 3.12.3. The Python 3.13 version-detection bug documented in `TOOLCHAIN.md` does **not** affect the Pi (3.12.3 is fine).
+
+Install path on the Pi (one-time):
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh  # install uv first
+cd ~/llm-self-model-capstone/robot/v5-brain
+uv sync                                            # installs pros-cli into .venv
+uv run pros --version                              # verify: pros, version 3.5.6
+```
+
+Upload from Pi via SSH (build stays on laptop; Pi only uploads):
+
+```bash
+ssh vexy@vexy.local "cd ~/llm-self-model-capstone/robot/v5-brain/pros_bridge && uv run pros upload --slot 7 --after none"
+```
+
+Always use **slot 7 or 8** during development — never slot 1. See `robot/ros2-runtime/docs/RUNBOOK.md §8` for the full push-and-upload workflow.
+
+derives_from::[[pros-cli-arm64-pi]]
+
 ### PROS CLI — Exact Commands (from derives_from::[[pros-cli-brain-bridge]])
 
 ```bash

@@ -25,7 +25,6 @@ DEFAULT_OBJECT_DIMENSIONS_JSON = json.dumps(
         "cup": {"height_m": 0.12, "width_m": 0.08},
         "sports ball": {"diameter_m": 0.065},
         "yellow ball": {"diameter_m": 0.065},
-        "yellow_ball": {"diameter_m": 0.065},
     },
     sort_keys=True,
 )

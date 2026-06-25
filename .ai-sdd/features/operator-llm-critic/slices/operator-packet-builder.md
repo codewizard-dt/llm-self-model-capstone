@@ -10,13 +10,21 @@
 
 ## Scope
 
-Plan an operator packet builder that gathers visible inputs for the offline LLM
-loop: current or prior `contracts.SelfModel`, task evidence from
-`contracts.ContractLine` JSONL, shared vocabulary constraints, human operator
-constraints, `contracts.PartsCatalog` / `contracts.validate_config`
-buildability checks, human operator constraints, source references, future F10
-residual summaries, and blocked-state notes. The packet is the evidence
-boundary for F8 Generator work and must make missing evidence explicit.
+Implement the first operator packet builder for the offline LLM loop. The packet
+builder gathers visible inputs for F8/F9 work: current or prior
+`contracts.SelfModel`, task evidence from `contracts.ContractLine` JSONL,
+ROS proof bundles exported through `robot/ros2-runtime/src/vexy_ros`,
+`contracts.PartsCatalog` / `contracts.validate_config` buildability checks,
+human constraints, source references, future F10 residual summaries, and
+blocked-state notes. The packet is the evidence boundary for F8 Generator work
+and must make missing evidence explicit.
+
+This slice creates two practical tracks:
+
+- Track 1: M1 + ROS proof intake, anchored to merged contracts and
+  `vexy_ros.evidence_export.contract_jsonl_from_bundle`.
+- Track 2: Operator LLM packet assembly, producing a markdown packet for the
+  offline Generator/Critic flow.
 
 The packet builder must use these exact blocked labels:
 
@@ -40,14 +48,18 @@ described in `operator/docs/llm_critic_architecture.md`.
    constraints and blocked assumptions.
 5. The packet does not define telemetry, self-model, parts-catalog, or residual
    schemas under `operator/`.
+6. ROS proof-bundle intake reuses `vexy_ros.evidence_export` instead of
+   duplicating proof-to-ContractLine export logic.
+7. Root `make test`, `make validate`, `make lint`, and `make sync` delegate to
+   the new operator vertical.
 
 ## Out of Scope
 
-- Implementing packet builder code.
 - Writing final prompt text.
 - Computing gap residuals.
 - Changing F3 valid-config grammar.
 - Reading hidden synthetic oracle parameters.
+- Implementing Generator or Critic prompt execution.
 
 ## Dependencies
 

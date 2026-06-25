@@ -228,6 +228,19 @@ Cancel:
 ros2 topic pub --once /align_to_tag/cancel std_msgs/String '{"data":"operator_cancel"}'
 ```
 
+### Return home to the workspace anchor
+
+The return-home task is a reusable slot routine over the proven `align_to_tag`
+skill. It targets AprilTag `2` by default, matching the workspace map's `home`
+anchor, and blocks with `home_tag_not_in_scene` instead of wandering when the
+home tag is not visible.
+
+```bash
+ros2 topic echo /align_to_tag/result --once &
+ros2 topic pub --once /task_plan/request std_msgs/String \
+  '{"data":"{\"target\":\"home:tag\",\"action\":\"return_home\",\"target_distance_m\":0.45,\"dispatch\":true}"}'
+```
+
 ### Survey visible tags
 
 The `survey_scan` node is a bounded rotate-in-place skill for `survey:all`.
