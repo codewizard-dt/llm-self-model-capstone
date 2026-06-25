@@ -55,6 +55,7 @@ gap` status. That record seeds the discovery eval set (see *Discovery quality* b
   schemas/               per-artifact schema-metadata (fields/rules/judge) — see ai-sdd-compile-schema
   conventions/<stack>.md the house style, bootstrapped FROM the codebase (not hand-invented)
   skills/                worker skills + the copied framework skills (below)
+  hooks/pre-commit       the git-boundary integrity tripwire, vendored by scripts/bootstrap.sh (§4 / §6a)
   stacks/ traits/ resources/   design-only specs (engine ignores today) if modeling the full factory
   runs/  artifacts/       runtime — gitignored
 ```
@@ -83,13 +84,14 @@ The review schema's invariants (all items `pass`, overall `verdict == approve`) 
 **deterministic, blocking gate** — see [ai-sdd-compile-schema](../ai-sdd-compile-schema/SKILL.md);
 the reviewer *is* the judge, captured and enforced structurally, no judge-runner required.
 
-## 4. Copy the framework skills (provider-neutral source)
+## 4. Framework skills + integrity hook (vendored by `scripts/bootstrap.sh`)
 
-Copy the framework skills from the ai-sdd install's `skills/` into `.ai-sdd/skills/`:
-`ai-sdd-plan` (the feature planner), `ai-sdd-plan-program` (the program planner — multi-feature graphs
-with milestones + owners), `ai-sdd-run` (the driver), `ai-sdd-compile-schema` (the gate compiler), and
-`ai-sdd-bootstrap` itself (so re-bootstrap needs no external clone). They live alongside the worker
-skills — one neutral home. Copying (not symlinking to the install) is what makes the repo self-contained.
+The framework skills (`ai-sdd-plan`, `ai-sdd-plan-program`, `ai-sdd-run`, `ai-sdd-compile-schema`,
+`ai-sdd-bootstrap`) and the integrity pre-commit hook source (`.ai-sdd/hooks/pre-commit`) are **not
+authored here** — they are fixed artifacts the deterministic seeder `scripts/bootstrap.sh <repo>` vendors
+into `.ai-sdd/skills/` and `.ai-sdd/hooks/` (the same step that made *this* skill discoverable; QUICKSTART
+Step 2). Copying (not symlinking to the install) is what makes the repo self-contained; re-run the seeder
+to refresh them after an upgrade. This skill's job is the **authored** factory below.
 
 ## 5. Compile the gates
 
@@ -137,6 +139,21 @@ can't drift.
   by path (`task.skill: X` → `.ai-sdd/skills/X.md`).
 
 The engine itself is already neutral: `ai-sdd` is a CLI any agent calls over a shell.
+
+## 6a. The git-boundary integrity tripwire (`.git/hooks/pre-commit`)
+
+The committed factory ships a POSIX-shell pre-commit hook at `.ai-sdd/hooks/pre-commit`. It catches work
+reaching git *outside* the `ai-sdd-run` loop: a commit whose subject matches `[<feature>] <slice>:` but
+has no recorded `nodeCompleted` event for `<slice>` is refused, so "forgot to submit" fails loudly
+instead of silently diverging the ledger from main.
+
+**Installed by `scripts/bootstrap.sh`, not here.** That deterministic seeder (§4 / QUICKSTART Step 2)
+vendors the source into `.ai-sdd/hooks/pre-commit` and installs `.git/hooks/pre-commit` — idempotently,
+chaining any pre-existing hook into `.pre-commit.local` (whose exit code is preserved), keyed off an
+`# ai-sdd:managed-hook` marker so re-runs refresh rather than re-chain. `.git/` is per-clone runtime state
+outside the factory file manifest, so this is a runtime step; `git commit --no-verify` bypasses it
+intentionally. To (re)install or refresh after an upgrade, **re-run `scripts/bootstrap.sh <repo>`** — do
+not run hook-install shell here.
 
 ## 7. Ignore runtime + per-agent surfacing, then validate
 

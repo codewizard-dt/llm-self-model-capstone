@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="820" viewBox="0 0 1200 820" role="img" aria-labelledby="title desc">
+  <title id="title">Alternate 5x10 flywheel cassette assembled view</title>
+  <desc id="desc">Three-dimensional line drawing of the alternate longer flywheel cassette using two 5x10 side plates, 5x5 gussets, and a Home Depot strap backplate.</desc>
+  <defs>
+    <style>
+      .metal{fill:#f3f4f6;stroke:#111827;stroke-width:3;stroke-linejoin:round}
+      .strap{fill:#e5e7eb;stroke:#4b5563;stroke-width:3;stroke-linejoin:round}
+      .gusset{fill:#ede9fe;stroke:#7c3aed;stroke-width:3;stroke-linejoin:round}
+      .wheel{fill:#ecfdf5;stroke:#047857;stroke-width:3}
+      .bearing{fill:#fff;stroke:#2563eb;stroke-width:3}
+      .collar{fill:#fffbeb;stroke:#b45309;stroke-width:3}
+      .part{fill:none;stroke:#111827;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+      .dash{fill:none;stroke:#6b7280;stroke-width:2;stroke-dasharray:8 7}
+      .label{font:18px ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#111827}
+      .small{font:15px ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#374151}
+    </style>
+  </defs>
+  <rect x="20" y="20" width="1160" height="780" fill="#fff" stroke="#d1d5db" stroke-width="2"/>
+  <text x="50" y="62" class="label" style="font-size:28px;font-weight:700">Plan B assembled: long 5x10 adjustable flywheel cassette</text>
+  <text x="50" y="92" class="small">Use this when the fixed-arm mount, motor placement, or ball path needs extra adjustment length.</text>
+
+  <polygon points="160,145 535,100 535,620 160,665" class="metal"/>
+  <polygon points="600,190 975,145 975,665 600,710" class="metal"/>
+  <line x1="535" y1="100" x2="975" y2="145" class="part"/>
+  <line x1="535" y1="620" x2="975" y2="665" class="part"/>
+  <line x1="160" y1="145" x2="600" y2="190" class="part"/>
+  <line x1="160" y1="665" x2="600" y2="710" class="part"/>
+  <text x="145" y="120" class="label">left 5x10 long side plate</text>
+  <text x="690" y="126" class="label">right 5x10 long side plate</text>
+
+  <line x1="335" y1="400" x2="780" y2="445" class="part"/>
+  <circle cx="335" cy="400" r="34" class="bearing"/>
+  <circle cx="780" cy="445" r="34" class="bearing"/>
+  <circle cx="560" cy="422" r="92" class="wheel"/>
+  <circle cx="560" cy="422" r="30" fill="#fff" stroke="#047857" stroke-width="3"/>
+  <rect x="400" y="376" width="34" height="56" rx="8" class="collar" transform="rotate(6 417 404)"/>
+  <rect x="690" y="405" width="34" height="56" rx="8" class="collar" transform="rotate(6 707 433)"/>
+
+  <polygon points="885,285 945,278 945,605 885,612" class="strap"/>
+  <text x="955" y="348" class="label">Home Depot strap backplate</text>
+  <text x="955" y="374" class="small">longer than the 5x5 leftovers</text>
+  <path d="M705 462 C780 450 840 430 930 390" class="dash"/>
+  <circle cx="785" cy="448" r="36" fill="#fff7ed" stroke="#ea580c" stroke-width="3"/>
+
+  <polygon points="170,570 295,555 335,665 205,680" class="gusset"/>
+  <polygon points="600,615 735,598 775,705 635,722" class="gusset"/>
+  <text x="145" y="735" class="small">5x5 pieces become gussets, motor plates, or short chute-entry brackets</text>
+
+  <rect x="70" y="360" width="90" height="115" rx="12" fill="#eff6ff" stroke="#2563eb" stroke-width="3"/>
+  <line x1="160" y1="417" x2="335" y2="400" class="part"/>
+  <text x="55" y="335" class="label">V5 motor</text>
+  <text x="55" y="500" class="small">more room to shift motor and bearing holes</text>
+
+  <rect x="55" y="760" width="1090" height="34" fill="#f9fafb" stroke="#111827" stroke-width="2"/>
+  <text x="75" y="782" class="small">Tradeoff: more adjustment and mounting footprint, but fewer VEX-grid parts remain for the chute/backplate.</text>
+</svg>

@@ -1,6 +1,6 @@
 ---
 title: Wiki Index
-updated: 2026-06-19
+updated: 2026-06-25
 ---
 
 # Wiki Index — Home Map
@@ -60,6 +60,7 @@ The wiki is split into two domains with opposite organizing laws:
 - [Research: VEX V5 Minimal Structural Parts for a Flywheel Setup](knowledge/sources/vex-flywheel-structure-parts.md) — structural companion to vex-launch-disc-parts; 3 purchase lines (276-3521 HS bearing, 276-6102 HS collar, 276-3440 2" HS shaft); arm C-channels reused; standoff sandwich trick avoids drilling
 - [Research: Flywheel Arm Retrofit](knowledge/sources/flywheel-arm-retrofit.md) — fixed-arm variant: mechanically brace the old arm, bolt on adapter plates, then mount a standoff-spaced flywheel cassette with two-sided shaft support
 - [Research: VEX V5 Flywheel Indexer Mechanisms](knowledge/sources/vex-flywheel-indexer.md) — holds piece in staging, fires on command; 1-motor flywheel frees claw motor → roller indexer, zero new parts; 2-motor flywheel → ratchet (Motor Clutch 276-1098) or 5th motor
+- [VEX Smart Motor, High Strength Shaft, and Flywheel Fit](knowledge/sources/vex-smart-motor-hs-shaft-flywheel.md) — correction for the foam golf ball launcher: V5 motor accepts HS shaft, but HS shaft does not pass through normal plate holes; first prototype should use the compression wheel kit's 1/8" shaft adapter path
 - [VEX Order and Known Build Inventory, 2026-06-25](knowledge/sources/vex-order-2026-06-25.md) — ordered flywheel/scoop parts and current known inventory constraint: no spare U- or C-channels; use plates, spacers, and measured perforated steel
 - [Home Depot Supplemental Build Inventory, 2026-06-25](knowledge/sources/home-depot-inventory-2026-06-25.md) — confirmed Simpson strap plates, Everbilt nylon spacers, zip ties, Velcro straps, and very soft foam balls for the scoop/flywheel prototypes
 - [Flywheel Recut Plan for Two VEX 5x15 Steel Plates](knowledge/sources/flywheel-plate-recut-plan.md) — two best cross-cut layouts for the VEX 5x15 plates: recommended 5x8+5x7 hole-grid cassette and alternate 5x10+5x5 hole-grid cassette; labels are VEX hole counts, not inches

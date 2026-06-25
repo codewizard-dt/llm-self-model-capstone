@@ -2,9 +2,13 @@
 id: vex-flywheel-disc-launcher
 title: VEX Flywheel Disc Launcher
 aliases: [Disc Launcher, Flywheel Launcher, Launch Disc Configuration]
-updated: 2026-06-19
+updated: 2026-06-25
 sources:
   - ../../raw/research/vex-launch-disc-parts/index.md
+  - ../../raw/research/vex-order-2026-06-25/index.md
+  - ../../raw/research/flywheel-arm-retrofit/index.md
+  - ../../raw/research/flywheel-plate-recut-plan/index.md
+  - ../../raw/research/vex-smart-motor-hs-shaft-flywheel/index.md
 tags: [vex-v5, flywheel, disc-launcher, mechanism, morphology, task-primitive]
 ---
 
@@ -42,6 +46,12 @@ See relates_to::[[vex-v5-motor-cartridges]] for full cartridge comparison.
 | 5 | **276-8794** | V5 Flywheel Weight 2-pack | RPM stability between shots | Optional |
 
 **Note:** 2" flex wheels (217-6354) avoid the VersaHub requirement, simplifying the assembly — the wheel mounts directly at the motor output shaft via two VersaHex adapters only.
+
+### Foam Golf Ball Prototype — 2026-06-25 Correction
+
+derived_from::[[vex-smart-motor-hs-shaft-flywheel]] corrects the immediate build path for the now-selected foam golf ball. The V5 Smart Motor socket accepts both 1/8 in standard shafts and 1/4 in High Strength shafts, so the motor is not the fit problem. The problem is that a 1/4 in HS shaft does **not** pass through normal VEX steel plate holes unless a 5/16 in / 8 mm clearance hole is drilled or notched.
+
+For the foam golf ball prototype, use the **standard 1/8 in shaft path first**: motor outside the blue VEX plate, 1/8 in shaft through the normal plate hole into the motor socket, and the 2 in compression wheel mounted with the 276-8882 kit's 1/2 in hex to 1/8 in square adapters. Start the wheel-rim-to-backplate gap at **37 mm**, adjustable from **34-39 mm** for a golf-ball-sized foam ball. Switch to the HS shaft path only if the 1/8 in shaft visibly bends, slips, or wobbles.
 
 ## Task Telemetry for `launch_disc`
 
@@ -111,6 +121,40 @@ The structural frame for a single flywheel consists of two C-channel side plates
 
 The motor mounts directly to C-channel with 4× standard #8-32 screws already in the kit. The backplate is any existing steel plate from the kit. Standoffs, screws, keps and nylock nuts are all in the Starter Kit.
 
+### Inventory-Constrained Frame — 2026-06-25
+
+derived_from::[[vex-order-2026-06-25]] changes the immediate build assumption: there are **no spare U-channels or C-channels**. For the next build pass, use a **plate-and-spacer sandwich frame**:
+
+- Use the ordered 5x15 steel plates (SKU 275-2023) as the precision side plates.
+- Use existing spacers/standoffs to set the plate separation.
+- Mount ordered HS Shaft Bearings (276-3521) to matching plate holes and run the 2" HS shaft (276-3440) through them.
+- Retain the shaft with ordered HS clamping collars (276-6102).
+- Use non-VEX perforated steel only for a backplate, chute wall, brace, or scoop adapter spine unless its hole spacing is measured and confirmed.
+
+The same principle applies to the scoop: without spare C-channel, a non-VEX perforated plate can serve as the clamp adapter spine for a spoon or dustpan, but it should not be treated as precision VEX structure until measured.
+
+### Recut 5x15 Plate Layouts
+
+derived_from::[[flywheel-plate-recut-plan]] refines the inventory-constrained frame once the two VEX 5x15 plates are available. Treat each 5x15 plate as a 5-hole by 15-hole precision grid, not as inch dimensions; VEX pitch is 0.5 in, so the nominal 5x15 grid span is 2.5 in x 7.5 in. The safest cuts are full-width cross-cuts between hole rows; avoid lengthwise strip cuts for bearing plates because they are more likely to twist or lose shaft alignment.
+
+**Recommended layout: 5x8 + 5x7 from each plate.** The two 5x8 pieces are the matched side plates for the flywheel bearings. The two 5x7 pieces become the adjustable backplate, chute wall, bridge, lower rail, or motor brace. This is the best first build because it makes a compact cassette and leaves useful VEX-grid material for the ball guide.
+
+**Alternate layout: 5x10 + 5x5 hole-grid pieces from each plate.** The two 5x10 pieces, nominally 2.5 in x 5.0 in by hole-count times pitch, are longer matched side plates with more fore-aft adjustment for the motor, shaft, fixed-arm adapter, and ball path. The two 5x5 pieces, nominally 2.5 in x 2.5 in, become gussets or motor brackets. Use a Home Depot strap as the long adjustable backplate because the 5x5 leftovers are too short for that role.
+
+Do not start with a 5x6 + 5x5 + 5x4 split unless the first cassette has already proven the shaft and ball path. It creates many small brackets but no clearly strong matched side plates.
+
+## Fixed-Arm Retrofit Variant
+
+derived_from::[[flywheel-arm-retrofit]] adds a variant for the case where the Clawbot arm is not fully disassembled into flywheel side plates. In this pattern, the former arm is mechanically locked at the desired angle and treated as a tower. Adapter plates bolt through the existing arm holes, then a two-plate standoff cassette carries the flywheel shaft, bearings, collars/spacers, wheel, and motor.
+
+The important constraint is that the old arm motor is only an actuator, not a structural lock. If it is unplugged or removed, the arm must be braced with structural metal before the flywheel cassette is attached. This preserves the same flywheel principles already documented here — 600 RPM cartridge, two-sided shaft support, and rigid plate spacing — while changing the mounting interface from "arm C-channels become the frame" to "fixed arm carries a removable cassette."
+
+The next review-round drawing uses a revised layout: Home Depot steel straps extend the arm forward, and VEX plates form a blue launcher box at the front of those extensions. For the racquetball, the blue plate inside spacing target is 65 mm and the wheel-rim-to-backplate starting gap is 51 mm. This keeps the red straps out of the ball path and gives the blue VEX plates the motor-mounting role.
+
+![Flywheel arm-extension side layout](assets/flywheel-arm-extension-side-layout.svg)
+
+![Flywheel racquetball spacing detail](assets/flywheel-arm-extension-spacing-detail.svg)
+
 ## Indexer (from [[vex-flywheel-indexer]])
 
 The indexer holds the game piece in staging and pushes it into the flywheel on command. Type depends on motor budget:
@@ -146,3 +190,6 @@ relates_to::[[vex-v5-motor-cartridges]]
 relates_to::[[task-telemetry-contract]]
 relates_to::[[llm-authored-self-model]]
 relates_to::[[game-object-selection]]
+relates_to::[[fixed-arm-flywheel-retrofit]]
+relates_to::[[flywheel-plate-recut-plan]]
+relates_to::[[vex-smart-motor-hs-shaft-flywheel]]
