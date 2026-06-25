@@ -25,8 +25,18 @@ The host must use the full Arm GNU embedded toolchain from the `gcc-arm-embedded
 cask. Homebrew's `arm-none-eabi-gcc` formula is built without the standard
 newlib/libstdc++ headers and fails on PROS headers such as `<cerrno>`.
 
-Upload/run only when the V5 Brain is connected to the host running PROS:
+Upload/run only when the V5 Brain is connected to the host running PROS. Slot 4
+is the canonical return-home slot; the project upload options pin this metadata,
+but the command should still pass `--slot 4` explicitly for proof captures:
 
 ```bash
-pros upload --after run
+pros upload --slot 4 \
+  --name "Slot 4 Return Home" \
+  --description "Slot 4 Return Home: guarded ROS bridge for home:tag" \
+  --after none
+pros v5 ls-files
+pros v5 run 4
 ```
+
+See `../SLOT_MANIFEST.md` for the full physical fact-check checklist before
+claiming slot 4 is loaded.
