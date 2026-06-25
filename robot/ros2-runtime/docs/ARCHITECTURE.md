@@ -150,9 +150,13 @@ Ack records are published on `/vex/ack`, keyed by the `ack` sequence. Telemetry/
 | `/align_to_tag/cancel` | `std_msgs/String` | operator / controller | `align_to_tag` | on-demand |
 | `/align_to_tag/feedback` | `std_msgs/String` | `align_to_tag` | — (bag, Foxglove) | control-period dependent |
 | `/align_to_tag/result` | `std_msgs/String` | `align_to_tag` | — (bag, Foxglove) | terminal |
-| `/vex/cmd` | `std_msgs/String` | external / LLM loop | `vex_bridge` | on-demand |
+| `/survey/goal` | `std_msgs/String` | operator / task_plan | `survey_scan` | on-demand |
+| `/survey/cancel` | `std_msgs/String` | operator / controller | `survey_scan` | on-demand |
+| `/survey/feedback` | `std_msgs/String` | `survey_scan` | — (bag, Foxglove) | control-period dependent |
+| `/survey/result` | `std_msgs/String` | `survey_scan` | — (bag, Foxglove) | terminal |
+| `/vex/cmd` | `std_msgs/String` | external / LLM loop / local skills | `vex_bridge` | on-demand |
 | `/vex/ack` | `std_msgs/String` | `vex_bridge` | — (bag, controller) | heartbeat/cmd dependent |
-| `/vex/telemetry` | `std_msgs/String` | `vex_bridge` | — (bag) | Brain sample dependent |
+| `/vex/telemetry` | `std_msgs/String` | `vex_bridge` | — (bag, controller) | Brain sample dependent |
 | `/vex/bridge_status` | `std_msgs/String` | `vex_bridge` | — (bag, controller) | fault/status dependent |
 
 ## LLM Self-Model Feedback Loop
@@ -232,9 +236,13 @@ Tag plans can dispatch to the proven `align_to_tag` primitive when
 object/go-to-pose controller is implemented and proven with MCAP plus
 `/vex/ack` and `/vex/telemetry`.
 
-Survey plans describe a 360-degree rotate-in-place scan that should collect
-visible tags, objects, and an updated scene map. They are intentionally
-non-dispatchable until a supervised `scan-only` motion proof exists.
+Survey plans dispatch to the proven `survey_scan` primitive when
+`dispatch:true`. The primitive performs a bounded rotate-in-place scan, refuses
+to start without fresh `/vex/ack` and `/vex/telemetry`, stops on bridge or drive
+safety faults, and publishes `/survey/feedback` plus `/survey/result` for MCAP
+evidence. The default full scan is tied to proof bundle
+`full-survey-20260624-223313`; shorter duration/omega overrides are for
+operator-supervised checks.
 
 The yellow ball is supported as `object:yellow_ball` through a lightweight HSV
 detector, plus the same label can be emitted by a future NCNN model.

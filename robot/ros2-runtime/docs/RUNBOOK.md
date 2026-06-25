@@ -159,7 +159,7 @@ Expected: `vexy_ros` appears in output. If not, run `source ~/ros2_ws/install/se
 ros2 node list
 ```
 
-Expected: `/camera`, `/camera_rectify`, `/apriltag`, `/align_to_tag`, `/vex_bridge`, and `/foxglove_bridge` are all listed.
+Expected: `/camera`, `/camera_rectify`, `/apriltag`, `/align_to_tag`, `/survey_scan`, `/vex_bridge`, and `/foxglove_bridge` are all listed.
 
 ### 2.4 Camera publishing
 
@@ -274,7 +274,7 @@ proof=~/proof/tag-approach-scan-$(date +%Y%m%d-%H%M%S)
 mkdir -p "$proof"
 ros2 bag record -s mcap -o "$proof/mcap" \
   /tf /apriltag/detections /vision/object_detections /vision/object_indications \
-  /vision/scene_map /task_plan/current \
+  /vision/scene_map /task_plan/current /survey/feedback /survey/result \
   /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status
 ```
 
@@ -404,12 +404,16 @@ ros2 topic pub --once /task_plan/request std_msgs/String \
   '{"data":"{\"target\":\"object:yellow_ball\",\"action\":\"inspect\"}"}'
 ros2 topic pub --once /task_plan/request std_msgs/String \
   '{"data":"{\"target\":\"survey:all\",\"action\":\"survey_all\"}"}'
+ros2 topic pub --once /task_plan/request std_msgs/String \
+  '{"data":"{\"target\":\"survey:all\",\"action\":\"survey_all\",\"dispatch\":true,\"survey_duration_s\":3.0,\"survey_omega_rad_s\":0.22}"}'
 ```
 
 Tag plans can dispatch through `align_to_tag`; object plans are mapped but
 non-dispatchable until a bounded object/go-to-pose controller is implemented and
-proven. Survey plans describe a 360-degree scan for all visible tags and objects
-but remain non-dispatchable until a supervised scan-only proof is recorded.
+proven. Survey plans dispatch through `survey_scan` when `dispatch:true`; that
+controller refuses to start without fresh `/vex/ack`, `/vex/telemetry`, motion
+enabled, no estop, and healthy drive ports. Use the short duration/omega override
+for supervised checks, then omit it for the default full scan.
 
 For the first morning check, capture the no-motion vision/planning proof:
 
@@ -435,7 +439,7 @@ ros2 bag record -a -o session_$(date +%Y%m%d_%H%M%S)
 Record specific topics only (smaller files):
 
 ```bash
-ros2 bag record /camera/image_raw /camera/camera_info /camera/image_rect /apriltag/detections /tf /vision/object_detections /vision/object_indications /vision/scene_map /task_plan/current /align_to_tag/feedback /align_to_tag/result /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status \
+ros2 bag record /camera/image_raw /camera/camera_info /camera/image_rect /apriltag/detections /tf /vision/object_detections /vision/object_indications /vision/scene_map /task_plan/current /align_to_tag/feedback /align_to_tag/result /survey/feedback /survey/result /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status \
   -o session_$(date +%Y%m%d_%H%M%S)
 ```
 

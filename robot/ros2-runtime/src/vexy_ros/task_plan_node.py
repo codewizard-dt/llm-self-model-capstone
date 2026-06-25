@@ -17,6 +17,7 @@ class TaskPlanNode(Node):
         self.declare_parameter("request_topic", "/task_plan/request")
         self.declare_parameter("plan_topic", "/task_plan/current")
         self.declare_parameter("align_goal_topic", "/align_to_tag/goal")
+        self.declare_parameter("survey_goal_topic", "/survey/goal")
         self._scene = None
         self._plan_pub = self.create_publisher(
             String,
@@ -26,6 +27,11 @@ class TaskPlanNode(Node):
         self._align_goal_pub = self.create_publisher(
             String,
             self.get_parameter("align_goal_topic").get_parameter_value().string_value,
+            10,
+        )
+        self._survey_goal_pub = self.create_publisher(
+            String,
+            self.get_parameter("survey_goal_topic").get_parameter_value().string_value,
             10,
         )
         self.create_subscription(
@@ -61,12 +67,18 @@ class TaskPlanNode(Node):
         self._plan_pub.publish(String(data=json.dumps(plan, separators=(",", ":"))))
         if request.dispatch and plan.get("executable_now"):
             for step in plan.get("steps", []):
-                if step.get("type") != "align_to_tag" or not step.get("dispatchable"):
+                if not step.get("dispatchable"):
                     continue
-                self._align_goal_pub.publish(
-                    String(data=json.dumps(step["goal"], separators=(",", ":")))
-                )
-                break
+                if step.get("type") == "align_to_tag":
+                    self._align_goal_pub.publish(
+                        String(data=json.dumps(step["goal"], separators=(",", ":")))
+                    )
+                    break
+                if step.get("type") == "survey_scan":
+                    self._survey_goal_pub.publish(
+                        String(data=json.dumps(step["goal"], separators=(",", ":")))
+                    )
+                    break
 
     def _publish_blocked(self, reason: str) -> None:
         self._plan_pub.publish(

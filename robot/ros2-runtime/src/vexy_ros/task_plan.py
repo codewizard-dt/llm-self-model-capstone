@@ -15,14 +15,21 @@ class TaskPlanRequest:
     action: str = "inspect"
     target_distance_m: float = 0.75
     dispatch: bool = False
+    survey_duration_s: float | None = None
+    survey_omega_rad_s: float | None = None
 
     def to_json(self) -> dict[str, Any]:
-        return {
+        payload: dict[str, Any] = {
             "target": self.target,
             "action": self.action,
             "target_distance_m": self.target_distance_m,
             "dispatch": self.dispatch,
         }
+        if self.survey_duration_s is not None:
+            payload["survey_duration_s"] = self.survey_duration_s
+        if self.survey_omega_rad_s is not None:
+            payload["survey_omega_rad_s"] = self.survey_omega_rad_s
+        return payload
 
 
 def parse_task_plan_request(raw: str | Mapping[str, Any]) -> TaskPlanRequest:
@@ -32,6 +39,16 @@ def parse_task_plan_request(raw: str | Mapping[str, Any]) -> TaskPlanRequest:
         action=str(payload.get("action", "inspect")),
         target_distance_m=float(payload.get("target_distance_m", 0.75)),
         dispatch=bool(payload.get("dispatch", False)),
+        survey_duration_s=(
+            float(payload["survey_duration_s"])
+            if payload.get("survey_duration_s") is not None
+            else None
+        ),
+        survey_omega_rad_s=(
+            float(payload["survey_omega_rad_s"])
+            if payload.get("survey_omega_rad_s") is not None
+            else None
+        ),
     )
 
 
@@ -187,12 +204,23 @@ def _survey_plan(
         }
         for obj in sorted(scene.objects, key=lambda item: item.name)
     ]
+    duration_s = (
+        14.5
+        if request.survey_duration_s is None
+        else max(0.2, min(20.0, request.survey_duration_s))
+    )
+    omega_rad_s = (
+        0.45
+        if request.survey_omega_rad_s is None
+        else max(-0.5, min(0.5, request.survey_omega_rad_s))
+    )
+    if abs(omega_rad_s) < 0.02:
+        omega_rad_s = -0.02 if omega_rad_s < 0.0 else 0.02
     return {
         "type": "task_plan",
         "stamp_s": stamp_s,
-        "status": "planned",
-        "executable_now": False,
-        "blocked_reason": "survey_motion_controller_not_proven",
+        "status": "ready",
+        "executable_now": True,
         "request": request.to_json(),
         "target": {
             "type": "survey",
@@ -217,19 +245,27 @@ def _survey_plan(
                 "dispatchable": False,
             },
             {
-                "type": "rotate_in_place",
+                "type": "survey_scan",
                 "angle_rad": 2.0 * math.pi,
-                "max_omega_rad_s": 0.35,
+                "duration_s": duration_s,
+                "omega_rad_s": omega_rad_s,
+                "max_omega_rad_s": 0.5,
                 "ttl_ms": 180,
-                "dispatchable": False,
-                "blocked_reason": "requires supervised scan-only proof",
+                "dispatchable": True,
+                "goal": {
+                    "duration_s": duration_s,
+                    "omega_rad_s": omega_rad_s,
+                    "max_step_ms": 180,
+                    "ack_stale_s": 0.8,
+                    "telemetry_stale_s": 1.0,
+                },
                 "required_proofs": [
                     "healthy_bridge_status",
                     "fresh_vex_ack",
                     "fresh_vex_telemetry",
-                    "operator_supervised",
                     "scan_only_mcap",
                 ],
+                "proven_by": "full-survey-20260624-223313",
             },
             {
                 "type": "merge_survey_observations",
@@ -281,6 +317,8 @@ def _bearing(a: Pose2D, b: Pose2D) -> float:
 
 def _split_target(target: str) -> tuple[str, str]:
     if ":" not in target:
-        raise ValueError("target must be formatted as tag:<id> or object:<name>")
+        raise ValueError(
+            "target must be formatted as tag:<id>, object:<name>, or survey:<scope>"
+        )
     kind, name = target.split(":", 1)
     return kind, name

@@ -120,6 +120,9 @@ Expected output when the full stack is running:
 /apriltag/detections
 /align_to_tag/feedback
 /align_to_tag/result
+/survey/feedback
+/survey/result
+/task_plan/current
 /parameter_events
 /rosout
 /vex/cmd
@@ -214,6 +217,24 @@ Cancel:
 ros2 topic pub --once /align_to_tag/cancel std_msgs/String '{"data":"operator_cancel"}'
 ```
 
+### Survey visible tags
+
+The `survey_scan` node is a bounded rotate-in-place skill for `survey:all`.
+It refuses to start unless current VEX ack, current VEX telemetry, motion
+enabled, no estop, and healthy drive ports are all present.
+
+```bash
+ros2 topic echo /survey/result --once &
+ros2 topic pub --once /task_plan/request std_msgs/String \
+  '{"data":"{\"target\":\"survey:all\",\"action\":\"survey_all\",\"dispatch\":true,\"survey_duration_s\":3.0,\"survey_omega_rad_s\":0.22}"}'
+```
+
+Cancel:
+
+```bash
+ros2 topic pub --once /survey/cancel std_msgs/String '{"data":"operator_cancel"}'
+```
+
 ### Record all topics
 
 ```bash
@@ -256,6 +277,7 @@ ros2 bag play session_20260623_143000/ &
 ros2 topic echo /vex/ack --no-arr > ack.txt
 ros2 topic echo /vex/bridge_status --no-arr > bridge_status.txt
 ros2 topic echo /align_to_tag/result --no-arr > align_result.txt
+ros2 topic echo /survey/result --no-arr > survey_result.txt
 ros2 topic echo /vex/cmd --no-arr > commands.txt
 ```
 

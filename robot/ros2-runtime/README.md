@@ -186,6 +186,7 @@ ros2 topic hz /camera/image_raw
 | `object_indication` | `vexy_ros` | Object boxes + /camera/camera_info → /vision/object_indications |
 | `task_plan` | `vexy_ros` | /vision/scene_map + target request → /task_plan/current |
 | `align_to_tag` | `vexy_ros` | Bounded local skill: visible tag + bridge health → /vex/cmd |
+| `survey_scan` | `vexy_ros` | Bounded scan-only skill: survey goal + bridge/telemetry health → /vex/cmd |
 | `vex_bridge` | `vexy_ros` | USB serial ↔ /vex/cmd + /vex/ack + /vex/telemetry + /vex/bridge_status |
 | `foxglove_bridge` | `foxglove_bridge` | WebSocket bridge at port 8765 for Foxglove Studio |
 
@@ -202,11 +203,15 @@ ros2 topic hz /camera/image_raw
 | `/vision/object_indications` | `std_msgs/String` | pub (object_indication/operator), sub (scene_map) | JSON object hints in camera-relative coordinates |
 | `/vision/scene_map` | `std_msgs/String` | pub (scene_map) | JSON robot/tag/object coordinates in the active workspace map |
 | `/task_plan/request` | `std_msgs/String` | sub (task_plan) | JSON target request, e.g. `tag:0`, `object:yellow_ball`, or `survey:all` |
-| `/task_plan/current` | `std_msgs/String` | pub (task_plan) | JSON bounded plan. Tag plans can dispatch to align; object and survey plans are map targets only until their motion skills are proven. |
+| `/task_plan/current` | `std_msgs/String` | pub (task_plan) | JSON bounded plan. Tag and survey plans can dispatch to proven local skills; object plans are map targets until object motion is proven. |
 | `/align_to_tag/goal` | `std_msgs/String` | sub (align_to_tag) | JSON goal for a bounded local align run |
 | `/align_to_tag/cancel` | `std_msgs/String` | sub (align_to_tag) | Cancel the current align run |
 | `/align_to_tag/feedback` | `std_msgs/String` | pub (align_to_tag) | JSON feedback with tag errors, ack state, and fault state |
 | `/align_to_tag/result` | `std_msgs/String` | pub (align_to_tag) | JSON result with success/failure reason |
+| `/survey/goal` | `std_msgs/String` | sub (survey_scan) | JSON goal for a bounded rotate-in-place survey scan |
+| `/survey/cancel` | `std_msgs/String` | sub (survey_scan) | Cancel the current survey scan |
+| `/survey/feedback` | `std_msgs/String` | pub (survey_scan) | JSON feedback with elapsed time, observed tags, ack state, and fault state |
+| `/survey/result` | `std_msgs/String` | pub (survey_scan) | JSON result with success/failure reason and observed tag IDs |
 | `/vex/cmd` | `std_msgs/String` | sub (vex_bridge) | JSON command packet to Brain |
 | `/vex/ack` | `std_msgs/String` | pub (vex_bridge) | JSON ack from Brain, keyed by `ack` sequence |
 | `/vex/telemetry` | `std_msgs/String` | pub (vex_bridge) | JSON telemetry/sample/event records from Brain |
@@ -367,7 +372,7 @@ Useful panels: **Image** (subscribe `/camera/image_raw` or `/camera/image_rect`)
 ros2 bag record -a -o session_$(date +%Y%m%d_%H%M%S)
 
 # Record only camera, vision, plan, and VEX bridge topics (smaller files)
-ros2 bag record /camera/image_raw /camera/camera_info /camera/image_rect /apriltag/detections /tf /vision/object_detections /vision/object_indications /vision/scene_map /task_plan/current /align_to_tag/feedback /align_to_tag/result /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status \
+ros2 bag record /camera/image_raw /camera/camera_info /camera/image_rect /apriltag/detections /tf /vision/object_detections /vision/object_indications /vision/scene_map /task_plan/current /align_to_tag/feedback /align_to_tag/result /survey/feedback /survey/result /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status \
     -o session_$(date +%Y%m%d_%H%M%S)
 
 # Inspect a recorded bag
@@ -413,13 +418,17 @@ ros2 topic pub --once /task_plan/request std_msgs/String \
   '{"data":"{\"target\":\"object:yellow_ball\",\"action\":\"inspect\"}"}'
 ros2 topic pub --once /task_plan/request std_msgs/String \
   '{"data":"{\"target\":\"survey:all\",\"action\":\"survey_all\"}"}'
+ros2 topic pub --once /task_plan/request std_msgs/String \
+  '{"data":"{\"target\":\"survey:all\",\"action\":\"survey_all\",\"dispatch\":true,\"survey_duration_s\":3.0,\"survey_omega_rad_s\":0.22}"}'
 ```
 
 Tag plans can dispatch through the proven `align_to_tag` primitive. Object plans
 are mapped but report `object_go_to_pose_controller_not_proven` until a bounded
 object/go-to-pose motion skill is implemented and physically verified. Survey
-plans describe a 360-degree scan but report
-`survey_motion_controller_not_proven` until scan motion is supervised and proven.
+plans dispatch through `survey_scan` when `dispatch:true`; the controller refuses
+to start unless `/vex/ack`, `/vex/telemetry`, and drive safety state are fresh.
+Use short `survey_duration_s` / `survey_omega_rad_s` overrides for supervised
+checks, then omit them for the default full scan.
 
 To capture the no-motion proof for tomorrow's first check:
 

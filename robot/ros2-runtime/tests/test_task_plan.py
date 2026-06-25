@@ -50,7 +50,7 @@ class TaskPlanTests(unittest.TestCase):
         self.assertEqual(plan["steps"][1]["type"], "go_to_map_pose")
         self.assertIn("fresh_vex_ack", plan["steps"][1]["required_proofs"])
 
-    def test_survey_all_plan_describes_non_dispatching_360_scan(self) -> None:
+    def test_survey_all_plan_dispatches_to_bounded_scan(self) -> None:
         scene = _scene()
 
         plan = build_task_plan(
@@ -59,18 +59,45 @@ class TaskPlanTests(unittest.TestCase):
             now_s=12.0,
         )
 
-        self.assertEqual(plan["status"], "planned")
-        self.assertFalse(plan["executable_now"])
-        self.assertEqual(plan["blocked_reason"], "survey_motion_controller_not_proven")
+        self.assertEqual(plan["status"], "ready")
+        self.assertTrue(plan["executable_now"])
         self.assertEqual(plan["request"]["target"], "survey:all")
         self.assertEqual(plan["target"]["scope"], "all")
         self.assertEqual(plan["target"]["observed_tag_ids"], [0])
         self.assertEqual(plan["target"]["unobserved_anchor_tag_ids"], [1, 2])
         self.assertEqual(plan["target"]["objects"][0]["name"], "bin")
-        self.assertEqual(plan["steps"][1]["type"], "rotate_in_place")
+        self.assertEqual(plan["steps"][1]["type"], "survey_scan")
         self.assertAlmostEqual(plan["steps"][1]["angle_rad"], 6.283185307179586)
-        self.assertFalse(plan["steps"][1]["dispatchable"])
+        self.assertAlmostEqual(plan["steps"][1]["duration_s"], 14.5)
+        self.assertAlmostEqual(plan["steps"][1]["omega_rad_s"], 0.45)
+        self.assertTrue(plan["steps"][1]["dispatchable"])
+        self.assertAlmostEqual(plan["steps"][1]["goal"]["duration_s"], 14.5)
+        self.assertAlmostEqual(plan["steps"][1]["goal"]["omega_rad_s"], 0.45)
         self.assertIn("scan_only_mcap", plan["steps"][1]["required_proofs"])
+        self.assertEqual(plan["steps"][1]["proven_by"], "full-survey-20260624-223313")
+
+    def test_survey_all_plan_accepts_short_scan_overrides(self) -> None:
+        scene = _scene()
+
+        plan = build_task_plan(
+            scene,
+            TaskPlanRequest(
+                target="survey:all",
+                action="survey_all",
+                dispatch=True,
+                survey_duration_s=3.0,
+                survey_omega_rad_s=0.22,
+            ),
+            now_s=12.0,
+        )
+
+        self.assertTrue(plan["request"]["dispatch"])
+        self.assertEqual(plan["request"]["survey_duration_s"], 3.0)
+        self.assertEqual(plan["request"]["survey_omega_rad_s"], 0.22)
+        self.assertAlmostEqual(plan["steps"][1]["duration_s"], 3.0)
+        self.assertAlmostEqual(plan["steps"][1]["omega_rad_s"], 0.22)
+        self.assertAlmostEqual(plan["steps"][1]["goal"]["duration_s"], 3.0)
+        self.assertAlmostEqual(plan["steps"][1]["goal"]["omega_rad_s"], 0.22)
 
     def test_missing_target_blocks_plan(self) -> None:
         plan = build_task_plan(

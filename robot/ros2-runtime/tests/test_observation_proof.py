@@ -40,9 +40,8 @@ class ObservationProofTests(unittest.TestCase):
                 },
                 "task_plans": {
                     "survey:all": {
-                        "status": "planned",
-                        "executable_now": False,
-                        "blocked_reason": "survey_motion_controller_not_proven",
+                        "status": "ready",
+                        "executable_now": True,
                         "steps": [{}, {}, {}],
                     }
                 },
@@ -55,10 +54,7 @@ class ObservationProofTests(unittest.TestCase):
         self.assertEqual(summary["object_detection_count"], 1)
         self.assertEqual(summary["object_indication_count"], 1)
         self.assertEqual(summary["scene_object_count"], 1)
-        self.assertEqual(
-            summary["task_plan_statuses"]["survey:all"]["blocked_reason"],
-            "survey_motion_controller_not_proven",
-        )
+        self.assertIsNone(summary["task_plan_statuses"]["survey:all"]["blocked_reason"])
         self.assertEqual(summary["task_plan_statuses"]["survey:all"]["step_count"], 3)
 
 

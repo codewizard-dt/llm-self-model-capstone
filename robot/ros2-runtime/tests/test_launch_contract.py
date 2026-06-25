@@ -49,6 +49,8 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn("object_dimensions_json", launch_text)
         self.assertIn("task_plan_node", launch_text)
         self.assertIn('executable="align_to_tag_node"', launch_text)
+        self.assertIn('executable="survey_scan_node"', launch_text)
+        self.assertIn("/survey/goal", launch_text)
 
     def test_apriltag_config_names_the_expected_first_proof_tag(self) -> None:
         config_text = (ROOT / "config" / "apriltag_36h11.yaml").read_text()
@@ -105,6 +107,7 @@ class LaunchContractTests(unittest.TestCase):
             setup_text,
         )
         self.assertIn("task_plan_node = vexy_ros.task_plan_node:main", setup_text)
+        self.assertIn("survey_scan_node = vexy_ros.survey_scan_node:main", setup_text)
         self.assertIn(
             "vexy_export_contract_jsonl = vexy_ros.evidence_export:main", setup_text
         )

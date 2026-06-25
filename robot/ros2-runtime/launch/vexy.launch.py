@@ -21,6 +21,9 @@ Nodes launched:
   align_to_tag  — bounded local-control skill for visible AprilTag alignment
                   Subscribes: /align_to_tag/goal, /apriltag/detections, /vex/ack, /vex/bridge_status
                   Publishes: /vex/cmd, /align_to_tag/feedback, /align_to_tag/result
+  survey_scan   — bounded scan-only skill for survey:all plans
+                  Subscribes: /survey/goal, /vex/ack, /vex/telemetry, /vex/bridge_status, /vision/scene_map
+                  Publishes: /vex/cmd, /survey/feedback, /survey/result
   vex_bridge       — USB serial bridge to V5 Brain
                      Subscribes: /vex/cmd
                      Publishes:  /vex/ack, /vex/telemetry, /vex/bridge_status
@@ -236,8 +239,8 @@ def _launch_nodes(context, *args, **kwargs):
             ],
         ),
         # ----------------------------------------------------------
-        # Dynamic task planner for tag/object targets. Only tag plans
-        # dispatch to proven motion primitives for now.
+        # Dynamic task planner for tag/object/survey targets. Tag and
+        # survey plans dispatch to proven bounded motion primitives.
         # ----------------------------------------------------------
         Node(
             package="vexy_ros",
@@ -251,6 +254,14 @@ def _launch_nodes(context, *args, **kwargs):
             package="vexy_ros",
             executable="align_to_tag_node",
             name="align_to_tag",
+        ),
+        # ----------------------------------------------------------
+        # Bounded scan-only skill for survey:all planning.
+        # ----------------------------------------------------------
+        Node(
+            package="vexy_ros",
+            executable="survey_scan_node",
+            name="survey_scan",
         ),
         # ----------------------------------------------------------
         # VEX V5 serial bridge
