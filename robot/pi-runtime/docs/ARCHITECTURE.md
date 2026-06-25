@@ -34,7 +34,7 @@ camera_broker -> /tmp/vexy-system2/camera.json
 planner       -> bridge TCP 127.0.0.1:8765
 bridge        -> /tmp/vexy-system2/bridge.json
 dashboard     -> bridge TCP 127.0.0.1:8765
-bridge        -> V5 USB serial tomorrow
+bridge        -> V5 USB serial fallback (ROS 2 owns the active live path)
 ```
 
 ## Why One Camera Owner
@@ -42,4 +42,3 @@ bridge        -> V5 USB serial tomorrow
 The Pi camera pipeline is exclusive. Today `/home/vexy/Desktop/camera_feed.py` was holding `/dev/media0` and `/dev/media1`, causing `rpicam-still` to fail with `Pipeline handler in use by another process`.
 
 The robot runtime should replace ad hoc camera readers with one owner and publish frames/observations to other processes.
-

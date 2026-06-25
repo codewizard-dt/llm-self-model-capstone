@@ -16,6 +16,11 @@ from partial commands during the upload.
 | 5–6 | Grace | Grace's exclusive slots. Do not upload here unless you are Grace. |
 | 7–8 | David | David's exclusive slots for development and testing. |
 
+These are VEX GUI program upload slots. They are separate from `cmd:"routine"`
+IDs inside the running `pros_bridge` program, where routine ID `2` is a 720 spin,
+routine ID `3` is an arm up/down cycle, and routine ID `4` is one foot forward
+then one foot back.
+
 ---
 
 ### 8.0 One-time setup: install PROS CLI on the Pi

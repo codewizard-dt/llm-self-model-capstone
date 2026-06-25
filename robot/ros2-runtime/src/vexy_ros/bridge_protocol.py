@@ -9,7 +9,8 @@ MAX_LINEAR = 0.35
 MAX_OMEGA = 0.6
 DEFAULT_TTL_MS = 200
 MAX_TTL_MS = 5000
-COMMANDS = {"stop", "drive", "turn", "set_goal"}
+ROUTINE_SLOTS = {2, 3, 4}
+COMMANDS = {"stop", "drive", "turn", "set_goal", "routine"}
 
 
 class BridgeProtocolError(ValueError):
@@ -71,6 +72,14 @@ def normalize_outbound(packet: Mapping[str, Any]) -> dict[str, Any]:
         normalized["omega"] = clamp(
             float(normalized.get("omega", 0.0)), -MAX_OMEGA, MAX_OMEGA
         )
+    elif cmd == "routine":
+        try:
+            slot = int(normalized.get("slot"))
+        except (TypeError, ValueError) as exc:
+            raise BridgeProtocolError("routine slot must be an integer") from exc
+        if slot not in ROUTINE_SLOTS:
+            raise BridgeProtocolError("routine slot must be one of 2, 3, or 4")
+        normalized["slot"] = slot
 
     return normalized
 

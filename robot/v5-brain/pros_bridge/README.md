@@ -8,10 +8,33 @@ This bridge is intentionally conservative for physical proof:
 - COBS disabled in `initialize()` so the Pi reads raw newline-delimited JSON.
 - `heartbeat` and `stop` packets ack `state:"ok"`.
 - `drive` and `turn` packets are accepted only when drive motors are present on ports `1` and `10`.
+- `routine` packets are accepted only for fixed slots `2`, `3`, and `4`.
 - Motion commands are clamped, TTL-limited, watchdog-stopped, and current/voltage-limited.
 - `set_goal` is rejected by the Brain; higher-level goals stay in ROS.
 - A separate telemetry task emits `type:"telemetry"` records every 500 ms so the ROS bridge can prove `/vex/telemetry` independently from `/vex/ack`.
-- Telemetry includes `motor_samples` for `left_drive` and `right_drive` using the same field names required by the contract JSONL exporter.
+- Telemetry includes `motor_samples` for `left_drive`, `right_drive`, and `arm` using the same field names required by the contract JSONL exporter.
+
+## Brain routine slots
+
+These are routine IDs inside the running bridge program. They are not VEXos
+program upload slots; keep the bridge uploaded/running and send `cmd:"routine"`
+from the Pi.
+
+| Slot | Routine | Bounds |
+|------|---------|--------|
+| 2 | `spin_720` | timed 29 s spin at 0.45 rad/s, repeated short drive TTLs |
+| 3 | `arm_full_cycle` | arm motor on port 8 to 300 motor-deg target, pause, return to 0 with stall/timeout guard |
+| 4 | `one_foot_forward_back` | encoder-derived 0.3048 m forward and back using the current wheel constant |
+
+Example packet:
+
+```json
+{"v":1,"seq":200002,"type":"cmd","cmd":"routine","sent_ms":1,"ttl_ms":500,"slot":2}
+```
+
+`stop`, estop, or watchdog loss cancels the active routine and brakes all
+configured motors. New drive/turn/routine commands are rejected with
+`fault:"busy"` while a routine is active.
 
 Build from this directory:
 

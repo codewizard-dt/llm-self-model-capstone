@@ -10,7 +10,7 @@ The V5 Brain remains System 1: it owns motors, sensors, hard timing, current lim
 - Pi address observed today: `10.10.3.5`
 - Camera detected: Raspberry Pi Camera Module 3 Wide, `imx708_wide`
 - Codex installed and logged in on the Pi
-- V5 Brain: not available until tomorrow
+- V5 Brain: active through the ROS 2 `vex_bridge_node`; this folder is fallback/reference
 
 ## Architecture
 
@@ -24,7 +24,7 @@ Pi Camera -> camera broker -> planner/Codex -> bridge -> V5 Brain program -> mot
 The bridge can run in two modes:
 
 - `sim`: fake V5 Brain in-process. This is for today.
-- `serial`: real V5 Brain over `/dev/ttyACM*` or `/dev/serial/by-id/*`. This is for tomorrow.
+- `serial`: real V5 Brain over `/dev/ttyACM*` or `/dev/serial/by-id/*`. The ROS 2 stack is the active live path; this remains a fallback.
 
 ## Run Today With Simulated Brain
 
@@ -85,18 +85,17 @@ The broker writes:
 
 ## V5 Brain Interface (telemetry + commands)
 
-The full Pi↔Brain interface — physical ports, receiving telemetry (verified), and
-sending commands (designed, not yet attempted) — is documented in
+The active live Pi↔Brain interface is now the ROS 2 stack in
+`robot/ros2-runtime`. This legacy runtime remains useful as a fallback reference.
+The full physical-port and protocol notes are documented in
 [`docs/BRAIN_INTERFACE.md`](docs/BRAIN_INTERFACE.md). Quick facts:
 
 - **User (telemetry) port** = `/dev/serial/by-id/…-if02` = `/dev/ttyACM1`. The `…-if00` /
   `ttyACM0` port is the system/upload port and carries no program output.
-- **Receive telemetry** with no repo or packages: `cat /dev/ttyACM1` (add
-  `| grep -a --line-buffered '^{'` to drop the boot banner). Trigger the run from the
-  Brain touchscreen.
-- **Sending commands** is not yet wired — see `BRAIN_INTERFACE.md` §3 for the protocol,
-  the `bridge.py serial` path, and the telemetry-vs-ack multiplexing problem to solve
-  first.
+- **Receive telemetry** through `/vex/telemetry` in ROS, or with no repo/packages:
+  `cat /dev/ttyACM1` (add `| grep -a --line-buffered '^{'` to drop the boot banner).
+- **Send commands** through ROS `/vex/cmd`; the guarded Brain bridge accepts
+  `stop`, `drive`, `turn`, and fixed `routine` slots `2`, `3`, and `4`.
 
 ### Original first-contact checklist
 

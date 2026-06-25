@@ -29,11 +29,11 @@ In a competition context, teams write `autonomous()` (executed during the 15-sec
 
 ## Minimum Viable Program for the Capstone
 
-The minimum user program that satisfies the Pi-first architecture is ~50–100 lines: `initialize()` sets up serial (e.g. `SERCTL_DISABLE_COBS` in PROS C++), then `opcontrol()` runs a loop that reads newline-delimited JSON commands from serial, calls motor velocity APIs, sends JSON acks, and stops motors if no packet arrives within 250ms. The current codebase sketch (`robot/v5-brain/pros_bridge/src/main.cpp`) already has this structure — it only needs motor port wiring and `vx`/`omega` JSON parsing filled in.
+The minimum user program that satisfies the Pi-first architecture is small: `initialize()` sets up serial (e.g. `SERCTL_DISABLE_COBS` in PROS C++), then `opcontrol()` starts FreeRTOS tasks that read newline-delimited JSON commands from serial, call motor APIs, send JSON acks, stream telemetry, and stop motors if no packet arrives within 250ms. The current codebase bridge (`robot/v5-brain/pros_bridge/src/main.cpp`) implements this as a buildable monolith with separate receive/watchdog/telemetry/routine tasks.
 
 **VEXos also includes a built-in "Drive program"** that maps V5 Controller joysticks to motors without any uploaded code. This does not help the Pi-first architecture — it requires the physical V5 Controller, not serial from the RPi.
 
-**Deployment:** upload once via laptop + USB + VEXcode or PROS CLI; program persists in its slot across power cycles. At the start of each session: power on Brain → tap slot on touchscreen → program runs. The Pi then connects via USB serial and sends commands.
+**Deployment:** upload once via laptop + USB + VEXcode or PROS CLI; program persists in its VEXos user-program slot across power cycles. At the start of each session: power on Brain → tap the bridge program slot on the touchscreen → program runs. The Pi then connects via USB serial and sends commands. The capstone's routine slots 2-4 are serial command IDs inside that running bridge program, not separate uploaded Brain programs.
 
 relates_to::[[vex-v5]]  
 relates_to::[[vex-coprocessor-pattern]]  

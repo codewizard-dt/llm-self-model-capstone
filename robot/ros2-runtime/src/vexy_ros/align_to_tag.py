@@ -27,6 +27,8 @@ class AlignToTagGoal:
     max_vx: float = 0.12
     max_vy: float = 0.08
     max_omega: float = 0.25
+    min_vx: float = 0.06
+    min_turn_omega: float = 0.35
     tag_stale_s: float = 0.5
     ack_stale_s: float = 0.8
 
@@ -100,6 +102,8 @@ def bounded_goal(goal: AlignToTagGoal) -> AlignToTagGoal:
         max_vx=clamp(abs(float(goal.max_vx)), 0.01, 0.25),
         max_vy=clamp(abs(float(goal.max_vy)), 0.01, 0.20),
         max_omega=clamp(abs(float(goal.max_omega)), 0.02, 0.6),
+        min_vx=clamp(abs(float(goal.min_vx)), 0.005, 0.25),
+        min_turn_omega=clamp(abs(float(goal.min_turn_omega)), 0.02, 0.6),
         tag_stale_s=clamp(float(goal.tag_stale_s), 0.05, 2.0),
         ack_stale_s=clamp(float(goal.ack_stale_s), 0.05, 3.0),
     )
@@ -213,10 +217,34 @@ class AlignToTagController:
     def _movement_command(
         self, goal: AlignToTagGoal, tag: TagObservation, distance_error_m: float
     ) -> VexCommand:
-        vx = clamp(0.45 * distance_error_m, -goal.max_vx, goal.max_vx)
-        vy = clamp(-0.6 * tag.lateral_error_m, -goal.max_vy, goal.max_vy)
-        omega = clamp(0.9 * tag.yaw_error_rad, -goal.max_omega, goal.max_omega)
-        return VexCommand("drive", ttl_ms=goal.max_step_ms, vx=vx, vy=vy, omega=omega)
+        if (
+            abs(tag.lateral_error_m) > goal.lateral_tolerance_m
+            or abs(tag.yaw_error_rad) > goal.yaw_tolerance_rad
+        ):
+            omega = clamp(1.8 * tag.yaw_error_rad, -goal.max_omega, goal.max_omega)
+            if abs(omega) < goal.min_turn_omega:
+                omega = goal.min_turn_omega if omega >= 0.0 else -goal.min_turn_omega
+            omega = clamp(omega, -goal.max_omega, goal.max_omega)
+            return VexCommand(
+                "turn",
+                ttl_ms=goal.max_step_ms,
+                omega=omega,
+                reason="center_tag",
+            )
+
+        vx = clamp(0.55 * distance_error_m, -goal.max_vx, goal.max_vx)
+        if abs(vx) < goal.min_vx:
+            vx = goal.min_vx if distance_error_m >= 0.0 else -goal.min_vx
+        vx = clamp(vx, -goal.max_vx, goal.max_vx)
+        omega = clamp(1.0 * tag.yaw_error_rad, -goal.max_omega, goal.max_omega)
+        return VexCommand(
+            "drive",
+            ttl_ms=goal.max_step_ms,
+            vx=vx,
+            vy=0.0,
+            omega=omega,
+            reason="approach_tag",
+        )
 
     def _finish(
         self,

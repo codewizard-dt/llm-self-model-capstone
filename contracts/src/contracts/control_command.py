@@ -1,7 +1,7 @@
 """The control grammar (F19): wire models for the online control loop.
 
-Defines the closed 6-verb `ControlCommand` discriminated union
-(stop/drive/turn/arm/claw/flywheel), `HeartbeatLine`, the outer `ControlLine`
+Defines the closed 7-verb `ControlCommand` discriminated union
+(stop/drive/turn/arm/claw/flywheel/routine), `HeartbeatLine`, the outer `ControlLine`
 wire union (keyed on `type`), and `AckLine` carrying a closed-set `FaultCode`
 `StrEnum`. The module-level wire-limit constants (`MAX_LINEAR`, `MAX_OMEGA`,
 `MAX_FLYWHEEL_RPM`, `ARM_DEG_MIN`, `ARM_DEG_MAX`, `TTL_MS_MAX`) are the Pi-side
@@ -32,6 +32,8 @@ MAX_OMEGA = 0.60  # rad/s — ROS/Pi command-envelope maximum.
 MAX_FLYWHEEL_RPM = 3600.0  # output shaft RPM — proposed default; F20 may narrow
 MAX_ARM_RPM = 600.0  # V5 motor cartridge upper envelope; F20 may narrow.
 MAX_CLAW_GRIP_FORCE_N = 100.0  # permissive target envelope; F20 may narrow.
+ROUTINE_SLOT_MIN = 2
+ROUTINE_SLOT_MAX = 4
 # `deg` is the *physical arm-joint angle* in degrees (NOT encoder counts): 0° is
 # the stowed/down home (claw at the floor), increasing toward a raised claw. The
 # as-built claw arm sweeps ~90° (a min/max stall calibration measured encoder
@@ -59,6 +61,7 @@ class FaultCode(StrEnum):
     OUT_OF_RANGE = "out_of_range"
     OVERSIZED_PACKET = "oversized_packet"
     NOT_ASSEMBLED = "not_assembled"
+    BUSY = "busy"
 
 
 # --- Envelope (shared by every cmd line + the heartbeat) ---------------------
@@ -80,7 +83,7 @@ class ControlEnvelope(StrictModel):
     ttl_ms: int = Field(ge=1, le=TTL_MS_MAX)
 
 
-# --- 6 command bodies (every one is a `type == "cmd"` wire line) -------------
+# --- 7 command bodies (every one is a `type == "cmd"` wire line) -------------
 
 
 class StopCommand(ControlEnvelope):
@@ -146,7 +149,21 @@ class FlywheelCommand(ControlEnvelope):
     rpm: float = Field(ge=0.0, le=MAX_FLYWHEEL_RPM)
 
 
-# --- Inner discriminated union (cmd-keyed, the 6 verbs) ----------------------
+class RoutineCommand(ControlEnvelope):
+    """Routine verb — run one bounded Brain-side routine slot.
+
+    Slots are intentionally narrow and fixed in the Brain bridge:
+    2 = 720 spin, 3 = arm up/down proof, 4 = one-foot forward/back proof.
+    The Brain rejects unavailable ports, active routines, estop, and out-of-range
+    slots before starting motion.
+    """
+
+    type: Literal["cmd"] = "cmd"
+    cmd: Literal["routine"] = "routine"
+    slot: int = Field(ge=ROUTINE_SLOT_MIN, le=ROUTINE_SLOT_MAX)
+
+
+# --- Inner discriminated union (cmd-keyed, the 7 verbs) ----------------------
 
 ControlCommand = Annotated[
     Union[
@@ -156,6 +173,7 @@ ControlCommand = Annotated[
         ArmCommand,
         ClawCommand,
         FlywheelCommand,
+        RoutineCommand,
     ],
     Field(discriminator="cmd"),
 ]
@@ -229,6 +247,9 @@ class AckLine(StrictModel):
     estop: bool | None = None
     motion_enabled: bool | None = None
     drive_ports_ok: bool | None = None
+    arm_port_ok: bool | None = None
+    routine_active: bool | None = None
+    routine_slot: int | None = Field(default=None, ge=ROUTINE_SLOT_MIN, le=ROUTINE_SLOT_MAX)
     motor_ports: list[int] | None = None
 
     @model_validator(mode="after")

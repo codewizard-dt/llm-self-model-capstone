@@ -8,7 +8,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from vexy_ros.bridge_demux import BrainStreamDemux
-from vexy_ros.bridge_protocol import MAX_TTL_MS, heartbeat_packet, normalize_outbound
+from vexy_ros.bridge_protocol import (
+    MAX_TTL_MS,
+    BridgeProtocolError,
+    heartbeat_packet,
+    normalize_outbound,
+)
 
 
 class BridgeDemuxTests(unittest.TestCase):
@@ -85,6 +90,33 @@ class BridgeDemuxTests(unittest.TestCase):
 
         self.assertEqual(heartbeat["ttl_ms"], 200)
         self.assertEqual(stop["ttl_ms"], MAX_TTL_MS)
+
+    def test_routine_command_accepts_only_slots_two_through_four(self) -> None:
+        routine = normalize_outbound(
+            {
+                "v": 1,
+                "seq": 3,
+                "type": "cmd",
+                "cmd": "routine",
+                "sent_ms": 1,
+                "ttl_ms": 500,
+                "slot": "3",
+            }
+        )
+
+        self.assertEqual(routine["slot"], 3)
+        with self.assertRaises(BridgeProtocolError):
+            normalize_outbound(
+                {
+                    "v": 1,
+                    "seq": 4,
+                    "type": "cmd",
+                    "cmd": "routine",
+                    "sent_ms": 1,
+                    "ttl_ms": 500,
+                    "slot": 5,
+                }
+            )
 
 
 if __name__ == "__main__":

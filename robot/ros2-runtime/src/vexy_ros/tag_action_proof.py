@@ -13,11 +13,17 @@ from std_msgs.msg import String
 from tf2_msgs.msg import TFMessage
 
 from .bridge_protocol import PROTOCOL_VERSION, clamp, now_ms
-from .vision_map import tag_id_from_frame_id
+from .vision_map import (
+    Pose2D,
+    camera_from_apriltag_translation,
+    pose_from_mapping,
+    robot_from_camera_pose,
+    tag_id_from_frame_id,
+)
 
 
 class TagActionProof(Node):
-    def __init__(self) -> None:
+    def __init__(self, *, camera_in_robot: Pose2D | None = None) -> None:
         super().__init__("tag_action_proof")
         self._cmd_pub = self.create_publisher(String, "/vex/cmd", 10)
         self.create_subscription(TFMessage, "/tf", self._on_tf, 10)
@@ -32,6 +38,7 @@ class TagActionProof(Node):
         self.commands_sent = 0
         self.last_command: dict[str, Any] | None = None
         self.seq = 24000
+        self.camera_in_robot = camera_in_robot or Pose2D(0.0, 0.0, 0.0)
 
     def _on_tf(self, msg: TFMessage) -> None:
         stamp_s = time.monotonic()
@@ -40,8 +47,15 @@ class TagActionProof(Node):
             if tag_id is None:
                 continue
             translation = stamped.transform.translation
-            forward_m = float(translation.z)
-            left_m = -float(translation.x)
+            camera_from_tag = camera_from_apriltag_translation(
+                optical_x_m=float(translation.x),
+                optical_z_m=float(translation.z),
+            )
+            robot_from_tag = robot_from_camera_pose(
+                camera_from_tag, self.camera_in_robot
+            )
+            forward_m = robot_from_tag.x_m
+            left_m = robot_from_tag.y_m
             if forward_m <= 0.05:
                 continue
             distance_m = math.hypot(forward_m, left_m)
@@ -53,6 +67,8 @@ class TagActionProof(Node):
                 "left_m": left_m,
                 "distance_m": distance_m,
                 "yaw_rad": yaw_rad,
+                "camera_forward_m": camera_from_tag.x_m,
+                "camera_left_m": camera_from_tag.y_m,
             }
             self.observed_tags.add(tag_id)
 
@@ -325,13 +341,20 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--reacquire-omega", type=float, default=0.35)
     parser.add_argument("--scan-omega", type=float, default=0.45)
     parser.add_argument("--ttl-ms", type=int, default=180)
+    parser.add_argument(
+        "--camera-in-robot-json",
+        default='{"x_m":0.0,"y_m":0.0,"yaw_rad":0.0}',
+        help="Measured camera pose in the robot/action frame.",
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     rclpy.init()
-    node = TagActionProof()
+    node = TagActionProof(
+        camera_in_robot=pose_from_mapping(json.loads(args.camera_in_robot_json))
+    )
     summary: dict[str, Any]
     try:
         if args.mode == "scan-only":

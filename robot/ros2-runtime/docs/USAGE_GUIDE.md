@@ -186,6 +186,17 @@ ros2 topic pub --once /vex/cmd std_msgs/String \
   '{"data": "{\"v\":1,\"seq\":4,\"type\":\"cmd\",\"cmd\":\"set_goal\",\"sent_ms\":0,\"ttl_ms\":200,\"goal\":\"collect_cube\"}"}'
 ```
 
+### Brain routine slot
+
+Slots `2`, `3`, and `4` are fixed routines inside the running Brain bridge:
+`2` spins 720 degrees, `3` cycles the arm up/down, and `4` drives one foot
+forward/back. These are not separate VEXos upload slots.
+
+```bash
+ros2 topic pub --once /vex/cmd std_msgs/String \
+  '{"data": "{\"v\":1,\"seq\":5,\"type\":\"cmd\",\"cmd\":\"routine\",\"sent_ms\":0,\"ttl_ms\":500,\"slot\":2}"}'
+```
+
 **Velocity limits enforced by `vex_bridge_node`:**
 - `vx`, `vy`: clamped to ±0.35 m/s
 - `omega`: clamped to ±0.60 rad/s
@@ -194,7 +205,7 @@ ros2 topic pub --once /vex/cmd std_msgs/String \
 The Brain will echo an ack on `/vex/ack`:
 
 ```json
-{"v":1,"ack":2,"type":"ack","state":"ok","recv_ms":124,"battery_mv":12300,"heading_deg":45.2,"fault":null}
+{"v":1,"ack":2,"type":"ack","state":"ok","recv_ms":124,"battery_mv":12300,"drive_ports_ok":true,"arm_port_ok":true,"routine_active":false,"fault":null}
 ```
 
 ---
@@ -203,12 +214,27 @@ The Brain will echo an ack on `/vex/ack`:
 
 ### Align to a visible tag
 
-The `align_to_tag` node is a bounded local-control skill. It does not call an LLM. It refuses to start unless a current configured tag and current VEX ack are both present.
+The `align_to_tag` node is a bounded local-control skill. It does not call an
+LLM. It refuses to start unless a current configured tag and current VEX ack are
+both present. When `camera_in_robot_json` is set at launch, its tag
+yaw/lateral/distance feedback is expressed from the robot center rather than the
+camera center.
 
 ```bash
 ros2 topic echo /align_to_tag/result --once &
 ros2 topic pub --once /align_to_tag/goal std_msgs/String \
   '{"data":"{\"tag_id\":0,\"target_distance_m\":0.45,\"yaw_tolerance_rad\":0.05,\"lateral_tolerance_m\":0.03,\"timeout_s\":5.0,\"max_step_ms\":150}"}'
+```
+
+For the current claw-to-AprilTag-1 center proof, the measured contact standoff
+is `0.67 m` with `camera_in_robot_json={"x_m":0.12,"y_m":0.0,"yaw_rad":0.0}`.
+Use the tank-drive centering parameters so the robot turns to center the tag
+before driving:
+
+```bash
+ros2 topic echo /align_to_tag/result --once &
+ros2 topic pub --once /align_to_tag/goal std_msgs/String \
+  '{"data":"{\"tag_id\":1,\"target_distance_m\":0.67,\"yaw_tolerance_rad\":0.035,\"lateral_tolerance_m\":0.025,\"distance_tolerance_m\":0.02,\"timeout_s\":16.0,\"max_step_ms\":150,\"max_vx\":0.08,\"min_vx\":0.08,\"max_omega\":0.60,\"min_turn_omega\":0.45,\"ack_stale_s\":1.0}"}'
 ```
 
 Cancel:

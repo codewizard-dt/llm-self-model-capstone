@@ -24,6 +24,7 @@ constexpr int TELEMETRY_MS = 500;
 constexpr int MAX_LINE_BYTES = 2048;
 constexpr int LEFT_DRIVE_PORT = 1;
 constexpr int RIGHT_DRIVE_PORT = 10;
+constexpr int ARM_PORT = 8;
 constexpr int MAX_TTL_MS = 500;
 constexpr int MAX_DRIVE_RPM = 45;
 constexpr int MAX_TURN_RPM = 35;
@@ -32,11 +33,31 @@ constexpr int DRIVE_VOLTAGE_LIMIT_MV = 6000;
 constexpr double WHEEL_CIRCUMFERENCE_M = 0.319;  // 4 in wheel.
 constexpr double TRACK_WIDTH_M = 0.28;
 constexpr double DRIVE_FORWARD_SIGN = -1.0;
+constexpr int ARM_CURRENT_LIMIT_MA = 1800;
+constexpr int ARM_VOLTAGE_LIMIT_MV = 6000;
+constexpr double ARM_UP_DEG = 300.0;
+constexpr double ARM_TOL_DEG = 5.0;
+constexpr int ARM_MOVE_RPM = 50;
+constexpr int ARM_STALL_MA = 2000;
+constexpr uint32_t ARM_STALL_HOLD_MS = 200;
+constexpr uint32_t ARM_MOVE_TIMEOUT_MS = 3500;
+constexpr uint32_t ROUTINE_720_SPIN_MS = 29000;
+constexpr double ROUTINE_720_OMEGA_RAD_S = 0.45;
+constexpr uint32_t ROUTINE_STEP_MS = 40;
+constexpr int ROUTINE_DRIVE_TTL_MS = 180;
+constexpr double ROUTINE_ONE_FOOT_M = 0.3048;
+constexpr int ROUTINE_DRIVE_RPM = 25;
+constexpr double ROUTINE_DRIVE_TOL_DEG = 8.0;
+constexpr uint32_t ROUTINE_DRIVE_TIMEOUT_MS = 4500;
 
 volatile uint32_t last_packet_ms = 0;
 volatile uint32_t motion_until_ms = 0;
 volatile bool estop_latched = false;
 volatile bool watchdog_fault = false;
+volatile int pending_routine_slot = 0;
+volatile int active_routine_slot = 0;
+volatile bool routine_active = false;
+volatile bool routine_cancel_requested = false;
 
 pros::Mutex stdout_mutex;
 
@@ -47,6 +68,11 @@ pros::Motor& left_drive() {
 
 pros::Motor& right_drive() {
 	static pros::Motor motor(-RIGHT_DRIVE_PORT);
+	return motor;
+}
+
+pros::Motor& arm_motor() {
+	static pros::Motor motor(ARM_PORT);
 	return motor;
 }
 
@@ -136,6 +162,10 @@ bool drive_ports_ok() {
 	return motor_port_present(LEFT_DRIVE_PORT) && motor_port_present(RIGHT_DRIVE_PORT);
 }
 
+bool arm_port_ok() {
+	return motor_port_present(ARM_PORT);
+}
+
 bool motion_enabled() {
 	return drive_ports_ok() && !estop_latched;
 }
@@ -166,6 +196,14 @@ void configure_drive() {
 	right_drive().tare_position();
 }
 
+void configure_arm() {
+	if (!arm_port_ok()) return;
+	arm_motor().set_brake_mode(pros::E_MOTOR_BRAKE_HOLD);
+	arm_motor().set_current_limit(ARM_CURRENT_LIMIT_MA);
+	arm_motor().set_voltage_limit(ARM_VOLTAGE_LIMIT_MV);
+	arm_motor().tare_position();
+}
+
 void stop_drive(const char* reason) {
 	(void)reason;
 	motion_until_ms = 0;
@@ -174,6 +212,18 @@ void stop_drive(const char* reason) {
 	right_drive().move_velocity(0);
 	left_drive().brake();
 	right_drive().brake();
+}
+
+void stop_arm(const char* reason) {
+	(void)reason;
+	if (!arm_port_ok()) return;
+	arm_motor().move_velocity(0);
+	arm_motor().brake();
+}
+
+void stop_all(const char* reason) {
+	stop_drive(reason);
+	stop_arm(reason);
 }
 
 void set_drive(double vx_mps, double omega_rad_s, int ttl_ms) {
@@ -191,16 +241,20 @@ void set_drive(double vx_mps, double omega_rad_s, int ttl_ms) {
 	motion_until_ms = pros::millis() + static_cast<uint32_t>(ttl_ms);
 }
 
-std::string motor_sample_json(const char* device, pros::Motor& motor, uint32_t sample_ms) {
+std::string motor_sample_json(const char* device,
+                              const char* subsystem,
+                              pros::Motor& motor,
+                              uint32_t sample_ms) {
 	char buf[768];
 	std::snprintf(
 	    buf,
 	    sizeof(buf),
-	    "{\"device\":\"%s\",\"subsystem\":\"drivetrain\",\"sample_ms\":%lu,"
+	    "{\"device\":\"%s\",\"subsystem\":\"%s\",\"sample_ms\":%lu,"
 	    "\"values\":{\"position_deg\":%.1f,\"velocity_rpm\":%.1f,"
 	    "\"current_amp\":%.3f,\"power_w\":%.3f,\"torque_nm\":%.3f,"
 	    "\"efficiency_pct\":%.1f,\"temperature_c\":%.1f}}",
 	    device,
+	    subsystem,
 	    static_cast<unsigned long>(sample_ms),
 	    motor.get_position(),
 	    motor.get_actual_velocity(),
@@ -213,16 +267,42 @@ std::string motor_sample_json(const char* device, pros::Motor& motor, uint32_t s
 }
 
 std::string motor_samples_json(uint32_t sample_ms) {
-	if (!drive_ports_ok()) return "[]";
-	return std::string("[") + motor_sample_json("left_drive", left_drive(), sample_ms) + "," +
-	       motor_sample_json("right_drive", right_drive(), sample_ms) + "]";
+	std::string out = "[";
+	bool first = true;
+	if (drive_ports_ok()) {
+		out += motor_sample_json("left_drive", "drivetrain", left_drive(), sample_ms);
+		out += ",";
+		out += motor_sample_json("right_drive", "drivetrain", right_drive(), sample_ms);
+		first = false;
+	}
+	if (arm_port_ok()) {
+		if (!first) out += ",";
+		out += motor_sample_json("arm", "arm", arm_motor(), sample_ms);
+	}
+	out += "]";
+	return out;
+}
+
+bool routine_busy() {
+	return routine_active || pending_routine_slot != 0;
+}
+
+const char* routine_slot_json(char* buf, size_t size) {
+	const int slot = active_routine_slot;
+	if (slot >= 2 && slot <= 4) {
+		std::snprintf(buf, size, "%d", slot);
+		return buf;
+	}
+	return "null";
 }
 
 void emit_ack(int seq, const char* state, const char* fault_json = "null") {
+	char slot_buf[8];
 	emit_json(
 	    "{\"v\":1,\"ack\":%d,\"type\":\"ack\",\"state\":\"%s\",\"recv_ms\":%lu,"
 	    "\"battery_mv\":%ld,\"battery_pct\":%.1f,\"watchdog_age_ms\":%lu,"
-	    "\"estop\":%s,\"motion_enabled\":%s,\"drive_ports_ok\":%s,\"motor_ports\":%s,"
+	    "\"estop\":%s,\"motion_enabled\":%s,\"drive_ports_ok\":%s,\"arm_port_ok\":%s,"
+	    "\"routine_active\":%s,\"routine_slot\":%s,\"motor_ports\":%s,"
 	    "\"fault\":%s}",
 	    seq,
 	    state,
@@ -233,6 +313,9 @@ void emit_ack(int seq, const char* state, const char* fault_json = "null") {
 	    estop_latched ? "true" : "false",
 	    motion_enabled() ? "true" : "false",
 	    drive_ports_ok() ? "true" : "false",
+	    arm_port_ok() ? "true" : "false",
+	    routine_busy() ? "true" : "false",
+	    routine_slot_json(slot_buf, sizeof(slot_buf)),
 	    motor_ports_json().c_str(),
 	    fault_json);
 }
@@ -249,11 +332,13 @@ void emit_status(const char* state, const char* reason, const char* message) {
 
 void emit_telemetry() {
 	const uint32_t sample_ms = pros::millis();
+	char slot_buf[8];
 	emit_json(
 	    "{\"v\":1,\"type\":\"telemetry\",\"t_ms\":%lu,\"battery_mv\":%ld,"
 	    "\"battery_current_ma\":%ld,\"battery_pct\":%.1f,\"battery_temp_c\":%.1f,"
 	    "\"watchdog_age_ms\":%lu,\"motion_ttl_overrun_ms\":%lu,\"estop\":%s,"
-	    "\"motion_enabled\":%s,\"drive_ports_ok\":%s,\"motor_ports\":%s,"
+	    "\"motion_enabled\":%s,\"drive_ports_ok\":%s,\"arm_port_ok\":%s,"
+	    "\"routine_active\":%s,\"routine_slot\":%s,\"motor_ports\":%s,"
 	    "\"left_pos_deg\":%.1f,\"right_pos_deg\":%.1f,"
 	    "\"left_vel_rpm\":%.1f,\"right_vel_rpm\":%.1f,\"motor_samples\":%s}",
 	    static_cast<unsigned long>(sample_ms),
@@ -266,12 +351,146 @@ void emit_telemetry() {
 	    estop_latched ? "true" : "false",
 	    motion_enabled() ? "true" : "false",
 	    drive_ports_ok() ? "true" : "false",
+	    arm_port_ok() ? "true" : "false",
+	    routine_busy() ? "true" : "false",
+	    routine_slot_json(slot_buf, sizeof(slot_buf)),
 	    motor_ports_json().c_str(),
 	    drive_ports_ok() ? left_drive().get_position() : 0.0,
 	    drive_ports_ok() ? right_drive().get_position() : 0.0,
 	    drive_ports_ok() ? left_drive().get_actual_velocity() : 0.0,
 	    drive_ports_ok() ? right_drive().get_actual_velocity() : 0.0,
 	    motor_samples_json(sample_ms).c_str());
+}
+
+bool routine_guard_ok() {
+	if (routine_cancel_requested || estop_latched) return false;
+	if (packet_age_ms() > WATCHDOG_MS) return false;
+	return true;
+}
+
+void routine_abort(const char* reason, const char* message) {
+	stop_all(reason);
+	emit_status("warn", reason, message);
+}
+
+bool routine_pause(uint32_t duration_ms) {
+	const uint32_t start_ms = pros::millis();
+	while (pros::millis() - start_ms < duration_ms) {
+		if (!routine_guard_ok()) return false;
+		pros::delay(ROUTINE_STEP_MS);
+	}
+	return true;
+}
+
+bool run_timed_turn(uint32_t duration_ms, double omega_rad_s) {
+	const uint32_t start_ms = pros::millis();
+	while (pros::millis() - start_ms < duration_ms) {
+		if (!routine_guard_ok()) {
+			routine_abort("routine_cancelled", "timed turn stopped before completion");
+			return false;
+		}
+		set_drive(0.0, omega_rad_s, ROUTINE_DRIVE_TTL_MS);
+		pros::delay(ROUTINE_STEP_MS);
+	}
+	stop_drive("routine turn complete");
+	return true;
+}
+
+bool move_drive_relative(double distance_m) {
+	if (!drive_ports_ok()) {
+		routine_abort("not_assembled", "drive routine requires left/right drive motors");
+		return false;
+	}
+	const double delta_deg = DRIVE_FORWARD_SIGN * distance_m / WHEEL_CIRCUMFERENCE_M * 360.0;
+	const double left_target = left_drive().get_position() + delta_deg;
+	const double right_target = right_drive().get_position() + delta_deg;
+	const uint32_t start_ms = pros::millis();
+
+	left_drive().move_absolute(left_target, ROUTINE_DRIVE_RPM);
+	right_drive().move_absolute(right_target, ROUTINE_DRIVE_RPM);
+	motion_until_ms = start_ms + ROUTINE_DRIVE_TIMEOUT_MS;
+
+	while (pros::millis() - start_ms < ROUTINE_DRIVE_TIMEOUT_MS) {
+		if (!routine_guard_ok()) {
+			routine_abort("routine_cancelled", "drive routine stopped before completion");
+			return false;
+		}
+		const double left_err = std::fabs(left_drive().get_position() - left_target);
+		const double right_err = std::fabs(right_drive().get_position() - right_target);
+		if (left_err <= ROUTINE_DRIVE_TOL_DEG && right_err <= ROUTINE_DRIVE_TOL_DEG) {
+			stop_drive("drive target reached");
+			return true;
+		}
+		pros::delay(ROUTINE_STEP_MS);
+	}
+
+	routine_abort("ttl_expired", "drive routine timed out before reaching encoder target");
+	return false;
+}
+
+bool move_arm_absolute(double target_deg) {
+	if (!arm_port_ok()) {
+		routine_abort("not_assembled", "arm routine requires the arm motor on port 8");
+		return false;
+	}
+	const uint32_t start_ms = pros::millis();
+	uint32_t stall_since_ms = 0;
+	arm_motor().move_absolute(target_deg, ARM_MOVE_RPM);
+
+	while (pros::millis() - start_ms < ARM_MOVE_TIMEOUT_MS) {
+		if (!routine_guard_ok()) {
+			routine_abort("routine_cancelled", "arm routine stopped before completion");
+			return false;
+		}
+
+		const double err = std::fabs(arm_motor().get_position() - target_deg);
+		if (err <= ARM_TOL_DEG) {
+			arm_motor().brake();
+			return true;
+		}
+
+		const int current_ma = arm_motor().get_current_draw();
+		if (current_ma >= ARM_STALL_MA) {
+			if (stall_since_ms == 0) {
+				stall_since_ms = pros::millis();
+			} else if (pros::millis() - stall_since_ms >= ARM_STALL_HOLD_MS) {
+				routine_abort("ttl_expired", "arm routine hit a sustained current limit");
+				return false;
+			}
+		} else {
+			stall_since_ms = 0;
+		}
+		pros::delay(ROUTINE_STEP_MS);
+	}
+
+	routine_abort("ttl_expired", "arm routine timed out before reaching target");
+	return false;
+}
+
+bool run_routine_slot(int slot) {
+	active_routine_slot = slot;
+	routine_active = true;
+	routine_cancel_requested = false;
+	emit_status("ok", "routine_started", "Brain routine slot started");
+
+	bool ok = false;
+	if (slot == 2) {
+		ok = run_timed_turn(ROUTINE_720_SPIN_MS, ROUTINE_720_OMEGA_RAD_S);
+	} else if (slot == 3) {
+		ok = move_arm_absolute(ARM_UP_DEG) && routine_pause(500) && move_arm_absolute(0.0);
+	} else if (slot == 4) {
+		ok = move_drive_relative(ROUTINE_ONE_FOOT_M) && routine_pause(500) &&
+		     move_drive_relative(-ROUTINE_ONE_FOOT_M);
+	}
+
+	stop_all("routine finished");
+	emit_status(ok ? "ok" : "warn",
+	            ok ? "routine_finished" : "routine_aborted",
+	            ok ? "Brain routine slot completed" : "Brain routine slot stopped early");
+	routine_active = false;
+	active_routine_slot = 0;
+	routine_cancel_requested = false;
+	return ok;
 }
 
 void handle_line(const std::string& line) {
@@ -290,28 +509,34 @@ void handle_line(const std::string& line) {
 	}
 
 	if (!has_json_value(line, "\"type\"", "\"cmd\"")) {
-		stop_drive("unknown packet type");
-		emit_ack(seq, "rejected", "\"unknown_packet_type\"");
+		stop_all("unknown packet type");
+		emit_ack(seq, "rejected", "\"malformed_json\"");
 		return;
 	}
 
 	if (has_json_value(line, "\"cmd\"", "\"stop\"")) {
 		estop_latched = contains(line, "operator_estop");
-		stop_drive("stop command");
+		routine_cancel_requested = true;
+		pending_routine_slot = 0;
+		stop_all("stop command");
 		emit_ack(seq, "ok");
 		return;
 	}
 
 	if (has_json_value(line, "\"cmd\"", "\"drive\"") ||
 	    has_json_value(line, "\"cmd\"", "\"turn\"")) {
+		if (routine_busy()) {
+			emit_ack(seq, "rejected", "\"busy\"");
+			return;
+		}
 		if (estop_latched) {
-			stop_drive("estop latched");
+			stop_all("estop latched");
 			emit_ack(seq, "rejected", "\"estop_latched\"");
 			return;
 		}
 		if (!drive_ports_ok()) {
-			stop_drive("drive ports missing");
-			emit_ack(seq, "rejected", "\"drive_ports_missing\"");
+			stop_all("drive ports missing");
+			emit_ack(seq, "rejected", "\"not_assembled\"");
 			return;
 		}
 
@@ -328,13 +553,46 @@ void handle_line(const std::string& line) {
 		return;
 	}
 
-	if (has_json_value(line, "\"cmd\"", "\"set_goal\"")) {
-		stop_drive("set_goal not handled by Brain");
-		emit_ack(seq, "rejected", "\"unsupported_goal\"");
+	if (has_json_value(line, "\"cmd\"", "\"routine\"")) {
+		if (estop_latched) {
+			stop_all("estop latched");
+			emit_ack(seq, "rejected", "\"estop_latched\"");
+			return;
+		}
+		if (routine_busy()) {
+			emit_ack(seq, "rejected", "\"busy\"");
+			return;
+		}
+
+		const int slot = extract_int_field(line, "slot");
+		if (slot < 2 || slot > 4) {
+			emit_ack(seq, "rejected", "\"out_of_range\"");
+			return;
+		}
+		if ((slot == 2 || slot == 4) && !drive_ports_ok()) {
+			stop_all("routine drive ports missing");
+			emit_ack(seq, "rejected", "\"not_assembled\"");
+			return;
+		}
+		if (slot == 3 && !arm_port_ok()) {
+			stop_all("routine arm port missing");
+			emit_ack(seq, "rejected", "\"not_assembled\"");
+			return;
+		}
+
+		routine_cancel_requested = false;
+		pending_routine_slot = slot;
+		emit_ack(seq, "ok");
 		return;
 	}
 
-	stop_drive("unknown command");
+	if (has_json_value(line, "\"cmd\"", "\"set_goal\"")) {
+		stop_all("set_goal not handled by Brain");
+		emit_ack(seq, "rejected", "\"unknown_command\"");
+		return;
+	}
+
+	stop_all("unknown command");
 	emit_ack(seq, "rejected", "\"unknown_command\"");
 }
 
@@ -364,16 +622,29 @@ void receive_task(void*) {
 			line.push_back(static_cast<char>(ch));
 		} else {
 			line.clear();
-			stop_drive("oversized packet");
-			emit_status("warn", "oversized_packet", "discarded serial packet above 512 bytes");
+			routine_cancel_requested = true;
+			stop_all("oversized packet");
+			emit_status("warn", "oversized_packet", "discarded serial packet above 2048 bytes");
 		}
+	}
+}
+
+void routine_task(void*) {
+	while (true) {
+		const int slot = pending_routine_slot;
+		if (slot != 0 && !routine_active) {
+			pending_routine_slot = 0;
+			run_routine_slot(slot);
+		}
+		pros::delay(20);
 	}
 }
 
 void watchdog_task(void*) {
 	while (true) {
 		if (packet_age_ms() > WATCHDOG_MS) {
-			stop_drive("watchdog");
+			routine_cancel_requested = true;
+			stop_all("watchdog");
 			if (!watchdog_fault) {
 				watchdog_fault = true;
 				emit_status("fault", "watchdog_stop", "no valid packet before watchdog timeout");
@@ -398,17 +669,20 @@ void initialize() {
 	pros::c::serctl(SERCTL_DISABLE_COBS, nullptr);
 	last_packet_ms = pros::millis();
 	configure_drive();
+	configure_arm();
 
 	pros::screen::set_pen(pros::c::COLOR_WHITE);
 	pros::screen::print(pros::E_TEXT_LARGE, 1, "vexy serial bridge");
 	pros::screen::print(pros::E_TEXT_MEDIUM, 3, "guarded drive ports %d/%d",
 	                    LEFT_DRIVE_PORT, RIGHT_DRIVE_PORT);
+	pros::screen::print(pros::E_TEXT_MEDIUM, 4, "routine slots 2/3/4 armed");
 
 	emit_status("ok", "brain_bridge_ready", "guarded ack/telemetry bridge initialized");
 }
 
 void opcontrol() {
 	pros::Task rx_task(receive_task, nullptr, "vex_rx");
+	pros::Task routines(routine_task, nullptr, "vex_routines");
 	pros::Task watchdog(watchdog_task, nullptr, "vex_watchdog");
 	pros::Task telemetry(telemetry_task, nullptr, "vex_telem");
 

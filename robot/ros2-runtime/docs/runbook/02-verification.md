@@ -134,7 +134,32 @@ ros2 run vexy_ros vexy_tag_action_proof \
   --summary-out "$proof/scan-summary.json"
 ```
 
-### 2.9 Foxglove bridge reachable
+### 2.9 Brain routine task-plan proof
+
+Brain routine targets are fixed routine IDs inside the running `pros_bridge`
+program. They are not VEX GUI upload slots.
+
+Start with a no-motion planning check:
+
+```bash
+ros2 topic echo /task_plan/current &
+ros2 topic pub --once /task_plan/request std_msgs/String \
+  '{"data":"{\"target\":\"routine:2\",\"action\":\"spin_720\",\"dispatch\":false}"}'
+ros2 topic pub --once /task_plan/request std_msgs/String \
+  '{"data":"{\"target\":\"routine:3\",\"action\":\"arm_full_cycle\",\"dispatch\":false}"}'
+ros2 topic pub --once /task_plan/request std_msgs/String \
+  '{"data":"{\"target\":\"routine:4\",\"action\":\"one_foot_forward_back\",\"dispatch\":false}"}'
+```
+
+Expected: each plan has `status:"ready"`, step type `brain_routine`, and a
+`cmd` payload with `cmd:"routine"` plus the requested slot ID.
+
+Only dispatch a routine with the robot on blocks or clear floor, an operator
+present, fresh `/vex/ack`, fresh `/vex/telemetry`, `motion_enabled:true`, and an
+MCAP recording that includes `/vex/cmd`, `/vex/ack`, `/vex/telemetry`, and
+`/vex/bridge_status`.
+
+### 2.10 Foxglove bridge reachable
 
 ```bash
 # From the Pi:
@@ -152,7 +177,7 @@ In Foxglove Studio (browser or desktop):
 3. Enter `ws://vexy.local:8765` (or `ws://<IP>:8765` if mDNS fails)
 4. Confirm topics `/camera/image_raw`, `/camera/image_rect`, `/apriltag/detections`, `/align_to_tag/feedback`, `/align_to_tag/result`, `/vex/ack`, `/vex/telemetry`, `/vex/bridge_status`, etc. appear in the topic list
 
-### 2.10 Scene map proof
+### 2.11 Scene map proof
 
 The scene map turns the fixed AprilTag workspace layout into robot/object map
 coordinates. The default map is `config/maps/table-grab-toss-v1.json`, matching

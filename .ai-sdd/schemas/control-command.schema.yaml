@@ -28,7 +28,11 @@ spec:
     cmd:
       type: enum
       required: false        # absent for heartbeat; DRAFT vocabulary (arm/manipulation TBD)
-      invariants: [{ matches: "^(stop|drive|turn|arm)$" }]
+      invariants: [{ matches: "^(stop|drive|turn|arm|claw|flywheel|routine)$" }]
+    slot:
+      type: number
+      required: false        # required for cmd=routine; accepted values are Brain routine slots 2-4
+      invariants: [{ matches: "^[2-4]$" }]
     sent_ms:
       type: number
       required: true

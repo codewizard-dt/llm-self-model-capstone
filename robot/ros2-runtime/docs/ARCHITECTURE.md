@@ -118,12 +118,13 @@ Command-specific fields (`type == "cmd"`):
 | `drive` | `vx` (m/s, ±0.35), `vy` (m/s, ±0.35), `omega` (rad/s, ±0.60) |
 | `turn` | `omega` (rad/s, ±0.60) |
 | `set_goal` | `goal` (string) |
+| `routine` | `slot` (`2`, `3`, or `4`; Brain-side bounded routine ID) |
 | `heartbeat` | — (can also use `type == "heartbeat"` directly) |
 
 ### Protocol v1 — Inbound Acks
 
 ```json
-{"v":1,"ack":1,"type":"ack","state":"ok","recv_ms":124,"battery_mv":12300,"heading_deg":0.0,"fault":null}
+{"v":1,"ack":1,"type":"ack","state":"ok","recv_ms":124,"battery_mv":12300,"drive_ports_ok":true,"arm_port_ok":true,"routine_active":false,"fault":null}
 ```
 
 Ack records are published on `/vex/ack`, keyed by the `ack` sequence. Telemetry/sample/event records are published on `/vex/telemetry`. Malformed JSON, unsupported protocol versions, missing acks, stale telemetry, and serial disconnects are published on `/vex/bridge_status`.
@@ -213,12 +214,12 @@ NCNN boxes are projected into that same surface by `object_indication`, keeping
 object coordinates in one scene-map contract.
 
 The `camera_in_robot_json` launch argument records the measured PiCam2 mount
-offset in the robot body frame, so the node can publish robot-center
-coordinates instead of only camera coordinates.
+offset in the robot body frame, so scene-map and direct tag-approach paths can
+publish robot-center coordinates instead of only camera coordinates.
 
 ### AlignToTag — Bounded Local Control
 
-`align_to_tag` is the first local-control skill. It consumes `/apriltag/detections`, `/vex/ack`, and `/vex/bridge_status`; publishes bounded fixed-grammar `/vex/cmd` packets; and emits JSON feedback/result topics. It sends a final `stop` command on success, cancel, timeout, stale tag, stale ack, or bridge fault. No LLM or API call is in this loop.
+`align_to_tag` is the first local-control skill. It consumes `/apriltag/detections`, `/tf`, `/vex/ack`, and `/vex/bridge_status`; applies the same `camera_in_robot_json` mount offset as `scene_map`; publishes bounded fixed-grammar `/vex/cmd` packets; and emits JSON feedback/result topics. It sends a final `stop` command on success, cancel, timeout, stale tag, stale ack, or bridge fault. No LLM or API call is in this loop.
 
 ### YOLO NCNN and TaskPlan
 

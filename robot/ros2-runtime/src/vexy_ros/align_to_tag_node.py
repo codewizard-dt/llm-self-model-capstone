@@ -21,7 +21,12 @@ from .align_to_tag import (
     VexCommand,
 )
 from .bridge_protocol import PROTOCOL_VERSION, now_ms
-from .vision_map import camera_from_apriltag_translation, tag_id_from_frame_id
+from .vision_map import (
+    camera_from_apriltag_translation,
+    pose_from_mapping,
+    robot_from_camera_pose,
+    tag_id_from_frame_id,
+)
 
 
 class AlignToTagNode(Node):
@@ -29,8 +34,18 @@ class AlignToTagNode(Node):
         super().__init__("align_to_tag")
 
         self.declare_parameter("control_period_s", 0.15)
+        self.declare_parameter(
+            "camera_in_robot_json", '{"x_m":0.0,"y_m":0.0,"yaw_rad":0.0}'
+        )
 
         self._controller = AlignToTagController()
+        self._camera_in_robot = pose_from_mapping(
+            json.loads(
+                self.get_parameter("camera_in_robot_json")
+                .get_parameter_value()
+                .string_value
+            )
+        )
         self._seq = 0
         self._latest_tag: TagObservation | None = None
         self._bridge = BridgeHealth(stamp_s=None)
@@ -159,6 +174,8 @@ class AlignToTagNode(Node):
         }
         if command.cmd == "drive":
             packet.update({"vx": command.vx, "vy": command.vy, "omega": command.omega})
+        if command.cmd == "turn":
+            packet["omega"] = command.omega
         if command.reason:
             packet["reason"] = command.reason
         self._cmd_pub.publish(
@@ -177,9 +194,8 @@ class AlignToTagNode(Node):
             return value[0]
         return None
 
-    @staticmethod
     def _tag_observation(
-        detection: Any, tag_id: int, now_s: float
+        self, detection: Any, tag_id: int, now_s: float
     ) -> TagObservation | None:
         pose = getattr(
             getattr(getattr(detection, "pose", None), "pose", None), "pose", None
@@ -188,24 +204,24 @@ class AlignToTagNode(Node):
         if position is None:
             return None
 
-        x = float(getattr(position, "x", 0.0))
-        y = float(getattr(position, "y", 0.0))
-        z = float(getattr(position, "z", 0.0))
-        distance = math.sqrt(x * x + y * y + z * z)
-        yaw_error = math.atan2(x, z) if z else 0.0
-        lateral_error = x
+        camera_from_tag = camera_from_apriltag_translation(
+            optical_x_m=float(getattr(position, "x", 0.0)),
+            optical_z_m=float(getattr(position, "z", 0.0)),
+        )
+        robot_from_tag = robot_from_camera_pose(camera_from_tag, self._camera_in_robot)
+        distance = math.sqrt(robot_from_tag.x_m**2 + robot_from_tag.y_m**2)
+        yaw_error = math.atan2(robot_from_tag.y_m, robot_from_tag.x_m)
         return TagObservation(
             tag_id=tag_id,
             stamp_s=now_s,
             yaw_error_rad=yaw_error,
-            lateral_error_m=lateral_error,
+            lateral_error_m=robot_from_tag.y_m,
             distance_m=distance,
             confidence=None,
         )
 
-    @staticmethod
     def _tag_observation_from_transform(
-        transform_stamped: Any, now_s: float
+        self, transform_stamped: Any, now_s: float
     ) -> TagObservation | None:
         tag_id = tag_id_from_frame_id(
             str(getattr(transform_stamped, "child_frame_id", ""))
@@ -221,13 +237,14 @@ class AlignToTagNode(Node):
             optical_x_m=float(getattr(translation, "x", 0.0)),
             optical_z_m=float(getattr(translation, "z", 0.0)),
         )
-        distance = math.sqrt(camera_from_tag.x_m**2 + camera_from_tag.y_m**2)
-        yaw_error = math.atan2(camera_from_tag.y_m, camera_from_tag.x_m)
+        robot_from_tag = robot_from_camera_pose(camera_from_tag, self._camera_in_robot)
+        distance = math.sqrt(robot_from_tag.x_m**2 + robot_from_tag.y_m**2)
+        yaw_error = math.atan2(robot_from_tag.y_m, robot_from_tag.x_m)
         return TagObservation(
             tag_id=tag_id,
             stamp_s=now_s,
             yaw_error_rad=yaw_error,
-            lateral_error_m=camera_from_tag.y_m,
+            lateral_error_m=robot_from_tag.y_m,
             distance_m=distance,
             confidence=None,
         )

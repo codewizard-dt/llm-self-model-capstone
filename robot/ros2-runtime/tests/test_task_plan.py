@@ -99,6 +99,23 @@ class TaskPlanTests(unittest.TestCase):
         self.assertAlmostEqual(plan["steps"][1]["goal"]["duration_s"], 3.0)
         self.assertAlmostEqual(plan["steps"][1]["goal"]["omega_rad_s"], 0.22)
 
+    def test_routine_slot_plan_is_dispatchable_without_scene_map(self) -> None:
+        plan = build_task_plan(
+            None,
+            TaskPlanRequest(target="routine:3", action="brain_self_test", dispatch=True),
+            now_s=12.0,
+        )
+
+        self.assertEqual(plan["status"], "ready")
+        self.assertTrue(plan["executable_now"])
+        self.assertEqual(plan["request"]["target"], "routine:3")
+        self.assertEqual(plan["target"]["slot"], 3)
+        self.assertEqual(plan["target"]["name"], "arm_full_cycle")
+        self.assertEqual(plan["steps"][0]["type"], "brain_routine")
+        self.assertEqual(plan["steps"][0]["cmd"]["cmd"], "routine")
+        self.assertEqual(plan["steps"][0]["cmd"]["slot"], 3)
+        self.assertTrue(plan["steps"][0]["dispatchable"])
+
     def test_return_home_plan_dispatches_to_home_tag_alignment(self) -> None:
         plan = build_task_plan(
             _scene_with_home(),

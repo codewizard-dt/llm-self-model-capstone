@@ -9,6 +9,7 @@ MAX_LINEAR = 0.35
 MAX_OMEGA = 0.6
 DEFAULT_TTL_MS = 200
 MAX_TTL_MS = 1000
+ROUTINE_SLOTS = {2, 3, 4}
 
 
 class ProtocolError(ValueError):
@@ -81,7 +82,7 @@ def validate_outbound(packet: dict[str, Any]) -> dict[str, Any]:
         return packet
 
     cmd = packet.get("cmd")
-    if cmd not in {"stop", "drive", "turn", "set_goal"}:
+    if cmd not in {"stop", "drive", "turn", "set_goal", "routine"}:
         raise ProtocolError(f"unsupported command: {cmd}")
 
     if cmd == "drive":
@@ -90,6 +91,14 @@ def validate_outbound(packet: dict[str, Any]) -> dict[str, Any]:
         packet["omega"] = clamp(float(packet.get("omega", 0.0)), -MAX_OMEGA, MAX_OMEGA)
     elif cmd == "turn":
         packet["omega"] = clamp(float(packet.get("omega", 0.0)), -MAX_OMEGA, MAX_OMEGA)
+    elif cmd == "routine":
+        try:
+            slot = int(packet.get("slot"))
+        except (TypeError, ValueError) as exc:
+            raise ProtocolError("routine slot must be an integer") from exc
+        if slot not in ROUTINE_SLOTS:
+            raise ProtocolError("routine slot must be one of 2, 3, or 4")
+        packet["slot"] = slot
 
     return packet
 
@@ -104,4 +113,3 @@ def ack(packet: dict[str, Any], **fields: Any) -> dict[str, Any]:
     }
     response.update(fields)
     return response
-

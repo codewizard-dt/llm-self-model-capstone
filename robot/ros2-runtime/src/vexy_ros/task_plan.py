@@ -10,6 +10,21 @@ from .vision_map import Pose2D, SceneMap, normalize_angle, scene_map_from_json
 
 DEFAULT_HOME_TAG_ID = 2
 
+ROUTINE_SLOTS: dict[int, dict[str, str]] = {
+    2: {
+        "name": "spin_720",
+        "description": "720 degree in-place spin using the guarded drivetrain",
+    },
+    3: {
+        "name": "arm_full_cycle",
+        "description": "raise the arm to the bounded top target, then return to rest",
+    },
+    4: {
+        "name": "one_foot_forward_back",
+        "description": "drive one foot forward, pause, then drive one foot back",
+    },
+}
+
 
 @dataclass(frozen=True)
 class TaskPlanRequest:
@@ -55,13 +70,26 @@ def parse_task_plan_request(raw: str | Mapping[str, Any]) -> TaskPlanRequest:
 
 
 def build_task_plan(
-    scene: SceneMap,
+    scene: SceneMap | None,
     request: TaskPlanRequest,
     *,
     now_s: float | None = None,
 ) -> dict[str, Any]:
     stamp_s = time.monotonic() if now_s is None else now_s
     kind, name = _split_target(request.target)
+    if kind == "routine":
+        return _routine_plan(slot=int(name), request=request, stamp_s=stamp_s)
+    if kind not in {"tag", "object", "survey", "home"}:
+        raise ValueError(
+            "target must start with tag:, object:, survey:, home:, or routine:"
+        )
+    if scene is None:
+        return _blocked_plan(
+            request=request,
+            stamp_s=stamp_s,
+            reason="scene_map_unavailable",
+            target={"type": kind, "name": name},
+        )
     if kind == "tag":
         return _tag_plan(scene, tag_id=int(name), request=request, stamp_s=stamp_s)
     if kind == "object":
@@ -77,7 +105,7 @@ def build_task_plan(
             request=request,
             stamp_s=stamp_s,
         )
-    raise ValueError("target must start with tag:, object:, survey:, or home:")
+    raise ValueError("target must start with tag:, object:, survey:, home:, or routine:")
 
 
 def task_plan_from_scene_json(
@@ -367,6 +395,53 @@ def _survey_plan(
     }
 
 
+def _routine_plan(
+    *,
+    slot: int,
+    request: TaskPlanRequest,
+    stamp_s: float,
+) -> dict[str, Any]:
+    routine = ROUTINE_SLOTS.get(slot)
+    if routine is None:
+        raise ValueError("routine target must be routine:2, routine:3, or routine:4")
+    return {
+        "type": "task_plan",
+        "stamp_s": stamp_s,
+        "status": "ready",
+        "executable_now": True,
+        "request": request.to_json(),
+        "target": {
+            "type": "routine",
+            "slot": slot,
+            "name": routine["name"],
+            "description": routine["description"],
+        },
+        "action": request.action,
+        "steps": [
+            {
+                "type": "brain_routine",
+                "slot": slot,
+                "name": routine["name"],
+                "cmd": {
+                    "v": 1,
+                    "type": "cmd",
+                    "cmd": "routine",
+                    "ttl_ms": 500,
+                    "slot": slot,
+                },
+                "dispatchable": True,
+                "required_proofs": [
+                    "fresh_vex_ack",
+                    "fresh_vex_telemetry",
+                    "motion_enabled",
+                    "operator_supervised",
+                    "routine_mcap",
+                ],
+            }
+        ],
+    }
+
+
 def _blocked_plan(
     *,
     request: TaskPlanRequest,
@@ -405,7 +480,7 @@ def _split_target(target: str) -> tuple[str, str]:
     if ":" not in target:
         raise ValueError(
             "target must be formatted as tag:<id>, object:<name>, survey:<scope>, "
-            "or home:tag"
+            "home:tag, or routine:<slot>"
         )
     kind, name = target.split(":", 1)
     return kind, name

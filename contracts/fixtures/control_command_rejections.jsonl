@@ -6,3 +6,4 @@
 {"v":1,"type":"ack","ack":105,"state":"rejected","recv_ms":1781882000050,"fault":"out_of_range"}
 {"v":1,"type":"ack","ack":106,"state":"rejected","recv_ms":1781882000060,"fault":"oversized_packet"}
 {"v":1,"type":"ack","ack":107,"state":"rejected","recv_ms":1781882000070,"fault":"not_assembled"}
+{"v":1,"type":"ack","ack":108,"state":"rejected","recv_ms":1781882000080,"fault":"busy"}

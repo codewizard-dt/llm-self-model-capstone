@@ -107,7 +107,7 @@ FreeRTOS preemptive scheduling (1ms tick) lets the watchdog task run even when `
 
 The capstone's RPi5 + V5 Brain + Pi Camera + Claude API stack follows this pattern with one addition: the LLM inference leg. The proven USB serial path (Stage 1) maps directly to `raw/research/vex-v5-telemetry-pipeline/index.md` Mode A real-time pipeline. No existing open-source project closes the LLM loop on this architecture — that is the novelty.
 
-The current Brain sketch (`robot/v5-brain/pros_bridge/src/main.cpp`) uses a single combined loop (starter sketch, not yet hardware-tested). Two-task split is a known next step. See derives_from::[[v5-brain-python-vs-pros]].
+The current Brain bridge (`robot/v5-brain/pros_bridge/src/main.cpp`) is a buildable PROS monolith with separate receive, watchdog, telemetry, and routine tasks. It accepts the Pi's fixed control grammar, emits tagged `ack`/`telemetry`/`bridge_status` records, and exposes fixed routine slots 2-4 for bounded proof actions: 720 spin, arm up/down, and one-foot forward/back. These routine slots are command IDs inside the running bridge program, not VEXos user-program upload slots. See derives_from::[[v5-brain-python-vs-pros]].
 
 implements::[[llm-authored-self-model]]
 transports::[[task-telemetry-contract]]

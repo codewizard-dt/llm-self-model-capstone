@@ -1,4 +1,8 @@
-# Tomorrow V5 Brain Bring-Up
+# Historical V5 Brain Bring-Up
+
+This was the first-contact checklist before the ROS 2 Jazzy runtime and
+buildable `pros_bridge` were proven. For current operations, use
+`robot/ros2-runtime/docs/RUNBOOK.md`.
 
 ## Before Plugging In
 
@@ -39,7 +43,8 @@ Use either PROS or VEXcode. The Brain program must:
 - Emit newline-delimited JSON acks.
 - Stop motors on stale heartbeat or expired command.
 
-See `../../v5-brain/pros_bridge/src/main.cpp` for a starter sketch and notes.
+See `../../v5-brain/pros_bridge/src/main.cpp` for the current guarded bridge
+firmware.
 
 ## Switch Pi Bridge To Real Serial
 
@@ -80,3 +85,8 @@ Then a very low TTL drive command:
 ```
 
 The expected failure mode is "nothing happens" or "brief twitch then stop", never continuous drive.
+
+Current guarded Brain routine slots are invoked through ROS `/vex/cmd` or
+`/task_plan/request`: slot `2` = 720 spin, slot `3` = arm up/down, slot `4` =
+one foot forward/back. They are routine IDs inside the running bridge program,
+not separate VEXos upload slots.
