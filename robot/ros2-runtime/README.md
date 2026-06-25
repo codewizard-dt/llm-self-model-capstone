@@ -406,7 +406,7 @@ ros2 run vexy_ros vexy_run_calibrated_tag_proof
 It records MCAP, runs `vexy_tag_action_proof`, writes `summary.json`, and exports
 `contract.jsonl` in a timestamped `/home/vexy/proof/` directory.
 
-Dynamic task-plan requests use tag or object targets:
+Dynamic task-plan requests use tag, object, survey, or home targets:
 
 ```bash
 ros2 topic echo /task_plan/current &
@@ -420,10 +420,13 @@ ros2 topic pub --once /task_plan/request std_msgs/String \
   '{"data":"{\"target\":\"survey:all\",\"action\":\"survey_all\"}"}'
 ros2 topic pub --once /task_plan/request std_msgs/String \
   '{"data":"{\"target\":\"survey:all\",\"action\":\"survey_all\",\"dispatch\":true,\"survey_duration_s\":3.0,\"survey_omega_rad_s\":0.22}"}'
+ros2 topic pub --once /task_plan/request std_msgs/String \
+  '{"data":"{\"target\":\"home:tag\",\"action\":\"return_home\",\"target_distance_m\":0.45,\"dispatch\":true}"}'
 ```
 
-Tag plans can dispatch through the proven `align_to_tag` primitive. Object plans
-are mapped but report `object_go_to_pose_controller_not_proven` until a bounded
+Tag and home plans dispatch through the proven `align_to_tag` primitive. Home
+plans default to AprilTag `2`, the workspace home anchor. Object plans are mapped
+but report `object_go_to_pose_controller_not_proven` until a bounded
 object/go-to-pose motion skill is implemented and physically verified. Survey
 plans dispatch through `survey_scan` when `dispatch:true`; the controller refuses
 to start unless `/vex/ack`, `/vex/telemetry`, and drive safety state are fresh.

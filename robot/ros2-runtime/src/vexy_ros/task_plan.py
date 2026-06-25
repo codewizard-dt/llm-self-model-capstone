@@ -8,6 +8,8 @@ from typing import Any, Mapping
 
 from .vision_map import Pose2D, SceneMap, normalize_angle, scene_map_from_json
 
+DEFAULT_HOME_TAG_ID = 2
+
 
 @dataclass(frozen=True)
 class TaskPlanRequest:
@@ -68,7 +70,14 @@ def build_task_plan(
         if name != "all":
             raise ValueError("survey target must be survey:all")
         return _survey_plan(scene, request=request, stamp_s=stamp_s)
-    raise ValueError("target must start with tag:, object:, or survey:")
+    if kind == "home":
+        return _return_home_plan(
+            scene,
+            home_tag_id=_home_tag_id_from_target(name),
+            request=request,
+            stamp_s=stamp_s,
+        )
+    raise ValueError("target must start with tag:, object:, survey:, or home:")
 
 
 def task_plan_from_scene_json(
@@ -175,6 +184,83 @@ def _object_plan(
                     "operator_supervised",
                     "bounded_go_to_pose_mcap",
                 ],
+            },
+        ],
+    }
+
+
+def _return_home_plan(
+    scene: SceneMap,
+    *,
+    home_tag_id: int,
+    request: TaskPlanRequest,
+    stamp_s: float,
+) -> dict[str, Any]:
+    pose = scene.tags.get(home_tag_id)
+    target = {
+        "type": "home",
+        "home_tag_id": home_tag_id,
+        "strategy": "align_to_home_tag",
+    }
+    if pose is None:
+        return _blocked_plan(
+            request=request,
+            stamp_s=stamp_s,
+            reason="home_tag_not_in_scene",
+            target=target,
+        )
+    return {
+        "type": "task_plan",
+        "stamp_s": stamp_s,
+        "status": "ready",
+        "executable_now": True,
+        "request": request.to_json(),
+        "target": {
+            **target,
+            "pose": pose.to_json(),
+            "observed_tag_ids": sorted(scene.observed_tag_ids),
+        },
+        "action": request.action,
+        "steps": [
+            {
+                "type": "capture_home_anchor_snapshot",
+                "topics": [
+                    "/camera/camera_info",
+                    "/apriltag/detections",
+                    "/vision/scene_map",
+                    "/vex/ack",
+                    "/vex/telemetry",
+                    "/vex/bridge_status",
+                ],
+                "dispatchable": False,
+            },
+            {
+                "type": "align_to_tag",
+                "purpose": "return_home",
+                "goal": {
+                    "tag_id": home_tag_id,
+                    "target_distance_m": request.target_distance_m,
+                    "timeout_s": 10.0,
+                },
+                "dispatchable": True,
+                "required_proofs": [
+                    "fresh_scene_map",
+                    "home_tag_visible",
+                    "healthy_bridge_status",
+                    "fresh_vex_ack",
+                    "fresh_vex_telemetry",
+                    "bounded_align_to_tag",
+                ],
+            },
+            {
+                "type": "confirm_home_stop",
+                "expected_outputs": [
+                    "terminal_align_to_tag_result",
+                    "final_stop_command",
+                    "fresh_vex_ack",
+                    "fresh_vex_telemetry",
+                ],
+                "dispatchable": False,
             },
         ],
     }
@@ -318,7 +404,14 @@ def _bearing(a: Pose2D, b: Pose2D) -> float:
 def _split_target(target: str) -> tuple[str, str]:
     if ":" not in target:
         raise ValueError(
-            "target must be formatted as tag:<id>, object:<name>, or survey:<scope>"
+            "target must be formatted as tag:<id>, object:<name>, survey:<scope>, "
+            "or home:tag"
         )
     kind, name = target.split(":", 1)
     return kind, name
+
+
+def _home_tag_id_from_target(name: str) -> int:
+    if name in {"tag", "default", "home"}:
+        return DEFAULT_HOME_TAG_ID
+    return int(name)

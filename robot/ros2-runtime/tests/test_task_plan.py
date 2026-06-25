@@ -99,6 +99,58 @@ class TaskPlanTests(unittest.TestCase):
         self.assertAlmostEqual(plan["steps"][1]["goal"]["duration_s"], 3.0)
         self.assertAlmostEqual(plan["steps"][1]["goal"]["omega_rad_s"], 0.22)
 
+    def test_return_home_plan_dispatches_to_home_tag_alignment(self) -> None:
+        plan = build_task_plan(
+            _scene_with_home(),
+            TaskPlanRequest(
+                target="home:tag",
+                action="return_home",
+                target_distance_m=0.45,
+                dispatch=True,
+            ),
+            now_s=12.0,
+        )
+
+        self.assertEqual(plan["status"], "ready")
+        self.assertTrue(plan["executable_now"])
+        self.assertEqual(plan["request"]["target"], "home:tag")
+        self.assertEqual(plan["target"]["type"], "home")
+        self.assertEqual(plan["target"]["home_tag_id"], 2)
+        self.assertEqual(plan["target"]["strategy"], "align_to_home_tag")
+        self.assertEqual(plan["steps"][0]["type"], "capture_home_anchor_snapshot")
+        self.assertEqual(plan["steps"][1]["type"], "align_to_tag")
+        self.assertEqual(plan["steps"][1]["purpose"], "return_home")
+        self.assertTrue(plan["steps"][1]["dispatchable"])
+        self.assertEqual(plan["steps"][1]["goal"]["tag_id"], 2)
+        self.assertEqual(plan["steps"][1]["goal"]["target_distance_m"], 0.45)
+        self.assertIn("home_tag_visible", plan["steps"][1]["required_proofs"])
+        self.assertEqual(plan["steps"][2]["type"], "confirm_home_stop")
+
+    def test_return_home_plan_accepts_explicit_home_tag_id(self) -> None:
+        plan = build_task_plan(
+            _scene_with_home(),
+            TaskPlanRequest(target="home:2", action="return_home"),
+            now_s=12.0,
+        )
+
+        self.assertEqual(plan["status"], "ready")
+        self.assertEqual(plan["target"]["home_tag_id"], 2)
+        self.assertEqual(plan["steps"][1]["goal"]["tag_id"], 2)
+
+    def test_return_home_blocks_when_home_tag_is_not_visible(self) -> None:
+        plan = build_task_plan(
+            _scene(),
+            TaskPlanRequest(target="home:tag", action="return_home"),
+            now_s=12.0,
+        )
+
+        self.assertEqual(plan["status"], "blocked")
+        self.assertFalse(plan["executable_now"])
+        self.assertEqual(plan["blocked_reason"], "home_tag_not_in_scene")
+        self.assertEqual(plan["target"]["type"], "home")
+        self.assertEqual(plan["target"]["home_tag_id"], 2)
+        self.assertEqual(plan["steps"], [])
+
     def test_missing_target_blocks_plan(self) -> None:
         plan = build_task_plan(
             _scene(),
@@ -156,6 +208,22 @@ def _scene() -> SceneMap:
         ],
         anchor_tag_ids=[0, 1, 2],
         observed_tag_ids=[0],
+    )
+
+
+def _scene_with_home() -> SceneMap:
+    return SceneMap(
+        frame_id="map",
+        stamp_s=1.0,
+        map_from_camera=Pose2D(0.0, 0.0, 0.0),
+        map_from_robot=Pose2D(0.0, 0.0, 0.0),
+        tags={
+            0: Pose2D(1.0, 0.0, 0.0),
+            2: Pose2D(0.25, 0.25, 1.57079632679),
+        },
+        objects=[],
+        anchor_tag_ids=[0, 1, 2],
+        observed_tag_ids=[0, 2],
     )
 
 
