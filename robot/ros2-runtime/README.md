@@ -201,8 +201,8 @@ ros2 topic hz /camera/image_raw
 | `/vision/object_detections` | `std_msgs/String` | pub (yolo_ncnn), sub (object_indication) | JSON YOLO NCNN boxes in image coordinates |
 | `/vision/object_indications` | `std_msgs/String` | pub (object_indication/operator), sub (scene_map) | JSON object hints in camera-relative coordinates |
 | `/vision/scene_map` | `std_msgs/String` | pub (scene_map) | JSON robot/tag/object coordinates in the active workspace map |
-| `/task_plan/request` | `std_msgs/String` | sub (task_plan) | JSON target request, e.g. `tag:0` or `object:bin` |
-| `/task_plan/current` | `std_msgs/String` | pub (task_plan) | JSON bounded plan. Tag plans can dispatch to align; object plans are map targets only until go-to-pose is proven. |
+| `/task_plan/request` | `std_msgs/String` | sub (task_plan) | JSON target request, e.g. `tag:0`, `object:yellow_ball`, or `survey:all` |
+| `/task_plan/current` | `std_msgs/String` | pub (task_plan) | JSON bounded plan. Tag plans can dispatch to align; object and survey plans are map targets only until their motion skills are proven. |
 | `/align_to_tag/goal` | `std_msgs/String` | sub (align_to_tag) | JSON goal for a bounded local align run |
 | `/align_to_tag/cancel` | `std_msgs/String` | sub (align_to_tag) | Cancel the current align run |
 | `/align_to_tag/feedback` | `std_msgs/String` | pub (align_to_tag) | JSON feedback with tag errors, ack state, and fault state |
@@ -411,11 +411,26 @@ ros2 topic pub --once /task_plan/request std_msgs/String \
   '{"data":"{\"target\":\"object:bin\",\"action\":\"inspect\"}"}'
 ros2 topic pub --once /task_plan/request std_msgs/String \
   '{"data":"{\"target\":\"object:yellow_ball\",\"action\":\"inspect\"}"}'
+ros2 topic pub --once /task_plan/request std_msgs/String \
+  '{"data":"{\"target\":\"survey:all\",\"action\":\"survey_all\"}"}'
 ```
 
 Tag plans can dispatch through the proven `align_to_tag` primitive. Object plans
 are mapped but report `object_go_to_pose_controller_not_proven` until a bounded
-object/go-to-pose motion skill is implemented and physically verified.
+object/go-to-pose motion skill is implemented and physically verified. Survey
+plans describe a 360-degree scan but report
+`survey_motion_controller_not_proven` until scan motion is supervised and proven.
+
+To capture the no-motion proof for tomorrow's first check:
+
+```bash
+ros2 run vexy_ros vexy_scene_observation_proof
+```
+
+This writes `scene_observation_proof.json` under `/home/vexy/proof/` with the
+latest detections, object indications, scene map, and task plans for
+`object:yellow_ball` plus `survey:all`. It always publishes task requests with
+`dispatch:false`.
 
 ---
 

@@ -124,6 +124,31 @@ map back in the rectified camera view before running scene-map or motion proof.
 ros2 topic echo /vision/scene_map --once
 ```
 
+## Camera Mount Changes
+
+The runtime is intended to be agnostic to camera placement at the task/planning
+layer. Plans consume map-space `robot_pose`, tag poses, and object poses, not
+hard-coded image positions. The geometry layer still needs truthful transforms:
+
+- Do not re-run checkerboard intrinsics just because the camera mount moved.
+- Do update `camera_in_robot_json` when the PiCam2 moves relative to the robot
+  center.
+- Do re-run checkerboard intrinsics if the camera module, lens/focus,
+  resolution, or crop mode changes.
+- Do update the workspace map only when the AprilTags themselves move.
+
+Morning mount check:
+
+```bash
+ros2 launch vexy_ros vexy.launch.py \
+  camera_in_robot_json:='{"x_m":0.12,"y_m":0.0,"yaw_rad":0.0}'
+ros2 run vexy_ros vexy_scene_observation_proof
+```
+
+The proof is acceptable when the scene map reports stable `robot_pose`, the
+visible tag IDs match the active workspace map, and `object:yellow_ball` plus
+`survey:all` plans are produced with `dispatch:false`.
+
 5. V5 Brain ack and telemetry:
 
 ```bash

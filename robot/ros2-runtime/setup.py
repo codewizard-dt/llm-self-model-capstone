@@ -37,6 +37,7 @@ setup(
             "vexy_export_contract_jsonl = vexy_ros.evidence_export:main",
             "vexy_tag_action_proof = vexy_ros.tag_action_proof:main",
             "vexy_run_calibrated_tag_proof = vexy_ros.proof_runner:main",
+            "vexy_scene_observation_proof = vexy_ros.observation_proof:main",
             "vexy_calibrate_camera = vexy_ros.camera_calibration_capture:main",
         ],
     },

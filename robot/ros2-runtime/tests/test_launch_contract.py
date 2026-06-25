@@ -116,6 +116,10 @@ class LaunchContractTests(unittest.TestCase):
             setup_text,
         )
         self.assertIn(
+            "vexy_scene_observation_proof = vexy_ros.observation_proof:main",
+            setup_text,
+        )
+        self.assertIn(
             "vexy_calibrate_camera = vexy_ros.camera_calibration_capture:main",
             setup_text,
         )

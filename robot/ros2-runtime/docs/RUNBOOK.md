@@ -392,7 +392,7 @@ lightweight HSV detector that publishes the label `yellow_ball` on
 such as `yellow_ball_h_min`, `yellow_ball_h_max`, `yellow_ball_min_area_px`, and
 `yellow_ball_max_detections`.
 
-Dynamic plans accept tag and object targets:
+Dynamic plans accept tag, object, and survey targets:
 
 ```bash
 ros2 topic echo /task_plan/current &
@@ -402,11 +402,24 @@ ros2 topic pub --once /task_plan/request std_msgs/String \
   '{"data":"{\"target\":\"object:bin\",\"action\":\"inspect\"}"}'
 ros2 topic pub --once /task_plan/request std_msgs/String \
   '{"data":"{\"target\":\"object:yellow_ball\",\"action\":\"inspect\"}"}'
+ros2 topic pub --once /task_plan/request std_msgs/String \
+  '{"data":"{\"target\":\"survey:all\",\"action\":\"survey_all\"}"}'
 ```
 
 Tag plans can dispatch through `align_to_tag`; object plans are mapped but
 non-dispatchable until a bounded object/go-to-pose controller is implemented and
-proven.
+proven. Survey plans describe a 360-degree scan for all visible tags and objects
+but remain non-dispatchable until a supervised scan-only proof is recorded.
+
+For the first morning check, capture the no-motion vision/planning proof:
+
+```bash
+ros2 run vexy_ros vexy_scene_observation_proof
+```
+
+Expected: a new `/home/vexy/proof/scene-observation-*/scene_observation_proof.json`
+containing `object:yellow_ball` and `survey:all` task plans. The helper always
+uses `dispatch:false`; it does not move the robot.
 
 ---
 

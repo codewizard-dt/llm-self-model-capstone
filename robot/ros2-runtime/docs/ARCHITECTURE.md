@@ -226,10 +226,15 @@ to estimate camera-relative object positions, then publishes
 `/vision/object_indications` for `scene_map`.
 
 `task_plan` consumes `/vision/scene_map` and `/task_plan/request`. Requests use
-targets such as `tag:0` or `object:bin`. Tag plans can dispatch to the proven
-`align_to_tag` primitive when `dispatch:true`; object plans are mapped but
-non-dispatchable until a bounded object/go-to-pose controller is implemented
-and proven with MCAP plus `/vex/ack` and `/vex/telemetry`.
+targets such as `tag:0`, `object:bin`, `object:yellow_ball`, or `survey:all`.
+Tag plans can dispatch to the proven `align_to_tag` primitive when
+`dispatch:true`; object plans are mapped but non-dispatchable until a bounded
+object/go-to-pose controller is implemented and proven with MCAP plus
+`/vex/ack` and `/vex/telemetry`.
+
+Survey plans describe a 360-degree rotate-in-place scan that should collect
+visible tags, objects, and an updated scene map. They are intentionally
+non-dispatchable until a supervised `scan-only` motion proof exists.
 
 The yellow ball is supported as `object:yellow_ball` through a lightweight HSV
 detector, plus the same label can be emitted by a future NCNN model.
