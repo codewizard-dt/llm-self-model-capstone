@@ -9,6 +9,7 @@ from typing import Any, Mapping
 from .vision_map import Pose2D, SceneMap, normalize_angle, scene_map_from_json
 
 DEFAULT_HOME_TAG_ID = 2
+DELIVERY_ACTIONS = {"deliver", "deliver_ball"}
 
 ROUTINE_SLOTS: dict[int, dict[str, str]] = {
     2: {
@@ -34,6 +35,7 @@ class TaskPlanRequest:
     dispatch: bool = False
     survey_duration_s: float | None = None
     survey_omega_rad_s: float | None = None
+    delivery_bin_object_name: str = "bin"
 
     def to_json(self) -> dict[str, Any]:
         payload: dict[str, Any] = {
@@ -42,6 +44,8 @@ class TaskPlanRequest:
             "target_distance_m": self.target_distance_m,
             "dispatch": self.dispatch,
         }
+        if self.action in DELIVERY_ACTIONS or self.delivery_bin_object_name != "bin":
+            payload["delivery_bin_object_name"] = self.delivery_bin_object_name
         if self.survey_duration_s is not None:
             payload["survey_duration_s"] = self.survey_duration_s
         if self.survey_omega_rad_s is not None:
@@ -66,6 +70,7 @@ def parse_task_plan_request(raw: str | Mapping[str, Any]) -> TaskPlanRequest:
             if payload.get("survey_omega_rad_s") is not None
             else None
         ),
+        delivery_bin_object_name=str(payload.get("delivery_bin_object_name", "bin")),
     )
 
 
@@ -93,6 +98,10 @@ def build_task_plan(
     if kind == "tag":
         return _tag_plan(scene, tag_id=int(name), request=request, stamp_s=stamp_s)
     if kind == "object":
+        if request.action in DELIVERY_ACTIONS:
+            return _delivery_plan(
+                scene, object_name=name, request=request, stamp_s=stamp_s
+            )
         return _object_plan(scene, object_name=name, request=request, stamp_s=stamp_s)
     if kind == "survey":
         if name != "all":
@@ -105,7 +114,9 @@ def build_task_plan(
             request=request,
             stamp_s=stamp_s,
         )
-    raise ValueError("target must start with tag:, object:, survey:, home:, or routine:")
+    raise ValueError(
+        "target must start with tag:, object:, survey:, home:, or routine:"
+    )
 
 
 def task_plan_from_scene_json(
@@ -212,6 +223,184 @@ def _object_plan(
                     "operator_supervised",
                     "bounded_go_to_pose_mcap",
                 ],
+            },
+        ],
+    }
+
+
+def _delivery_plan(
+    scene: SceneMap,
+    *,
+    object_name: str,
+    request: TaskPlanRequest,
+    stamp_s: float,
+) -> dict[str, Any]:
+    ball = _best_object(scene, object_name)
+    if ball is None:
+        return _blocked_plan(
+            request=request,
+            stamp_s=stamp_s,
+            reason="object_not_in_scene",
+            target={"type": "delivery", "ball": {"name": object_name}},
+        )
+
+    bin_object = _best_object(scene, request.delivery_bin_object_name)
+    ball_summary = _object_summary(scene, ball)
+    if bin_object is None:
+        return _blocked_plan(
+            request=request,
+            stamp_s=stamp_s,
+            reason="delivery_bin_not_in_scene",
+            target={
+                "type": "delivery",
+                "ball": ball_summary,
+                "bin": {"name": request.delivery_bin_object_name},
+            },
+        )
+
+    bin_summary = _object_summary(scene, bin_object)
+    ball_anchor = ball_summary["nearest_tag_id"]
+    bin_anchor = bin_summary["nearest_tag_id"]
+    ball_anchor_visible = (
+        isinstance(ball_anchor, int) and ball_anchor in scene.observed_tag_ids
+    )
+    bin_anchor_visible = (
+        isinstance(bin_anchor, int) and bin_anchor in scene.observed_tag_ids
+    )
+    return {
+        "type": "task_plan",
+        "stamp_s": stamp_s,
+        "status": "planned",
+        "executable_now": False,
+        "blocked_reason": "delivery_requires_object_motion_and_manipulator_proofs",
+        "request": request.to_json(),
+        "target": {
+            "type": "delivery",
+            "ball": ball_summary,
+            "bin": bin_summary,
+            "observed_tag_ids": sorted(scene.observed_tag_ids),
+        },
+        "action": request.action,
+        "steps": [
+            {
+                "type": "capture_delivery_scene_snapshot",
+                "topics": [
+                    "/camera/camera_info",
+                    "/apriltag/detections",
+                    "/vision/object_detections",
+                    "/vision/object_indications",
+                    "/vision/scene_map",
+                    "/vex/ack",
+                    "/vex/telemetry",
+                ],
+                "dispatchable": False,
+            },
+            {
+                "type": "survey_scan",
+                "purpose": "refresh_anchor_tags_before_delivery",
+                "dispatchable": True,
+                "goal": {
+                    "duration_s": 14.5,
+                    "omega_rad_s": 0.45,
+                    "max_step_ms": 180,
+                    "ack_stale_s": 0.8,
+                    "telemetry_stale_s": 1.0,
+                },
+                "required_proofs": [
+                    "healthy_bridge_status",
+                    "fresh_vex_ack",
+                    "fresh_vex_telemetry",
+                    "scan_only_mcap",
+                ],
+            },
+            {
+                "type": "align_to_tag",
+                "purpose": "stage_near_ball_anchor",
+                "goal": _align_goal(ball_anchor, request.target_distance_m),
+                "dispatchable": ball_anchor_visible,
+                "blocked_reason": (
+                    None
+                    if ball_anchor_visible
+                    else (
+                        "ball_anchor_tag_unavailable"
+                        if ball_anchor is None
+                        else "ball_anchor_tag_not_visible"
+                    )
+                ),
+                "required_proofs": [
+                    "fresh_scene_map",
+                    "healthy_bridge_status",
+                    "fresh_vex_ack",
+                    "fresh_vex_telemetry",
+                    "bounded_align_to_tag",
+                ],
+            },
+            {
+                "type": "go_to_map_pose",
+                "purpose": "approach_yellow_ball",
+                "target_pose": ball.map_from_object.to_json(),
+                "standoff_m": request.target_distance_m,
+                "dispatchable": False,
+                "blocked_reason": "needs bounded object go-to-pose skill",
+                "required_proofs": [
+                    "fresh_scene_map",
+                    "object_pose_fresh",
+                    "bounded_go_to_pose_mcap",
+                ],
+            },
+            {
+                "type": "manipulator_pickup",
+                "object": object_name,
+                "dispatchable": False,
+                "blocked_reason": "claw_grab_contract_not_proven",
+                "available_proof_primitive": {
+                    "type": "brain_routine",
+                    "slot": 3,
+                    "name": ROUTINE_SLOTS[3]["name"],
+                    "note": "arm up/down proof only; not a ball grab/release contract",
+                },
+            },
+            {
+                "type": "align_to_tag",
+                "purpose": "stage_near_bin_anchor",
+                "goal": _align_goal(bin_anchor, request.target_distance_m),
+                "dispatchable": bin_anchor_visible,
+                "blocked_reason": (
+                    None
+                    if bin_anchor_visible
+                    else (
+                        "bin_anchor_tag_unavailable"
+                        if bin_anchor is None
+                        else "bin_anchor_tag_not_visible"
+                    )
+                ),
+                "required_proofs": [
+                    "fresh_scene_map",
+                    "healthy_bridge_status",
+                    "fresh_vex_ack",
+                    "fresh_vex_telemetry",
+                    "bounded_align_to_tag",
+                ],
+            },
+            {
+                "type": "go_to_map_pose",
+                "purpose": "approach_bin_drop_zone",
+                "target_pose": bin_object.map_from_object.to_json(),
+                "standoff_m": request.target_distance_m,
+                "dispatchable": False,
+                "blocked_reason": "needs bounded object go-to-pose skill",
+                "required_proofs": [
+                    "fresh_scene_map",
+                    "object_pose_fresh",
+                    "bounded_go_to_pose_mcap",
+                ],
+            },
+            {
+                "type": "manipulator_release",
+                "object": object_name,
+                "destination": request.delivery_bin_object_name,
+                "dispatchable": False,
+                "blocked_reason": "claw_release_contract_not_proven",
             },
         ],
     }
@@ -466,6 +655,35 @@ def _nearest_tag(scene: SceneMap, pose: Pose2D) -> int | None:
     if not scene.tags:
         return None
     return min(scene.tags, key=lambda tag_id: _distance(scene.tags[tag_id], pose))
+
+
+def _best_object(scene: SceneMap, object_name: str) -> Any | None:
+    matches = [obj for obj in scene.objects if obj.name == object_name]
+    if not matches:
+        return None
+    return max(matches, key=lambda obj: obj.confidence or 0.0)
+
+
+def _object_summary(scene: SceneMap, obj: Any) -> dict[str, Any]:
+    return {
+        "name": obj.name,
+        "pose": obj.map_from_object.to_json(),
+        "source": obj.source,
+        "confidence": obj.confidence,
+        "range_from_robot_m": _distance(scene.map_from_robot, obj.map_from_object),
+        "bearing_from_robot_rad": _bearing(scene.map_from_robot, obj.map_from_object),
+        "nearest_tag_id": _nearest_tag(scene, obj.map_from_object),
+    }
+
+
+def _align_goal(tag_id: Any, target_distance_m: float) -> dict[str, Any] | None:
+    if not isinstance(tag_id, int):
+        return None
+    return {
+        "tag_id": tag_id,
+        "target_distance_m": target_distance_m,
+        "timeout_s": 10.0,
+    }
 
 
 def _distance(a: Pose2D, b: Pose2D) -> float:

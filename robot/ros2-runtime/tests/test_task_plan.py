@@ -102,7 +102,9 @@ class TaskPlanTests(unittest.TestCase):
     def test_routine_slot_plan_is_dispatchable_without_scene_map(self) -> None:
         plan = build_task_plan(
             None,
-            TaskPlanRequest(target="routine:3", action="brain_self_test", dispatch=True),
+            TaskPlanRequest(
+                target="routine:3", action="brain_self_test", dispatch=True
+            ),
             now_s=12.0,
         )
 
@@ -207,6 +209,80 @@ class TaskPlanTests(unittest.TestCase):
         self.assertLessEqual(plan["target"]["bearing_from_robot_rad"], 3.141592654)
         self.assertGreaterEqual(plan["target"]["bearing_from_robot_rad"], -3.141592654)
 
+    def test_deliver_ball_plan_maps_ball_and_bin_but_blocks_unproven_steps(
+        self,
+    ) -> None:
+        scene = _delivery_scene()
+
+        plan = build_task_plan(
+            scene,
+            TaskPlanRequest(
+                target="object:yellow_ball",
+                action="deliver_ball",
+                target_distance_m=0.67,
+            ),
+            now_s=12.0,
+        )
+
+        self.assertEqual(plan["status"], "planned")
+        self.assertFalse(plan["executable_now"])
+        self.assertEqual(
+            plan["blocked_reason"],
+            "delivery_requires_object_motion_and_manipulator_proofs",
+        )
+        self.assertEqual(plan["target"]["ball"]["name"], "yellow_ball")
+        self.assertEqual(plan["target"]["bin"]["name"], "bin")
+        self.assertEqual(plan["target"]["ball"]["nearest_tag_id"], 1)
+        self.assertEqual(plan["target"]["bin"]["nearest_tag_id"], 0)
+        self.assertEqual(plan["steps"][1]["type"], "survey_scan")
+        self.assertTrue(plan["steps"][1]["dispatchable"])
+        self.assertEqual(plan["steps"][2]["purpose"], "stage_near_ball_anchor")
+        self.assertEqual(plan["steps"][2]["goal"]["tag_id"], 1)
+        self.assertAlmostEqual(plan["steps"][2]["goal"]["target_distance_m"], 0.67)
+        self.assertTrue(plan["steps"][2]["dispatchable"])
+        self.assertEqual(plan["steps"][4]["type"], "manipulator_pickup")
+        self.assertFalse(plan["steps"][4]["dispatchable"])
+        self.assertEqual(
+            plan["steps"][4]["blocked_reason"], "claw_grab_contract_not_proven"
+        )
+        self.assertEqual(plan["steps"][4]["available_proof_primitive"]["slot"], 3)
+        self.assertEqual(plan["steps"][-1]["type"], "manipulator_release")
+        self.assertEqual(
+            plan["steps"][-1]["blocked_reason"], "claw_release_contract_not_proven"
+        )
+
+    def test_deliver_ball_blocks_when_bin_is_not_mapped(self) -> None:
+        scene = SceneMap(
+            frame_id="map",
+            stamp_s=1.0,
+            map_from_camera=Pose2D(0.0, 0.0, 0.0),
+            map_from_robot=Pose2D(0.0, 0.0, 0.0),
+            tags={1: Pose2D(0.9, 0.0, 0.0)},
+            objects=[
+                SceneObject(
+                    name="yellow_ball",
+                    map_from_object=Pose2D(0.85, 0.02, 0.0),
+                    source="yellow_ball_color",
+                    confidence=0.92,
+                )
+            ],
+            anchor_tag_ids=[0, 1, 2],
+            observed_tag_ids=[1],
+        )
+
+        plan = build_task_plan(
+            scene,
+            TaskPlanRequest(target="object:yellow_ball", action="deliver_ball"),
+            now_s=12.0,
+        )
+
+        self.assertEqual(plan["status"], "blocked")
+        self.assertFalse(plan["executable_now"])
+        self.assertEqual(plan["blocked_reason"], "delivery_bin_not_in_scene")
+        self.assertEqual(plan["target"]["ball"]["name"], "yellow_ball")
+        self.assertEqual(plan["target"]["bin"]["name"], "bin")
+        self.assertEqual(plan["steps"], [])
+
 
 def _scene() -> SceneMap:
     return SceneMap(
@@ -241,6 +317,35 @@ def _scene_with_home() -> SceneMap:
         objects=[],
         anchor_tag_ids=[0, 1, 2],
         observed_tag_ids=[0, 2],
+    )
+
+
+def _delivery_scene() -> SceneMap:
+    return SceneMap(
+        frame_id="map",
+        stamp_s=1.0,
+        map_from_camera=Pose2D(0.0, 0.0, 0.0),
+        map_from_robot=Pose2D(0.0, 0.0, 0.0),
+        tags={
+            0: Pose2D(1.4, -0.25, 0.0),
+            1: Pose2D(0.9, 0.04, 0.0),
+        },
+        objects=[
+            SceneObject(
+                name="bin",
+                map_from_object=Pose2D(1.45, -0.22, 0.0),
+                source="operator_indication",
+                confidence=0.8,
+            ),
+            SceneObject(
+                name="yellow_ball",
+                map_from_object=Pose2D(0.85, 0.02, 0.0),
+                source="yellow_ball_color",
+                confidence=0.92,
+            ),
+        ],
+        anchor_tag_ids=[0, 1, 2],
+        observed_tag_ids=[0, 1],
     )
 
 
