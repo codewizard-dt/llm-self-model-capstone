@@ -1,0 +1,102 @@
+{
+  "ball_approach": {
+    "label": "ball_loading",
+    "observed_tags": [
+      1
+    ],
+    "post_distance_m": 1.1642468001802448,
+    "reached_target": false,
+    "reason": "timeout",
+    "start_distance_m": 1.1643427886385016,
+    "tag_id": 1,
+    "target_distance_m": 0.45
+  },
+  "ball_tag_id": 1,
+  "bin_approach": null,
+  "bin_tag_id": 0,
+  "camera_in_robot": {
+    "heading_deg": 0.0,
+    "x_m": 0.0,
+    "x_mm": 0.0,
+    "y_m": 0.06,
+    "y_mm": 60.0,
+    "yaw_rad": 0.0
+  },
+  "commands_sent": 335,
+  "grab": null,
+  "last_ack": null,
+  "last_command": {
+    "cmd": "stop",
+    "reason": "ball_loading_approach_complete",
+    "sent_ms": 222925,
+    "seq": 24335,
+    "ttl_ms": 200,
+    "type": "cmd",
+    "v": 1
+  },
+  "last_scene_map": {
+    "anchor_tag_ids": [
+      0,
+      1,
+      2
+    ],
+    "camera_pose": {
+      "heading_deg": -176.0433539156127,
+      "x_m": 2.4255880215300625,
+      "x_mm": 2425.5880215300626,
+      "y_m": 1.2399189506352073,
+      "y_mm": 1239.9189506352072,
+      "yaw_rad": -3.0725361520810934
+    },
+    "frame_id": "map",
+    "objects": [
+      {
+        "confidence": 0.43142317589543944,
+        "name": "yellow_ball",
+        "pose": {
+          "heading_deg": -177.515468859493,
+          "x_m": 0.8830084494298072,
+          "x_mm": 883.0084494298071,
+          "y_m": 1.17298573053932,
+          "y_mm": 1172.98573053932,
+          "yaw_rad": -3.0982294048196164
+        },
+        "source": "yellow_ball_color"
+      }
+    ],
+    "observed_tag_ids": [
+      1
+    ],
+    "robot_pose": {
+      "heading_deg": -176.0433539156127,
+      "x_m": 2.4255880215300625,
+      "x_mm": 2425.5880215300626,
+      "y_m": 1.2399189506352073,
+      "y_mm": 1239.9189506352072,
+      "yaw_rad": -3.0725361520810934
+    },
+    "stamp_s": 223.193816705,
+    "tags": {
+      "1": {
+        "heading_deg": 180.0,
+        "x_m": 1.2700000000000005,
+        "x_mm": 1270.0000000000005,
+        "y_m": 1.4730000000000005,
+        "y_mm": 1473.0000000000005,
+        "yaw_rad": 3.141592653589793
+      }
+    }
+  },
+  "last_telemetry": null,
+  "lift": null,
+  "observed_tags": [
+    1
+  ],
+  "observed_tags_after_orientation": [
+    1
+  ],
+  "program": "deliver_ball",
+  "reason": "ball_tag_approach_failed",
+  "release": null,
+  "status": "failed"
+}

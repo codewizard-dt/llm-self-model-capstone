@@ -97,6 +97,38 @@ class FakeProofNode:
         return self.post_tag
 
 
+class StuckProofNode(FakeProofNode):
+    def __init__(self) -> None:
+        super().__init__()
+        self.post_tag = {
+            "tag_id": 1,
+            "stamp_s": 0.0,
+            "distance_m": 0.7,
+            "yaw_rad": 0.0,
+            "left_m": 0.0,
+        }
+        self.sent: list[dict[str, Any]] = []
+
+    def fresh_tag(
+        self, *, tag_id: int | None = None, max_age_s: float = 1.0
+    ) -> dict[str, float | int] | None:
+        del tag_id, max_age_s
+        return self.post_tag
+
+    def send(
+        self,
+        cmd: str,
+        *,
+        vx: float = 0.0,
+        omega: float = 0.0,
+        ttl_ms: int = 180,
+        duration_ms: int | None = None,
+        reason: str | None = None,
+    ) -> None:
+        del duration_ms, reason
+        self.sent.append({"cmd": cmd, "vx": vx, "omega": omega, "ttl_ms": ttl_ms})
+
+
 class TagActionProofTests(unittest.TestCase):
     def test_send_publishes_bounded_json_command_and_tracks_it(self) -> None:
         node = tag_action_proof.TagActionProof()
@@ -157,6 +189,29 @@ class TagActionProofTests(unittest.TestCase):
         self.assertAlmostEqual(observed["forward_m"], 1.0)
         self.assertAlmostEqual(observed["left_m"], -0.08)
         self.assertAlmostEqual(observed["camera_left_m"], 0.0)
+
+    def test_approach_tag_reports_stuck_when_distance_does_not_improve(self) -> None:
+        node = StuckProofNode()
+
+        reached, reason, post_tag = tag_action_proof.approach_tag(
+            node,
+            tag_id=1,
+            target_distance_m=0.45,
+            timeout_s=1.0,
+            drive_vx=0.14,
+            turn_kp=0.9,
+            max_omega=0.45,
+            ttl_ms=180,
+            stuck_window_s=0.01,
+            stuck_min_progress_m=0.015,
+            stuck_min_drive_vx=0.03,
+        )
+
+        self.assertFalse(reached)
+        self.assertEqual(reason, "stuck_no_progress")
+        self.assertIsNotNone(post_tag)
+        self.assertIn("stuck_window_s", post_tag)
+        self.assertTrue(any(packet["cmd"] == "drive" for packet in node.sent))
 
     def test_visual_one_foot_scan_summary_records_closure_and_scan_tags(self) -> None:
         node = FakeProofNode()
