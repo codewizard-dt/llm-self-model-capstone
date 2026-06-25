@@ -288,7 +288,8 @@ void run_claw_action(const char* reason, int rpm, int duration_ms, int default_d
 	stop_release();
 }
 
-std::string motor_sample_json(const char* device, pros::Motor& motor, uint32_t sample_ms) {
+std::string motor_sample_json(const char* device, const char* subsystem, pros::Motor& motor,
+                              uint32_t sample_ms) {
 	char buf[768];
 	std::snprintf(
 	    buf,
