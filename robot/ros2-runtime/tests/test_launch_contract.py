@@ -32,7 +32,25 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn("table-grab-toss-v1", launch_text)
         self.assertIn("workspace map does not exist", launch_text)
         self.assertIn("camera_in_robot_json", launch_text)
+        self.assertIn("yolo_enabled", launch_text)
+        self.assertIn("yolo_model_path", launch_text)
+        self.assertIn("yolo_nms_iou", launch_text)
+        self.assertIn("yolo_class_names_json", launch_text)
+        self.assertIn("yolo_input_name", launch_text)
+        self.assertIn("yolo_output_name", launch_text)
+        self.assertIn("yolo_ncnn_node", launch_text)
+        self.assertIn("yellow_ball_detector_enabled", launch_text)
+        self.assertIn("yellow_ball_detector_node", launch_text)
+        self.assertIn("yellow_ball_max_detections", launch_text)
+        self.assertIn("yellow_ball_h_min", launch_text)
+        self.assertIn("yellow_ball_v_max", launch_text)
+        self.assertIn('"yellow_ball":{"diameter_m":0.065}', launch_text)
+        self.assertIn("object_indication_node", launch_text)
+        self.assertIn("object_dimensions_json", launch_text)
+        self.assertIn("task_plan_node", launch_text)
         self.assertIn('executable="align_to_tag_node"', launch_text)
+        self.assertIn('executable="survey_scan_node"', launch_text)
+        self.assertIn("/survey/goal", launch_text)
 
     def test_apriltag_config_names_the_expected_first_proof_tag(self) -> None:
         config_text = (ROOT / "config" / "apriltag_36h11.yaml").read_text()
@@ -73,15 +91,40 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn("apriltag_msgs", exec_depends)
         self.assertIn("image_proc", exec_depends)
         self.assertIn("tf2_msgs", depends | exec_depends)
+        self.assertIn("python3-numpy", exec_depends)
+        self.assertIn("python3-opencv", exec_depends)
         self.assertIn('glob("config/*.yaml")', setup_text)
         self.assertIn('glob("config/maps/*.json")', setup_text)
         self.assertIn("align_to_tag_node = vexy_ros.align_to_tag_node:main", setup_text)
         self.assertIn("scene_map_node = vexy_ros.scene_map_node:main", setup_text)
+        self.assertIn("yolo_ncnn_node = vexy_ros.yolo_ncnn_node:main", setup_text)
+        self.assertIn(
+            "yellow_ball_detector_node = vexy_ros.yellow_ball_detector_node:main",
+            setup_text,
+        )
+        self.assertIn(
+            "object_indication_node = vexy_ros.object_indication_node:main",
+            setup_text,
+        )
+        self.assertIn("task_plan_node = vexy_ros.task_plan_node:main", setup_text)
+        self.assertIn("survey_scan_node = vexy_ros.survey_scan_node:main", setup_text)
         self.assertIn(
             "vexy_export_contract_jsonl = vexy_ros.evidence_export:main", setup_text
         )
         self.assertIn(
             "vexy_tag_action_proof = vexy_ros.tag_action_proof:main", setup_text
+        )
+        self.assertIn(
+            "vexy_run_calibrated_tag_proof = vexy_ros.proof_runner:main",
+            setup_text,
+        )
+        self.assertIn(
+            "vexy_scene_observation_proof = vexy_ros.observation_proof:main",
+            setup_text,
+        )
+        self.assertIn(
+            "vexy_calibrate_camera = vexy_ros.camera_calibration_capture:main",
+            setup_text,
         )
 
 

@@ -41,7 +41,7 @@ By the demo, the system closes the generational self-model loop **in software** 
 
 **Scope cut**
 - **MVP (V1) — required:** frozen contracts with validating models + fixtures; Generator authoring Gen 0 and revising Gen 1/Gen 2 from gap residuals; 3-critic panel; telemetry pipeline on a `TelemetrySource` adapter (Replay + Synthetic implemented); vision pipeline (YOLO11n + AprilTag) behind a `VisionSource` adapter merged into the JSONL `vision` block; gap analyzer + `make demo` deterministic replay; markdown/terminal presenter.
-- **V1.5 — integration window (post-4-day):** `SerialTelemetrySource` reading a real V5 over `/dev/ttyACM0` @115,200; `CameraVisionSource` live on the Pi 5; one real Gen-0 capture replacing a synthetic fixture.
+- **V1.5 — integration window (post-4-day):** ROS 2 Jazzy on the Pi 5 is the active live runtime: `camera_ros` publishes PiCam2 frames and measured `CameraInfo`, `image_proc` rectifies frames, `apriltag_ros` publishes detections/TF, `scene_map_node` publishes `/vision/scene_map`, and `vex_bridge_node` demultiplexes V5 ack/telemetry/faults. Raw hardware episodes are captured as MCAP and exported to contract-valid JSONL; `robot/pi-runtime/` remains a fallback, not the preferred live path.
 - **V2 — stretch (deadline-safe only):** live Gen-3 revision on-stage; RS-485 Smart-Port transport.
 - **OUT of scope:** autonomous robotic assembly; Booster Kit / extra cartridges / custom 3D-printed end-effectors as MVP; scripted Anthropic API runtime; any web UI; a physics simulation engine.
 
@@ -61,8 +61,8 @@ By the demo, the system closes the generational self-model loop **in software** 
   - root: `operator/` · ignore_folders: `.venv`, `__pycache__`, `.claude`, `out`, `.pytest_cache` · Owner: **TBD**
 - `pilot` — Python 3.11 · uv · ruff · Raspberry Pi 5 · the **online control loop**: an on-Pi LLM that reads live telemetry + vision and issues fixed control-grammar commands in real time. *(name provisional; ADR-19)*
   - root: `pilot/` · ignore_folders: `.venv`, `__pycache__`, `captures` · Owner: **TBD**
-- `coprocessor` — Python 3.11 · uv · ruff · Raspberry Pi 5 · live adapter sources (`Serial`/`Camera`) + vision (YOLO11n NCNN + AprilTag) + JSONL merge + baseline capture.
-  - root: `robot/pi-runtime/` · ignore_folders: `.venv`, `__pycache__`, `models`, `captures` · Owner: **TBD**
+- `coprocessor` — Python 3.11 · uv · ruff · Raspberry Pi 5 · Ubuntu 24.04 + ROS 2 Jazzy · `camera_ros` + measured `CameraInfo` + `image_proc` + `apriltag_ros` + `scene_map_node` + V5 serial bridge + MCAP capture + contract JSONL export. `robot/pi-runtime/` is retained as a legacy/fallback runtime.
+  - root: `robot/ros2-runtime/` · legacy_fallback_root: `robot/pi-runtime/` · ignore_folders: `.venv`, `__pycache__`, `build`, `install`, `log`, `models`, `captures`, `proof` · Owner: **TBD**
 - `brain` — **PROS C++** (FreeRTOS) · PROS CLI + `arm-none-eabi` · `uv`-managed `pros-cli` (dev only) · V5 Brain · emits the telemetry contract + executes clamped control commands.
   - root: `robot/v5-brain/` · ignore_folders: PROS `bin/` (per the project's own `.gitignore`) · Owner: **TBD**
 
@@ -74,14 +74,14 @@ By the demo, the system closes the generational self-model loop **in software** 
 
 - **Telemetry contract** `(contracts)` — owns the `predicted`/`observed`/`gap`/`vision` JSON line shape (see Constraints → Frozen Contracts).
 - **Self-model schema** `(contracts)` — owns the versioned 4-layer + `reasoning` self-model document shape.
-- **Control grammar** `(contracts)` — owns `control-command`: the fixed command vocabulary + command/ack envelope the online loop uses to drive the robot (draft; ADR-19). *(TBD)*
+- **Control grammar** `(contracts)` — owns `control-command`: the fixed command vocabulary + command/ack envelope the online loop uses to drive the robot (frozen at m1; ADR-19). *(215eight)*
 - **Parts catalog grammar** `(contracts)` — owns `parts_catalog.json`, the finite typed design vocabulary (60 valid configs under F3's valid-config rules). *(TBD)*
 - **Adapter interfaces** `(contracts)` — owns `TelemetrySource` and `VisionSource` `@runtime_checkable` Protocol definitions; each exposes a single `observe()` method returning a `reactivex.Observable` stream (`Observable[ContractLine]` and `Observable[VisionBlock]` respectively). Cold observables for `Replay`/`Synthetic` sources; hot observables (bridged via `Subject`) for `Serial`/`Camera` sources. Decouples every consumer from hardware; swapping an implementation is a config flag with no pipeline change (ADR-20). *(TBD)*
 - **Synthetic oracle** `(contracts)` — owns `SyntheticTelemetrySource`: a parametric hidden-ground-truth forward model (friction, effective arm length, torque constant, mass) + measured noise; the LLM-information-separation rule applies (Constraints → Oracle grounding).
 - **Replay source** `(contracts)` — owns `ReplayTelemetrySource` / `ReplayVisionSource`: deterministic file readers over recorded `session_*.jsonl`. *(TBD)*
-- **Live hardware sources** `(coprocessor)` — owns `SerialTelemetrySource` (V5 @115,200) and `CameraVisionSource` (Pi camera feed into the vision pipeline). *(TBD)*
-- **Vision pipeline** `(coprocessor)` — owns `vision_loop.py`: YOLO11n object detection + AprilTag pose → `VisionBlock`. *(TBD)*
-- **Serial bridge / merge** `(coprocessor)` — owns `serial_bridge.py`: merges telemetry + vision into `session_*.jsonl`. *(TBD)*
+- **Live hardware sources** `(coprocessor)` — owns the ROS live sources that back the adapter boundary: `/camera/image_raw`, `/camera/camera_info`, `/camera/image_rect`, `/apriltag/detections`, `/tf`, `/vision/scene_map`, `/vex/ack`, `/vex/telemetry`, and `/vex/bridge_status`. *(TBD)*
+- **Vision pipeline** `(coprocessor)` — owns the PiCam2 ROS path: `camera_ros` + measured calibration YAML loaded through `camera_info_url`, `image_proc` rectification, `apriltag_ros`, `scene_map_node`, and later YOLO11n object indications → `VisionBlock`. *(TBD)*
+- **Serial bridge / merge** `(coprocessor)` — owns `vex_bridge_node` ack/telemetry/fault demux, raw MCAP episode recording, and `vexy_export_contract_jsonl` export into existing `contracts.ContractLine` JSONL. *(TBD)*
 - **Baseline capture** `(coprocessor)` — owns the one-off real grab/pull capture run that grounds the oracle; delivers recorded JSONL to Erick. *(TBD)*
 - **Brain telemetry firmware** `(brain)` — owns the PROS C++ program (`robot/v5-brain/`) that reads the motor API and emits contract JSON lines on a 20 ms tick; motor wiring, port assignments, bumper config. *(TBD)*
 - **Brain command bridge** `(brain)` — owns the bidirectional PROS C++ path: receive clamped control-grammar commands, ack, and watchdog-stop (two-task FreeRTOS). *(TBD)*
@@ -93,7 +93,7 @@ By the demo, the system closes the generational self-model loop **in software** 
 - **Online-control harness** `(pilot)` — owns the on-Pi real-time loop: read live telemetry + vision → LLM picks a control-grammar command → send → ack → repeat, bounded + interruptible (ADR-19). *(TBD)*
 ### Telemetry capture & merge (data flow)
 
-Two independent sources are captured on the Pi and merged into one `session_*.jsonl` record per task execution: the VEX **motor telemetry** line (over USB serial) and the **camera vision** state (over CSI). `serial_bridge.py` is the single merge point; both sources arrive through swap-in adapters, so the identical merge logic runs on real hardware or on recorded/synthetic data.
+Two independent sources are captured on the Pi: the VEX **motor telemetry/ack/fault** stream over USB serial and the **camera vision** stream over CSI. In the live path, ROS 2 topics are the raw evidence surface and `ros2 bag`/MCAP is the replayable episode store. The semantic handoff to the self-model loop remains contract-valid JSONL exported through `contracts.ContractLine`; no second schema is defined under `robot/ros2-runtime`.
 
 ```mermaid
 flowchart TD
@@ -108,24 +108,24 @@ flowchart TD
     CAM["Pi Camera Module 3<br/>CSI 22-pin"]
   end
 
-  subgraph copro["coprocessor — Raspberry Pi 5"]
-    TSRC["TelemetrySource adapter<br/>Serial | Replay | Synthetic=oracle"]
-    VLOOP["vision_loop.py<br/>YOLO11n detect + AprilTag pose"]
-    VSRC["VisionSource adapter<br/>Camera | Replay | Synthetic"]
-    BRIDGE["serial_bridge.py<br/>merge by round / timestamp:<br/>telemetry line + vision block"]
-    OUT[("session_*.jsonl<br/>append-only, flush per task")]
-    TSRC --> BRIDGE
-    VLOOP --> VSRC --> BRIDGE
-    BRIDGE --> OUT
+  subgraph copro["coprocessor — Raspberry Pi 5 / ROS 2 Jazzy"]
+    ROSVEX["vex_bridge_node<br/>/vex/ack + /vex/telemetry + /vex/bridge_status"]
+    CAMROS["camera_ros + image_proc<br/>/camera/image_raw + /camera/camera_info + /camera/image_rect"]
+    TAGS["apriltag_ros + scene_map_node<br/>/apriltag/detections + /tf + /vision/scene_map"]
+    MCAP[("MCAP raw episode")]
+    EXPORT["vexy_export_contract_jsonl<br/>ContractLine JSONL"]
+    ROSVEX --> MCAP
+    CAMROS --> TAGS --> MCAP
+    MCAP --> EXPORT
   end
 
-  USB --> TSRC
-  CAM --> VLOOP
+  USB --> ROSVEX
+  CAM --> CAMROS
 
-  OUT -->|"operator reads gap blocks"| GEN["operator — Generator → revised self-model"]
+  EXPORT -->|"operator reads gap blocks"| GEN["operator — Generator → revised self-model"]
 ```
 
-The merged record is exactly the Task Telemetry Contract (Constraints → Frozen Contracts): the motor line supplies `predicted` / `observed` / `gap`, and `vision_loop.py` supplies the `vision` block (`object_bbox`, `apriltag_pose`, `bbox_iou`). On hardware the adapters resolve to `Serial` / `Camera`; for the MVP and the reviewer's `make demo` they resolve to `Replay` / `Synthetic` — the merge code path is unchanged.
+The exported record is exactly the Task Telemetry Contract (Constraints -> Frozen Contracts): Brain telemetry supplies motor/ack evidence, and the vision stack supplies the `vision` block (`object_bbox`, `apriltag_pose`, `bbox_iou` as available). On hardware the adapters resolve through ROS live topics and MCAP replay; for the MVP and the reviewer's `make demo` they resolve to `Replay` / `Synthetic` so the downstream self-model loop is unchanged.
 
 ---
 
@@ -139,7 +139,7 @@ The merged record is exactly the Task Telemetry Contract (Constraints → Frozen
 | 2 | `F2` self-model-schema — freeze the versioned 4-layer + reasoning self-model | contracts | — | ✅ | TBD|
 | 3 | `F3` parts-catalog-grammar — freeze `parts_catalog.json` vocabulary + valid-config rules | contracts | — | ✅ | TBD |
 | 4 | `F4` adapter-interfaces — `TelemetrySource`/`VisionSource` protocols | contracts | F1 | ✅ | TBD |
-| 5 | `F19` control-grammar — freeze the `control-command` vocabulary + command/ack (draft) | contracts | F1 | ✅ | TBD |
+| 5 | `F19` control-grammar — freeze the `control-command` vocabulary + command/ack (frozen at m1) | contracts | F1 | ✅ | 215eight |
 | 6 | `F14` synthetic-oracle — hidden-ground-truth `SyntheticTelemetrySource` | contracts | F1, F4 | ✅ | Erick |
 | 7 | `F15` replay-source — `Replay` telemetry/vision readers over recorded sessions | contracts | F1, F4 | ✅ | TBD |
 | 8 | `F10` gap-analyzer — compute signed residuals from contract lines | operator | F1 | ✅ | TBD |
@@ -147,10 +147,10 @@ The merged record is exactly the Task Telemetry Contract (Constraints → Frozen
 | 10 | `F8` generator — author Gen 0; revise Gen N+1 from gap residuals | operator | F2, F3, F10 | ✅ | TBD |
 | 11 | `F11` markdown-presenter — gap tables + self-model diff + reasoning | operator | F2, F10 | ✅ | TBD |
 | 12 | `F12` demo-replay — `make demo` deterministic Gen 0 → Gen 2 | operator | F8, F9, F10, F11, F14, F15 | ✅ | TBD |
-| 13 | `F5` vision-pipeline — YOLO11n + AprilTag → vision block | coprocessor | F4 | ✅ | TBD |
-| 14 | `F6` serial-bridge-merge — merge telemetry + vision → `session_*.jsonl` | coprocessor | F4, F5 | ✅ | TBD |
+| 13 | `F5` vision-pipeline — PiCam2 rectification + AprilTag scene map + YOLO11n/color indications + no-motion task plans → vision block | coprocessor | F4 | ✅ | TBD |
+| 14 | `F6` evidence-export — MCAP/raw ROS evidence + telemetry/vision → contract JSONL | coprocessor | F4, F5 | ✅ | TBD |
 | 15 | `F7` brain-telemetry-firmware — PROS C++ emits the contract on a 20 ms tick | brain | F1 | ✅ (V1.5 live) | TBD |
-| 16 | `F17` live-hw-sources — `SerialTelemetrySource` + `CameraVisionSource` | coprocessor | F4 | ✅ (V1.5) | TBD |
+| 16 | `F17` live-hw-sources — ROS-backed V5 telemetry/ack + PiCam2/AprilTag scene map | coprocessor | F4 | ✅ (V1.5) | TBD |
 | 17 | `F16` hw-baseline-capture — capture one real baseline; deliver JSONL to Erick | coprocessor + brain | F7, F6, F17 | ✅ (V1.5) | TBD |
 | 18 | `F18` oracle-baseline-request — spec capture format; recalibrate the oracle | contracts | F14, F16 | ✅ | TBD |
 | 19 | `F20` brain-command-bridge — bidirectional PROS C++ (receive cmd + ack + watchdog) | brain | F19, F7 | ✅ (online) | TBD |
@@ -161,11 +161,11 @@ The merged record is exactly the Task Telemetry Contract (Constraints → Frozen
 
 *(Sequential validation gates. Each milestone states its goal and gates the work that follows.)*
 
-1. **`m1` contracts-frozen** *(manual — human gate)* — **Goal:** every contract loads and round-trips — pydantic models + example fixtures for the telemetry, self-model, parts-catalog, and (draft) control-command schemas parse cleanly. Gates all downstream work.
+1. **`m1` contracts-frozen** *(manual — human gate)* — **Goal:** every contract loads and round-trips — pydantic models + example fixtures for the telemetry, self-model, parts-catalog, and control-command schemas parse cleanly. Gates all downstream work. **Signed off 2026-06-24 (215eight).**
 2. **`m1b` oracle-ready** *(manual — human gate)* — **Goal:** the parametric `SyntheticTelemetrySource` emits contract-valid synthetic telemetry with its hidden parameters separated from the Generator (datasheet-grounded until baseline data lands). Gates m2.
 3. **`m2` loop-closes-synthetic** *(manual — human gate)* — **Goal:** `make demo` runs the offline loop over synthetic JSONL — Generator authors Gen 0, the critic panel returns pass/flag, and gap residuals tighten Gen 0 → Gen 2 (the oracle's hidden parameter recovered within tolerance). Gates hardware integration. **Owner: TBD.**
-4. **`m3` vision-integrated** *(manual — human gate)* — **Goal:** the vision pipeline emits a valid `vision` block (`bbox_iou` + AprilTag pose) into the merged JSONL. Gates m4. **Owner: TBD.**
-5. **`m4` hardware-capture + grounding** *(manual)* — **Goal:** a real V5 + Pi baseline capture (F16) is delivered to recalibrates the oracle (F18) so synthetic data is grounded and a recorded session replaces a synthetic fixture with replay still green. Gates m5. **Owner: TBD** (capture) → (calibrate).
+4. **`m3` vision-integrated** *(manual — human gate)* — **Goal:** PiCam2 measured `CameraInfo` is loaded, `/camera/image_rect` is live, AprilTag detections/TF produce `/vision/scene_map`, no-motion object task plans plus bounded survey task plans can be captured, and the resulting vision evidence can be exported into a valid `vision` block. Gates m4. **Owner: TBD.**
+5. **`m4` hardware-capture + grounding** *(manual)* — **Goal:** a real V5 + Pi baseline capture (F16) is delivered as replayable MCAP plus contract-valid JSONL with Brain ack/telemetry, vision/scene-map evidence, and bounded motion proof (tag alignment and scan-only survey), so the oracle can be recalibrated (F18) and replay stays green. Gates m5. **Owner: TBD** (capture) -> (calibrate).
 6. **`m5` demo-signoff** *(manual)* — **Goal:** Gen 0/1 recorded + Gen 2 live rehearsed end-to-end, with a recorded fallback ready.
 7. **`m6` online-control** *(manual; stretch — ADR-19)* — **Goal:** the `pilot` harness drives an open-ended task in real time on hardware (reading live telemetry + vision, issuing control-grammar commands), bounded by iteration/time limits with a working human interrupt. **Owner: TBD.**
 
@@ -194,9 +194,9 @@ flowchart TD
     F11["F11 markdown-presenter · TBD"]
     F12["F12 demo-replay · TBD"]
   end
-  subgraph coprocessor["coprocessor — robot/pi-runtime"]
+  subgraph coprocessor["coprocessor — robot/ros2-runtime"]
     F5["F5 vision-pipeline · TBD"]
-    F6["F6 serial-bridge-merge · TBD"]
+    F6["F6 evidence-export · TBD"]
     F17["F17 live-hw-sources · TBD"]
   end
   subgraph brain["brain — robot/v5-brain · PROS C++"]
@@ -264,7 +264,7 @@ The minimum-duration chain to the **grounded** demo runs through hardware captur
 
 1. `F1` telemetry-contract (TBD) → `m1` contracts-frozen (TBD)
 2. `F5` vision-pipeline ∥ `F7` brain-telemetry-firmware ∥ `F17` live-hw-sources *(TBD)*
-3. `F6` serial-bridge-merge *(TBD; needs F5 + F17)* → `m3` vision-integrated *(TBD)*
+3. `F6` evidence-export *(TBD; needs F5 + F17)* → `m3` vision-integrated *(TBD)*
 4. `F16` hw-baseline-capture *(TBD; needs F7 + F6 + F17)*
 5. `F18` oracle recalibration (needs F16) → `m4` hw-capture + grounding
 6. `m5` demo-signoff (TBD)
@@ -273,7 +273,7 @@ The online control loop (`F19` → `F20` → `F21` → `m6`) extends the chain p
 
 **Critical-path risk.** The brain telemetry firmware (`F7`) and the vision pipeline (`F5`) both feed the hardware capture on the critical path. If one owner ends up holding both, split them so the two path items run in parallel rather than serially (tracked in Open questions O4).
 
-**Phasing.** Freeze the contracts + grammar (`m1`); build the synthetic oracle + replay and the offline operator loop to close `m2`; bring up vision + merge for `m3`; capture a real baseline and re-ground the oracle for `m4`; rehearse the demo for `m5`. The online control loop (`m6`) follows once the command path is proven on hardware.
+**Phasing.** Freeze the contracts + grammar (`m1`); build the synthetic oracle + replay and the offline operator loop to close `m2`; bring up calibrated vision + scene-map export for `m3`; capture a real MCAP/JSONL baseline and re-ground the oracle for `m4`; rehearse the demo for `m5`. The online control loop (`m6`) follows once the command path is proven on hardware.
 
 ---
 
@@ -337,13 +337,14 @@ Closed decisions use definitive language — no "if needed / or / prefer / may b
 
 > **Additions 2026-06-21.** New research + hands-on bringup add to the decisions above:
 >
-> - **Vertical roots.** `coprocessor` → `robot/pi-runtime/`, `brain` → `robot/v5-brain/`
+> - **Vertical roots.** `coprocessor` → `robot/ros2-runtime/` for the active Ubuntu/Jazzy
+>   deployment; `robot/pi-runtime/` remains the legacy/fallback surface. `brain` → `robot/v5-brain/`
 >   (DEC-0001 deployable surface); `contracts/`, `operator/`, `pilot/` are repo-root dirs.
 > - **ADR-19 (new) — online real-time control loop is first-class.** Beyond the offline generational
 >   self-model loop, the project includes a second loop: an online LLM on the Pi (`pilot` vertical)
 >   reads live telemetry + vision and issues **fixed control-grammar** commands to perform an
 >   open-ended task in real time, bounded by iteration/time limits + a human interrupt, informed by
->   the offline analysis. Adds a `control-command` contract (draft) owned by `contracts`. **Revisit
+>   the offline analysis. Adds a `control-command` contract (frozen at m1) owned by `contracts`. **Revisit
 >   ADR-03/ADR-08:** on-device online inference likely needs an API key + network (contradicting "no
 >   keys"); the runtime + secret posture for `pilot` is an open decision. Rejected: leaving real-time
 >   control as V2-only (the maintainer scoped it in now).
@@ -360,16 +361,16 @@ Closed decisions use definitive language — no "if needed / or / prefer / may b
 | ADR-08 | LLM runtime | Claude Code subscription *(inherited, PLAN §7)* | Reads files directly; no key/billing/latency infra | Scripted API |
 | ADR-09 | Coprocessor | Raspberry Pi 5 *(inherited)* | 3× CPU; USB-C power | Jetson Nano (EOL); Orin ($430+) |
 | ADR-10 | Transport | USB serial 115,200 baud *(inherited)* | No extra hardware; RS-485 is a Stage-2 upgrade path | RS-485 now |
-| ADR-11 | Storage | JSONL *(inherited)* | Fast SD writes; Claude reads directly | SQLite; CSV |
+| ADR-11 | Storage | **MCAP raw evidence + contract JSONL semantic export** | MCAP preserves replayable ROS topics; JSONL remains the frozen self-model contract handoff | SQLite; CSV; raw ROS messages as the only LLM input |
 | ADR-12 | Assembly | Human-in-the-loop *(inherited)* | Full autonomy infeasible at capstone scale | Autonomous assembly |
-| ADR-13 | Localization | AprilTags *(inherited)* | Wheel slip defeats odometry | Pure odometry; RealSense |
+| ADR-13 | Localization | **AprilTags through measured CameraInfo + rectification + scene map** | Wheel slip defeats odometry; `apriltag_ros` consumes calibrated `/camera/image_rect` and `/camera/camera_info`, while `/vision/scene_map` expresses wiki map coordinates | Pure odometry; uncalibrated tags; RealSense |
 | ADR-14 | Design space | Starter Kit only *(inherited)* | ~10–15 configs, exhaustible in 3–5 gens | Booster Kit as MVP |
 | ADR-15 | Python deps | **uv** (`uv sync` / `uv add` / `uv run`) | Fast, lockfile-reproducible; one tool for envs + deps | pip; poetry; pip-tools; conda |
 | ADR-16 | Lint / format | **ruff** (`ruff check` / `ruff format`) | Single fast tool replaces flake8 + black + isort | black; isort; flake8; pylint |
 | ADR-17 | Synthetic telemetry | **Parametric hidden-ground-truth oracle** (closed-form forward model + measured noise) as `SyntheticTelemetrySource` | Honest gap — the LLM recovers hidden parameters it never sees; cheap; not a physics engine | Hand-authored `observed` values (rigged); robot/physics simulator (out of scope) |
 | ADR-18 | Hardware access & ownership | **Erick is off-hardware (contracts + oracle); all other vertical/feature owners are TBD** | Erick has no robot access; the rest of the split is deferred until the team confirms it | Erick on hardware |
 | ADR-19 | Online control loop | **First-class: an on-Pi LLM (`pilot`) issues fixed control-grammar commands in real time** | Adds the autonomous online loop alongside the offline self-model loop | Real-time control left V2-only |
-| ADR-20 | Adapter pipeline model | **`reactivex` Observable streams at the adapter boundary** — `TelemetrySource.observe() -> Observable[ContractLine]`; `VisionSource.observe() -> Observable[VisionBlock]`; `serial_bridge.py` merges via `rx.zip`; the `pilot` real-time loop uses `flat_map` / `take_until` | The whole pipeline is inherently reactive: motors push hot 20 ms ticks, camera pushes hot frames, the bridge zips and buffers, the online control loop is a real-time reactive fan-out. `zip`, `buffer`, `flat_map`, `take_until` are first-class primitives, not one-offs to hand-implement. Cold/hot split (D5 in F4 brief): `Replay`/`Synthetic` are cold; `Serial`/`Camera` are hot via Subject | Discrete `read()`/`state()` per call — would require reimplementing zip, buffer, and take_until by hand across serial_bridge, gap-analyzer, and pilot |
+| ADR-20 | Adapter pipeline model | **`reactivex` Observable streams at the adapter boundary** — `TelemetrySource.observe() -> Observable[ContractLine]`; `VisionSource.observe() -> Observable[VisionBlock]`; ROS live topics and MCAP replay feed the same contract adapters; the `pilot` real-time loop uses `flat_map` / `take_until` | The whole pipeline is inherently reactive: motors push hot ticks, camera pushes hot frames, the bridge/export path buffers and normalizes evidence, and the online control loop is a real-time reactive fan-out. `buffer`, `flat_map`, and `take_until` are first-class primitives, not one-offs to hand-implement. Cold/hot split (D5 in F4 brief): `Replay`/`Synthetic` are cold; ROS live topics are hot via Subject | Discrete `read()`/`state()` per call — would require reimplementing buffering and cancellation by hand across export, gap-analyzer, and pilot |
 
 ### Integration Boundaries & Swap Paths
 
@@ -377,8 +378,8 @@ Every shortcut sits behind a protocol/adapter boundary in `contracts` and has a 
 
 | Boundary (interface in `contracts`) | MVP implementation (shortcut) | Production replacement (swap path) |
 |---|---|---|
-| `TelemetrySource.observe() -> Observable[ContractLine]` | `ReplayTelemetrySource` (cold Observable over recorded JSONL, `on_completed` at EOF) · `SyntheticTelemetrySource` (cold Observable) | `SerialTelemetrySource` — hot Observable via Subject on `/dev/ttyACM0` @115,200; **swap = config flag, no pipeline change** |
-| `VisionSource.observe() -> Observable[VisionBlock]` | `ReplayVisionSource` (cold Observable over recorded frames/state) · `SyntheticVisionSource` (cold Observable) | `CameraVisionSource` — hot Observable via Subject on Pi camera + YOLO11n + AprilTag |
+| `TelemetrySource.observe() -> Observable[ContractLine]` | `ReplayTelemetrySource` (cold Observable over recorded JSONL, `on_completed` at EOF) · `SyntheticTelemetrySource` (cold Observable) | ROS-backed `vex_bridge_node` evidence from `/vex/ack`, `/vex/telemetry`, and `/vex/bridge_status`, exported from MCAP into `ContractLine`; direct serial adapter remains a fallback |
+| `VisionSource.observe() -> Observable[VisionBlock]` | `ReplayVisionSource` (cold Observable over recorded frames/state) · `SyntheticVisionSource` (cold Observable) | ROS-backed PiCam2 path from `/camera/image_rect`, `/apriltag/detections`, `/tf`, and `/vision/scene_map`; YOLO11n object indications join on `/vision/object_indications` |
 | Operator host | Single dev machine | On-Pi / two-machine deployment |
 | Transport | USB serial | RS-485 Smart Port (Stage 2) — same JSON, different baud |
 | `LLMRuntime` | Claude Code interactive (authoring) + cached transcripts for replay | Same runtime; replay reapplies recorded revisions deterministically |

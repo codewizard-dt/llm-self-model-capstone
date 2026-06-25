@@ -120,6 +120,9 @@ Expected output when the full stack is running:
 /apriltag/detections
 /align_to_tag/feedback
 /align_to_tag/result
+/survey/feedback
+/survey/result
+/task_plan/current
 /parameter_events
 /rosout
 /vex/cmd
@@ -214,6 +217,37 @@ Cancel:
 ros2 topic pub --once /align_to_tag/cancel std_msgs/String '{"data":"operator_cancel"}'
 ```
 
+### Return home to the workspace anchor
+
+The return-home task is a reusable slot routine over the proven `align_to_tag`
+skill. It targets AprilTag `2` by default, matching the workspace map's `home`
+anchor, and blocks with `home_tag_not_in_scene` instead of wandering when the
+home tag is not visible.
+
+```bash
+ros2 topic echo /align_to_tag/result --once &
+ros2 topic pub --once /task_plan/request std_msgs/String \
+  '{"data":"{\"target\":\"home:tag\",\"action\":\"return_home\",\"target_distance_m\":0.45,\"dispatch\":true}"}'
+```
+
+### Survey visible tags
+
+The `survey_scan` node is a bounded rotate-in-place skill for `survey:all`.
+It refuses to start unless current VEX ack, current VEX telemetry, motion
+enabled, no estop, and healthy drive ports are all present.
+
+```bash
+ros2 topic echo /survey/result --once &
+ros2 topic pub --once /task_plan/request std_msgs/String \
+  '{"data":"{\"target\":\"survey:all\",\"action\":\"survey_all\",\"dispatch\":true,\"survey_duration_s\":3.0,\"survey_omega_rad_s\":0.22}"}'
+```
+
+Cancel:
+
+```bash
+ros2 topic pub --once /survey/cancel std_msgs/String '{"data":"operator_cancel"}'
+```
+
 ### Record all topics
 
 ```bash
@@ -256,6 +290,7 @@ ros2 bag play session_20260623_143000/ &
 ros2 topic echo /vex/ack --no-arr > ack.txt
 ros2 topic echo /vex/bridge_status --no-arr > bridge_status.txt
 ros2 topic echo /align_to_tag/result --no-arr > align_result.txt
+ros2 topic echo /survey/result --no-arr > survey_result.txt
 ros2 topic echo /vex/cmd --no-arr > commands.txt
 ```
 
@@ -267,22 +302,42 @@ Combine into a structured payload and pass to the Claude API for self-model revi
 
 The launch file starts `image_proc` rectification and `apriltag_ros` by default. The detector consumes `/camera/image_rect` plus `/camera/camera_info`, then publishes `/apriltag/detections` and `/tf`.
 
-Before accepting tag pose as proof, replace `config/imx708_wide_640x480.yaml` with measured Camera Module 3 calibration from `camera_calibration`.
+Before accepting tag pose as proof, replace `config/imx708_wide_640x480.yaml` with measured Camera Module 3 calibration.
 
 ### Calibrate/load Camera Module 3
 
+Headless over SSH, using an 8x6 inner-corner checkerboard with 25 mm squares:
+
 ```bash
-sudo apt install -y ros-jazzy-camera-calibration
-ros2 run camera_calibration cameracalibrator \
-  --size 8x6 --square 0.025 \
-  image:=/camera/image_raw camera:=/camera
+mkdir -p /home/vexy/calibration/imx708_wide_640x480_samples
+ros2 run vexy_ros vexy_calibrate_camera \
+  --cols 8 --rows 6 --square-m 0.025 \
+  --samples 25 \
+  --out /home/vexy/calibration/imx708_wide_640x480.yaml \
+  --preview-dir /home/vexy/calibration/imx708_wide_640x480_samples
 ```
 
-Save the output as a camera-info YAML and relaunch with a URL:
+Move the checkerboard through the frame until the command writes the YAML, then
+relaunch with a URL:
 
 ```bash
 ros2 launch vexy_ros vexy.launch.py \
   camera_info_url:=file:///home/vexy/calibration/imx708_wide_640x480.yaml
+```
+
+For the persistent `vexy-ros-stack.service`, put the same launch argument in a
+user-systemd drop-in and restart the service:
+
+```ini
+# /home/vexy/.config/systemd/user/vexy-ros-stack.service.d/20-measured-camera-info.conf
+[Service]
+ExecStart=
+ExecStart=/bin/bash -lc 'source /opt/ros/jazzy/setup.bash && source /home/vexy/ros2_ws/install/setup.bash && exec ros2 launch vexy_ros vexy.launch.py camera_fps:=30 serial_port:=auto camera_info_url:=file:///home/vexy/calibration/imx708_wide_640x480.yaml'
+```
+
+```bash
+systemctl --user daemon-reload
+systemctl --user restart vexy-ros-stack.service
 ```
 
 ### Verify
@@ -293,6 +348,10 @@ ros2 topic echo /camera/camera_info --once | grep -E 'k:|p:'
 ros2 topic echo /apriltag/detections --once
 ros2 topic echo /tf --once
 ```
+
+`detections: []` means the AprilTag detector is running but no configured tag is
+visible enough in the rectified frame. Put the printed tag back in view before
+debugging `scene_map_node` or motion behavior.
 
 The default config expects tag family `36h11`, tag ID `0`, physical size `0.200` m, and frame name `tag36h11_0`.
 `/apriltag/detections` carries tag IDs/corners; `scene_map_node` uses `/tf`

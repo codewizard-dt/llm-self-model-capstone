@@ -10,9 +10,20 @@ Nodes launched:
                   Publishes: /apriltag/detections, /tf
   scene_map     — AprilTag detections + workspace map → robot/object map coordinates
                   Publishes: /vision/scene_map
+  yolo_ncnn     — optional YOLO NCNN object detector over rectified camera frames
+                  Publishes: /vision/object_detections
+  yellow_ball_detector — lightweight HSV yellow ball detector
+                         Publishes: /vision/object_detections
+  object_indication — object boxes + CameraInfo → camera-relative object indications
+                      Publishes: /vision/object_indications
+  task_plan     — scene map + target request → bounded tag/object task plan
+                  Publishes: /task_plan/current
   align_to_tag  — bounded local-control skill for visible AprilTag alignment
                   Subscribes: /align_to_tag/goal, /apriltag/detections, /vex/ack, /vex/bridge_status
                   Publishes: /vex/cmd, /align_to_tag/feedback, /align_to_tag/result
+  survey_scan   — bounded scan-only skill for survey:all plans
+                  Subscribes: /survey/goal, /vex/ack, /vex/telemetry, /vex/bridge_status, /vision/scene_map
+                  Publishes: /vex/cmd, /survey/feedback, /survey/result
   vex_bridge       — USB serial bridge to V5 Brain
                      Subscribes: /vex/cmd
                      Publishes:  /vex/ack, /vex/telemetry, /vex/bridge_status
@@ -30,6 +41,7 @@ from pathlib import Path
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.conditions import IfCondition
 from launch.substitutions import (
     EnvironmentVariable,
     LaunchConfiguration,
@@ -89,6 +101,9 @@ def _launch_nodes(context, *args, **kwargs):
             raise RuntimeError(f"workspace map does not exist: {map_path}")
         workspace_map_path = str(map_path)
     camera_in_robot_json = LaunchConfiguration("camera_in_robot_json").perform(context)
+    object_dimensions_json = LaunchConfiguration("object_dimensions_json").perform(
+        context
+    )
 
     return [
         # ----------------------------------------------------------
@@ -159,12 +174,94 @@ def _launch_nodes(context, *args, **kwargs):
             ],
         ),
         # ----------------------------------------------------------
+        # Optional YOLO NCNN object detector. Disabled by default so
+        # camera/tag/bridge proof still runs on Pis before model install.
+        # ----------------------------------------------------------
+        Node(
+            package="vexy_ros",
+            executable="yolo_ncnn_node",
+            name="yolo_ncnn",
+            condition=IfCondition(LaunchConfiguration("yolo_enabled")),
+            parameters=[
+                {
+                    "model_path": LaunchConfiguration("yolo_model_path"),
+                    "confidence_threshold": LaunchConfiguration("yolo_confidence"),
+                    "nms_iou_threshold": LaunchConfiguration("yolo_nms_iou"),
+                    "max_hz": LaunchConfiguration("yolo_max_hz"),
+                    "classes_json": LaunchConfiguration("yolo_classes_json"),
+                    "class_names_json": LaunchConfiguration("yolo_class_names_json"),
+                    "input_size": LaunchConfiguration("yolo_input_size"),
+                    "input_name": LaunchConfiguration("yolo_input_name"),
+                    "output_name": LaunchConfiguration("yolo_output_name"),
+                }
+            ],
+        ),
+        # ----------------------------------------------------------
+        # Lightweight color detector for the yellow ball. This runs
+        # without a trained NCNN model and feeds the same detection path.
+        # ----------------------------------------------------------
+        Node(
+            package="vexy_ros",
+            executable="yellow_ball_detector_node",
+            name="yellow_ball_detector",
+            condition=IfCondition(LaunchConfiguration("yellow_ball_detector_enabled")),
+            parameters=[
+                {
+                    "max_hz": LaunchConfiguration("yellow_ball_max_hz"),
+                    "min_area_px": LaunchConfiguration("yellow_ball_min_area_px"),
+                    "min_circularity": LaunchConfiguration(
+                        "yellow_ball_min_circularity"
+                    ),
+                    "max_detections": LaunchConfiguration("yellow_ball_max_detections"),
+                    "h_min": LaunchConfiguration("yellow_ball_h_min"),
+                    "s_min": LaunchConfiguration("yellow_ball_s_min"),
+                    "v_min": LaunchConfiguration("yellow_ball_v_min"),
+                    "h_max": LaunchConfiguration("yellow_ball_h_max"),
+                    "s_max": LaunchConfiguration("yellow_ball_s_max"),
+                    "v_max": LaunchConfiguration("yellow_ball_v_max"),
+                    "label": "yellow_ball",
+                }
+            ],
+        ),
+        # ----------------------------------------------------------
+        # Object projection into the existing scene-map input.
+        # ----------------------------------------------------------
+        Node(
+            package="vexy_ros",
+            executable="object_indication_node",
+            name="object_indication",
+            parameters=[
+                {
+                    "object_dimensions_json": object_dimensions_json,
+                    "default_height_m": LaunchConfiguration("default_object_height_m"),
+                    "min_confidence": LaunchConfiguration("object_min_confidence"),
+                }
+            ],
+        ),
+        # ----------------------------------------------------------
+        # Dynamic task planner for tag/object/survey targets. Tag and
+        # survey plans dispatch to proven bounded motion primitives.
+        # ----------------------------------------------------------
+        Node(
+            package="vexy_ros",
+            executable="task_plan_node",
+            name="task_plan",
+        ),
+        # ----------------------------------------------------------
         # Bounded local-control skill for tag alignment.
         # ----------------------------------------------------------
         Node(
             package="vexy_ros",
             executable="align_to_tag_node",
             name="align_to_tag",
+        ),
+        # ----------------------------------------------------------
+        # Bounded scan-only skill for survey:all planning.
+        # ----------------------------------------------------------
+        Node(
+            package="vexy_ros",
+            executable="survey_scan_node",
+            name="survey_scan",
         ),
         # ----------------------------------------------------------
         # VEX V5 serial bridge
@@ -239,6 +336,45 @@ def generate_launch_description():
                 "camera_in_robot_json",
                 default_value='{"x_m":0.0,"y_m":0.0,"yaw_rad":0.0}',
             ),
+            DeclareLaunchArgument("yolo_enabled", default_value="false"),
+            DeclareLaunchArgument(
+                "yolo_model_path",
+                default_value=EnvironmentVariable("VEXY_YOLO_MODEL", default_value=""),
+            ),
+            DeclareLaunchArgument("yolo_confidence", default_value="0.35"),
+            DeclareLaunchArgument("yolo_nms_iou", default_value="0.45"),
+            DeclareLaunchArgument("yolo_max_hz", default_value="5.0"),
+            DeclareLaunchArgument("yolo_classes_json", default_value="[]"),
+            DeclareLaunchArgument("yolo_class_names_json", default_value="{}"),
+            DeclareLaunchArgument("yolo_input_size", default_value="640"),
+            DeclareLaunchArgument("yolo_input_name", default_value=""),
+            DeclareLaunchArgument("yolo_output_name", default_value=""),
+            DeclareLaunchArgument("yellow_ball_detector_enabled", default_value="true"),
+            DeclareLaunchArgument("yellow_ball_max_hz", default_value="8.0"),
+            DeclareLaunchArgument("yellow_ball_min_area_px", default_value="200.0"),
+            DeclareLaunchArgument(
+                "yellow_ball_min_circularity", default_value="0.25"
+            ),
+            DeclareLaunchArgument("yellow_ball_max_detections", default_value="1"),
+            DeclareLaunchArgument("yellow_ball_h_min", default_value="20"),
+            DeclareLaunchArgument("yellow_ball_s_min", default_value="25"),
+            DeclareLaunchArgument("yellow_ball_v_min", default_value="80"),
+            DeclareLaunchArgument("yellow_ball_h_max", default_value="45"),
+            DeclareLaunchArgument("yellow_ball_s_max", default_value="255"),
+            DeclareLaunchArgument("yellow_ball_v_max", default_value="255"),
+            DeclareLaunchArgument(
+                "object_dimensions_json",
+                default_value=(
+                    '{"*":{"height_m":0.12},"bin":{"height_m":0.20,'
+                    '"width_m":0.30},"bottle":{"height_m":0.20,'
+                    '"width_m":0.065},"cup":{"height_m":0.12,'
+                    '"width_m":0.08},"sports ball":{"diameter_m":0.065},'
+                    '"yellow ball":{"diameter_m":0.065},'
+                    '"yellow_ball":{"diameter_m":0.065}}'
+                ),
+            ),
+            DeclareLaunchArgument("default_object_height_m", default_value="0.12"),
+            DeclareLaunchArgument("object_min_confidence", default_value="0.35"),
             OpaqueFunction(function=_launch_nodes),
         ]
     )

@@ -1,0 +1,23 @@
+summary: >-
+  Added the first concrete `operator` package for the LLM/Critic lane. The new
+  packet builder loads `contracts.SelfModel`, `contracts.ContractLine`,
+  `contracts.PartsCatalog`, and `contracts.validate_config`; reuses
+  `vexy_ros.evidence_export.contract_jsonl_from_bundle` for ROS proof-bundle
+  intake; emits a two-track markdown packet with M1/ROS proof intake and
+  Operator LLM packet sections; preserves exact blocked labels for missing
+  ContractLine evidence, missing contract-valid hardware proof, and missing F10
+  residual summaries; labels supplied gap summaries as fixture-backed; and
+  exposes parts-catalog buildability violations without redefining F3 rules.
+  Added operator Makefile/pyproject/ruff config, operator fixture validation,
+  five unit tests, root Makefile delegation, and the AI-SDD plan/review records.
+satisfies:
+  - acc-sync
+  - acc-test
+  - acc-validate
+  - acc-lint
+  - acc-ros-routine
+  - acc-blocked-labels
+  - acc-fixture-backed-gap
+  - acc-parts-verdict
+  - acc-no-operator-schema
+  - acc-root-delegation
