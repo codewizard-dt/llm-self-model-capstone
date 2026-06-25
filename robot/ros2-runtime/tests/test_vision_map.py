@@ -36,9 +36,7 @@ class VisionMapTests(unittest.TestCase):
 
         self.assertAlmostEqual(scene.map_from_camera.x_m, 1.0, places=6)
         self.assertAlmostEqual(scene.map_from_camera.y_m, 2.0, places=6)
-        self.assertAlmostEqual(
-            scene.map_from_robot.x_m, 1.0 - 0.10 * math.cos(0.2), places=6
-        )
+        self.assertAlmostEqual(scene.map_from_robot.x_m, 1.0 - 0.10 * math.cos(0.2), places=6)
         self.assertEqual(scene.anchor_tag_ids, [0])
         self.assertEqual(scene.observed_tag_ids, [0])
 
@@ -74,6 +72,14 @@ class VisionMapTests(unittest.TestCase):
 
         self.assertAlmostEqual(robot_from_tag.x_m, 1.3)
         self.assertAlmostEqual(robot_from_tag.y_m, -0.21)
+    def test_transforms_camera_relative_pose_into_robot_frame(self) -> None:
+        camera_from_tag = Pose2D(1.0, 0.0, 0.0)
+        camera_in_robot = Pose2D(0.2, -0.08, 0.0)
+
+        robot_from_tag = robot_from_camera_pose(camera_from_tag, camera_in_robot)
+
+        self.assertAlmostEqual(robot_from_tag.x_m, 1.2)
+        self.assertAlmostEqual(robot_from_tag.y_m, -0.08)
 
     def test_parses_apriltag_tf_frame_id(self) -> None:
         self.assertEqual(tag_id_from_frame_id("tag36h11_0"), 0)
@@ -98,10 +104,7 @@ class VisionMapTests(unittest.TestCase):
 
     def test_parse_gen0_workspace_map_from_current_pr(self) -> None:
         raw = (
-            Path(__file__).resolve().parents[1]
-            / "config"
-            / "maps"
-            / "gen0-grab-toss-v1.json"
+            Path(__file__).resolve().parents[1] / "config" / "maps" / "gen0-grab-toss-v1.json"
         ).read_text()
 
         anchors = parse_tag_anchors(raw)

@@ -1,10 +1,12 @@
 ---
 id: robot-workspace-map
 title: Robot Workspace Map (Multi-Arena JSON Format)
-updated: 2026-06-22
+aliases: [workspace map, VEXY_MAP, multi-arena map, AprilTag map]
+updated: 2026-06-25
 tags: [concept, map, localization, configuration, multi-arena, apriltag, dead-reckoning]
 sources:
   - ../sources/apriltag-larger-workspace-map.md
+  - ../sources/robot-apriltag-ball-delivery.md
 ---
 
 # Robot Workspace Map (Multi-Arena JSON Format)
@@ -104,6 +106,12 @@ robot/pi-runtime/config/
 ```
 
 No code changes are needed to support a new arena — create the JSON file, set `VEXY_MAP`, restart.
+
+## Current ROS 2 Runtime Location
+
+> **Contradiction:** This page originally described maps under `robot/pi-runtime/config/maps/`. [Research: Robot AprilTag Ball Delivery](../sources/robot-apriltag-ball-delivery.md) and the current `vexy_ros` runtime place the active grab/toss maps under `robot/ros2-runtime/config/maps/`. The map shape and tag roles remain the same, but the active implementation location has moved with the ROS 2 runtime.
+
+The delivery program depends on the same semantic map roles: `bin` is tag `0`, `ball_staging` is tag `1`, and `home` is tag `2`. `vexy_deliver_ball` currently uses those role IDs as CLI defaults while allowing overrides for field calibration or alternate arena layouts. relates_to::[[vexy_ros ROS 2 Runtime]]
 
 ---
 

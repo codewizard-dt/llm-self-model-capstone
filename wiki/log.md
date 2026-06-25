@@ -223,3 +223,12 @@ Confirmed via live SSH: `uv` IS already installed on vexy at `~/.local/bin/uv` v
 
 ## [2026-06-25] research | PROS CLI on ARM64 Linux / Pi-hosted upload workflow
 Researched pros-cli ARM64 compatibility: confirmed pure-Python wheel (py3-none-any), Pi-hosted upload viable, uv sync install path. Filed raw/research/pros-cli-arm64-pi/index.md + sources.md. Pi state as of 2026-06-25: aarch64, Ubuntu 24.04, Python 3.12.3, uv NOT installed, pros-cli NOT installed, dialout group confirmed, Brain connected on /dev/ttyACM0+1, monolith.bin exists. Added wiki/knowledge/sources/pros-cli-arm64-pi.md (new source page), updated wiki/knowledge/entities/tools/pros.md (ARM64 Pi section), updated wiki/knowledge/sources/pros-cli-brain-bridge.md (Pi-hosted upload addendum + derives_from link), and wiki/index.md (new source entry). Updated robot/ros2-runtime/docs/RUNBOOK.md §8 with full push-and-upload-via-SSH workflow (slots 7/8 only, never slot 1).
+
+## [2026-06-25] update | Current ROS 2 runtime functionality documented
+Documented the implemented `robot/ros2-runtime` stack as wiki/knowledge/entities/components/vexy-ros-runtime.md. Covered launched nodes, core topics, camera/AprilTag scene mapping, object detection/projection, task planning, bounded `align_to_tag` and `survey_scan` skills, V5 serial bridge behavior, proof/export utilities, unit-test coverage, and current boundaries. Added the component to wiki/index.md.
+
+## [2026-06-25] update | ROS 2 runtime command grammar documented
+Expanded wiki/knowledge/entities/components/vexy-ros-runtime.md with the `/vex/cmd` command reference. Documented common packet fields, `stop`, `drive`, `turn`, `set_goal`, `release`, bridge-generated `heartbeat`, ack/rejection behavior, and the current Pi-side vs Brain-side safety clamp differences.
+
+## [2026-06-25] ingest | Research: Robot AprilTag Ball Delivery
+Ingested from raw/research/robot-apriltag-ball-delivery/index.md. Key claims: (1) `vexy_deliver_ball` should reuse bounded AprilTag scan/approach helpers rather than a new map-pose controller; (2) delivery defaults are ball staging tag `1` and bin tag `0`; (3) a real drop requires a bounded Brain-side `release` command, because `set_goal` remains ROS-side planning compatibility and is rejected by the Brain. 1 source page created, 1 component page touched, 3 concept pages touched. Contradiction callout added to robot-workspace-map.md for active map location (`pi-runtime` historical path vs `ros2-runtime` current path).

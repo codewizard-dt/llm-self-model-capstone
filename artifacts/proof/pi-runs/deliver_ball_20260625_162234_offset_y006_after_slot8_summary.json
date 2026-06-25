@@ -1,0 +1,179 @@
+{
+  "ball_approach": {
+    "label": "ball_loading",
+    "observed_tags": [
+      0,
+      1,
+      2
+    ],
+    "post_distance_m": 0.49154711361845127,
+    "reached_target": false,
+    "reason": "timeout",
+    "start_distance_m": null,
+    "tag_id": 1,
+    "target_distance_m": 0.45
+  },
+  "ball_tag_id": 1,
+  "bin_approach": null,
+  "bin_tag_id": 0,
+  "camera_in_robot": {
+    "heading_deg": 0.0,
+    "x_m": 0.0,
+    "x_mm": 0.0,
+    "y_m": 0.06,
+    "y_mm": 60.0,
+    "yaw_rad": 0.0
+  },
+  "commands_sent": 336,
+  "grab": null,
+  "last_ack": {
+    "ack": 172,
+    "battery_mv": 13214,
+    "battery_pct": 22.0,
+    "drive_ports_ok": true,
+    "estop": false,
+    "fault": null,
+    "motion_enabled": true,
+    "motor_ports": [
+      1,
+      3,
+      8,
+      10
+    ],
+    "recv_ms": 84582,
+    "state": "ok",
+    "type": "ack",
+    "v": 1,
+    "watchdog_age_ms": 0
+  },
+  "last_command": {
+    "cmd": "stop",
+    "reason": "ball_loading_approach_complete",
+    "sent_ms": 345265,
+    "seq": 24336,
+    "ttl_ms": 200,
+    "type": "cmd",
+    "v": 1
+  },
+  "last_scene_map": {
+    "anchor_tag_ids": [
+      0,
+      1,
+      2
+    ],
+    "camera_pose": {
+      "heading_deg": 5.904644497222802,
+      "x_m": -0.2884868290331818,
+      "x_mm": -288.4868290331818,
+      "y_m": 0.708065195942523,
+      "y_mm": 708.065195942523,
+      "yaw_rad": 0.10305548763630307
+    },
+    "frame_id": "map",
+    "objects": [
+      {
+        "confidence": 0.42561118917865126,
+        "name": "yellow_ball",
+        "pose": {
+          "heading_deg": 7.715422614300676,
+          "x_m": 0.3001789394356651,
+          "x_mm": 300.1789394356651,
+          "y_m": 0.7878172873439468,
+          "y_mm": 787.8172873439469,
+          "yaw_rad": 0.13465952780237533
+        },
+        "source": "yellow_ball_color"
+      }
+    ],
+    "observed_tag_ids": [
+      1
+    ],
+    "robot_pose": {
+      "heading_deg": 5.904644497222802,
+      "x_m": -0.2884868290331818,
+      "x_mm": -288.4868290331818,
+      "y_m": 0.708065195942523,
+      "y_mm": 708.065195942523,
+      "yaw_rad": 0.10305548763630307
+    },
+    "stamp_s": 345.530390846,
+    "tags": {
+      "1": {
+        "heading_deg": 0.0,
+        "x_m": 0.2,
+        "x_mm": 200.0,
+        "y_m": 0.75,
+        "y_mm": 750.0,
+        "yaw_rad": 0.0
+      }
+    }
+  },
+  "last_telemetry": {
+    "battery_current_ma": 118,
+    "battery_mv": 13214,
+    "battery_pct": 22.0,
+    "battery_temp_c": 29.0,
+    "drive_ports_ok": true,
+    "estop": false,
+    "left_pos_deg": -7973.0,
+    "left_vel_rpm": 5.2,
+    "motion_enabled": true,
+    "motion_ttl_overrun_ms": 0,
+    "motor_ports": [
+      1,
+      3,
+      8,
+      10
+    ],
+    "motor_samples": [
+      {
+        "device": "left_drive",
+        "sample_ms": 84509,
+        "subsystem": "drivetrain",
+        "values": {
+          "current_amp": 0.0,
+          "efficiency_pct": 0.0,
+          "position_deg": -7973.0,
+          "power_w": 0.0,
+          "temperature_c": 35.0,
+          "torque_nm": 0.0,
+          "velocity_rpm": 5.2
+        }
+      },
+      {
+        "device": "right_drive",
+        "sample_ms": 84509,
+        "subsystem": "drivetrain",
+        "values": {
+          "current_amp": 0.0,
+          "efficiency_pct": 0.0,
+          "position_deg": -1232.0,
+          "power_w": 0.0,
+          "temperature_c": 35.0,
+          "torque_nm": 0.0,
+          "velocity_rpm": 7.5
+        }
+      }
+    ],
+    "right_pos_deg": -1232.0,
+    "right_vel_rpm": 7.5,
+    "t_ms": 84509,
+    "type": "telemetry",
+    "v": 1,
+    "watchdog_age_ms": 110
+  },
+  "lift": null,
+  "observed_tags": [
+    0,
+    1,
+    2
+  ],
+  "observed_tags_after_orientation": [
+    0,
+    2
+  ],
+  "program": "deliver_ball",
+  "reason": "ball_tag_approach_failed",
+  "release": null,
+  "status": "failed"
+}

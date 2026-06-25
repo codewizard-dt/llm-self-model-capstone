@@ -37,6 +37,7 @@ setup(
             "survey_scan_node = vexy_ros.survey_scan_node:main",
             "vexy_export_contract_jsonl = vexy_ros.evidence_export:main",
             "vexy_tag_action_proof = vexy_ros.tag_action_proof:main",
+            "vexy_deliver_ball = vexy_ros.deliver_ball:main",
             "vexy_run_calibrated_tag_proof = vexy_ros.proof_runner:main",
             "vexy_scene_observation_proof = vexy_ros.observation_proof:main",
             "vexy_calibrate_camera = vexy_ros.camera_calibration_capture:main",

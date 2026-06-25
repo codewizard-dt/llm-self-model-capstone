@@ -25,11 +25,19 @@ constexpr int MAX_LINE_BYTES = 2048;
 constexpr int LEFT_DRIVE_PORT = 1;
 constexpr int RIGHT_DRIVE_PORT = 10;
 constexpr int ARM_PORT = 8;
+constexpr int RELEASE_MOTOR_PORT = 3;
 constexpr int MAX_TTL_MS = 500;
 constexpr int MAX_DRIVE_RPM = 45;
 constexpr int MAX_TURN_RPM = 35;
 constexpr int DRIVE_CURRENT_LIMIT_MA = 1500;
 constexpr int DRIVE_VOLTAGE_LIMIT_MV = 6000;
+constexpr int GRAB_RPM = -100;
+constexpr int LIFT_RPM = 100;
+constexpr int RELEASE_RPM = 100;
+constexpr int DEFAULT_RELEASE_MS = 650;
+constexpr int DEFAULT_GRAB_MS = 700;
+constexpr int DEFAULT_LIFT_MS = 900;
+constexpr int MAX_CLAW_MS = 1500;
 constexpr double WHEEL_CIRCUMFERENCE_M = 0.319;  // 4 in wheel.
 constexpr double TRACK_WIDTH_M = 0.28;
 constexpr double DRIVE_FORWARD_SIGN = -1.0;
@@ -73,6 +81,9 @@ pros::Motor& right_drive() {
 
 pros::Motor& arm_motor() {
 	static pros::Motor motor(ARM_PORT);
+}
+pros::Motor& release_motor() {
+	static pros::Motor motor(RELEASE_MOTOR_PORT);
 	return motor;
 }
 
@@ -166,6 +177,10 @@ bool arm_port_ok() {
 	return motor_port_present(ARM_PORT);
 }
 
+bool release_port_ok() {
+	return motor_port_present(RELEASE_MOTOR_PORT);
+}
+
 bool motion_enabled() {
 	return drive_ports_ok() && !estop_latched;
 }
@@ -204,6 +219,14 @@ void configure_arm() {
 	arm_motor().tare_position();
 }
 
+void configure_release() {
+	if (!release_port_ok()) return;
+	release_motor().set_brake_mode(pros::E_MOTOR_BRAKE_HOLD);
+	release_motor().set_current_limit(DRIVE_CURRENT_LIMIT_MA);
+	release_motor().set_voltage_limit(DRIVE_VOLTAGE_LIMIT_MV);
+	release_motor().tare_position();
+}
+
 void stop_drive(const char* reason) {
 	(void)reason;
 	motion_until_ms = 0;
@@ -226,6 +249,12 @@ void stop_all(const char* reason) {
 	stop_arm(reason);
 }
 
+void stop_release() {
+	if (!release_port_ok()) return;
+	release_motor().move_velocity(0);
+	release_motor().brake();
+}
+
 void set_drive(double vx_mps, double omega_rad_s, int ttl_ms) {
 	const double rpm_per_mps = 60.0 / WHEEL_CIRCUMFERENCE_M;
 	const double signed_vx_mps = DRIVE_FORWARD_SIGN * vx_mps;
@@ -241,10 +270,25 @@ void set_drive(double vx_mps, double omega_rad_s, int ttl_ms) {
 	motion_until_ms = pros::millis() + static_cast<uint32_t>(ttl_ms);
 }
 
-std::string motor_sample_json(const char* device,
-                              const char* subsystem,
-                              pros::Motor& motor,
-                              uint32_t sample_ms) {
+void release_ball(int duration_ms) {
+	if (duration_ms < 1) duration_ms = DEFAULT_RELEASE_MS;
+	if (duration_ms > MAX_CLAW_MS) duration_ms = MAX_CLAW_MS;
+	stop_drive("release command");
+	release_motor().move_velocity(RELEASE_RPM);
+	pros::delay(duration_ms);
+	stop_release();
+}
+
+void run_claw_action(const char* reason, int rpm, int duration_ms, int default_duration_ms) {
+	if (duration_ms < 1) duration_ms = default_duration_ms;
+	if (duration_ms > MAX_CLAW_MS) duration_ms = MAX_CLAW_MS;
+	stop_drive(reason);
+	release_motor().move_velocity(rpm);
+	pros::delay(duration_ms);
+	stop_release();
+}
+
+std::string motor_sample_json(const char* device, pros::Motor& motor, uint32_t sample_ms) {
 	char buf[768];
 	std::snprintf(
 	    buf,
@@ -583,6 +627,54 @@ void handle_line(const std::string& line) {
 		routine_cancel_requested = false;
 		pending_routine_slot = slot;
 		emit_ack(seq, "ok");
+	if (has_json_value(line, "\"cmd\"", "\"release\"")) {
+		if (estop_latched) {
+			stop_drive("estop latched");
+			stop_release();
+			emit_ack(seq, "rejected", "\"estop_latched\"");
+			return;
+		}
+		if (!release_port_ok()) {
+			stop_drive("release port missing");
+			emit_ack(seq, "rejected", "\"release_port_missing\"");
+			return;
+		}
+
+		int duration_ms = extract_int_field(line, "duration_ms", DEFAULT_RELEASE_MS);
+		if (duration_ms < 1) duration_ms = DEFAULT_RELEASE_MS;
+		if (duration_ms > MAX_CLAW_MS) duration_ms = MAX_CLAW_MS;
+		release_ball(duration_ms);
+		emit_ack(seq, "ok");
+		return;
+	}
+
+	if (has_json_value(line, "\"cmd\"", "\"grab\"") ||
+	    has_json_value(line, "\"cmd\"", "\"lift\"")) {
+		if (estop_latched) {
+			stop_drive("estop latched");
+			stop_release();
+			emit_ack(seq, "rejected", "\"estop_latched\"");
+			return;
+		}
+		if (!release_port_ok()) {
+			stop_drive("release port missing");
+			emit_ack(seq, "rejected", "\"release_port_missing\"");
+			return;
+		}
+
+		const bool is_lift = has_json_value(line, "\"cmd\"", "\"lift\"");
+		const int default_duration_ms = is_lift ? DEFAULT_LIFT_MS : DEFAULT_GRAB_MS;
+		const int rpm = is_lift ? LIFT_RPM : GRAB_RPM;
+		int duration_ms = extract_int_field(line, "duration_ms", default_duration_ms);
+		run_claw_action(is_lift ? "lift command" : "grab command", rpm, duration_ms,
+		                default_duration_ms);
+		emit_ack(seq, "ok");
+		return;
+	}
+
+	if (has_json_value(line, "\"cmd\"", "\"set_goal\"")) {
+		stop_drive("set_goal not handled by Brain");
+		emit_ack(seq, "rejected", "\"unsupported_goal\"");
 		return;
 	}
 
@@ -669,13 +761,12 @@ void initialize() {
 	pros::c::serctl(SERCTL_DISABLE_COBS, nullptr);
 	last_packet_ms = pros::millis();
 	configure_drive();
-	configure_arm();
+	configure_release();
 
 	pros::screen::set_pen(pros::c::COLOR_WHITE);
 	pros::screen::print(pros::E_TEXT_LARGE, 1, "vexy serial bridge");
-	pros::screen::print(pros::E_TEXT_MEDIUM, 3, "guarded drive ports %d/%d",
-	                    LEFT_DRIVE_PORT, RIGHT_DRIVE_PORT);
-	pros::screen::print(pros::E_TEXT_MEDIUM, 4, "routine slots 2/3/4 armed");
+	pros::screen::print(pros::E_TEXT_MEDIUM, 3, "guarded ports %d/%d release %d",
+	                    LEFT_DRIVE_PORT, RIGHT_DRIVE_PORT, RELEASE_MOTOR_PORT);
 
 	emit_status("ok", "brain_bridge_ready", "guarded ack/telemetry bridge initialized");
 }
