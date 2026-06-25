@@ -70,6 +70,7 @@ def install_ros_stubs() -> None:
 
 install_ros_stubs()
 tag_action_proof = importlib.import_module("vexy_ros.tag_action_proof")
+vision_map = importlib.import_module("vexy_ros.vision_map")
 
 
 class FakeProofNode:
@@ -119,6 +120,28 @@ class TagActionProofTests(unittest.TestCase):
         self.assertEqual(published["reason"], "unit_test_drive")
         self.assertEqual(node.commands_sent, 1)
         self.assertEqual(node.last_command, published)
+
+    def test_tf_tag_observation_uses_camera_offset(self) -> None:
+        node = tag_action_proof.TagActionProof(
+            camera_in_robot=vision_map.Pose2D(0.0, -0.08, 0.0)
+        )
+        msg = types.SimpleNamespace(
+            transforms=[
+                types.SimpleNamespace(
+                    child_frame_id="tag36h11_1",
+                    transform=types.SimpleNamespace(
+                        translation=types.SimpleNamespace(x=0.0, z=1.0)
+                    ),
+                )
+            ]
+        )
+
+        node._on_tf(msg)
+
+        observed = node.latest_by_tag[1]
+        self.assertAlmostEqual(observed["forward_m"], 1.0)
+        self.assertAlmostEqual(observed["left_m"], -0.08)
+        self.assertAlmostEqual(observed["camera_left_m"], 0.0)
 
     def test_visual_one_foot_scan_summary_records_closure_and_scan_tags(self) -> None:
         node = FakeProofNode()

@@ -16,6 +16,7 @@ from vexy_ros.vision_map import (
     camera_from_apriltag_translation,
     parse_tag_anchors,
     pose_from_mapping,
+    robot_from_camera_pose,
     tag_id_from_frame_id,
 )
 
@@ -64,6 +65,15 @@ class VisionMapTests(unittest.TestCase):
 
         self.assertEqual(pose.x_m, 1.2)
         self.assertEqual(pose.y_m, -0.25)
+
+    def test_robot_from_camera_pose_applies_measured_camera_offset(self) -> None:
+        camera_from_tag = Pose2D(1.2, -0.25, 0.0)
+        camera_in_robot = Pose2D(0.10, 0.04, 0.0)
+
+        robot_from_tag = robot_from_camera_pose(camera_from_tag, camera_in_robot)
+
+        self.assertAlmostEqual(robot_from_tag.x_m, 1.3)
+        self.assertAlmostEqual(robot_from_tag.y_m, -0.21)
 
     def test_parses_apriltag_tf_frame_id(self) -> None:
         self.assertEqual(tag_id_from_frame_id("tag36h11_0"), 0)

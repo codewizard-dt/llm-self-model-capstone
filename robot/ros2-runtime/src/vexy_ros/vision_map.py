@@ -220,6 +220,12 @@ def camera_from_apriltag_translation(
     return Pose2D(x_m=float(optical_z_m), y_m=-float(optical_x_m), yaw_rad=yaw_rad)
 
 
+def robot_from_camera_pose(camera_from_pose: Pose2D, camera_in_robot: Pose2D) -> Pose2D:
+    """Transform a camera-relative planar pose into the calibrated robot frame."""
+
+    return camera_in_robot.compose(camera_from_pose)
+
+
 def tag_id_from_frame_id(frame_id: str, *, family: str = "tag36h11") -> int | None:
     frame = frame_id.strip().lstrip("/")
     prefixes = (f"{family}_", "tag_")

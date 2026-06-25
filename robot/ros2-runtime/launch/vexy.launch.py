@@ -254,6 +254,7 @@ def _launch_nodes(context, *args, **kwargs):
             package="vexy_ros",
             executable="align_to_tag_node",
             name="align_to_tag",
+            parameters=[{"camera_in_robot_json": camera_in_robot_json}],
         ),
         # ----------------------------------------------------------
         # Bounded scan-only skill for survey:all planning.

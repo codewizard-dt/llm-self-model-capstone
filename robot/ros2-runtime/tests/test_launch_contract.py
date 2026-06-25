@@ -70,6 +70,8 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn("TFMessage", node_text)
         self.assertIn('"/tf"', node_text)
         self.assertIn("tag_id_from_frame_id", node_text)
+        self.assertIn("camera_in_robot_json", node_text)
+        self.assertIn("robot_from_camera_pose", node_text)
 
     def test_camera_info_config_is_nonzero_and_marked_as_starter(self) -> None:
         config_text = (ROOT / "config" / "imx708_wide_640x480.yaml").read_text()

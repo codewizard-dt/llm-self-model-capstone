@@ -214,7 +214,11 @@ The Brain will echo an ack on `/vex/ack`:
 
 ### Align to a visible tag
 
-The `align_to_tag` node is a bounded local-control skill. It does not call an LLM. It refuses to start unless a current configured tag and current VEX ack are both present.
+The `align_to_tag` node is a bounded local-control skill. It does not call an
+LLM. It refuses to start unless a current configured tag and current VEX ack are
+both present. When `camera_in_robot_json` is set at launch, its tag
+yaw/lateral/distance feedback is expressed from the robot center rather than the
+camera center.
 
 ```bash
 ros2 topic echo /align_to_tag/result --once &

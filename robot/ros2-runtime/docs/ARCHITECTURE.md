@@ -214,12 +214,12 @@ NCNN boxes are projected into that same surface by `object_indication`, keeping
 object coordinates in one scene-map contract.
 
 The `camera_in_robot_json` launch argument records the measured PiCam2 mount
-offset in the robot body frame, so the node can publish robot-center
-coordinates instead of only camera coordinates.
+offset in the robot body frame, so scene-map and direct tag-approach paths can
+publish robot-center coordinates instead of only camera coordinates.
 
 ### AlignToTag — Bounded Local Control
 
-`align_to_tag` is the first local-control skill. It consumes `/apriltag/detections`, `/vex/ack`, and `/vex/bridge_status`; publishes bounded fixed-grammar `/vex/cmd` packets; and emits JSON feedback/result topics. It sends a final `stop` command on success, cancel, timeout, stale tag, stale ack, or bridge fault. No LLM or API call is in this loop.
+`align_to_tag` is the first local-control skill. It consumes `/apriltag/detections`, `/tf`, `/vex/ack`, and `/vex/bridge_status`; applies the same `camera_in_robot_json` mount offset as `scene_map`; publishes bounded fixed-grammar `/vex/cmd` packets; and emits JSON feedback/result topics. It sends a final `stop` command on success, cancel, timeout, stale tag, stale ack, or bridge fault. No LLM or API call is in this loop.
 
 ### YOLO NCNN and TaskPlan
 
