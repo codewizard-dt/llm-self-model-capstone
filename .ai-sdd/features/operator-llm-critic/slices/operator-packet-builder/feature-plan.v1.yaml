@@ -1,0 +1,100 @@
+summary: >-
+  Implement the operator-packet-builder slice as the first concrete F8/F9 support
+  surface. Track 1 anchors the packet to the merged M1 contracts and ROS proof
+  export routine (`vexy_ros.evidence_export.contract_jsonl_from_bundle`). Track
+  2 assembles a markdown evidence packet for the offline Operator LLM loop from
+  `contracts.SelfModel`, `contracts.ContractLine`, `contracts.PartsCatalog`,
+  `contracts.validate_config`, human constraints, and blocked/fixture-backed F10
+  gap-summary notes. No durable schema is added under `operator/`.
+
+scope:
+  in:
+    - "Create an `operator` Python package (`operator/src/operator_llm`) with packet-builder helpers and a validation entrypoint."
+    - "Read self-model fixtures through `contracts.SelfModel` and evidence JSONL through `contracts.ContractLine`."
+    - "Reuse `robot/ros2-runtime/src/vexy_ros/evidence_export.py` for ROS proof-bundle -> contract-valid JSONL conversion."
+    - "Load `contracts/parts_catalog.json` through `contracts.PartsCatalog` and expose `contracts.validate_config` verdicts in the packet."
+    - "Emit exact blocked labels for missing ContractLine evidence, missing hardware proof, and missing F10 residual summaries."
+    - "Label supplied gap summaries as fixture-backed until F10 lands."
+    - "Add operator-level sync/test/validate/lint targets and delegate root Makefile targets to the operator vertical."
+    - "Add tests proving Track 1 ROS proof intake and Track 2 packet assembly behavior."
+  out:
+    - "Generator prompt text, runtime LLM calls, API/provider setup, and prompt execution."
+    - "Critic prompt implementation or critic aggregation."
+    - "F10 residual computation or signed gap-analyzer output."
+    - "New durable schemas under `operator/`."
+    - "Changes to `contracts` schemas, parts catalog rules, ROS proof-export behavior, robot runtime, or PROS code."
+
+acceptance:
+  - id: acc-sync
+    description: "`make sync` exits 0 from `operator/`."
+  - id: acc-test
+    description: "`make test` exits 0 from `operator/` and covers packet assembly, blocked labels, ROS proof intake, fixture-backed gap summaries, and parts-catalog violations."
+  - id: acc-validate
+    description: "`make validate` exits 0 from `operator/`, building both contract-fixture and ROS-proof packet fixtures."
+  - id: acc-lint
+    description: "`make lint` exits 0 from `operator/` using ruff check and format-check."
+  - id: acc-ros-routine
+    description: "ROS proof-bundle intake calls `vexy_ros.evidence_export.contract_jsonl_from_bundle` and preserves the proof `raw_session_path` in the packet."
+  - id: acc-blocked-labels
+    description: "Packets emit the exact blocked labels required by the architecture doc for missing F10 summary, missing ContractLine evidence, and missing contract-valid hardware proof."
+  - id: acc-fixture-backed-gap
+    description: "Supplied gap summaries are visibly labeled `[FIXTURE-BACKED: F10 residual summary]` and do not masquerade as real F10 output."
+  - id: acc-parts-verdict
+    description: "Packets expose `contracts.validate_config` buildability verdicts and stable violation codes without redefining parts rules."
+  - id: acc-no-operator-schema
+    description: "The operator package adds no durable telemetry, self-model, parts-catalog, residual, or critic-review schema."
+  - id: acc-root-delegation
+    description: "Root `make sync`, `make test`, `make validate`, and `make lint` delegate to the operator vertical after contracts."
+
+decisions:
+  - id: D1
+    decision: "Represent Track 1 and Track 2 inside one packet-builder slice: Track 1 is M1/ROS proof intake; Track 2 is the offline Operator LLM evidence packet."
+    grounding: "User request to create track 1 + 2; operator-llm-critic slice order starts with operator-packet-builder."
+    status: closed
+  - id: D2
+    decision: "Reuse `vexy_ros.evidence_export.contract_jsonl_from_bundle` for ROS proof intake instead of duplicating proof export logic under operator."
+    grounding: "User explicitly asked to leverage `robot/ros2-runtime/src/vexy_ros` routines."
+    status: closed
+  - id: D3
+    decision: "Do not create durable schemas under `operator/`; packet assembly remains Python functions plus markdown output, with all durable shapes imported from `contracts`."
+    grounding: "operator vertical boundary: no schema is defined here; contracts own durable shapes."
+    status: closed
+  - id: D4
+    decision: "Treat F10 residual summaries as blocked unless explicitly supplied as fixture-backed input."
+    grounding: "operator LLM/Critic architecture blocked-state rules."
+    status: closed
+  - id: D5
+    decision: "Expose parts buildability by loading `contracts.PartsCatalog` and calling `contracts.validate_config`; do not reimplement F3 rules."
+    grounding: "F3 landed dependency and operator-llm-critic requirements."
+    status: closed
+  - id: D6
+    decision: "Wire root Makefile delegation now that `operator/Makefile` exists, so standard repo gates include the new vertical."
+    grounding: "Root Makefile already delegates per vertical as each vertical's Makefile exists."
+    status: closed
+
+files:
+  - Makefile
+  - operator/Makefile
+  - operator/pyproject.toml
+  - operator/ruff.toml
+  - operator/uv.lock
+  - operator/src/operator_llm/__init__.py
+  - operator/src/operator_llm/packet_builder.py
+  - operator/src/operator_llm/validate.py
+  - operator/tests/test_packet_builder.py
+  - .ai-sdd/features/operator-llm-critic/slices/operator-packet-builder.md
+  - .ai-sdd/features/operator-llm-critic/slices/operator-packet-builder/feature-plan.v1.yaml
+  - .ai-sdd/features/operator-llm-critic/slices/operator-packet-builder/changeset.v1.yaml
+  - .ai-sdd/features/operator-llm-critic/slices/operator-packet-builder/review.v1.yaml
+
+tests:
+  - "cd operator && make sync"
+  - "cd operator && make test"
+  - "cd operator && make validate"
+  - "cd operator && make lint"
+  - "make test"
+  - "make validate"
+  - "make lint"
+  - "ai-sdd check .ai-sdd/schemas/feature-plan.schema.yaml .ai-sdd/features/operator-llm-critic/slices/operator-packet-builder/feature-plan.v1.yaml"
+  - "ai-sdd check .ai-sdd/schemas/changeset.schema.yaml .ai-sdd/features/operator-llm-critic/slices/operator-packet-builder/changeset.v1.yaml"
+  - "ai-sdd check .ai-sdd/schemas/review.schema.yaml .ai-sdd/features/operator-llm-critic/slices/operator-packet-builder/review.v1.yaml"
