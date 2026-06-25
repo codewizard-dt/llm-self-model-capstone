@@ -87,9 +87,30 @@ pros::Motor arm(ARM_PORT);
 
 Confirmed from the official 276-6009-750 Rev6 build instructions wiring diagram.
 
+## Pi-Hosted Upload (2026-06-25 addendum)
+
+> **Prior assumption updated:** The original research assumed PROS CLI runs only on a laptop.
+> Subsequent research (see `raw/research/pros-cli-arm64-pi/index.md`) confirmed that `pros-cli 3.5.6`
+> is a pure-Python wheel (`py3-none-any`) that installs cleanly on ARM64 Ubuntu 24.04.
+
+The Pi (`vexy`) is `aarch64`, Python 3.12.3, `vexy` user in `dialout` group. PROS CLI was not
+yet installed as of 2026-06-25; `pyproject.toml` pins `pros-cli>=3.5.6` and `uv sync` from
+`robot/v5-brain/` is the install path.
+
+**`pros upload [PATH]`** accepts a bare binary file as `[PATH]` — `--target v5` is required in that
+case. `--slot N` (1–8) sets the Brain slot. `--after none` prevents auto-run.
+
+Corrected workflow:
+- Build C++ on the **laptop** (ARM cross-compiler not on Pi, `project.pros` templates point to `/Users/kelly/...`)
+- `scp bin/monolith.bin` to Pi
+- `pros upload --slot 7 --after none` **on the Pi** via SSH (upload only; no build step)
+
+See `robot/ros2-runtime/docs/RUNBOOK.md §8` for the complete workflow including Python node push.
+
 relates_to::[[pros]]  
 relates_to::[[vex-v5]]  
 relates_to::[[vex-coprocessor-pattern]]  
 relates_to::[[v5-brain-python-vs-pros]]  
 relates_to::[[v5-user-programs]]  
 relates_to::[[task-telemetry-contract]]
+derives_from::[[pros-cli-arm64-pi]]
