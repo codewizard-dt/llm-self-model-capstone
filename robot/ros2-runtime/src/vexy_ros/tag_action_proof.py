@@ -122,6 +122,7 @@ class TagActionProof(Node):
         vx: float = 0.0,
         omega: float = 0.0,
         ttl_ms: int = 180,
+        duration_ms: int | None = None,
         reason: str | None = None,
     ) -> None:
         self.seq += 1
@@ -137,6 +138,8 @@ class TagActionProof(Node):
             packet.update({"vx": vx, "vy": 0.0, "omega": omega})
         elif cmd == "turn":
             packet["omega"] = omega
+        elif cmd in {"grab", "lift", "release"} and duration_ms is not None:
+            packet["duration_ms"] = duration_ms
         if reason:
             packet["reason"] = reason
         self.commands_sent += 1
@@ -212,9 +215,7 @@ def approach_tag(
     return False, "timeout", last_tag
 
 
-def visual_one_foot_scan(
-    node: TagActionProof, args: argparse.Namespace
-) -> dict[str, Any]:
+def visual_one_foot_scan(node: TagActionProof, args: argparse.Namespace) -> dict[str, Any]:
     node.spin_for(args.settle_s)
     start = reacquire_visible_tag(
         node,
@@ -263,9 +264,7 @@ def visual_one_foot_scan(
                 "target_distance_m": target_distance_m,
                 "post_drive_distance_m": post_distance_m,
                 "distance_closed_m": (
-                    None
-                    if post_distance_m is None
-                    else start_distance_m - post_distance_m
+                    None if post_distance_m is None else start_distance_m - post_distance_m
                 ),
                 "approach_reached_target": reached,
                 "approach_reason": reason,

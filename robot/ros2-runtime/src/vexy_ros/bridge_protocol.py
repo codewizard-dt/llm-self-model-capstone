@@ -10,7 +10,11 @@ MAX_OMEGA = 0.6
 DEFAULT_TTL_MS = 200
 MAX_TTL_MS = 5000
 ROUTINE_SLOTS = {2, 3, 4}
-COMMANDS = {"stop", "drive", "turn", "set_goal", "routine"}
+COMMANDS = {"stop", "drive", "turn", "set_goal", "routine", "grab", "lift", "release"}
+DEFAULT_RELEASE_MS = 650
+DEFAULT_GRAB_MS = 700
+DEFAULT_LIFT_MS = 900
+MAX_CLAW_MS = 1500
 
 
 class BridgeProtocolError(ValueError):
@@ -22,9 +26,7 @@ def now_ms() -> int:
 
 
 def encode_packet(packet: Mapping[str, Any]) -> bytes:
-    return (json.dumps(packet, separators=(",", ":"), sort_keys=True) + "\n").encode(
-        "utf-8"
-    )
+    return (json.dumps(packet, separators=(",", ":"), sort_keys=True) + "\n").encode("utf-8")
 
 
 def clamp(value: float, lo: float, hi: float) -> float:
@@ -35,9 +37,7 @@ def normalize_outbound(packet: Mapping[str, Any]) -> dict[str, Any]:
     normalized = dict(packet)
 
     if normalized.get("v") != PROTOCOL_VERSION:
-        raise BridgeProtocolError(
-            f"unsupported protocol version: {normalized.get('v')}"
-        )
+        raise BridgeProtocolError(f"unsupported protocol version: {normalized.get('v')}")
     if not isinstance(normalized.get("seq"), int):
         raise BridgeProtocolError("seq must be an integer")
 
@@ -59,15 +59,9 @@ def normalize_outbound(packet: Mapping[str, Any]) -> dict[str, Any]:
         raise BridgeProtocolError(f"unsupported cmd: {cmd!r}")
 
     if cmd == "drive":
-        normalized["vx"] = clamp(
-            float(normalized.get("vx", 0.0)), -MAX_LINEAR, MAX_LINEAR
-        )
-        normalized["vy"] = clamp(
-            float(normalized.get("vy", 0.0)), -MAX_LINEAR, MAX_LINEAR
-        )
-        normalized["omega"] = clamp(
-            float(normalized.get("omega", 0.0)), -MAX_OMEGA, MAX_OMEGA
-        )
+        normalized["vx"] = clamp(float(normalized.get("vx", 0.0)), -MAX_LINEAR, MAX_LINEAR)
+        normalized["vy"] = clamp(float(normalized.get("vy", 0.0)), -MAX_LINEAR, MAX_LINEAR)
+        normalized["omega"] = clamp(float(normalized.get("omega", 0.0)), -MAX_OMEGA, MAX_OMEGA)
     elif cmd == "turn":
         normalized["omega"] = clamp(
             float(normalized.get("omega", 0.0)), -MAX_OMEGA, MAX_OMEGA
@@ -80,6 +74,18 @@ def normalize_outbound(packet: Mapping[str, Any]) -> dict[str, Any]:
         if slot not in ROUTINE_SLOTS:
             raise BridgeProtocolError("routine slot must be one of 2, 3, or 4")
         normalized["slot"] = slot
+        normalized["omega"] = clamp(float(normalized.get("omega", 0.0)), -MAX_OMEGA, MAX_OMEGA)
+    elif cmd in {"grab", "lift", "release"}:
+        try:
+            default_duration_ms = {
+                "grab": DEFAULT_GRAB_MS,
+                "lift": DEFAULT_LIFT_MS,
+                "release": DEFAULT_RELEASE_MS,
+            }[cmd]
+            duration_ms = int(normalized.get("duration_ms", default_duration_ms))
+        except (TypeError, ValueError) as exc:
+            raise BridgeProtocolError("duration_ms must be an integer") from exc
+        normalized["duration_ms"] = int(clamp(duration_ms, 1, MAX_CLAW_MS))
 
     return normalized
 

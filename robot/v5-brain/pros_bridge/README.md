@@ -9,6 +9,7 @@ This bridge is intentionally conservative for physical proof:
 - `heartbeat` and `stop` packets ack `state:"ok"`.
 - `drive` and `turn` packets are accepted only when drive motors are present on ports `1` and `10`.
 - `routine` packets are accepted only for fixed slots `2`, `3`, and `4`.
+- `release` packets stop the drive and run the ball-release motor on port `3` for a bounded `duration_ms`; missing release hardware is rejected.
 - Motion commands are clamped, TTL-limited, watchdog-stopped, and current/voltage-limited.
 - `set_goal` is rejected by the Brain; higher-level goals stay in ROS.
 - A separate telemetry task emits `type:"telemetry"` records every 500 ms so the ROS bridge can prove `/vex/telemetry` independently from `/vex/ack`.

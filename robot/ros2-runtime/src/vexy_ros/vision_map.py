@@ -96,10 +96,7 @@ class SceneMap:
             "stamp_s": self.stamp_s,
             "camera_pose": self.map_from_camera.to_json(),
             "robot_pose": self.map_from_robot.to_json(),
-            "tags": {
-                str(tag_id): pose.to_json()
-                for tag_id, pose in sorted(self.tags.items())
-            },
+            "tags": {str(tag_id): pose.to_json() for tag_id, pose in sorted(self.tags.items())},
             "objects": [
                 {
                     "name": obj.name,
@@ -199,9 +196,7 @@ def parse_object_observations(
                 name=name,
                 camera_from_object=pose,
                 stamp_s=float(item.get("stamp_s", stamp_s)),
-                confidence=(
-                    float(item["confidence"]) if "confidence" in item else None
-                ),
+                confidence=(float(item["confidence"]) if "confidence" in item else None),
                 source=str(item.get("source", "operator_indication")),
             )
         )
@@ -247,9 +242,7 @@ def estimate_camera_pose(
         anchor = anchors.get(detection.tag_id)
         if anchor is None:
             continue
-        candidates.append(
-            anchor.map_from_tag.compose(detection.camera_from_tag.inverse())
-        )
+        candidates.append(anchor.map_from_tag.compose(detection.camera_from_tag.inverse()))
 
     if not candidates:
         raise ValueError("at least one observed tag must match a configured map anchor")
@@ -317,11 +310,7 @@ def scene_map_from_json(raw: str | Mapping[str, Any]) -> SceneMap:
             name=str(item["name"]),
             map_from_object=pose_from_mapping(item["pose"]),
             source=str(item.get("source", "unknown")),
-            confidence=(
-                float(item["confidence"])
-                if item.get("confidence") is not None
-                else None
-            ),
+            confidence=(float(item["confidence"]) if item.get("confidence") is not None else None),
         )
         for item in payload.get("objects", [])
     ]
@@ -331,14 +320,11 @@ def scene_map_from_json(raw: str | Mapping[str, Any]) -> SceneMap:
         map_from_camera=pose_from_mapping(payload["camera_pose"]),
         map_from_robot=pose_from_mapping(payload["robot_pose"]),
         tags={
-            int(tag_id): pose_from_mapping(pose)
-            for tag_id, pose in payload.get("tags", {}).items()
+            int(tag_id): pose_from_mapping(pose) for tag_id, pose in payload.get("tags", {}).items()
         },
         objects=objects,
         anchor_tag_ids=[int(tag_id) for tag_id in payload.get("anchor_tag_ids", [])],
-        observed_tag_ids=[
-            int(tag_id) for tag_id in payload.get("observed_tag_ids", [])
-        ],
+        observed_tag_ids=[int(tag_id) for tag_id in payload.get("observed_tag_ids", [])],
     )
 
 

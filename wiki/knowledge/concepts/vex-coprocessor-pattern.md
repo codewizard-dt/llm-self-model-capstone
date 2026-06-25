@@ -2,9 +2,10 @@
 id: vex-coprocessor-pattern
 title: VEX Coprocessor Pattern
 aliases: [V5 coprocessor, V5 + Linux host, VEX external coprocessor]
-updated: 2026-06-17
+updated: 2026-06-25
 sources:
   - ../../raw/research/vex-v5-rpi-coprocessor-opensource/index.md
+  - ../sources/robot-apriltag-ball-delivery.md
 tags: [concept, architecture, vex-v5, coprocessor, raspberry-pi, serial, ros]
 ---
 
@@ -108,6 +109,10 @@ FreeRTOS preemptive scheduling (1ms tick) lets the watchdog task run even when `
 The capstone's RPi5 + V5 Brain + Pi Camera + Claude API stack follows this pattern with one addition: the LLM inference leg. The proven USB serial path (Stage 1) maps directly to `raw/research/vex-v5-telemetry-pipeline/index.md` Mode A real-time pipeline. No existing open-source project closes the LLM loop on this architecture — that is the novelty.
 
 The current Brain bridge (`robot/v5-brain/pros_bridge/src/main.cpp`) is a buildable PROS monolith with separate receive, watchdog, telemetry, and routine tasks. It accepts the Pi's fixed control grammar, emits tagged `ack`/`telemetry`/`bridge_status` records, and exposes fixed routine slots 2-4 for bounded proof actions: 720 spin, arm up/down, and one-foot forward/back. These routine slots are command IDs inside the running bridge program, not VEXos user-program upload slots. See derives_from::[[v5-brain-python-vs-pros]].
+
+## Bounded Release Commands
+
+[Research: Robot AprilTag Ball Delivery](../sources/robot-apriltag-ball-delivery.md) adds a concrete example of why the coprocessor boundary needs fixed command grammar. The Pi-side ROS program can decide the sequence and vision target, but the Brain must expose a deterministic actuator primitive for the final drop. **`release` is therefore a bounded Brain command with `duration_ms`, separate from ROS-side `set_goal`, which remains unsupported by the Brain.** uses::[[vexy_ros ROS 2 Runtime]]
 
 implements::[[llm-authored-self-model]]
 transports::[[task-telemetry-contract]]

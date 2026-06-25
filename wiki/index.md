@@ -75,6 +75,7 @@ The wiki is split into two domains with opposite organizing laws:
 - [Research: Game Object Selection — Graspability, Scoopability, Launchability](knowledge/sources/game-object-selection.md) — racquetball (57 mm, ~40 g, hollow rubber) recommended; only object that fits claw + scoop + flywheel simultaneously; compression rule: ~10% of diameter; foam ball runner-up
 - [Research: Task Contract Redesign — Single "Score" Task](knowledge/sources/task-contract-score-redesign.md) — replaces grab/pull/throw with one ScoreContract; fitness = distance_from_bin_m; motor contract layer unchanged; only 2 code files change
 - [Research — RPi OS Options for the Capstone (+ Addendum)](knowledge/sources/rpi-os-options.md) — four OS/stack options compared; Ubuntu 24.04 + Jazzy camera path confirmed (RPi libcamera fork, 85–90% success); Hailo AI HAT+ ($70) = lowest-risk FPS upgrade; ROS 2 gains: yolo_ros, apriltag_ros, foxglove, ros2 bag→Claude API; stay on Bookworm for Jun 29
+- [Research: Robot AprilTag Ball Delivery](knowledge/sources/robot-apriltag-ball-delivery.md) — implementation workflow for `vexy_deliver_ball`: scan, approach ball tag 1, approach bin tag 0, then bounded release command
 
 ### Concepts
 - [Agent Evolution Factory](knowledge/concepts/agent-evolution-factory.md) — evolving AI-agent architectures via ML+LLM; the recommended capstone pitch
@@ -97,7 +98,7 @@ The wiki is split into two domains with opposite organizing laws:
 - [Aesthetic Vocabulary](knowledge/concepts/aesthetic-vocabulary.md) — non-functional grammar extension for LLM visual self-expression; body panels, surface markings, appendages, accent lighting; aesthetic choices encode hypotheses; free–$25 material tiers
 - [Agentic Physical Autoresearch](knowledge/concepts/agentic-physical-autoresearch.md) — coding agent + repeatable physical feedback loop (reset → execute → verify → refine) on real hardware; ENPIRE at research scale, hyperfamila at hobbyist scale
 - [Imitation Learning — ACT](knowledge/concepts/imitation-learning-act.md) — train robot policies from teleop demos; ACT (Action Chunking with Transformers) at 100 eps / 5M params via LeRobot; proven at hackathon scale
-- [VEX Coprocessor Pattern](knowledge/concepts/vex-coprocessor-pattern.md) — V5 Brain + external Linux host over USB serial/RS-485; canonical two-computer split; 13 confirmed open-source implementations; RPi5 is a novel drop-in for Jetson Nano
+- [VEX Coprocessor Pattern](knowledge/concepts/vex-coprocessor-pattern.md) — V5 Brain + external Linux host over USB serial/RS-485; fixed command grammar now includes bounded `release` as the Brain-side drop primitive
 - [Raspberry Pi 5 USB PD Power](knowledge/concepts/rpi5-usb-pd-power.md) — Pi 5 PD negotiation behavior: two-alert distinction (PD miss vs. voltage sag), free config.txt fixes, hardware alternatives to 52Pi board
 - [3D Printing File Formats](knowledge/concepts/3d-printing-file-formats.md) — STL (universal, no color), 3MF (modern standard, color+metadata), STEP (engineering B-Rep), IGES (legacy); G-code is the machine instruction output, not a model format
 - [Slicer Workflow](knowledge/concepts/slicer-workflow.md) — mandatory three-stage pipeline: model file → slicer software → G-code → printer; slicer configures layer height, infill, supports, temperatures; resin and FDM slicers are not interchangeable
@@ -110,8 +111,8 @@ The wiki is split into two domains with opposite organizing laws:
 - [Scoop and Flywheel Build Diagrams](knowledge/concepts/scoop-and-flywheel-build-diagrams.md) — exploded and assembled line drawings for the inventory-aware scoop clamp adapter, flywheel plate-and-spacer frame, and 5x15 VEX plate recut cassettes
 - [PROS Dependency & Build Compatibility](knowledge/concepts/pros-dependency-compatibility.md) — rules for adding ANY PROS library on this Brain: pin kernel-4.x, build as monolith (`USE_PACKAGE:=0`); hot/cold split is silently broken (program runs but display + serial no-op)
 - [VEX V5 3-Wire Servo Port](knowledge/concepts/vex-v5-3wire-servo.md) — 2.54 mm keyed connector; GND·+5V·Signal pinout; 5 V @ 2 A shared; JR RC servos direct-fit; no encoder feedback (use Smart Motors for telemetered axes)
-- [AprilTag Workspace Layout for Manipulation Tasks](knowledge/concepts/apriltag-workspace-layout.md) — **updated** 150×200cm arena, 200mm tags (corrects prior 80cm/100mm); checkpoint re-fix pattern; 3 purpose-assigned tags (bin/staging/home); matte paper; robot localization for grab-and-toss task
-- [Robot Workspace Map (Multi-Arena JSON Format)](knowledge/concepts/robot-workspace-map.md) — 2D JSON map schema (map_id, arena, tags[], waypoints{}); VEXY_MAP env var for multi-arena support; pose memory + dead-reckoning volatile state; shape extensible via arena.shape field
+- [AprilTag Workspace Layout for Manipulation Tasks](knowledge/concepts/apriltag-workspace-layout.md) — **updated** 150×200cm arena, 200mm tags; executable delivery flow now uses staging tag 1 and bin tag 0
+- [Robot Workspace Map (Multi-Arena JSON Format)](knowledge/concepts/robot-workspace-map.md) — 2D JSON map schema; active maps now live under `robot/ros2-runtime/config/maps/`; delivery defaults depend on bin/staging roles
 - [Game Object Selection](knowledge/concepts/game-object-selection.md) — multi-criteria framework for choosing a game piece compatible with claw + scoop + flywheel; racquetball (57 mm) is GEN-0 default; compression rule ~10% of diameter; 55–65 mm intersection window
 - [RPi Coprocessor OS Options](knowledge/concepts/rpi-coprocessor-os-options.md) — four-option decision matrix (Bookworm/Ubuntu/Trixie × PiCam2/OAK-D/Hailo); Ubuntu + Jazzy camera path confirmed via libcamera fork; VEX serial always custom pyserial; sequenced upgrade path post-Jun-29
 
@@ -171,6 +172,7 @@ The wiki is split into two domains with opposite organizing laws:
   - [Foxglove Studio](knowledge/entities/tools/foxglove-studio.md) — web-based ROS 2 visualization; `foxglove_bridge` apt on Jazzy; debug bounding boxes + poses in browser from any machine; invaluable for headless Pi demos
 - Components — [knowledge/entities/components/](knowledge/entities/components/) (this project's own modules, services, scripts)
   - [localizer.py](knowledge/entities/components/localizer.md) — planned Pi-side module: load_map, update_from_tag, update_from_odometry, get_vector_to_waypoint; bridges workspace map config and runtime pose state
+  - [vexy_ros ROS 2 Runtime](knowledge/entities/components/vexy-ros-runtime.md) — current ROS 2 Jazzy Pi runtime: camera, AprilTags, scene map, task planning, bounded local skills, `vexy_deliver_ball`, V5 bridge, and proof export
 
 ---
 

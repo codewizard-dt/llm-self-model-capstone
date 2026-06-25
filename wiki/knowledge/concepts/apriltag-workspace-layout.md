@@ -1,12 +1,14 @@
 ---
 id: apriltag-workspace-layout
 title: AprilTag Workspace Layout for Manipulation Tasks
-updated: 2026-06-22
+aliases: [AprilTag workspace layout, manipulation tag layout, ball staging tag layout]
+updated: 2026-06-25
 tags: [concept, apriltag, vision, localization, workspace, manipulation]
 sources:
   - ../sources/apriltags.md
   - ../sources/vision-vex-architecture.md
   - ../sources/apriltag-larger-workspace-map.md
+  - ../sources/robot-apriltag-ball-delivery.md
 ---
 
 # AprilTag Workspace Layout for Manipulation Tasks
@@ -72,3 +74,7 @@ Print extras — tags are paper and can be lost or damaged. Print the full `tag3
 | Return | Tag 2 | Home-position confirmation |
 
 The `{dx, dy, dtheta}` residuals from each tag observation populate the gap block in the [[task-telemetry-contract]] and feed the LLM's self-model revision loop alongside motor telemetry.
+
+## Delivery Routine Confirmation
+
+[Research: Robot AprilTag Ball Delivery](../sources/robot-apriltag-ball-delivery.md) confirms that the current ROS 2 delivery program uses this tag assignment directly: first scan/orient, then approach `ball_staging` tag `1`, then approach `bin` tag `0`, then run a bounded release command. **The tag layout is now executable as a proof routine, not only a proposed workspace design.** uses::[[vexy_ros ROS 2 Runtime]] relates_to::[[robot-workspace-map]]

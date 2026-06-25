@@ -91,19 +91,12 @@ def _launch_nodes(context, *args, **kwargs):
             if workspace_map_name.endswith(".json")
             else f"{workspace_map_name}.json"
         )
-        map_path = (
-            Path(get_package_share_directory("vexy_ros"))
-            / "config"
-            / "maps"
-            / map_filename
-        )
+        map_path = Path(get_package_share_directory("vexy_ros")) / "config" / "maps" / map_filename
         if not map_path.exists():
             raise RuntimeError(f"workspace map does not exist: {map_path}")
         workspace_map_path = str(map_path)
     camera_in_robot_json = LaunchConfiguration("camera_in_robot_json").perform(context)
-    object_dimensions_json = LaunchConfiguration("object_dimensions_json").perform(
-        context
-    )
+    object_dimensions_json = LaunchConfiguration("object_dimensions_json").perform(context)
 
     return [
         # ----------------------------------------------------------
@@ -209,9 +202,7 @@ def _launch_nodes(context, *args, **kwargs):
                 {
                     "max_hz": LaunchConfiguration("yellow_ball_max_hz"),
                     "min_area_px": LaunchConfiguration("yellow_ball_min_area_px"),
-                    "min_circularity": LaunchConfiguration(
-                        "yellow_ball_min_circularity"
-                    ),
+                    "min_circularity": LaunchConfiguration("yellow_ball_min_circularity"),
                     "max_detections": LaunchConfiguration("yellow_ball_max_detections"),
                     "h_min": LaunchConfiguration("yellow_ball_h_min"),
                     "s_min": LaunchConfiguration("yellow_ball_s_min"),
@@ -305,9 +296,7 @@ def generate_launch_description():
             DeclareLaunchArgument("camera_width", default_value="640"),
             DeclareLaunchArgument("camera_height", default_value="480"),
             DeclareLaunchArgument("camera_fps", default_value="15"),
-            DeclareLaunchArgument(
-                "camera_frame_id", default_value="camera_optical_frame"
-            ),
+            DeclareLaunchArgument("camera_frame_id", default_value="camera_optical_frame"),
             DeclareLaunchArgument(
                 "camera_info_url",
                 default_value=[
@@ -325,9 +314,7 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "workspace_map_name",
-                default_value=EnvironmentVariable(
-                    "VEXY_MAP", default_value="table-grab-toss-v1"
-                ),
+                default_value=EnvironmentVariable("VEXY_MAP", default_value="table-grab-toss-v1"),
             ),
             DeclareLaunchArgument(
                 "workspace_map_path",
@@ -353,9 +340,7 @@ def generate_launch_description():
             DeclareLaunchArgument("yellow_ball_detector_enabled", default_value="true"),
             DeclareLaunchArgument("yellow_ball_max_hz", default_value="8.0"),
             DeclareLaunchArgument("yellow_ball_min_area_px", default_value="200.0"),
-            DeclareLaunchArgument(
-                "yellow_ball_min_circularity", default_value="0.25"
-            ),
+            DeclareLaunchArgument("yellow_ball_min_circularity", default_value="0.25"),
             DeclareLaunchArgument("yellow_ball_max_detections", default_value="1"),
             DeclareLaunchArgument("yellow_ball_h_min", default_value="20"),
             DeclareLaunchArgument("yellow_ball_s_min", default_value="25"),
