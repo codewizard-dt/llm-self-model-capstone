@@ -159,7 +159,7 @@ Expected: `vexy_ros` appears in output. If not, run `source ~/ros2_ws/install/se
 ros2 node list
 ```
 
-Expected: `/camera`, `/camera_rectify`, `/apriltag`, `/align_to_tag`, `/vex_bridge`, and `/foxglove_bridge` are all listed.
+Expected: `/camera`, `/camera_rectify`, `/apriltag`, `/align_to_tag`, `/survey_scan`, `/vex_bridge`, and `/foxglove_bridge` are all listed.
 
 ### 2.4 Camera publishing
 
@@ -274,7 +274,7 @@ proof=~/proof/tag-approach-scan-$(date +%Y%m%d-%H%M%S)
 mkdir -p "$proof"
 ros2 bag record -s mcap -o "$proof/mcap" \
   /tf /apriltag/detections /vision/object_detections /vision/object_indications \
-  /vision/scene_map /task_plan/current \
+  /vision/scene_map /task_plan/current /survey/feedback /survey/result \
   /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status
 ```
 
@@ -385,7 +385,14 @@ ros2 topic echo /vision/scene_map --once
 Depth is estimated from calibrated intrinsics and configured class dimensions.
 Use AprilTags or operator-measured indications for precise object coordinates.
 
-Dynamic plans accept tag and object targets:
+The yellow ball does not require a trained NCNN model. The default launch runs a
+lightweight HSV detector that publishes the label `yellow_ball` on
+`/vision/object_detections`; `object_indication` projects it with the default
+`0.065 m` ball diameter. If the live lighting changes, tune it with launch args
+such as `yellow_ball_h_min`, `yellow_ball_h_max`, `yellow_ball_min_area_px`, and
+`yellow_ball_max_detections`.
+
+Dynamic plans accept tag, object, and survey targets:
 
 ```bash
 ros2 topic echo /task_plan/current &
@@ -393,11 +400,30 @@ ros2 topic pub --once /task_plan/request std_msgs/String \
   '{"data":"{\"target\":\"tag:0\",\"action\":\"approach\",\"target_distance_m\":0.8,\"dispatch\":true}"}'
 ros2 topic pub --once /task_plan/request std_msgs/String \
   '{"data":"{\"target\":\"object:bin\",\"action\":\"inspect\"}"}'
+ros2 topic pub --once /task_plan/request std_msgs/String \
+  '{"data":"{\"target\":\"object:yellow_ball\",\"action\":\"inspect\"}"}'
+ros2 topic pub --once /task_plan/request std_msgs/String \
+  '{"data":"{\"target\":\"survey:all\",\"action\":\"survey_all\"}"}'
+ros2 topic pub --once /task_plan/request std_msgs/String \
+  '{"data":"{\"target\":\"survey:all\",\"action\":\"survey_all\",\"dispatch\":true,\"survey_duration_s\":3.0,\"survey_omega_rad_s\":0.22}"}'
 ```
 
 Tag plans can dispatch through `align_to_tag`; object plans are mapped but
 non-dispatchable until a bounded object/go-to-pose controller is implemented and
-proven.
+proven. Survey plans dispatch through `survey_scan` when `dispatch:true`; that
+controller refuses to start without fresh `/vex/ack`, `/vex/telemetry`, motion
+enabled, no estop, and healthy drive ports. Use the short duration/omega override
+for supervised checks, then omit it for the default full scan.
+
+For the first morning check, capture the no-motion vision/planning proof:
+
+```bash
+ros2 run vexy_ros vexy_scene_observation_proof
+```
+
+Expected: a new `/home/vexy/proof/scene-observation-*/scene_observation_proof.json`
+containing `object:yellow_ball` and `survey:all` task plans. The helper always
+uses `dispatch:false`; it does not move the robot.
 
 ---
 
@@ -413,7 +439,7 @@ ros2 bag record -a -o session_$(date +%Y%m%d_%H%M%S)
 Record specific topics only (smaller files):
 
 ```bash
-ros2 bag record /camera/image_raw /camera/camera_info /camera/image_rect /apriltag/detections /tf /vision/object_detections /vision/object_indications /vision/scene_map /task_plan/current /align_to_tag/feedback /align_to_tag/result /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status \
+ros2 bag record /camera/image_raw /camera/camera_info /camera/image_rect /apriltag/detections /tf /vision/object_detections /vision/object_indications /vision/scene_map /task_plan/current /align_to_tag/feedback /align_to_tag/result /survey/feedback /survey/result /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status \
   -o session_$(date +%Y%m%d_%H%M%S)
 ```
 

@@ -76,11 +76,12 @@ def detections_payload(
     frame_id: str,
     stamp_s: float,
     model_path: str,
+    source: str = "yolo_ncnn",
 ) -> str:
     return json.dumps(
         {
             "type": "object_detections",
-            "source": "yolo_ncnn",
+            "source": source,
             "model_path": model_path,
             "frame_id": frame_id,
             "stamp_s": stamp_s,
@@ -90,6 +91,11 @@ def detections_payload(
         separators=(",", ":"),
         sort_keys=True,
     )
+
+
+def detections_source(raw: str | Mapping[str, Any]) -> str:
+    payload = json.loads(raw) if isinstance(raw, str) else raw
+    return str(payload.get("source", "object_detector"))
 
 
 def parse_detections_payload(raw: str | Mapping[str, Any]) -> list[Detection]:

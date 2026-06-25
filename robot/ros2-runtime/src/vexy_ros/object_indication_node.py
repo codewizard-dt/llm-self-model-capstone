@@ -9,6 +9,7 @@ from sensor_msgs.msg import CameraInfo
 from std_msgs.msg import String
 
 from .object_detection import (
+    detections_source,
     indications_from_detections,
     intrinsics_from_camera_info,
     parse_detections_payload,
@@ -23,6 +24,7 @@ DEFAULT_OBJECT_DIMENSIONS_JSON = json.dumps(
         "bottle": {"height_m": 0.20, "width_m": 0.065},
         "cup": {"height_m": 0.12, "width_m": 0.08},
         "sports ball": {"diameter_m": 0.065},
+        "yellow ball": {"diameter_m": 0.065},
     },
     sort_keys=True,
 )
@@ -80,6 +82,7 @@ class ObjectIndicationNode(Node):
             self.get_logger().warn("object detections ignored until CameraInfo arrives")
             return
         try:
+            source = detections_source(msg.data)
             detections = parse_detections_payload(msg.data)
             indications = indications_from_detections(
                 detections,
@@ -87,9 +90,12 @@ class ObjectIndicationNode(Node):
                 dimensions=self._dimensions,
                 default_height_m=self._default_height_m,
                 min_confidence=self._min_confidence,
+                source=source,
             )
         except (TypeError, ValueError, json.JSONDecodeError) as exc:
             self.get_logger().warn(f"ignored bad object detection payload: {exc}")
+            return
+        if not indications:
             return
 
         payload = {

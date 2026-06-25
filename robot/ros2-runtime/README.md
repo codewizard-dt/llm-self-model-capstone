@@ -182,9 +182,11 @@ ros2 topic hz /camera/image_raw
 | `apriltag` | `apriltag_ros` | /camera/image_rect + /camera/camera_info → /apriltag/detections + /tf |
 | `scene_map` | `vexy_ros` | /tf tag poses + workspace map → /vision/scene_map |
 | `yolo_ncnn` | `vexy_ros` | Optional YOLO NCNN inference over /camera/image_rect → /vision/object_detections |
+| `yellow_ball_detector` | `vexy_ros` | Lightweight HSV yellow ball detector → /vision/object_detections |
 | `object_indication` | `vexy_ros` | Object boxes + /camera/camera_info → /vision/object_indications |
 | `task_plan` | `vexy_ros` | /vision/scene_map + target request → /task_plan/current |
 | `align_to_tag` | `vexy_ros` | Bounded local skill: visible tag + bridge health → /vex/cmd |
+| `survey_scan` | `vexy_ros` | Bounded scan-only skill: survey goal + bridge/telemetry health → /vex/cmd |
 | `vex_bridge` | `vexy_ros` | USB serial ↔ /vex/cmd + /vex/ack + /vex/telemetry + /vex/bridge_status |
 | `foxglove_bridge` | `foxglove_bridge` | WebSocket bridge at port 8765 for Foxglove Studio |
 
@@ -200,12 +202,16 @@ ros2 topic hz /camera/image_raw
 | `/vision/object_detections` | `std_msgs/String` | pub (yolo_ncnn), sub (object_indication) | JSON YOLO NCNN boxes in image coordinates |
 | `/vision/object_indications` | `std_msgs/String` | pub (object_indication/operator), sub (scene_map) | JSON object hints in camera-relative coordinates |
 | `/vision/scene_map` | `std_msgs/String` | pub (scene_map) | JSON robot/tag/object coordinates in the active workspace map |
-| `/task_plan/request` | `std_msgs/String` | sub (task_plan) | JSON target request, e.g. `tag:0` or `object:bin` |
-| `/task_plan/current` | `std_msgs/String` | pub (task_plan) | JSON bounded plan. Tag plans can dispatch to align; object plans are map targets only until go-to-pose is proven. |
+| `/task_plan/request` | `std_msgs/String` | sub (task_plan) | JSON target request, e.g. `tag:0`, `object:yellow_ball`, or `survey:all` |
+| `/task_plan/current` | `std_msgs/String` | pub (task_plan) | JSON bounded plan. Tag and survey plans can dispatch to proven local skills; object plans are map targets until object motion is proven. |
 | `/align_to_tag/goal` | `std_msgs/String` | sub (align_to_tag) | JSON goal for a bounded local align run |
 | `/align_to_tag/cancel` | `std_msgs/String` | sub (align_to_tag) | Cancel the current align run |
 | `/align_to_tag/feedback` | `std_msgs/String` | pub (align_to_tag) | JSON feedback with tag errors, ack state, and fault state |
 | `/align_to_tag/result` | `std_msgs/String` | pub (align_to_tag) | JSON result with success/failure reason |
+| `/survey/goal` | `std_msgs/String` | sub (survey_scan) | JSON goal for a bounded rotate-in-place survey scan |
+| `/survey/cancel` | `std_msgs/String` | sub (survey_scan) | Cancel the current survey scan |
+| `/survey/feedback` | `std_msgs/String` | pub (survey_scan) | JSON feedback with elapsed time, observed tags, ack state, and fault state |
+| `/survey/result` | `std_msgs/String` | pub (survey_scan) | JSON result with success/failure reason and observed tag IDs |
 | `/vex/cmd` | `std_msgs/String` | sub (vex_bridge) | JSON command packet to Brain |
 | `/vex/ack` | `std_msgs/String` | pub (vex_bridge) | JSON ack from Brain, keyed by `ack` sequence |
 | `/vex/telemetry` | `std_msgs/String` | pub (vex_bridge) | JSON telemetry/sample/event records from Brain |
@@ -302,6 +308,14 @@ VEXY_MAP=gen0-grab-toss-v1 ros2 launch vexy_ros vexy.launch.py
 | `yolo_input_size` | `640` | Square NCNN input size used for letterbox preprocessing |
 | `yolo_input_name` | auto | Override NCNN input blob name when auto-detection is wrong |
 | `yolo_output_name` | auto | Override NCNN output blob name when auto-detection is wrong |
+| `yellow_ball_detector_enabled` | `true` | Run the lightweight yellow-ball color detector |
+| `yellow_ball_max_hz` | `8.0` | Maximum yellow-ball color detection rate |
+| `yellow_ball_min_area_px` | `200.0` | Minimum yellow blob area accepted as a ball candidate |
+| `yellow_ball_min_circularity` | `0.25` | Minimum contour circularity accepted as a ball candidate |
+| `yellow_ball_max_detections` | `1` | Maximum color-detector ball candidates to publish per frame |
+| `yellow_ball_h_min` / `yellow_ball_h_max` | `20` / `45` | OpenCV HSV hue range for the yellow ball |
+| `yellow_ball_s_min` / `yellow_ball_s_max` | `25` / `255` | OpenCV HSV saturation range for the yellow ball |
+| `yellow_ball_v_min` / `yellow_ball_v_max` | `80` / `255` | OpenCV HSV value range for the yellow ball |
 | `object_dimensions_json` | built-in defaults | Per-class dimensions used to estimate object depth from boxes |
 | `default_object_height_m` | `0.12` | Fallback height for unlisted object classes |
 | `object_min_confidence` | `0.35` | Minimum confidence for object projection into the scene map |
@@ -321,6 +335,11 @@ The node publishes 2D detections. `object_indication` uses calibrated
 positions, which `scene_map` then transforms into map coordinates. This is an
 estimate; for precise object coordinates, tag the object or provide a measured
 operator indication.
+
+The yellow ball has a first-class label, `yellow_ball`, with a default diameter
+of `0.065 m`. The lightweight `yellow_ball_detector` publishes that label even
+when no NCNN model is installed. A future NCNN model can also emit
+`yellow_ball` or `yellow ball`; both labels are mapped.
 
 ---
 
@@ -353,7 +372,7 @@ Useful panels: **Image** (subscribe `/camera/image_raw` or `/camera/image_rect`)
 ros2 bag record -a -o session_$(date +%Y%m%d_%H%M%S)
 
 # Record only camera, vision, plan, and VEX bridge topics (smaller files)
-ros2 bag record /camera/image_raw /camera/camera_info /camera/image_rect /apriltag/detections /tf /vision/object_detections /vision/object_indications /vision/scene_map /task_plan/current /align_to_tag/feedback /align_to_tag/result /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status \
+ros2 bag record /camera/image_raw /camera/camera_info /camera/image_rect /apriltag/detections /tf /vision/object_detections /vision/object_indications /vision/scene_map /task_plan/current /align_to_tag/feedback /align_to_tag/result /survey/feedback /survey/result /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status \
     -o session_$(date +%Y%m%d_%H%M%S)
 
 # Inspect a recorded bag
@@ -395,11 +414,32 @@ ros2 topic pub --once /task_plan/request std_msgs/String \
   '{"data":"{\"target\":\"tag:0\",\"action\":\"approach\",\"target_distance_m\":0.8,\"dispatch\":true}"}'
 ros2 topic pub --once /task_plan/request std_msgs/String \
   '{"data":"{\"target\":\"object:bin\",\"action\":\"inspect\"}"}'
+ros2 topic pub --once /task_plan/request std_msgs/String \
+  '{"data":"{\"target\":\"object:yellow_ball\",\"action\":\"inspect\"}"}'
+ros2 topic pub --once /task_plan/request std_msgs/String \
+  '{"data":"{\"target\":\"survey:all\",\"action\":\"survey_all\"}"}'
+ros2 topic pub --once /task_plan/request std_msgs/String \
+  '{"data":"{\"target\":\"survey:all\",\"action\":\"survey_all\",\"dispatch\":true,\"survey_duration_s\":3.0,\"survey_omega_rad_s\":0.22}"}'
 ```
 
 Tag plans can dispatch through the proven `align_to_tag` primitive. Object plans
 are mapped but report `object_go_to_pose_controller_not_proven` until a bounded
-object/go-to-pose motion skill is implemented and physically verified.
+object/go-to-pose motion skill is implemented and physically verified. Survey
+plans dispatch through `survey_scan` when `dispatch:true`; the controller refuses
+to start unless `/vex/ack`, `/vex/telemetry`, and drive safety state are fresh.
+Use short `survey_duration_s` / `survey_omega_rad_s` overrides for supervised
+checks, then omit them for the default full scan.
+
+To capture the no-motion proof for tomorrow's first check:
+
+```bash
+ros2 run vexy_ros vexy_scene_observation_proof
+```
+
+This writes `scene_observation_proof.json` under `/home/vexy/proof/` with the
+latest detections, object indications, scene map, and task plans for
+`object:yellow_ball` plus `survey:all`. It always publishes task requests with
+`dispatch:false`.
 
 ---
 

@@ -41,6 +41,29 @@ class ObjectDetectionTests(unittest.TestCase):
         self.assertAlmostEqual(indications[0]["left_m"], -0.0)
         self.assertEqual(indications[0]["source"], "yolo_ncnn")
 
+    def test_yellow_ball_dimension_maps_from_alias_label(self) -> None:
+        detections = [
+            Detection(
+                label="yellow_ball",
+                class_id=0,
+                confidence=0.9,
+                bbox_xyxy=(300.0, 200.0, 340.0, 240.0),
+            )
+        ]
+        dimensions = parse_dimensions_json('{"yellow_ball":{"diameter_m":0.065}}')
+
+        indications = indications_from_detections(
+            detections,
+            intrinsics=CameraIntrinsics(fx=560.0, fy=560.0, cx=320.0, cy=240.0),
+            dimensions=dimensions,
+            min_confidence=0.35,
+            source="yellow_ball_color",
+        )
+
+        self.assertEqual(indications[0]["name"], "yellow_ball")
+        self.assertEqual(indications[0]["source"], "yellow_ball_color")
+        self.assertAlmostEqual(indications[0]["forward_m"], 0.91)
+
     def test_filters_low_confidence_and_uses_default_height(self) -> None:
         detections = [
             Detection(

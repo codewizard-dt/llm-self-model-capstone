@@ -4,16 +4,28 @@ import json
 import time
 from typing import Any
 
-import rclpy
-from rclpy.node import Node
-from sensor_msgs.msg import Image
-from std_msgs.msg import String
+try:
+    import rclpy
+    from rclpy.node import Node
+    from std_msgs.msg import String
+except ModuleNotFoundError:  # pragma: no cover - allows pure helper tests off ROS.
+    rclpy = None  # type: ignore[assignment]
+
+    class Node:  # type: ignore[no-redef]
+        pass
+
+    class String:  # type: ignore[no-redef]
+        def __init__(self, *, data: str = "") -> None:
+            self.data = data
+
 
 from .object_detection import Detection, detections_payload
 
 
 class YoloNcnnNode(Node):
     def __init__(self) -> None:
+        from sensor_msgs.msg import Image
+
         super().__init__("yolo_ncnn")
         self.declare_parameter("model_path", "")
         self.declare_parameter("image_topic", "/camera/image_rect")
@@ -76,7 +88,7 @@ class YoloNcnnNode(Node):
             2,
         )
 
-    def _on_image(self, msg: Image) -> None:
+    def _on_image(self, msg) -> None:
         now_s = time.monotonic()
         if now_s - self._last_inference_s < self._min_period_s:
             return
@@ -236,12 +248,14 @@ class DirectNcnnYoloDetector:
         return str(values[0]) if values else fallback
 
 
-def image_to_bgr_array(msg: Image):
+def image_to_bgr_array(msg):
     import numpy as np
 
     channels_by_encoding = {
         "bgr8": 3,
         "rgb8": 3,
+        "bgra8": 4,
+        "rgba8": 4,
         "mono8": 1,
     }
     channels = channels_by_encoding.get(msg.encoding)
@@ -256,6 +270,10 @@ def image_to_bgr_array(msg: Image):
     frame = data[:expected].reshape((int(msg.height), int(msg.width), channels))
     if msg.encoding == "rgb8":
         frame = frame[:, :, ::-1]
+    if msg.encoding == "bgra8":
+        frame = frame[:, :, :3]
+    if msg.encoding == "rgba8":
+        frame = frame[:, :, 2::-1]
     if msg.encoding == "mono8":
         frame = np.repeat(frame, 3, axis=2)
     return frame
@@ -366,6 +384,8 @@ def bbox_iou(
 
 
 def main(args=None) -> None:
+    if rclpy is None:
+        raise RuntimeError("rclpy is required to run yolo_ncnn_node")
     rclpy.init(args=args)
     node = YoloNcnnNode()
     try:

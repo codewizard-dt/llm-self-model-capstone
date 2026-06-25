@@ -39,10 +39,18 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn("yolo_input_name", launch_text)
         self.assertIn("yolo_output_name", launch_text)
         self.assertIn("yolo_ncnn_node", launch_text)
+        self.assertIn("yellow_ball_detector_enabled", launch_text)
+        self.assertIn("yellow_ball_detector_node", launch_text)
+        self.assertIn("yellow_ball_max_detections", launch_text)
+        self.assertIn("yellow_ball_h_min", launch_text)
+        self.assertIn("yellow_ball_v_max", launch_text)
+        self.assertIn('"yellow_ball":{"diameter_m":0.065}', launch_text)
         self.assertIn("object_indication_node", launch_text)
         self.assertIn("object_dimensions_json", launch_text)
         self.assertIn("task_plan_node", launch_text)
         self.assertIn('executable="align_to_tag_node"', launch_text)
+        self.assertIn('executable="survey_scan_node"', launch_text)
+        self.assertIn("/survey/goal", launch_text)
 
     def test_apriltag_config_names_the_expected_first_proof_tag(self) -> None:
         config_text = (ROOT / "config" / "apriltag_36h11.yaml").read_text()
@@ -91,10 +99,15 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn("scene_map_node = vexy_ros.scene_map_node:main", setup_text)
         self.assertIn("yolo_ncnn_node = vexy_ros.yolo_ncnn_node:main", setup_text)
         self.assertIn(
+            "yellow_ball_detector_node = vexy_ros.yellow_ball_detector_node:main",
+            setup_text,
+        )
+        self.assertIn(
             "object_indication_node = vexy_ros.object_indication_node:main",
             setup_text,
         )
         self.assertIn("task_plan_node = vexy_ros.task_plan_node:main", setup_text)
+        self.assertIn("survey_scan_node = vexy_ros.survey_scan_node:main", setup_text)
         self.assertIn(
             "vexy_export_contract_jsonl = vexy_ros.evidence_export:main", setup_text
         )
@@ -103,6 +116,10 @@ class LaunchContractTests(unittest.TestCase):
         )
         self.assertIn(
             "vexy_run_calibrated_tag_proof = vexy_ros.proof_runner:main",
+            setup_text,
+        )
+        self.assertIn(
+            "vexy_scene_observation_proof = vexy_ros.observation_proof:main",
             setup_text,
         )
         self.assertIn(

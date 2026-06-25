@@ -12,6 +12,8 @@ Nodes launched:
                   Publishes: /vision/scene_map
   yolo_ncnn     — optional YOLO NCNN object detector over rectified camera frames
                   Publishes: /vision/object_detections
+  yellow_ball_detector — lightweight HSV yellow ball detector
+                         Publishes: /vision/object_detections
   object_indication — object boxes + CameraInfo → camera-relative object indications
                       Publishes: /vision/object_indications
   task_plan     — scene map + target request → bounded tag/object task plan
@@ -19,6 +21,9 @@ Nodes launched:
   align_to_tag  — bounded local-control skill for visible AprilTag alignment
                   Subscribes: /align_to_tag/goal, /apriltag/detections, /vex/ack, /vex/bridge_status
                   Publishes: /vex/cmd, /align_to_tag/feedback, /align_to_tag/result
+  survey_scan   — bounded scan-only skill for survey:all plans
+                  Subscribes: /survey/goal, /vex/ack, /vex/telemetry, /vex/bridge_status, /vision/scene_map
+                  Publishes: /vex/cmd, /survey/feedback, /survey/result
   vex_bridge       — USB serial bridge to V5 Brain
                      Subscribes: /vex/cmd
                      Publishes:  /vex/ack, /vex/telemetry, /vex/bridge_status
@@ -192,6 +197,33 @@ def _launch_nodes(context, *args, **kwargs):
             ],
         ),
         # ----------------------------------------------------------
+        # Lightweight color detector for the yellow ball. This runs
+        # without a trained NCNN model and feeds the same detection path.
+        # ----------------------------------------------------------
+        Node(
+            package="vexy_ros",
+            executable="yellow_ball_detector_node",
+            name="yellow_ball_detector",
+            condition=IfCondition(LaunchConfiguration("yellow_ball_detector_enabled")),
+            parameters=[
+                {
+                    "max_hz": LaunchConfiguration("yellow_ball_max_hz"),
+                    "min_area_px": LaunchConfiguration("yellow_ball_min_area_px"),
+                    "min_circularity": LaunchConfiguration(
+                        "yellow_ball_min_circularity"
+                    ),
+                    "max_detections": LaunchConfiguration("yellow_ball_max_detections"),
+                    "h_min": LaunchConfiguration("yellow_ball_h_min"),
+                    "s_min": LaunchConfiguration("yellow_ball_s_min"),
+                    "v_min": LaunchConfiguration("yellow_ball_v_min"),
+                    "h_max": LaunchConfiguration("yellow_ball_h_max"),
+                    "s_max": LaunchConfiguration("yellow_ball_s_max"),
+                    "v_max": LaunchConfiguration("yellow_ball_v_max"),
+                    "label": "yellow_ball",
+                }
+            ],
+        ),
+        # ----------------------------------------------------------
         # Object projection into the existing scene-map input.
         # ----------------------------------------------------------
         Node(
@@ -207,8 +239,8 @@ def _launch_nodes(context, *args, **kwargs):
             ],
         ),
         # ----------------------------------------------------------
-        # Dynamic task planner for tag/object targets. Only tag plans
-        # dispatch to proven motion primitives for now.
+        # Dynamic task planner for tag/object/survey targets. Tag and
+        # survey plans dispatch to proven bounded motion primitives.
         # ----------------------------------------------------------
         Node(
             package="vexy_ros",
@@ -222,6 +254,14 @@ def _launch_nodes(context, *args, **kwargs):
             package="vexy_ros",
             executable="align_to_tag_node",
             name="align_to_tag",
+        ),
+        # ----------------------------------------------------------
+        # Bounded scan-only skill for survey:all planning.
+        # ----------------------------------------------------------
+        Node(
+            package="vexy_ros",
+            executable="survey_scan_node",
+            name="survey_scan",
         ),
         # ----------------------------------------------------------
         # VEX V5 serial bridge
@@ -309,13 +349,28 @@ def generate_launch_description():
             DeclareLaunchArgument("yolo_input_size", default_value="640"),
             DeclareLaunchArgument("yolo_input_name", default_value=""),
             DeclareLaunchArgument("yolo_output_name", default_value=""),
+            DeclareLaunchArgument("yellow_ball_detector_enabled", default_value="true"),
+            DeclareLaunchArgument("yellow_ball_max_hz", default_value="8.0"),
+            DeclareLaunchArgument("yellow_ball_min_area_px", default_value="200.0"),
+            DeclareLaunchArgument(
+                "yellow_ball_min_circularity", default_value="0.25"
+            ),
+            DeclareLaunchArgument("yellow_ball_max_detections", default_value="1"),
+            DeclareLaunchArgument("yellow_ball_h_min", default_value="20"),
+            DeclareLaunchArgument("yellow_ball_s_min", default_value="25"),
+            DeclareLaunchArgument("yellow_ball_v_min", default_value="80"),
+            DeclareLaunchArgument("yellow_ball_h_max", default_value="45"),
+            DeclareLaunchArgument("yellow_ball_s_max", default_value="255"),
+            DeclareLaunchArgument("yellow_ball_v_max", default_value="255"),
             DeclareLaunchArgument(
                 "object_dimensions_json",
                 default_value=(
                     '{"*":{"height_m":0.12},"bin":{"height_m":0.20,'
                     '"width_m":0.30},"bottle":{"height_m":0.20,'
                     '"width_m":0.065},"cup":{"height_m":0.12,'
-                    '"width_m":0.08},"sports ball":{"diameter_m":0.065}}'
+                    '"width_m":0.08},"sports ball":{"diameter_m":0.065},'
+                    '"yellow ball":{"diameter_m":0.065},'
+                    '"yellow_ball":{"diameter_m":0.065}}'
                 ),
             ),
             DeclareLaunchArgument("default_object_height_m", default_value="0.12"),

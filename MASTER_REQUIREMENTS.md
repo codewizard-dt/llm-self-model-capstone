@@ -147,7 +147,7 @@ The exported record is exactly the Task Telemetry Contract (Constraints -> Froze
 | 10 | `F8` generator — author Gen 0; revise Gen N+1 from gap residuals | operator | F2, F3, F10 | ✅ | TBD |
 | 11 | `F11` markdown-presenter — gap tables + self-model diff + reasoning | operator | F2, F10 | ✅ | TBD |
 | 12 | `F12` demo-replay — `make demo` deterministic Gen 0 → Gen 2 | operator | F8, F9, F10, F11, F14, F15 | ✅ | TBD |
-| 13 | `F5` vision-pipeline — PiCam2 rectification + AprilTag scene map + YOLO11n indications → vision block | coprocessor | F4 | ✅ | TBD |
+| 13 | `F5` vision-pipeline — PiCam2 rectification + AprilTag scene map + YOLO11n/color indications + no-motion task plans → vision block | coprocessor | F4 | ✅ | TBD |
 | 14 | `F6` evidence-export — MCAP/raw ROS evidence + telemetry/vision → contract JSONL | coprocessor | F4, F5 | ✅ | TBD |
 | 15 | `F7` brain-telemetry-firmware — PROS C++ emits the contract on a 20 ms tick | brain | F1 | ✅ (V1.5 live) | TBD |
 | 16 | `F17` live-hw-sources — ROS-backed V5 telemetry/ack + PiCam2/AprilTag scene map | coprocessor | F4 | ✅ (V1.5) | TBD |
@@ -164,8 +164,8 @@ The exported record is exactly the Task Telemetry Contract (Constraints -> Froze
 1. **`m1` contracts-frozen** *(manual — human gate)* — **Goal:** every contract loads and round-trips — pydantic models + example fixtures for the telemetry, self-model, parts-catalog, and control-command schemas parse cleanly. Gates all downstream work. **Signed off 2026-06-24 (215eight).**
 2. **`m1b` oracle-ready** *(manual — human gate)* — **Goal:** the parametric `SyntheticTelemetrySource` emits contract-valid synthetic telemetry with its hidden parameters separated from the Generator (datasheet-grounded until baseline data lands). Gates m2.
 3. **`m2` loop-closes-synthetic** *(manual — human gate)* — **Goal:** `make demo` runs the offline loop over synthetic JSONL — Generator authors Gen 0, the critic panel returns pass/flag, and gap residuals tighten Gen 0 → Gen 2 (the oracle's hidden parameter recovered within tolerance). Gates hardware integration. **Owner: TBD.**
-4. **`m3` vision-integrated** *(manual — human gate)* — **Goal:** PiCam2 measured `CameraInfo` is loaded, `/camera/image_rect` is live, AprilTag detections/TF produce `/vision/scene_map`, and the resulting vision evidence can be exported into a valid `vision` block. Gates m4. **Owner: TBD.**
-5. **`m4` hardware-capture + grounding** *(manual)* — **Goal:** a real V5 + Pi baseline capture (F16) is delivered as replayable MCAP plus contract-valid JSONL with Brain ack/telemetry, vision/scene-map evidence, and bounded motion proof, so the oracle can be recalibrated (F18) and replay stays green. Gates m5. **Owner: TBD** (capture) -> (calibrate).
+4. **`m3` vision-integrated** *(manual — human gate)* — **Goal:** PiCam2 measured `CameraInfo` is loaded, `/camera/image_rect` is live, AprilTag detections/TF produce `/vision/scene_map`, no-motion object task plans plus bounded survey task plans can be captured, and the resulting vision evidence can be exported into a valid `vision` block. Gates m4. **Owner: TBD.**
+5. **`m4` hardware-capture + grounding** *(manual)* — **Goal:** a real V5 + Pi baseline capture (F16) is delivered as replayable MCAP plus contract-valid JSONL with Brain ack/telemetry, vision/scene-map evidence, and bounded motion proof (tag alignment and scan-only survey), so the oracle can be recalibrated (F18) and replay stays green. Gates m5. **Owner: TBD** (capture) -> (calibrate).
 6. **`m5` demo-signoff** *(manual)* — **Goal:** Gen 0/1 recorded + Gen 2 live rehearsed end-to-end, with a recorded fallback ready.
 7. **`m6` online-control** *(manual; stretch — ADR-19)* — **Goal:** the `pilot` harness drives an open-ended task in real time on hardware (reading live telemetry + vision, issuing control-grammar commands), bounded by iteration/time limits with a working human interrupt. **Owner: TBD.**
 
