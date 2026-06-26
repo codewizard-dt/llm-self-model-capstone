@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from vexy_ros.object_detection import (
     CameraIntrinsics,
     Detection,
+    floor_project_detection,
     indications_from_detections,
     intrinsics_from_camera_info,
     parse_detections_payload,
@@ -40,6 +41,8 @@ class ObjectDetectionTests(unittest.TestCase):
         self.assertAlmostEqual(indications[0]["forward_m"], 1.12)
         self.assertAlmostEqual(indications[0]["left_m"], -0.0)
         self.assertEqual(indications[0]["source"], "yolo_ncnn")
+        self.assertEqual(indications[0]["range_source"], "bbox_size")
+        self.assertGreater(indications[0]["position_uncertainty_m"], 0.0)
 
     def test_yellow_ball_dimension_maps_from_alias_label(self) -> None:
         detections = [
@@ -112,6 +115,34 @@ class ObjectDetectionTests(unittest.TestCase):
 
         self.assertEqual(parsed[0].bbox_xyxy, (10.0, 20.0, 40.0, 60.0))
         self.assertEqual(intrinsics.cx, 421.0)
+
+    def test_floor_projection_can_replace_bbox_size_range(self) -> None:
+        detection = Detection(
+            label="yellow_ball",
+            class_id=0,
+            confidence=0.9,
+            bbox_xyxy=(300.0, 260.0, 340.0, 300.0),
+        )
+        intrinsics = CameraIntrinsics(fx=560.0, fy=560.0, cx=320.0, cy=240.0)
+
+        projected = floor_project_detection(
+            detection,
+            intrinsics=intrinsics,
+            camera_height_m=0.35,
+            camera_pitch_rad=0.45,
+        )
+        indications = indications_from_detections(
+            [detection],
+            intrinsics=intrinsics,
+            dimensions=parse_dimensions_json('{"yellow_ball":{"diameter_m":0.065}}'),
+            floor_projection_enabled=True,
+            camera_height_m=0.35,
+            camera_pitch_rad=0.45,
+        )
+
+        self.assertIsNotNone(projected)
+        self.assertEqual(indications[0]["range_source"], "floor_plane")
+        self.assertGreater(indications[0]["forward_m"], 0.0)
 
 
 if __name__ == "__main__":

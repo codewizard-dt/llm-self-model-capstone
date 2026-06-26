@@ -16,6 +16,10 @@ Nodes launched:
                          Publishes: /vision/object_detections
   object_indication — object boxes + CameraInfo → camera-relative object indications
                       Publishes: /vision/object_indications
+  object_track   — object indications → stable object tracks
+                   Publishes: /vision/object_tracks
+  agent_scene    — compact LLM-facing scene summary
+                   Publishes: /vision/agent_scene
   object_overlay — rectified camera image + object boxes → annotated debug image
                    Publishes: /vision/object_overlay
   task_plan     — scene map + target request → bounded tag/object task plan
@@ -173,6 +177,8 @@ def _launch_nodes(context, *args, **kwargs):
                     "workspace_map_path": workspace_map_path,
                     "map_frame": "map",
                     "camera_in_robot_json": camera_in_robot_json,
+                    "publish_hz": LaunchConfiguration("scene_map_publish_hz"),
+                    "tag_max_age_s": LaunchConfiguration("scene_map_tag_max_age_s"),
                 }
             ],
         ),
@@ -238,6 +244,48 @@ def _launch_nodes(context, *args, **kwargs):
                     "object_dimensions_json": object_dimensions_json,
                     "default_height_m": LaunchConfiguration("default_object_height_m"),
                     "min_confidence": LaunchConfiguration("object_min_confidence"),
+                    "floor_projection_enabled": LaunchConfiguration(
+                        "floor_projection_enabled"
+                    ),
+                    "camera_height_m": LaunchConfiguration("camera_height_m"),
+                    "camera_pitch_rad": LaunchConfiguration("camera_pitch_rad"),
+                }
+            ],
+        ),
+        # ----------------------------------------------------------
+        # Stable object tracks with candidate/confirmed/stale states.
+        # ----------------------------------------------------------
+        Node(
+            package="vexy_ros",
+            executable="object_track_node",
+            name="object_track",
+            parameters=[
+                {
+                    "min_hits": LaunchConfiguration("object_track_min_hits"),
+                    "association_gate_m": LaunchConfiguration(
+                        "object_track_association_gate_m"
+                    ),
+                    "stale_after_s": LaunchConfiguration("object_track_stale_after_s"),
+                    "expire_after_s": LaunchConfiguration(
+                        "object_track_expire_after_s"
+                    ),
+                    "publish_hz": LaunchConfiguration("object_track_publish_hz"),
+                }
+            ],
+        ),
+        # ----------------------------------------------------------
+        # LLM-facing compact scene contract. No raw images.
+        # ----------------------------------------------------------
+        Node(
+            package="vexy_ros",
+            executable="agent_scene_node",
+            name="agent_scene",
+            parameters=[
+                {
+                    "publish_hz": LaunchConfiguration("agent_scene_publish_hz"),
+                    "include_debug_tracks": LaunchConfiguration(
+                        "agent_scene_include_debug_tracks"
+                    ),
                 }
             ],
         ),
@@ -356,6 +404,8 @@ def generate_launch_description():
                 "camera_in_robot_json",
                 default_value=DEFAULT_CAMERA_IN_ROBOT,
             ),
+            DeclareLaunchArgument("scene_map_publish_hz", default_value="3.0"),
+            DeclareLaunchArgument("scene_map_tag_max_age_s", default_value="0.75"),
             DeclareLaunchArgument("yolo_enabled", default_value="false"),
             DeclareLaunchArgument(
                 "yolo_model_path",
@@ -395,6 +445,20 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument("default_object_height_m", default_value="0.12"),
             DeclareLaunchArgument("object_min_confidence", default_value="0.35"),
+            DeclareLaunchArgument("floor_projection_enabled", default_value="false"),
+            DeclareLaunchArgument("camera_height_m", default_value="0.0"),
+            DeclareLaunchArgument("camera_pitch_rad", default_value="0.0"),
+            DeclareLaunchArgument("object_track_min_hits", default_value="3"),
+            DeclareLaunchArgument(
+                "object_track_association_gate_m", default_value="0.25"
+            ),
+            DeclareLaunchArgument("object_track_stale_after_s", default_value="0.75"),
+            DeclareLaunchArgument("object_track_expire_after_s", default_value="3.0"),
+            DeclareLaunchArgument("object_track_publish_hz", default_value="4.0"),
+            DeclareLaunchArgument("agent_scene_publish_hz", default_value="3.0"),
+            DeclareLaunchArgument(
+                "agent_scene_include_debug_tracks", default_value="false"
+            ),
             DeclareLaunchArgument("object_overlay_enabled", default_value="true"),
             DeclareLaunchArgument(
                 "object_overlay_max_detection_age_s", default_value="0.5"

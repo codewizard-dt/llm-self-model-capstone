@@ -88,6 +88,47 @@ ros2 topic echo /vex/ack --once   # should show heartbeat/command acks from Brai
 ros2 topic echo /vex/bridge_status --once  # bridge state/faults when present
 ```
 
+### Multi-ball scene demo profile
+
+Use the demo profile when the goal is perception/scene-model proof rather than
+motor behavior. It enables the HSV yellow-ball detector, raises the detection
+cap for multi-ball scenes, keeps YOLO disabled, and publishes the LLM-facing
+scene contract:
+
+```bash
+ros2 launch vexy_ros vexy_demo_scene.launch.py
+ros2 topic echo /vision/object_tracks --once
+ros2 topic echo /vision/agent_scene --once
+```
+
+If a measured floor-projection setup is available, pass the calibrated mount
+height/pitch explicitly:
+
+```bash
+ros2 launch vexy_ros vexy_demo_scene.launch.py \
+  floor_projection_enabled:=true \
+  camera_height_m:=0.35 \
+  camera_pitch_rad:=0.45
+```
+
+Capture benchmark proof for a five-ball scene without commanding motion:
+
+```bash
+ros2 run vexy_ros vexy_scene_observation_proof \
+  --target object:yellow_ball \
+  --expected-count 5 \
+  --proof-dir /home/vexy/proof/five-balls-001
+```
+
+Record the calibration and AprilTag residual surface used by that scene:
+
+```bash
+ros2 run vexy_ros vexy_localization_benchmark \
+  --map gen0-grab-toss-v1 \
+  --samples 30 \
+  --camera-info-url file:///home/vexy/ros2_ws/src/vexy_ros/config/imx708_wide_640x360.yaml
+```
+
 ---
 
 ## Manual Step-by-Step Setup
@@ -185,6 +226,8 @@ ros2 topic hz /camera/image_raw
 | `yellow_ball_detector` | `vexy_ros` | Lightweight HSV yellow ball detector → /vision/object_detections |
 | `object_overlay` | `vexy_ros` | /camera/image_rect + /vision/object_detections → /vision/object_overlay for Foxglove |
 | `object_indication` | `vexy_ros` | Object boxes + /camera/camera_info → /vision/object_indications |
+| `object_track` | `vexy_ros` | /vision/object_indications → stable /vision/object_tracks |
+| `agent_scene` | `vexy_ros` | Scene map + tracks + bridge/telemetry → compact /vision/agent_scene for the LLM harness |
 | `task_plan` | `vexy_ros` | /vision/scene_map + target request → /task_plan/current |
 | `align_to_tag` | `vexy_ros` | Bounded local skill: visible tag + bridge health → /vex/cmd |
 | `survey_scan` | `vexy_ros` | Bounded scan-only skill: survey goal + bridge/telemetry health → /vex/cmd |
@@ -203,7 +246,9 @@ ros2 topic hz /camera/image_raw
 | `/vision/object_detections` | `std_msgs/String` | pub (yolo_ncnn), sub (object_indication) | JSON YOLO NCNN boxes in image coordinates |
 | `/vision/object_overlay` | `sensor_msgs/Image` | pub (object_overlay) | Rectified camera stream annotated with the latest object boxes |
 | `/vision/object_indications` | `std_msgs/String` | pub (object_indication/operator), sub (scene_map) | JSON object hints in camera-relative coordinates |
+| `/vision/object_tracks` | `std_msgs/String` | pub (object_track), sub (scene_map, agent_scene) | Stable tracked objects with candidate/confirmed/stale states, ages, uncertainty, and range source |
 | `/vision/scene_map` | `std_msgs/String` | pub (scene_map) | JSON robot/tag/object coordinates in the active workspace map |
+| `/vision/agent_scene` | `std_msgs/String` | pub (agent_scene) | Compact LLM-facing scene summary with robot pose confidence, tracked objects, and non-dispatching affordances |
 | `/task_plan/request` | `std_msgs/String` | sub (task_plan) | JSON target request, e.g. `tag:0`, `object:yellow_ball`, or `survey:all` |
 | `/task_plan/current` | `std_msgs/String` | pub (task_plan) | JSON bounded plan. Tag and survey plans can dispatch to proven local skills; object plans are map targets until object motion is proven. |
 | `/align_to_tag/goal` | `std_msgs/String` | sub (align_to_tag) | JSON goal for a bounded local align run |
