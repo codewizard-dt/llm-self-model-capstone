@@ -8,10 +8,31 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+TELEMETRY_TOPICS = (
+    "/operator/run_start",
+    "/operator/events",
+    "/operator/results",
+    "/operator/status",
+    "/vex/telemetry",
+)
+
 
 def default_proof_dir() -> Path:
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     return Path(f"/home/vexy/telemetry/run-{stamp}")
+
+
+def telemetry_bag_record_cmd(out_dir: Path | str) -> list[str]:
+    return [
+        "ros2",
+        "bag",
+        "record",
+        "-s",
+        "mcap",
+        "-o",
+        str(out_dir),
+        *TELEMETRY_TOPICS,
+    ]
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -20,10 +41,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--proof-dir", type=Path, default=None)
     parser.add_argument("--mode", default="visual-one-foot-scan")
-    parser.add_argument("--no-telemetry", action="store_true",
-                        help="Skip live JSON telemetry writer")
-    parser.add_argument("--no-bag-record", action="store_true",
-                        help="Skip MCAP bag recording")
+    parser.add_argument(
+        "--no-telemetry", action="store_true", help="Skip live JSON telemetry writer"
+    )
+    parser.add_argument(
+        "--no-bag-record", action="store_true", help="Skip MCAP bag recording"
+    )
     parser.add_argument("--no-export", action="store_true")
     parser.add_argument("--settle-before-s", type=float, default=2.0)
     return parser
@@ -41,23 +64,19 @@ def main(argv: list[str] | None = None) -> int:
         if not args.no_telemetry:
             writer = subprocess.Popen(
                 [
-                    "ros2", "run", "vexy_ros", "vexy_telemetry_writer_node",
-                    "--out-dir", str(proof_dir),
+                    "ros2",
+                    "run",
+                    "vexy_ros",
+                    "vexy_telemetry_writer_node",
+                    "--out-dir",
+                    str(proof_dir),
                 ],
                 stdout=(proof_dir / "telemetry-writer.log").open("w"),
                 stderr=subprocess.STDOUT,
             )
         if not args.no_bag_record:
             bag_recorder = subprocess.Popen(
-                [
-                    "ros2", "bag", "record",
-                    "-o", str(proof_dir / "bag"),
-                    "/operator/run_start",
-                    "/operator/events",
-                    "/operator/results",
-                    "/operator/status",
-                    "/vex/telemetry",
-                ],
+                telemetry_bag_record_cmd(proof_dir / "bag"),
                 stdout=(proof_dir / "bag-record.log").open("w"),
                 stderr=subprocess.STDOUT,
             )

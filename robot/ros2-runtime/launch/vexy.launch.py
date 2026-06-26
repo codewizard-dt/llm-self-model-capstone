@@ -52,6 +52,7 @@ from launch.substitutions import (
 )
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
+from vexy_ros.proof_runner import telemetry_bag_record_cmd
 from vexy_ros.vision_map import DEFAULT_CAMERA_IN_ROBOT
 
 DEFAULT_OPERATOR_TASK_CONTRACT = (
@@ -79,7 +80,9 @@ def _as_int(context, name):
 
 
 def _launch_nodes(context, *args, **kwargs):
-    telemetry_dir = "/home/vexy/telemetry/run-" + datetime.now().strftime("%Y%m%d-%H%M%S")
+    telemetry_dir = "/home/vexy/telemetry/run-" + datetime.now().strftime(
+        "%Y%m%d-%H%M%S"
+    )
     width = _as_int(context, "camera_width")
     height = _as_int(context, "camera_height")
     fps = _as_int(context, "camera_fps")
@@ -340,18 +343,11 @@ def _launch_nodes(context, *args, **kwargs):
         *(
             [
                 ExecuteProcess(
-                    cmd=[
-                        "ros2", "bag", "record",
-                        "-o", telemetry_dir + "/bag",
-                        "/operator/run_start",
-                        "/operator/events",
-                        "/operator/results",
-                        "/operator/status",
-                        "/vex/telemetry",
-                    ],
+                    cmd=telemetry_bag_record_cmd(telemetry_dir + "/bag"),
                 )
             ]
-            if LaunchConfiguration("bag_record_enabled").perform(context).lower() == "true"
+            if LaunchConfiguration("bag_record_enabled").perform(context).lower()
+            == "true"
             else []
         ),
     ]
