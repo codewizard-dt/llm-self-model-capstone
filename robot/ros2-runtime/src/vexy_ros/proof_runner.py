@@ -21,12 +21,16 @@ DEFAULT_TOPICS = (
     "/vex/ack",
     "/vex/telemetry",
     "/vex/bridge_status",
+    "/operator/run_start",
+    "/operator/events",
+    "/operator/results",
+    "/operator/status",
 )
 
 
 def default_proof_dir() -> Path:
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    return Path(f"/home/vexy/proof/calibrated-tag-action-{stamp}")
+    return Path(f"/home/vexy/telemetry/run-{stamp}")
 
 
 def build_parser() -> argparse.ArgumentParser:

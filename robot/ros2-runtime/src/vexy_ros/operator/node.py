@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import math
 import time
+from dataclasses import asdict
+from datetime import datetime
 from typing import Any, Mapping
 from pathlib import Path
 
@@ -11,7 +13,15 @@ from rclpy.node import Node
 from std_msgs.msg import String
 from tf2_msgs.msg import TFMessage
 
-from ..bridge_protocol import PROTOCOL_VERSION, now_ms
+from ..align_to_tag import (
+    AlignToTagController,
+    AlignToTagGoal,
+    BridgeHealth,
+    TagObservation as AlignTagObservation,
+    VexCommand,
+)
+from ..bridge_protocol import PROTOCOL_VERSION, normalize_outbound, now_ms
+from ..survey_scan import SurveyScanController, SurveyScanGoal, SurveyTelemetry
 from ..vision_map import (
     DEFAULT_CAMERA_IN_ROBOT,
     Pose2D,
@@ -28,6 +38,7 @@ from .core import (
     ObjectObservation,
     Operator,
     OperatorEvent,
+    OperatorResult,
     PrimitiveCommand,
     TagObservation,
     TelemetrySnapshot,
@@ -49,6 +60,15 @@ class RosCommandSink(CommandSink):
         self.pub.publish(String(data=json.dumps(packet, separators=(",", ":"))))
         return self.seq
 
+    def send_packet(self, packet: Mapping[str, Any]) -> int:
+        self.seq += 1
+        outbound = dict(packet)
+        outbound["seq"] = self.seq
+        outbound["sent_ms"] = now_ms()
+        normalized = normalize_outbound(outbound)
+        self.pub.publish(String(data=json.dumps(normalized, separators=(",", ":"))))
+        return self.seq
+
 
 class OperatorNode(Node):
     def __init__(self) -> None:
@@ -62,6 +82,7 @@ class OperatorNode(Node):
         self.declare_parameter("event_topic", "/operator/events")
         self.declare_parameter("result_topic", "/operator/results")
         self.declare_parameter("status_topic", "/operator/status")
+        self.declare_parameter("run_start_topic", "/operator/run_start")
 
         camera_raw = (
             self.get_parameter("camera_in_robot_json")
@@ -73,9 +94,18 @@ class OperatorNode(Node):
         task_contract = self._load_task_contract()
         task_outline = self._load_task_outline()
         self._tags: dict[int, TagObservation] = {}
+        self._latest_align_tag: AlignTagObservation | None = None
         self._objects: tuple[ObjectObservation, ...] = ()
         self._last_scene_map: Mapping[str, Any] | None = None
         self._last_telemetry: TelemetrySnapshot | None = None
+        self._bridge = BridgeHealth(stamp_s=None)
+        self._survey_telemetry = SurveyTelemetry(stamp_s=None)
+        self._observed_tag_ids: list[int] = []
+        self._align_controller = AlignToTagController()
+        self._survey_controller = SurveyScanController()
+        self._align_cancel_requested = False
+        self._survey_cancel_requested = False
+        self._run_id = datetime.now().strftime("run-%Y%m%d-%H%M%S")
         self._event_pub = self.create_publisher(
             String,
             self.get_parameter("event_topic").get_parameter_value().string_value,
@@ -89,6 +119,21 @@ class OperatorNode(Node):
         self._result_pub = self.create_publisher(
             String,
             self.get_parameter("result_topic").get_parameter_value().string_value,
+            10,
+        )
+        self._align_feedback_pub = self.create_publisher(
+            String, "/align_to_tag/feedback", 10
+        )
+        self._align_result_pub = self.create_publisher(
+            String, "/align_to_tag/result", 10
+        )
+        self._survey_feedback_pub = self.create_publisher(
+            String, "/survey/feedback", 10
+        )
+        self._survey_result_pub = self.create_publisher(String, "/survey/result", 10)
+        self._run_start_pub = self.create_publisher(
+            String,
+            self.get_parameter("run_start_topic").get_parameter_value().string_value,
             10,
         )
         self._sink = RosCommandSink(self)
@@ -109,13 +154,18 @@ class OperatorNode(Node):
         self.create_subscription(
             String, "/vision/object_indications", self._on_object_indications, 10
         )
+        self.create_subscription(String, "/vex/ack", self._on_ack, 10)
         self.create_subscription(String, "/vex/telemetry", self._on_telemetry, 10)
+        self.create_subscription(
+            String, "/vex/bridge_status", self._on_bridge_status, 10
+        )
         self.create_subscription(
             String,
             self.get_parameter("command_topic").get_parameter_value().string_value,
             self._on_command,
             10,
         )
+        self.create_timer(0.1, self._tick_controllers)
         self.create_timer(0.25, self._publish_status)
 
     def _load_april_tag_map(self) -> Mapping[int, Any]:
@@ -177,6 +227,14 @@ class OperatorNode(Node):
                 distance_m=math.hypot(robot_from_tag.x_m, robot_from_tag.y_m),
                 yaw_rad=math.atan2(robot_from_tag.y_m, robot_from_tag.x_m),
             )
+            self._latest_align_tag = AlignTagObservation(
+                tag_id=tag_id,
+                stamp_s=stamp_s,
+                yaw_error_rad=math.atan2(robot_from_tag.y_m, robot_from_tag.x_m),
+                lateral_error_m=robot_from_tag.y_m,
+                distance_m=math.hypot(robot_from_tag.x_m, robot_from_tag.y_m),
+                confidence=None,
+            )
         self._refresh_vision(stamp_s=stamp_s)
 
     def _on_scene_map(self, msg: String) -> None:
@@ -185,6 +243,9 @@ class OperatorNode(Node):
         except json.JSONDecodeError as exc:
             self.get_logger().warn(f"ignored bad scene map: {exc}")
             return
+        self._observed_tag_ids = sorted(
+            int(tag_id) for tag_id in self._last_scene_map.get("observed_tag_ids", [])
+        )
         self._refresh_vision(stamp_s=time.monotonic())
 
     def _on_object_detections(self, msg: String) -> None:
@@ -255,6 +316,19 @@ class OperatorNode(Node):
         self._objects = tuple(objects)
         self._refresh_vision(stamp_s=now_s)
 
+    def _on_ack(self, msg: String) -> None:
+        try:
+            ack = json.loads(msg.data)
+        except json.JSONDecodeError:
+            return
+        ack_seq = ack.get("ack")
+        self._bridge = BridgeHealth(
+            stamp_s=time.monotonic(),
+            last_ack_seq=ack_seq if isinstance(ack_seq, int) else None,
+            fault=ack.get("fault") if isinstance(ack.get("fault"), str) else None,
+            status=str(ack.get("state", "ack")),
+        )
+
     def _on_telemetry(self, msg: String) -> None:
         try:
             raw = json.loads(msg.data)
@@ -262,14 +336,54 @@ class OperatorNode(Node):
             self.get_logger().warn(f"ignored bad telemetry: {exc}")
             return
         self._last_telemetry = telemetry_snapshot_from_mapping(raw)
+        self._survey_telemetry = SurveyTelemetry(
+            stamp_s=self._last_telemetry.stamp_s,
+            motion_enabled=self._last_telemetry.motion_enabled,
+            estop=self._last_telemetry.estop,
+            drive_ports_ok=self._last_telemetry.drive_ports_ok,
+            left_pos_deg=self._last_telemetry.left_pos_deg,
+            right_pos_deg=self._last_telemetry.right_pos_deg,
+            left_vel_rpm=self._last_telemetry.left_vel_rpm,
+            right_vel_rpm=self._last_telemetry.right_vel_rpm,
+        )
         self.operator.update_telemetry(self._last_telemetry)
+
+    def _on_bridge_status(self, msg: String) -> None:
+        try:
+            status = json.loads(msg.data)
+        except json.JSONDecodeError:
+            return
+        state = str(status.get("state", "unknown"))
+        fault = str(status.get("reason", "bridge_fault")) if state == "fault" else None
+        self._bridge = BridgeHealth(
+            stamp_s=time.monotonic() if fault else self._bridge.stamp_s,
+            last_ack_seq=self._bridge.last_ack_seq,
+            fault=fault,
+            status=state,
+        )
 
     def _on_command(self, msg: String) -> None:
         try:
             payload = json.loads(msg.data)
             action = str(payload.get("action", ""))
+            self._run_start_pub.publish(
+                String(
+                    data=json.dumps(
+                        {
+                            "type": "run_start",
+                            "run_id": self._run_id,
+                            "run_start_wall_s": time.time(),
+                            "run_index": self.operator.run_index,
+                            "action": action,
+                        },
+                        separators=(",", ":"),
+                        sort_keys=True,
+                    )
+                )
+            )
             result = self._dispatch_command(payload)
-            self._publish_contract_result(action, result)
+            if isinstance(result, OperatorResult):
+                self._publish_contract_result(action, result)
         except (TypeError, ValueError, json.JSONDecodeError) as exc:
             self._publish_event(
                 OperatorEvent(
@@ -285,8 +399,8 @@ class OperatorNode(Node):
                     {
                         "type": "operator_result",
                         "action": payload.get("action"),
-                        "success": result.success,
-                        "reason": result.reason,
+                        "success": bool(getattr(result, "success", False)),
+                        "reason": str(getattr(result, "reason", "accepted")),
                     },
                     separators=(",", ":"),
                     sort_keys=True,
@@ -327,7 +441,123 @@ class OperatorNode(Node):
             duration = payload.get("duration_ms")
             method = getattr(self.operator, action)
             return method() if duration is None else method(duration_ms=int(duration))
+        if action == "align_to_tag":
+            return self._start_align_to_tag(payload)
+        if action == "cancel_align_to_tag":
+            self._align_cancel_requested = True
+            return OperatorResult(False, "align_cancel_requested")
+        if action == "survey_scan":
+            return self._start_survey_scan(payload)
+        if action == "cancel_survey_scan":
+            self._survey_cancel_requested = True
+            return OperatorResult(False, "survey_cancel_requested")
+        if action == "run_routine":
+            return self._run_routine(payload)
         raise ValueError(f"unsupported operator action: {action}")
+
+    def _start_align_to_tag(self, payload: Mapping[str, Any]) -> Any:
+        goal = AlignToTagGoal(
+            tag_id=int(payload.get("tag_id", payload.get("tag_index", 0))),
+            target_distance_m=float(payload.get("target_distance_m", 0.45)),
+            yaw_tolerance_rad=float(payload.get("yaw_tolerance_rad", 0.05)),
+            lateral_tolerance_m=float(payload.get("lateral_tolerance_m", 0.03)),
+            distance_tolerance_m=float(payload.get("distance_tolerance_m", 0.05)),
+            timeout_s=float(payload.get("timeout_s", 8.0)),
+            max_step_ms=int(payload.get("max_step_ms", payload.get("ttl_ms", 150))),
+            max_vx=float(payload.get("max_vx", 0.12)),
+            max_vy=float(payload.get("max_vy", 0.08)),
+            max_omega=float(payload.get("max_omega", 0.25)),
+            min_vx=float(payload.get("min_vx", 0.06)),
+            min_turn_omega=float(payload.get("min_turn_omega", 0.35)),
+            tag_stale_s=float(payload.get("tag_stale_s", 0.5)),
+            ack_stale_s=float(payload.get("ack_stale_s", 0.8)),
+        )
+        decision = self._align_controller.start(
+            goal,
+            now_s=time.monotonic(),
+            tag=self._latest_align_tag,
+            bridge=self._bridge,
+        )
+        self._handle_align_decision(decision)
+        return decision.result or OperatorResult(True, "align_started")
+
+    def _start_survey_scan(self, payload: Mapping[str, Any]) -> Any:
+        goal = SurveyScanGoal(
+            duration_s=float(payload.get("duration_s", 14.5)),
+            omega_rad_s=float(payload.get("omega_rad_s", payload.get("omega", 0.45))),
+            max_step_ms=int(payload.get("max_step_ms", payload.get("ttl_ms", 180))),
+            ack_stale_s=float(payload.get("ack_stale_s", 0.8)),
+            telemetry_stale_s=float(payload.get("telemetry_stale_s", 1.0)),
+        )
+        decision = self._survey_controller.start(
+            goal,
+            now_s=time.monotonic(),
+            bridge=self._bridge,
+            telemetry=self._survey_telemetry,
+            observed_tag_ids=self._observed_tag_ids,
+        )
+        self._handle_survey_decision(decision)
+        return decision.result or OperatorResult(True, "survey_started")
+
+    def _run_routine(self, payload: Mapping[str, Any]) -> OperatorResult:
+        slot = int(payload.get("slot", 0))
+        packet = {
+            "v": PROTOCOL_VERSION,
+            "type": "cmd",
+            "cmd": "routine",
+            "slot": slot,
+            "ttl_ms": int(payload.get("ttl_ms", 5000)),
+            "omega": float(payload.get("omega", 0.0)),
+        }
+        if payload.get("reason") is not None:
+            packet["reason"] = str(payload["reason"])
+        self._sink.send_packet(packet)
+        return OperatorResult(True, "routine_sent")
+
+    def _tick_controllers(self) -> None:
+        align_decision = self._align_controller.step(
+            now_s=time.monotonic(),
+            tag=self._latest_align_tag,
+            bridge=self._bridge,
+            cancel=self._align_cancel_requested,
+        )
+        self._align_cancel_requested = False
+        self._handle_align_decision(align_decision)
+
+        survey_decision = self._survey_controller.step(
+            now_s=time.monotonic(),
+            bridge=self._bridge,
+            telemetry=self._survey_telemetry,
+            observed_tag_ids=self._observed_tag_ids,
+            cancel=self._survey_cancel_requested,
+        )
+        self._survey_cancel_requested = False
+        self._handle_survey_decision(survey_decision)
+
+    def _handle_align_decision(self, decision: Any) -> None:
+        self._align_feedback_pub.publish(
+            String(data=json.dumps(asdict(decision.feedback), sort_keys=True))
+        )
+        if decision.command is not None:
+            self._send_vex_command(decision.command)
+        if decision.result is not None:
+            self._align_result_pub.publish(
+                String(data=json.dumps(asdict(decision.result), sort_keys=True))
+            )
+
+    def _handle_survey_decision(self, decision: Any) -> None:
+        self._survey_feedback_pub.publish(
+            String(data=json.dumps(asdict(decision.feedback), sort_keys=True))
+        )
+        if decision.command is not None:
+            self._send_vex_command(decision.command)
+        if decision.result is not None:
+            self._survey_result_pub.publish(
+                String(data=json.dumps(asdict(decision.result), sort_keys=True))
+            )
+
+    def _send_vex_command(self, command: VexCommand) -> None:
+        self._sink.send_packet(_packet_from_vex_command(command))
 
     def _refresh_vision(self, *, stamp_s: float) -> None:
         self.operator.update_vision(
@@ -342,6 +572,7 @@ class OperatorNode(Node):
     def _publish_event(self, event: OperatorEvent) -> None:
         payload = {
             "type": "operator_event",
+            "run_id": self._run_id,
             "name": event.name,
             "stamp_s": event.stamp_s,
             "detail": dict(event.detail),
@@ -352,6 +583,7 @@ class OperatorNode(Node):
 
     def _publish_contract_result(self, action: str, result: Any) -> None:
         payload = self.operator.contract_result(method_name=action, result=result)
+        payload["run_id"] = self._run_id
         self._result_pub.publish(
             String(data=json.dumps(payload, separators=(",", ":"), sort_keys=True))
         )
@@ -361,6 +593,7 @@ class OperatorNode(Node):
         pose = self.operator.current_pose()
         payload = {
             "type": "operator_status",
+            "run_id": self._run_id,
             "stamp_s": time.monotonic(),
             "protocol_version": PROTOCOL_VERSION,
             "last_sent_ms": now_ms(),
@@ -388,6 +621,22 @@ def _tag_index_from_payload(payload: Mapping[str, Any]) -> int | None:
     if "tag_id" in payload:
         return int(payload["tag_id"])
     return None
+
+
+def _packet_from_vex_command(command: VexCommand) -> dict[str, Any]:
+    packet: dict[str, Any] = {
+        "v": PROTOCOL_VERSION,
+        "type": "cmd",
+        "cmd": command.cmd,
+        "ttl_ms": command.ttl_ms,
+    }
+    if command.cmd == "drive":
+        packet.update({"vx": command.vx, "vy": command.vy, "omega": command.omega})
+    if command.cmd == "turn":
+        packet["omega"] = command.omega
+    if command.reason:
+        packet["reason"] = command.reason
+    return packet
 
 
 def main(args: list[str] | None = None) -> None:

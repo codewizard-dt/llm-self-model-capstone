@@ -20,12 +20,9 @@ Nodes launched:
                    Publishes: /vision/object_overlay
   task_plan     — scene map + target request → bounded tag/object task plan
                   Publishes: /task_plan/current
-  align_to_tag  — bounded local-control skill for visible AprilTag alignment
-                  Subscribes: /align_to_tag/goal, /apriltag/detections, /vex/ack, /vex/bridge_status
-                  Publishes: /vex/cmd, /align_to_tag/feedback, /align_to_tag/result
-  survey_scan   — bounded scan-only skill for survey:all plans
-                  Subscribes: /survey/goal, /vex/ack, /vex/telemetry, /vex/bridge_status, /vision/scene_map
-                  Publishes: /vex/cmd, /survey/feedback, /survey/result
+  vexy_operator — sole runtime command authority for bounded robot interaction
+                  Subscribes: /operator/command, /tf, /vex/ack, /vex/telemetry, /vex/bridge_status
+                  Publishes: /vex/cmd, /operator/status, /operator/events, /operator/results
   vex_bridge       — USB serial bridge to V5 Brain
                      Subscribes: /vex/cmd
                      Publishes:  /vex/ack, /vex/telemetry, /vex/bridge_status
@@ -53,6 +50,18 @@ from launch.substitutions import (
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 from vexy_ros.vision_map import DEFAULT_CAMERA_IN_ROBOT
+
+DEFAULT_OPERATOR_TASK_CONTRACT = (
+    '{"schema_version":"1.0","session_id":"operator-runtime",'
+    '"generation":0,"round":0,"task":"runtime_operator",'
+    '"motor_samples":[{"device":"left_drive"}],'
+    '"predicted":{"success":true},"gap":{"distance_error_m":0.0}}'
+)
+DEFAULT_OPERATOR_TASK_OUTLINE = (
+    '[["locate_nearest_apriltag",[]],["orient_to_tag",[0]],'
+    '["move_to_tag",[0],{"target_distance_m":0.45}],'
+    '["pickup_ball",[]],["grab",[]],["lift",[]],["release",[]]]'
+)
 
 
 def _as_int(context, name):
@@ -258,8 +267,8 @@ def _launch_nodes(context, *args, **kwargs):
             ],
         ),
         # ----------------------------------------------------------
-        # Dynamic task planner for tag/object/survey targets. Tag and
-        # survey plans dispatch to proven bounded motion primitives.
+        # Dynamic task planner for tag/object/survey targets. It publishes
+        # plans only; Operator owns dispatch and all /vex/cmd writes.
         # ----------------------------------------------------------
         Node(
             package="vexy_ros",
@@ -267,21 +276,20 @@ def _launch_nodes(context, *args, **kwargs):
             name="task_plan",
         ),
         # ----------------------------------------------------------
-        # Bounded local-control skill for tag alignment.
+        # Sole production runtime command authority.
         # ----------------------------------------------------------
         Node(
             package="vexy_ros",
-            executable="align_to_tag_node",
-            name="align_to_tag",
-            parameters=[{"camera_in_robot_json": camera_in_robot_json}],
-        ),
-        # ----------------------------------------------------------
-        # Bounded scan-only skill for survey:all planning.
-        # ----------------------------------------------------------
-        Node(
-            package="vexy_ros",
-            executable="survey_scan_node",
-            name="survey_scan",
+            executable="vexy_operator_node",
+            name="vexy_operator",
+            parameters=[
+                {
+                    "workspace_map_path": workspace_map_path,
+                    "camera_in_robot_json": camera_in_robot_json,
+                    "task_contract_json": DEFAULT_OPERATOR_TASK_CONTRACT,
+                    "task_outline_json": DEFAULT_OPERATOR_TASK_OUTLINE,
+                }
+            ],
         ),
         # ----------------------------------------------------------
         # VEX V5 serial bridge
