@@ -42,7 +42,7 @@ from pathlib import Path
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, OpaqueFunction
 from launch.conditions import IfCondition
 from launch.substitutions import (
     EnvironmentVariable,
@@ -319,6 +319,7 @@ def _launch_nodes(context, *args, **kwargs):
             executable="vexy_telemetry_writer_node",
             name="telemetry_writer",
             arguments=["--out-dir", telemetry_dir],
+            condition=IfCondition(LaunchConfiguration("telemetry_writer_enabled")),
         ),
         # ----------------------------------------------------------
         # Foxglove Studio WebSocket bridge
@@ -331,6 +332,27 @@ def _launch_nodes(context, *args, **kwargs):
             executable="foxglove_bridge",
             name="foxglove_bridge",
             parameters=[{"port": 8765}],
+        ),
+        # ----------------------------------------------------------
+        # MCAP bag recorder — records operator and VEX telemetry topics
+        # alongside the live JSONL writer so each run has both formats.
+        # ----------------------------------------------------------
+        *(
+            [
+                ExecuteProcess(
+                    cmd=[
+                        "ros2", "bag", "record",
+                        "-o", telemetry_dir + "/bag",
+                        "/operator/run_start",
+                        "/operator/events",
+                        "/operator/results",
+                        "/operator/status",
+                        "/vex/telemetry",
+                    ],
+                )
+            ]
+            if LaunchConfiguration("bag_record_enabled").perform(context).lower() == "true"
+            else []
         ),
     ]
 
@@ -419,6 +441,8 @@ def generate_launch_description():
             DeclareLaunchArgument("default_object_height_m", default_value="0.12"),
             DeclareLaunchArgument("object_min_confidence", default_value="0.35"),
             DeclareLaunchArgument("object_overlay_enabled", default_value="true"),
+            DeclareLaunchArgument("telemetry_writer_enabled", default_value="true"),
+            DeclareLaunchArgument("bag_record_enabled", default_value="true"),
             DeclareLaunchArgument(
                 "object_overlay_max_detection_age_s", default_value="0.5"
             ),

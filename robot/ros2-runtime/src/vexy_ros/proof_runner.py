@@ -22,6 +22,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--mode", default="visual-one-foot-scan")
     parser.add_argument("--no-telemetry", action="store_true",
                         help="Skip live JSON telemetry writer")
+    parser.add_argument("--no-bag-record", action="store_true",
+                        help="Skip MCAP bag recording")
     parser.add_argument("--no-export", action="store_true")
     parser.add_argument("--settle-before-s", type=float, default=2.0)
     return parser
@@ -34,6 +36,7 @@ def main(argv: list[str] | None = None) -> int:
     (proof_dir / "proof-dir.txt").write_text(str(proof_dir) + "\n")
 
     writer = None
+    bag_recorder = None
     try:
         if not args.no_telemetry:
             writer = subprocess.Popen(
@@ -44,6 +47,21 @@ def main(argv: list[str] | None = None) -> int:
                 stdout=(proof_dir / "telemetry-writer.log").open("w"),
                 stderr=subprocess.STDOUT,
             )
+        if not args.no_bag_record:
+            bag_recorder = subprocess.Popen(
+                [
+                    "ros2", "bag", "record",
+                    "-o", str(proof_dir / "bag"),
+                    "/operator/run_start",
+                    "/operator/events",
+                    "/operator/results",
+                    "/operator/status",
+                    "/vex/telemetry",
+                ],
+                stdout=(proof_dir / "bag-record.log").open("w"),
+                stderr=subprocess.STDOUT,
+            )
+        if writer is not None or bag_recorder is not None:
             time.sleep(max(0.0, args.settle_before_s))
 
         proof_cmd = [
@@ -63,6 +81,8 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         if writer is not None:
             _stop_process(writer)
+        if bag_recorder is not None:
+            _stop_process(bag_recorder)
 
     if not args.no_export:
         with (proof_dir / "export.log").open("w") as log:

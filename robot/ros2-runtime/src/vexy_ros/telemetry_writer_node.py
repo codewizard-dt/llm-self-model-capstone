@@ -24,10 +24,11 @@ def _topic_to_filename(topic: str) -> str:
 
 
 class TelemetryWriterNode(Node):
-    def __init__(self, out_dir: Path) -> None:
+    def __init__(self, out_dir: Path, run_id: str | None = None) -> None:
         super().__init__("vexy_telemetry_writer")
         self._out_dir = out_dir
         self._out_dir.mkdir(parents=True, exist_ok=True)
+        self._run_id = run_id if run_id is not None else out_dir.name
         self._files: dict[str, object] = {}
         for topic in TELEMETRY_TOPICS:
             self.create_subscription(String, topic, self._make_callback(topic), 10)
@@ -40,6 +41,7 @@ class TelemetryWriterNode(Node):
             except json.JSONDecodeError:
                 payload = {"_raw": msg.data}
             payload["_wall_s"] = time.time()
+            payload.setdefault("run_id", self._run_id)
             fname = _topic_to_filename(topic)
             if fname not in self._files:
                 self._files[fname] = (self._out_dir / fname).open("a")
@@ -59,10 +61,12 @@ def main(argv: list[str] | None = None) -> None:
     )
     parser.add_argument("--out-dir", type=Path, required=True,
                         help="Directory to write JSONL files into")
+    parser.add_argument("--run-id", default=None,
+                        help="Run identifier injected into every telemetry record (defaults to out-dir basename)")
     args, ros_args = parser.parse_known_args(argv)
 
     rclpy.init(args=ros_args)
-    node = TelemetryWriterNode(args.out_dir)
+    node = TelemetryWriterNode(args.out_dir, run_id=args.run_id)
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
