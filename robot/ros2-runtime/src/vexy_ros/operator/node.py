@@ -4,7 +4,7 @@ import json
 import math
 import shutil
 import time
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Mapping
@@ -52,6 +52,28 @@ from ._core import (
 )
 
 
+IN_PROGRESS_REASONS = {
+    "no_fresh_apriltag",
+    "tag_not_visible",
+    "turning_to_tag",
+    "turning_to_map_tag",
+    "moving_to_tag",
+    "raising_arm_for_tag",
+    "opening_claw",
+    "moving_to_ball",
+    "closing_claw",
+    "grab_not_confirmed",
+}
+
+
+@dataclass
+class TaskOutlineRun:
+    source_name: str
+    method_plan: tuple[Any, ...]
+    step_index: int
+    step_started_s: float
+
+
 class RosCommandSink(CommandSink):
     def __init__(self, node: Node) -> None:
         self.node = node
@@ -86,6 +108,7 @@ class OperatorNode(Node):
         self.declare_parameter("task_archive_dir", "")
         self.declare_parameter("task_rejected_dir", "")
         self.declare_parameter("task_poll_period_s", 1.0)
+        self.declare_parameter("task_step_timeout_s", 30.0)
         self.declare_parameter("command_topic", "/operator/command")
         self.declare_parameter("event_topic", "/operator/events")
         self.declare_parameter("result_topic", "/operator/results")
@@ -122,6 +145,10 @@ class OperatorNode(Node):
             rejected_dir or self._task_inbox_dir.parent / "rejected"
         )
         self._task_file_active = False
+        self._task_outline_run: TaskOutlineRun | None = None
+        self._task_step_timeout_s = max(
+            0.1, self._parameter_float("task_step_timeout_s")
+        )
         self._event_pub = self.create_publisher(
             String,
             self.get_parameter("event_topic").get_parameter_value().string_value,
@@ -182,6 +209,7 @@ class OperatorNode(Node):
             10,
         )
         self.create_timer(0.1, self._tick_controllers)
+        self.create_timer(0.1, self._tick_task_outline)
         self.create_timer(0.25, self._publish_status)
         self.create_timer(
             max(0.1, self._parameter_float("task_poll_period_s")),
@@ -304,7 +332,6 @@ class OperatorNode(Node):
                     },
                 )
             )
-        finally:
             self._task_file_active = False
 
     def _move_task_file(self, path: Path, target_dir: Path) -> Path:
@@ -349,6 +376,8 @@ class OperatorNode(Node):
         )
 
     def _run_task_outline(self, source_name: str) -> None:
+        if self._task_outline_run is not None:
+            raise ValueError("task outline already running")
         self._run_start_pub.publish(
             String(
                 data=json.dumps(
@@ -365,12 +394,95 @@ class OperatorNode(Node):
                 )
             )
         )
-        for method_name, args, kwargs in self.operator.task_contract.method_plan:
+        self._task_outline_run = TaskOutlineRun(
+            source_name=source_name,
+            method_plan=tuple(self.operator.task_contract.method_plan),
+            step_index=0,
+            step_started_s=time.monotonic(),
+        )
+
+    def _tick_task_outline(self) -> None:
+        run = self._task_outline_run
+        if run is None:
+            return
+        if run.step_index >= len(run.method_plan):
+            self._finish_task_outline_run("task_file_completed", {})
+            return
+
+        method_name, args, kwargs = run.method_plan[run.step_index]
+        elapsed_s = time.monotonic() - run.step_started_s
+        if elapsed_s > self._task_step_timeout_s:
+            self._finish_task_outline_run(
+                "task_file_execution_failed",
+                {
+                    "source": run.source_name,
+                    "method": method_name,
+                    "step_index": run.step_index,
+                    "reason": "step_timeout",
+                    "timeout_s": self._task_step_timeout_s,
+                },
+            )
+            return
+
+        try:
             self.operator.require_allowed_method(method_name)
             method = getattr(self.operator, method_name)
             result = method(*args, **dict(kwargs))
-            if isinstance(result, OperatorResult):
-                self._publish_contract_result(method_name, result)
+        except (TypeError, ValueError) as exc:
+            self._finish_task_outline_run(
+                "task_file_execution_failed",
+                {
+                    "source": run.source_name,
+                    "method": method_name,
+                    "step_index": run.step_index,
+                    "error": str(exc),
+                },
+            )
+            return
+
+        if not isinstance(result, OperatorResult):
+            self._advance_task_outline_step(run)
+            return
+
+        if result.success:
+            self._publish_contract_result(method_name, result)
+            self._advance_task_outline_step(run)
+            return
+
+        if result.reason in IN_PROGRESS_REASONS:
+            return
+
+        self._publish_contract_result(method_name, result)
+        self._finish_task_outline_run(
+            "task_file_execution_failed",
+            {
+                "source": run.source_name,
+                "method": method_name,
+                "step_index": run.step_index,
+                "reason": result.reason,
+            },
+        )
+
+    def _advance_task_outline_step(self, run: TaskOutlineRun) -> None:
+        run.step_index += 1
+        run.step_started_s = time.monotonic()
+        if run.step_index >= len(run.method_plan):
+            self._finish_task_outline_run(
+                "task_file_completed", {"source": run.source_name}
+            )
+
+    def _finish_task_outline_run(
+        self, event_name: str, detail: Mapping[str, Any]
+    ) -> None:
+        self._publish_event(
+            OperatorEvent(
+                name=event_name,
+                stamp_s=time.monotonic(),
+                detail=detail,
+            )
+        )
+        self._task_outline_run = None
+        self._task_file_active = False
 
     def _on_tf(self, msg: TFMessage) -> None:
         stamp_s = time.monotonic()

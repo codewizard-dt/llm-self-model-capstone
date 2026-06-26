@@ -185,10 +185,11 @@ Each dropped `*.json` file must contain exactly two top-level keys:
 operator method-call list. From the repo root, send a file to the Pi with:
 
 ```bash
-PI_HOST=raspberrypi.local make send-task FILE=path/to/task.json
+VEXY_HOST=vexy.local VEXY_SSH_USER=vexy make send-task FILE=path/to/task.json
 ```
 
-Optional environment variables are `PI_USER` and `PI_TASK_INBOX`.
+Optional environment variables are `VEXY_SSH_USER`, `VEXY_SSH_PW`, and
+`VEXY_TASK_INBOX`. `VEXY_TASK_INBOX` defaults to `/vexy/tasks/inbox`.
 
 `vexy_operator_node` can still load a task contract at startup for calibration
 or tests:

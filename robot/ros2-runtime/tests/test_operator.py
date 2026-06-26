@@ -20,6 +20,7 @@ from vexy_ros.operator._core import (  # noqa: E402
     ObjectObservation,
     Operator,
     OperatorEvent,
+    OperatorResult,
     PacketCommandSink,
     TagObservation,
     TelemetrySnapshot,
@@ -944,6 +945,7 @@ class OperatorNodeTests(unittest.TestCase):
             node = node_module.OperatorNode()
 
             node._poll_task_inbox()
+            node._tick_task_outline()
 
             self.assertFalse((inbox / "task.json").exists())
             self.assertEqual(len(list(archive.glob("task.*.json"))), 1)
@@ -953,6 +955,145 @@ class OperatorNodeTests(unittest.TestCase):
             )
             cmd_packet = json.loads(node._sink.pub.messages[-1].data)
             self.assertEqual(cmd_packet["cmd"], "grab")
+
+    def test_task_outline_waits_for_pickup_ball_before_bin_steps(self) -> None:
+        install_ros_stubs()
+        node_module = importlib.import_module("vexy_ros.operator.node")
+        with tempfile.TemporaryDirectory() as tmp:
+            inbox = Path(tmp) / "inbox"
+            archive = Path(tmp) / "archive"
+            rejected = Path(tmp) / "rejected"
+            Node.parameter_defaults = {
+                "task_inbox_dir": str(inbox),
+                "task_archive_dir": str(archive),
+                "task_rejected_dir": str(rejected),
+            }
+            inbox.mkdir()
+            fixture = ROOT / "fixtures" / "task_deliver_ball.json"
+            (inbox / "task_deliver_ball.json").write_text(fixture.read_text())
+            node = node_module.OperatorNode()
+
+            calls: list[str] = []
+            pickup_results = [
+                OperatorResult(False, "opening_claw"),
+                OperatorResult(False, "moving_to_ball"),
+                OperatorResult(False, "closing_claw"),
+                OperatorResult(True, "ball_grabbed"),
+            ]
+
+            def grab(*_args: Any, **_kwargs: Any) -> OperatorResult:
+                calls.append("grab")
+                return OperatorResult(True, "grab_sent")
+
+            def locate_nearest_apriltag(*_args: Any, **_kwargs: Any) -> OperatorResult:
+                calls.append("locate_nearest_apriltag")
+                return OperatorResult(True, "nearest_apriltag_located")
+
+            def move_to_tag(
+                tag_index: int, *_args: Any, **_kwargs: Any
+            ) -> OperatorResult:
+                calls.append(f"move_to_tag:{tag_index}")
+                return OperatorResult(True, "arrived")
+
+            def pickup_ball(*_args: Any, **_kwargs: Any) -> OperatorResult:
+                calls.append("pickup_ball")
+                return pickup_results.pop(0)
+
+            def lift(*_args: Any, **_kwargs: Any) -> OperatorResult:
+                calls.append("lift")
+                return OperatorResult(True, "lift_sent")
+
+            def release(*_args: Any, **_kwargs: Any) -> OperatorResult:
+                calls.append("release")
+                return OperatorResult(True, "release_sent")
+
+            node.operator.grab = grab
+            node.operator.locate_nearest_apriltag = locate_nearest_apriltag
+            node.operator.move_to_tag = move_to_tag
+            node.operator.pickup_ball = pickup_ball
+            node.operator.lift = lift
+            node.operator.release = release
+
+            node._poll_task_inbox()
+            while calls.count("pickup_ball") < 3:
+                node._tick_task_outline()
+                self.assertNotIn("move_to_tag:0", calls)
+                self.assertNotIn("lift", calls)
+                self.assertNotIn("release", calls)
+
+            node._tick_task_outline()
+            self.assertEqual(calls[-1], "pickup_ball")
+            self.assertNotIn("move_to_tag:0", calls)
+            self.assertNotIn("lift", calls)
+            self.assertNotIn("release", calls)
+
+            node._tick_task_outline()
+            self.assertEqual(calls[-1], "move_to_tag:0")
+
+    def test_task_outline_timeout_stops_before_bin_steps(self) -> None:
+        install_ros_stubs()
+        node_module = importlib.import_module("vexy_ros.operator.node")
+        with tempfile.TemporaryDirectory() as tmp:
+            inbox = Path(tmp) / "inbox"
+            archive = Path(tmp) / "archive"
+            rejected = Path(tmp) / "rejected"
+            Node.parameter_defaults = {
+                "task_inbox_dir": str(inbox),
+                "task_archive_dir": str(archive),
+                "task_rejected_dir": str(rejected),
+                "task_step_timeout_s": 0.1,
+            }
+            inbox.mkdir()
+            fixture = ROOT / "fixtures" / "task_deliver_ball.json"
+            (inbox / "task_deliver_ball.json").write_text(fixture.read_text())
+            node = node_module.OperatorNode()
+
+            calls: list[str] = []
+
+            def success(method_name: str) -> Any:
+                def call(*_args: Any, **_kwargs: Any) -> OperatorResult:
+                    calls.append(method_name)
+                    return OperatorResult(True, "ok")
+
+                return call
+
+            def pickup_ball(*_args: Any, **_kwargs: Any) -> OperatorResult:
+                calls.append("pickup_ball")
+                return OperatorResult(False, "opening_claw")
+
+            def move_to_tag(
+                tag_index: int, *_args: Any, **_kwargs: Any
+            ) -> OperatorResult:
+                calls.append(f"move_to_tag:{tag_index}")
+                return OperatorResult(True, "ok")
+
+            node.operator.grab = success("grab")
+            node.operator.locate_nearest_apriltag = success("locate_nearest_apriltag")
+            node.operator.move_to_tag = move_to_tag
+            node.operator.pickup_ball = pickup_ball
+            node.operator.lift = success("lift")
+            node.operator.release = success("release")
+
+            node._poll_task_inbox()
+            while "pickup_ball" not in calls:
+                node._tick_task_outline()
+                self.assertNotIn("move_to_tag:0", calls)
+                self.assertNotIn("lift", calls)
+                self.assertNotIn("release", calls)
+            assert node._task_outline_run is not None
+            node._task_outline_run.step_started_s -= 1.0
+
+            node._tick_task_outline()
+
+            self.assertEqual(calls[-1], "pickup_ball")
+            self.assertNotIn("move_to_tag:0", calls)
+            self.assertNotIn("lift", calls)
+            self.assertNotIn("release", calls)
+            self.assertIsNone(node._task_outline_run)
+            self.assertFalse(node._task_file_active)
+            event = json.loads(node._event_pub.messages[-1].data)
+            self.assertEqual(event["name"], "task_file_execution_failed")
+            self.assertEqual(event["detail"]["reason"], "step_timeout")
 
     def test_node_rejects_invalid_task_file_with_error_sidecar(self) -> None:
         install_ros_stubs()
