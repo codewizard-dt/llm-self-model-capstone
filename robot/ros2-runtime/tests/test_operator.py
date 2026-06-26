@@ -795,6 +795,89 @@ class OperatorNodeTests(unittest.TestCase):
         self.assertEqual(result_payload["schema_version"], "1.0")
         self.assertEqual(result_payload["outcome"]["method"], "move_to_tag")
 
+    def test_node_runs_align_to_tag_through_operator_sink(self) -> None:
+        install_ros_stubs()
+        node_module = importlib.import_module("vexy_ros.operator.node")
+        node = node_module.OperatorNode()
+        node._on_ack(String(data=json.dumps({"ack": 1, "state": "ok"})))
+        stamp_s = time.monotonic()
+        node._latest_align_tag = node_module.AlignTagObservation(
+            tag_id=1,
+            stamp_s=stamp_s,
+            yaw_error_rad=0.2,
+            lateral_error_m=0.05,
+            distance_m=0.9,
+        )
+
+        node._on_command(
+            String(
+                data=json.dumps(
+                    {
+                        "action": "align_to_tag",
+                        "tag_id": 1,
+                        "target_distance_m": 0.45,
+                    }
+                )
+            )
+        )
+        node._tick_controllers()
+
+        cmd_packet = json.loads(node._sink.pub.messages[-1].data)
+        self.assertIn(cmd_packet["cmd"], {"drive", "turn"})
+        self.assertIn(cmd_packet["reason"], {"approach_tag", "center_tag"})
+        self.assertTrue(node._align_feedback_pub.messages)
+
+    def test_node_runs_survey_scan_through_operator_sink(self) -> None:
+        install_ros_stubs()
+        node_module = importlib.import_module("vexy_ros.operator.node")
+        node = node_module.OperatorNode()
+        node._on_ack(String(data=json.dumps({"ack": 1, "state": "ok"})))
+        node._on_telemetry(
+            String(
+                data=json.dumps(
+                    {
+                        "motion_enabled": True,
+                        "drive_ports_ok": True,
+                        "estop": False,
+                        "left_pos_deg": 1.0,
+                        "right_pos_deg": 2.0,
+                    }
+                )
+            )
+        )
+        node._on_scene_map(String(data=json.dumps({"observed_tag_ids": [0, 2]})))
+
+        node._on_command(
+            String(
+                data=json.dumps(
+                    {
+                        "action": "survey_scan",
+                        "duration_s": 1.0,
+                        "omega_rad_s": 0.22,
+                    }
+                )
+            )
+        )
+        node._tick_controllers()
+
+        cmd_packet = json.loads(node._sink.pub.messages[-1].data)
+        self.assertEqual(cmd_packet["cmd"], "turn")
+        self.assertAlmostEqual(cmd_packet["omega"], 0.22)
+        self.assertTrue(node._survey_feedback_pub.messages)
+
+    def test_node_runs_routine_through_operator_sink(self) -> None:
+        install_ros_stubs()
+        node_module = importlib.import_module("vexy_ros.operator.node")
+        node = node_module.OperatorNode()
+
+        node._on_command(
+            String(data=json.dumps({"action": "run_routine", "slot": 3}))
+        )
+
+        cmd_packet = json.loads(node._sink.pub.messages[-1].data)
+        self.assertEqual(cmd_packet["cmd"], "routine")
+        self.assertEqual(cmd_packet["slot"], 3)
+
     def test_node_applies_camera_offset_to_tag_observations(self) -> None:
         Node.parameter_defaults = {
             "camera_in_robot_json": '{"x_m":0.0,"y_m":-0.08,"yaw_rad":0.0}'

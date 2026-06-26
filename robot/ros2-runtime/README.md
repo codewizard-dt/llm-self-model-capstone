@@ -186,8 +186,7 @@ ros2 topic hz /camera/image_raw
 | `object_overlay` | `vexy_ros` | /camera/image_rect + /vision/object_detections → /vision/object_overlay for Foxglove |
 | `object_indication` | `vexy_ros` | Object boxes + /camera/camera_info → /vision/object_indications |
 | `task_plan` | `vexy_ros` | /vision/scene_map + target request → /task_plan/current |
-| `align_to_tag` | `vexy_ros` | Bounded local skill: visible tag + bridge health → /vex/cmd |
-| `survey_scan` | `vexy_ros` | Bounded scan-only skill: survey goal + bridge/telemetry health → /vex/cmd |
+| `vexy_operator` | `vexy_ros` | Sole runtime command authority: /operator/command + live state → /vex/cmd |
 | `vex_bridge` | `vexy_ros` | USB serial ↔ /vex/cmd + /vex/ack + /vex/telemetry + /vex/bridge_status |
 | `foxglove_bridge` | `foxglove_bridge` | WebSocket bridge at port 8765 for Foxglove Studio |
 
@@ -205,15 +204,15 @@ ros2 topic hz /camera/image_raw
 | `/vision/object_indications` | `std_msgs/String` | pub (object_indication/operator), sub (scene_map) | JSON object hints in camera-relative coordinates |
 | `/vision/scene_map` | `std_msgs/String` | pub (scene_map) | JSON robot/tag/object coordinates in the active workspace map |
 | `/task_plan/request` | `std_msgs/String` | sub (task_plan) | JSON target request, e.g. `tag:0`, `object:yellow_ball`, or `survey:all` |
-| `/task_plan/current` | `std_msgs/String` | pub (task_plan) | JSON bounded plan. Tag and survey plans can dispatch to proven local skills; object plans are map targets until object motion is proven. |
-| `/align_to_tag/goal` | `std_msgs/String` | sub (align_to_tag) | JSON goal for a bounded local align run |
-| `/align_to_tag/cancel` | `std_msgs/String` | sub (align_to_tag) | Cancel the current align run |
-| `/align_to_tag/feedback` | `std_msgs/String` | pub (align_to_tag) | JSON feedback with tag errors, ack state, and fault state |
-| `/align_to_tag/result` | `std_msgs/String` | pub (align_to_tag) | JSON result with success/failure reason |
-| `/survey/goal` | `std_msgs/String` | sub (survey_scan) | JSON goal for a bounded rotate-in-place survey scan |
-| `/survey/cancel` | `std_msgs/String` | sub (survey_scan) | Cancel the current survey scan |
-| `/survey/feedback` | `std_msgs/String` | pub (survey_scan) | JSON feedback with elapsed time, observed tags, ack state, and fault state |
-| `/survey/result` | `std_msgs/String` | pub (survey_scan) | JSON result with success/failure reason and observed tag IDs |
+| `/task_plan/current` | `std_msgs/String` | pub (task_plan), sub (operator/user) | JSON bounded plan. Dispatchable steps are executed through `/operator/command`; object plans remain map targets until object motion is proven. |
+| `/operator/command` | `std_msgs/String` | sub (operator) | JSON operator action such as `align_to_tag`, `survey_scan`, `run_routine`, `move_to_tag`, or manipulator commands |
+| `/operator/status` | `std_msgs/String` | pub (operator) | JSON operator state, localization summary, known tags, object categories, and held-object state |
+| `/operator/events` | `std_msgs/String` | pub (operator) | JSON operator event stream |
+| `/operator/results` | `std_msgs/String` | pub (operator) | Contract-shaped result lines for operator actions |
+| `/align_to_tag/feedback` | `std_msgs/String` | pub (operator) | JSON feedback with tag errors, ack state, and fault state |
+| `/align_to_tag/result` | `std_msgs/String` | pub (operator) | JSON result with success/failure reason |
+| `/survey/feedback` | `std_msgs/String` | pub (operator) | JSON feedback with elapsed time, observed tags, ack state, and fault state |
+| `/survey/result` | `std_msgs/String` | pub (operator) | JSON result with success/failure reason and observed tag IDs |
 | `/vex/cmd` | `std_msgs/String` | sub (vex_bridge) | JSON command packet to Brain |
 | `/vex/ack` | `std_msgs/String` | pub (vex_bridge) | JSON ack from Brain, keyed by `ack` sequence |
 | `/vex/telemetry` | `std_msgs/String` | pub (vex_bridge) | JSON telemetry/sample/event records from Brain |
@@ -452,16 +451,17 @@ ros2 topic pub --once /task_plan/request std_msgs/String \
   '{"data":"{\"target\":\"home:tag\",\"action\":\"return_home\",\"target_distance_m\":0.45,\"dispatch\":true}"}'
 ```
 
-Tag and home plans dispatch through the proven `align_to_tag` primitive. Home
+Tag and home plans are executed by sending the dispatchable `align_to_tag` step
+to `/operator/command`. Home
 plans default to AprilTag `2`, the workspace home anchor. Object plans are mapped
 but report `object_go_to_pose_controller_not_proven` until a bounded
 object/go-to-pose motion skill is implemented and physically verified. Survey
-plans dispatch through `survey_scan` when `dispatch:true`; the controller refuses
+plans execute through the Operator's `survey_scan` action; the controller refuses
 to start unless `/vex/ack`, `/vex/telemetry`, and drive safety state are fresh.
 Use short `survey_duration_s` / `survey_omega_rad_s` overrides for supervised
 checks, then omit them for the default full scan.
 
-Routine plans dispatch directly to `/vex/cmd` with `cmd:"routine"` and do not
+Routine plans execute through `/operator/command` with `action:"run_routine"` and do not
 require a scene map. Run them only with the same proof discipline as other
 motion: fresh `/vex/ack`, fresh `/vex/telemetry`, operator supervision, and an
 MCAP recording for the routine.

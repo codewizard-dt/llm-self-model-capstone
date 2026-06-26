@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import re
 import sys
 import unittest
 import xml.etree.ElementTree as ET
@@ -50,9 +51,9 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn("/vision/object_overlay", launch_text)
         self.assertIn("object_dimensions_json", launch_text)
         self.assertIn("task_plan_node", launch_text)
-        self.assertIn('executable="align_to_tag_node"', launch_text)
-        self.assertIn('executable="survey_scan_node"', launch_text)
-        self.assertIn("/survey/goal", launch_text)
+        self.assertIn('executable="vexy_operator_node"', launch_text)
+        self.assertNotIn('executable="align_to_tag_node"', launch_text)
+        self.assertNotIn('executable="survey_scan_node"', launch_text)
 
     def test_apriltag_config_names_the_expected_first_proof_tag(self) -> None:
         config_text = (ROOT / "config" / "apriltag_36h11.yaml").read_text()
@@ -74,6 +75,32 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn("tag_id_from_frame_id", node_text)
         self.assertIn("camera_in_robot_json", node_text)
         self.assertIn("robot_from_camera_pose", node_text)
+
+    def test_operator_is_only_runtime_vex_cmd_publisher(self) -> None:
+        launch_text = (ROOT / "launch" / "vexy.launch.py").read_text()
+        setup_text = (ROOT / "setup.py").read_text()
+        launched_executables = set(
+            re.findall(r'executable="([^"]+)"', launch_text)
+        )
+        entrypoints = dict(
+            re.findall(r'"([^"]+) = vexy_ros\.([^":]+):main"', setup_text)
+        )
+        runtime_modules = {
+            entrypoints[name] for name in launched_executables if name in entrypoints
+        }
+
+        direct_publishers = []
+        for module in sorted(runtime_modules):
+            source_path = ROOT / "src" / "vexy_ros" / f"{module.replace('.', '/')}.py"
+            if not source_path.exists():
+                continue
+            source = source_path.read_text()
+            if 'create_publisher(String, "/vex/cmd"' in source:
+                direct_publishers.append(module)
+            if 'declare_parameter("vex_cmd_topic", "/vex/cmd")' in source:
+                direct_publishers.append(module)
+
+        self.assertEqual(direct_publishers, ["operator.node"])
 
     def test_camera_info_config_is_nonzero_and_marked_as_starter(self) -> None:
         config_text = (ROOT / "config" / "imx708_wide_640x360.yaml").read_text()

@@ -36,6 +36,9 @@ catalog:
 catalog-check:
 	$(MAKE) -C contracts catalog-check
 
+sync-telemetry:
+	bash scripts/sync_telemetry.sh
+
 # Stubs — filled in by later features
 # coprocessor: $(MAKE) -C robot/pi-runtime   sync / validate / test / lint
 # brain:       $(MAKE) -C robot/v5-brain     sync / validate / test / lint
