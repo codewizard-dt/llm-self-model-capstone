@@ -26,6 +26,8 @@ Nodes launched:
   vex_bridge       — USB serial bridge to V5 Brain
                      Subscribes: /vex/cmd
                      Publishes:  /vex/ack, /vex/telemetry, /vex/bridge_status
+  telemetry_writer — always-on JSONL recorder for operator topics
+                     Writes: /home/vexy/telemetry/run-<timestamp>/
   foxglove_bridge  — WebSocket bridge for Foxglove Studio
                      Connect at: ws://<Pi-IP>:8765
 
@@ -35,6 +37,7 @@ Usage:
   ros2 launch vexy_ros vexy.launch.py camera_width:=1280 camera_height:=720
 """
 
+from datetime import datetime
 from pathlib import Path
 
 from ament_index_python.packages import get_package_share_directory
@@ -76,6 +79,7 @@ def _as_int(context, name):
 
 
 def _launch_nodes(context, *args, **kwargs):
+    telemetry_dir = "/home/vexy/telemetry/run-" + datetime.now().strftime("%Y%m%d-%H%M%S")
     width = _as_int(context, "camera_width")
     height = _as_int(context, "camera_height")
     fps = _as_int(context, "camera_fps")
@@ -304,6 +308,17 @@ def _launch_nodes(context, *args, **kwargs):
                     "baud_rate": LaunchConfiguration("baud_rate"),
                 }
             ],
+        ),
+        # ----------------------------------------------------------
+        # Always-on telemetry recorder — writes operator topics as
+        # JSONL to /home/vexy/telemetry/run-<timestamp>/ so every
+        # test and live run is captured for make sync-telemetry.
+        # ----------------------------------------------------------
+        Node(
+            package="vexy_ros",
+            executable="vexy_telemetry_writer_node",
+            name="telemetry_writer",
+            arguments=["--out-dir", telemetry_dir],
         ),
         # ----------------------------------------------------------
         # Foxglove Studio WebSocket bridge

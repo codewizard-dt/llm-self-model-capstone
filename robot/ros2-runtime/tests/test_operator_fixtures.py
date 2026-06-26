@@ -10,7 +10,7 @@ ROS_RUNTIME_SRC = ROOT / "robot" / "ros2-runtime" / "src"
 
 sys.path.insert(0, str(ROS_RUNTIME_SRC))
 
-from vexy_ros.operator.core import (  # noqa: E402
+from vexy_ros.operator._core import (  # noqa: E402
     parse_operator_method_plan,
     validate_contract_line_shape,
 )

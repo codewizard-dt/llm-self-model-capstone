@@ -29,7 +29,7 @@ try:
 except ModuleNotFoundError as exc:
     raise unittest.SkipTest("ROS 2 Python packages are not installed") from exc
 
-from vexy_ros.operator.core import (
+from vexy_ros.operator._core import (
     OperatorConfig,
     PrimitiveCommand,
     packet_from_primitive,
