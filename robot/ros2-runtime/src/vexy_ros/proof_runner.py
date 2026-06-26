@@ -106,8 +106,26 @@ def main(argv: list[str] | None = None) -> int:
                 stderr=subprocess.STDOUT,
             )
 
+    if not args.no_bag:
+        _extract_bag_jsonl(proof_dir)
+
     print(proof_dir)
     return return_code
+
+
+def _extract_bag_jsonl(proof_dir: Path) -> None:
+    bag_dir = proof_dir / "mcap"
+    if not bag_dir.exists():
+        return
+    try:
+        from .telemetry_extract import extract_bag_to_jsonl
+        import json as _json
+        counts = extract_bag_to_jsonl(bag_dir, out_dir=proof_dir)
+        (proof_dir / "telemetry_extract.json").write_text(
+            _json.dumps(counts, indent=2)
+        )
+    except Exception as exc:
+        (proof_dir / "telemetry_extract_error.txt").write_text(str(exc))
 
 
 def _stop_process(process: subprocess.Popen) -> None:
