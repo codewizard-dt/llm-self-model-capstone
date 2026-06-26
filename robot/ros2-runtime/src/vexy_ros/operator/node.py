@@ -13,6 +13,8 @@ from tf2_msgs.msg import TFMessage
 
 from ..bridge_protocol import PROTOCOL_VERSION, now_ms
 from ..vision_map import (
+    DEFAULT_CAMERA_IN_ROBOT,
+    Pose2D,
     camera_from_apriltag_translation,
     parse_tag_anchors,
     pose_from_mapping,
@@ -51,9 +53,7 @@ class RosCommandSink(CommandSink):
 class OperatorNode(Node):
     def __init__(self) -> None:
         super().__init__("vexy_operator")
-        self.declare_parameter(
-            "camera_in_robot_json", '{"x_m":0.0,"y_m":0.0,"yaw_rad":0.0}'
-        )
+        self.declare_parameter("camera_in_robot_json", DEFAULT_CAMERA_IN_ROBOT)
         self.declare_parameter("workspace_map_path", "")
         self.declare_parameter("tag_anchors_json", "")
         self.declare_parameter("task_contract_json", "")
@@ -228,13 +228,22 @@ class OperatorNode(Node):
             if not isinstance(item, Mapping):
                 continue
             name = str(item.get("name", "object"))
+            forward_m = _optional_float(item.get("forward_m"))
+            left_m = _optional_float(item.get("left_m"))
+            if forward_m is not None and left_m is not None:
+                robot_from_object = robot_from_camera_pose(
+                    Pose2D(forward_m, left_m, float(item.get("yaw_rad", 0.0))),
+                    self.camera_in_robot,
+                )
+                forward_m = robot_from_object.x_m
+                left_m = robot_from_object.y_m
             objects.append(
                 ObjectObservation(
                     name=name,
                     category=name,
                     stamp_s=float(item.get("stamp_s", now_s)),
-                    forward_m=_optional_float(item.get("forward_m")),
-                    left_m=_optional_float(item.get("left_m")),
+                    forward_m=forward_m,
+                    left_m=left_m,
                     confidence=(
                         float(item["confidence"])
                         if item.get("confidence") is not None
@@ -304,6 +313,14 @@ class OperatorNode(Node):
             return self.operator.move_to_tag(
                 tag_index,
                 target_distance_m=None if target is None else float(target),
+            )
+        if action == "pickup_ball":
+            self.operator.require_allowed_method(action)
+            duration = payload.get("duration_ms")
+            return (
+                self.operator.pickup_ball()
+                if duration is None
+                else self.operator.pickup_ball(duration_ms=int(duration))
             )
         if action in {"grab", "lift", "release"}:
             self.operator.require_allowed_method(action)

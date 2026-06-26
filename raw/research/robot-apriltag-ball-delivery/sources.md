@@ -9,7 +9,7 @@ researched: 2026-06-25
 | ID | Type | Locator | Accessed | What it contributed |
 |----|------|---------|----------|---------------------|
 | S1 | codebase | `robot/ros2-runtime/src/vexy_ros/tag_action_proof.py::{run_scan,approach_tag,TagActionProof.send,finalize_summary}` | 2026-06-25 | Existing bounded scan, tag approach, command publish, and summary helpers. |
-| S2 | codebase | `robot/ros2-runtime/config/maps/{table-grab-toss-v1.json,gen0-grab-toss-v1.json}` | 2026-06-25 | Map roles: `bin` tag ID `0`, `ball_staging` tag ID `1`. |
+| S2 | codebase | `robot/ros2-runtime/config/maps/{gen0-grab-toss-v1.json,gen0-grab-toss-v1.json}` | 2026-06-25 | Map roles: `bin` tag ID `0`, `ball_staging` tag ID `1`. |
 | S3 | codebase | `robot/ros2-runtime/src/vexy_ros/bridge_protocol.py` | 2026-06-25 | Original command grammar had `stop`, `drive`, `turn`, and `set_goal`; release support had to be added. |
 | S4 | codebase | `robot/v5-brain/pros_bridge/src/main.cpp::handle_line` | 2026-06-25 | Brain accepted drive/turn/stop and rejected `set_goal` as unsupported. |
 | S5 | codebase | `robot/ros2-runtime/setup.py` | 2026-06-25 | Runtime programs are exposed as setuptools `console_scripts`. |

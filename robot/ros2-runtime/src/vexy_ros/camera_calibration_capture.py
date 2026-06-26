@@ -67,16 +67,19 @@ class CheckerboardCalibrator(Node):  # type: ignore[misc,valid-type]
         self.image_points: list[Any] = []
         self.object_points: list[Any] = []
         self.image_size: tuple[int, int] | None = None
-        self.last_capture_s = 0.0
         self.frames_seen = 0
-        self.frames_with_board = 0
+        self.capture_requested = False
+        self._board_visible = False
+        self._last_status_s = 0.0
         self.preview_dir = args.preview_dir
         if self.preview_dir is not None:
             self.preview_dir.mkdir(parents=True, exist_ok=True)
         self.create_subscription(Image, args.image_topic, self._on_image, 10)
         self.get_logger().info(
-            f"watching {args.image_topic} for {args.cols}x{args.rows} checkerboard; "
-            "move the board through the frame"
+            f"watching {args.image_topic} for {args.cols}x{args.rows} checkerboard"
+        )
+        self.get_logger().info(
+            f"target: {args.samples} samples -- press ENTER to capture each pose"
         )
 
     @property
@@ -91,11 +94,30 @@ class CheckerboardCalibrator(Node):  # type: ignore[misc,valid-type]
         gray = image_msg_to_gray(msg)
         pattern_size = (self.args.cols, self.args.rows)
         found, corners = cv2.findChessboardCorners(gray, pattern_size)
-        if not found:
-            return
-        self.frames_with_board += 1
+        self._board_visible = found
+
+        # Rate-limited status line (~1 Hz) so the terminal isn't spammed
         now_s = time.monotonic()
-        if now_s - self.last_capture_s < self.args.min_interval_s:
+        if now_s - self._last_status_s >= 1.0:
+            count = len(self.image_points)
+            if found:
+                self.get_logger().info(
+                    f"[{count}/{self.args.samples}] Board in view -- press ENTER to capture"
+                )
+            else:
+                self.get_logger().info(
+                    f"[{count}/{self.args.samples}] No board detected"
+                )
+            self._last_status_s = now_s
+
+        if not self.capture_requested:
+            return
+        self.capture_requested = False
+
+        if not found:
+            self.get_logger().warn(
+                "No board in frame when ENTER was pressed -- show board first, then press ENTER"
+            )
             return
 
         criteria = (
@@ -107,10 +129,9 @@ class CheckerboardCalibrator(Node):  # type: ignore[misc,valid-type]
         self.image_size = (int(msg.width), int(msg.height))
         self.image_points.append(refined)
         self.object_points.append(checkerboard_object_points(args=self.args, np=np))
-        self.last_capture_s = now_s
         sample_count = len(self.image_points)
         self.get_logger().info(
-            f"captured checkerboard sample {sample_count}/{self.args.samples}"
+            f"  *** CAPTURED {sample_count}/{self.args.samples} ***"
         )
         if self.preview_dir is not None:
             preview = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
@@ -160,6 +181,16 @@ def checkerboard_object_points(*, args: argparse.Namespace, np: Any) -> Any:
     return objp
 
 
+def _run_input_thread(node: CheckerboardCalibrator) -> None:
+    """Read Enter keypresses from stdin and set the capture flag on the node."""
+    while not node.complete:
+        try:
+            sys.stdin.readline()
+            node.capture_requested = True
+        except (EOFError, OSError):
+            break
+
+
 def image_msg_to_gray(msg: Image) -> Any:
     import cv2
     import numpy as np
@@ -202,7 +233,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--out",
         type=Path,
-        default=Path("/home/vexy/calibration/imx708_wide_640x480.yaml"),
+        default=Path("/home/vexy/calibration/imx708_wide_640x360.yaml"),
     )
     parser.add_argument("--preview-dir", type=Path)
     return parser
@@ -223,8 +254,12 @@ def main(argv: list[str] | None = None) -> int:
         print("rclpy is required; source the ROS 2 workspace first", file=sys.stderr)
         return 1
 
+    import threading
+
     rclpy.init()
     node = CheckerboardCalibrator(args)
+    input_thread = threading.Thread(target=_run_input_thread, args=(node,), daemon=True)
+    input_thread.start()
     deadline_s = time.monotonic() + args.timeout_s
     try:
         while not node.complete and time.monotonic() < deadline_s:
@@ -233,8 +268,7 @@ def main(argv: list[str] | None = None) -> int:
             print(
                 "calibration timed out after "
                 f"{args.timeout_s:.1f}s; captured {len(node.image_points)}/"
-                f"{args.samples} samples from {node.frames_seen} frames "
-                f"({node.frames_with_board} with checkerboard)",
+                f"{args.samples} samples from {node.frames_seen} frames",
                 file=sys.stderr,
             )
             return 1

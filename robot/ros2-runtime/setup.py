@@ -6,7 +6,7 @@ package_name = "vexy_ros"
 
 setup(
     name=package_name,
-    version="0.3.0",
+    version="0.5.0",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     data_files=[
@@ -32,6 +32,7 @@ setup(
             "scene_map_node = vexy_ros.scene_map_node:main",
             "yolo_ncnn_node = vexy_ros.yolo_ncnn_node:main",
             "yellow_ball_detector_node = vexy_ros.yellow_ball_detector_node:main",
+            "object_overlay_node = vexy_ros.object_overlay_node:main",
             "object_indication_node = vexy_ros.object_indication_node:main",
             "task_plan_node = vexy_ros.task_plan_node:main",
             "survey_scan_node = vexy_ros.survey_scan_node:main",
@@ -42,6 +43,7 @@ setup(
             "vexy_run_calibrated_tag_proof = vexy_ros.proof_runner:main",
             "vexy_scene_observation_proof = vexy_ros.observation_proof:main",
             "vexy_calibrate_camera = vexy_ros.camera_calibration_capture:main",
+            "vexy_operator_annotation = vexy_ros.operator_annotation:main",
         ],
     },
 )

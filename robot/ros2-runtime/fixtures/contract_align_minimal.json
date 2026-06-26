@@ -1,0 +1,59 @@
+{
+  "schema_version": "1.0",
+  "session_id": "stub-align-gen0",
+  "generation": 0,
+  "round": 1,
+  "task": "align_to_tag",
+  "motor_samples": [
+    {
+      "device": "left_drive",
+      "subsystem": "drivetrain",
+      "api_binding": "vexcode_python",
+      "sample_ms": 800,
+      "values": {
+        "position_deg": 0.0,
+        "velocity_rpm": 0.0,
+        "current_amp": 0.0,
+        "power_w": 0.0,
+        "torque_nm": 0.0,
+        "efficiency_pct": 0.0,
+        "temperature_c": 25.0
+      },
+      "source_api": {
+        "position_deg": "left_drive.position(DEGREES)",
+        "velocity_rpm": "left_drive.velocity(RPM)",
+        "current_amp": "left_drive.current(AMP)",
+        "power_w": "left_drive.power(WATT)",
+        "torque_nm": "left_drive.torque(NM)",
+        "efficiency_pct": "left_drive.efficiency(PERCENT)",
+        "temperature_c": "left_drive.temperature(CELSIUS)"
+      }
+    },
+    {
+      "device": "right_drive",
+      "subsystem": "drivetrain",
+      "api_binding": "vexcode_python",
+      "sample_ms": 800,
+      "values": {
+        "position_deg": 0.0,
+        "velocity_rpm": 0.0,
+        "current_amp": 0.0,
+        "power_w": 0.0,
+        "torque_nm": 0.0,
+        "efficiency_pct": 0.0,
+        "temperature_c": 25.0
+      },
+      "source_api": {
+        "position_deg": "right_drive.position(DEGREES)",
+        "velocity_rpm": "right_drive.velocity(RPM)",
+        "current_amp": "right_drive.current(AMP)",
+        "power_w": "right_drive.power(WATT)",
+        "torque_nm": "right_drive.torque(NM)",
+        "efficiency_pct": "right_drive.efficiency(PERCENT)",
+        "temperature_c": "right_drive.temperature(CELSIUS)"
+      }
+    }
+  ],
+  "predicted": {"success": true, "distance_error_m": 0.0},
+  "gap": {"distance_error_m": 0.0}
+}

@@ -14,7 +14,7 @@ from partial commands during the upload.
 | 1 | — | **Never upload here.** Reserved as a dynamic/ad-hoc slot; treated as read-only by all team members. |
 | 2–4 | Jake | Jake's exclusive slots. Do not upload here unless you are Jake. |
 | 5–6 | Grace | Grace's exclusive slots. Do not upload here unless you are Grace. |
-| 7–8 | David | David's exclusive slots for development and testing. |
+| 7–8 | David | David's exclusive slots for development and testing. Use Slot 8 for the current live operator/bridge test program unless coordinating otherwise. |
 
 These are VEX GUI program upload slots. They are separate from `cmd:"routine"`
 IDs inside the running `pros_bridge` program, where routine ID `2` is a 720 spin,
@@ -90,15 +90,16 @@ scp robot/v5-brain/pros_bridge/bin/monolith.bin \
 # Stop the bridge first:
 ssh vexy@vexy.local "systemctl --user stop vexy-ros-bridge.service vexy-ros-stack.service"
 
-# Upload to slot 7 or 8 (David's slots — see slot ownership table above):
-ssh vexy@vexy.local "cd ~/llm-self-model-capstone/robot/v5-brain/pros_bridge && uv run pros upload --slot 7 --after none"
+# Upload to Slot 8 for the current David live-test program:
+ssh vexy@vexy.local "cd ~/llm-self-model-capstone/robot/v5-brain/pros_bridge && uv run pros upload --slot 8 --after none"
 
 # Restart the stack:
 ssh vexy@vexy.local "systemctl --user start vexy-ros-stack.service vexy-ros-bridge.service"
 ```
 
-`--after none` prevents the Brain from auto-running the uploaded program. Tap the slot
-on the Brain touchscreen when you are ready to run.
+`--after none` prevents the Brain from auto-running the uploaded program. Tap
+Slot 8 on the Brain touchscreen when you are ready to run live tests. If the ROS
+stack is healthy but the robot never moves, check this first.
 
 ---
 
@@ -110,7 +111,7 @@ When you want to upload from any directory, or want to be explicit about the bin
 ssh vexy@vexy.local \
   "uv --project ~/llm-self-model-capstone/robot/v5-brain run pros upload \
      ~/llm-self-model-capstone/robot/v5-brain/pros_bridge/bin/monolith.bin \
-     --target v5 --slot 7 --after none"   # slot 7 or 8 for David; see slot ownership table
+     --target v5 --slot 8 --after none"   # slot 8 for the current live-test program
 ```
 
 `--target v5` is required when supplying a bare file path (not a project directory).
@@ -120,7 +121,7 @@ ssh vexy@vexy.local \
 ### 8C — Full one-liner from the laptop (stop → upload → start)
 
 ```bash
-SLOT=7   # David: 7 or 8 | Jake: 2–4 | Grace: 5–6 | NEVER slot 1
+SLOT=8   # Current David live-test slot | Jake: 2–4 | Grace: 5–6 | NEVER slot 1
 ssh vexy@vexy.local "
   systemctl --user stop vexy-ros-bridge.service vexy-ros-stack.service 2>/dev/null
   cd ~/llm-self-model-capstone/robot/v5-brain/pros_bridge
@@ -174,7 +175,7 @@ Example output:
 `pros upload` auto-detects the system port. If auto-detection fails, pass it explicitly:
 
 ```bash
-uv run pros upload --slot 7 --after none /dev/ttyACM1
+uv run pros upload --slot 8 --after none /dev/ttyACM1
 ```
 
 ---

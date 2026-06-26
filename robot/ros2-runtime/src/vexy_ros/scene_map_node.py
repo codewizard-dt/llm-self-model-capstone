@@ -13,6 +13,7 @@ from std_msgs.msg import String
 from tf2_msgs.msg import TFMessage
 
 from .vision_map import (
+    DEFAULT_CAMERA_IN_ROBOT,
     TagDetection2D,
     build_scene_map,
     camera_from_apriltag_translation,
@@ -35,9 +36,7 @@ class SceneMapNode(Node):
         self.declare_parameter("map_frame", "map")
         self.declare_parameter("workspace_map_path", "")
         self.declare_parameter("tag_anchors_json", DEFAULT_TAG_ANCHORS_JSON)
-        self.declare_parameter(
-            "camera_in_robot_json", '{"x_m":0.0,"y_m":0.0,"yaw_rad":0.0}'
-        )
+        self.declare_parameter("camera_in_robot_json", DEFAULT_CAMERA_IN_ROBOT)
 
         workspace_map_path = (
             self.get_parameter("workspace_map_path").get_parameter_value().string_value

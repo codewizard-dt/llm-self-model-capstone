@@ -9,8 +9,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from vexy_ros.bridge_demux import BrainStreamDemux
 from vexy_ros.bridge_protocol import (
-    MAX_TTL_MS,
+    MAX_ARM_TARGET_DEG,
     MAX_CLAW_MS,
+    MAX_TTL_MS,
     BridgeProtocolError,
     heartbeat_packet,
     normalize_outbound,
@@ -131,6 +132,21 @@ class BridgeDemuxTests(unittest.TestCase):
 
                 self.assertEqual(packet["ttl_ms"], MAX_TTL_MS)
                 self.assertEqual(packet["duration_ms"], MAX_CLAW_MS)
+
+    def test_arm_command_target_stays_bounded(self) -> None:
+        packet = normalize_outbound(
+            {
+                "v": 1,
+                "seq": 4,
+                "type": "cmd",
+                "cmd": "arm",
+                "sent_ms": 1,
+                "ttl_ms": 200,
+                "target_deg": 999999,
+            }
+        )
+
+        self.assertEqual(packet["target_deg"], MAX_ARM_TARGET_DEG)
 
 
 if __name__ == "__main__":

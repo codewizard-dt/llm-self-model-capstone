@@ -2,11 +2,12 @@
 id: pros
 title: PROS (Purdue Robotics OS)
 aliases: [PROS, Purdue Robotics OS, PROS 3]
-updated: 2026-06-21
+updated: 2026-06-26
 sources:
   - ../../../raw/research/vex-v5-advanced-toolchains/index.md
   - ../../../raw/research/vex-v5-rpi-coprocessor-opensource/index.md
   - ../../../raw/research/vexcode-python-vs-cpp/index.md
+  - ../../../raw/research/driver-telemetry-labeling/index.md
 tags: [tool, software, vex, programming, rtos, competition, open-source]
 ---
 
@@ -130,6 +131,10 @@ Use `StaticJsonDocument`, never `DynamicJsonDocument`, in a tight loop to avoid 
 **Multi-task pattern required in practice:** Real-world teams that combined send and receive into a single PROS task hit deadlocks (blocked on `getchar()` while needing to send). The capstone bridge uses separate FreeRTOS tasks for receive, watchdog, telemetry, and fixed routine slots. Routine slots 2-4 are serial command IDs inside the running bridge program: 2 = 720 spin, 3 = arm up/down, 4 = one foot forward/back.
 
 **PROS C++ vs VEXcode Python (as research, not decision):** PROS C++ bidirectional serial is community-confirmed; VEXcode Python stdin receiving on the Brain is unconfirmed (no community example exists of Python on the Brain receiving from a Pi). See derives_from::[[v5-brain-python-vs-pros]].
+
+## Manual Driver Telemetry
+
+derived_from::[[driver-telemetry-while-using-the-controller]] clarifies a second use of the PROS task model: while a human drives with the V5 controller, `opcontrol()` can run a controller-owned drive loop and a separate telemetry task can print compact JSON samples. The critical constraint is **single writer per motor subsystem**: the controller loop owns drivetrain commands in manual mode, while telemetry reads motor/controller/battery state only.
 
 ## Community RS-485 Coprocessor Examples (from [[vex-v5-rpi-coprocessor-opensource]])
 

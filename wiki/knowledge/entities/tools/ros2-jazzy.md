@@ -2,10 +2,12 @@
 id: ros2-jazzy
 title: ROS 2 Jazzy Jalisco
 aliases: [ROS 2 Jazzy, ROS2 Jazzy, Jazzy, ROS 2]
-updated: 2026-06-23
+updated: 2026-06-26
 sources:
   - ../../../raw/research/rpi-os-options/index.md
   - ../../../raw/research/rpi-os-options/index-2.md
+  - ../../../raw/research/driver-telemetry-labeling/index.md
+  - ../../sources/ros2-camera-calibration-vexy.md
 tags: [tool, software, ros, robotics, middleware]
 ---
 
@@ -54,6 +56,12 @@ Fallback: `picam_ros2` (PhantomCybernetics) — Docker-friendly alternative that
 | `foxglove_bridge` | `apt install ros-jazzy-foxglove-bridge` | Real-time browser debug at `ws://mypi.local:8765` |
 | `camera_ros` | workspace build (see above) | Camera Module 3 → `/camera/image_raw` |
 
+## Camera Calibration
+
+derived_from::[[ros2-camera-calibration-vexy]] adds the ROS 2 calibration path for the VEXY camera stack. The reference workflow is the `camera_calibration` package's `cameracalibrator` node on `/camera/image_raw`, using a printed checkerboard with known inner-corner count and square size. The resulting CameraInfo is loaded by `camera_ros` through `camera_info_url` or set through the camera node's `set_camera_info` service when available.
+
+On the headless robot, relates_to::[[vexy-ros-runtime]] uses `vexy_calibrate_camera` to produce the same YAML shape without relying on the GUI calibrator. After loading calibration, Jazzy validation should check `/camera/camera_info`, `/camera/image_rect`, and AprilTag `/tf` rather than assuming the YAML was consumed correctly.
+
 ## VEX V5 Serial Bridge
 
 `rosserial_vex_v5` has **no Jazzy package** (no version for distro jazzy on index.ros.org). The VEX V5 serial bridge is always a thin custom pyserial node regardless of OS. Example pattern:
@@ -71,6 +79,10 @@ class VEXInterface(Node):
 ## ros2 bag + LLM Feedback Loop
 
 `ros2 bag record -a -o mission_1` captures all topics with timestamps. Export via `ros2 unbag` → JSON → Claude API. This is a cleaner repeatable LLM self-model revision loop than custom JSONL construction.
+
+## Operator Annotation Stream
+
+derived_from::[[driver-telemetry-while-using-the-controller]] adds `/operator/annotation` as a natural ROS-side companion to `/vex/telemetry`: human labels are timestamped by the Pi and recorded into the same MCAP session as telemetry, vision, and scene-map topics. This keeps labels aligned without changing the V5 Brain program into a text-entry interface.
 
 ## Migration Timeline
 

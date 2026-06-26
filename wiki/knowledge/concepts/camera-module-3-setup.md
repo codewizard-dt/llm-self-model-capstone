@@ -1,11 +1,14 @@
 ---
 id: camera-module-3-setup
 title: Camera Module 3 — Setup, Packages, and Verification
-updated: 2026-06-19
+aliases: [Pi Camera Module 3 setup, Camera Module 3 setup, VEXY camera setup]
+updated: 2026-06-26
 tags: [concept, hardware, raspberry-pi, camera, setup, vision]
 sources:
   - ../../entities/tools/pi-camera-module-3.md
   - ../../sources/vision-vex-architecture.md
+  - ../sources/vision-stack-audit.md
+  - ../sources/ros2-camera-calibration-vexy.md
 ---
 
 # Camera Module 3 — Setup, Packages, and Verification
@@ -127,7 +130,53 @@ Print tag36h11 family tags at 100mm × 100mm and tape them to workspace walls. T
 - **YOLO warm-up**: ~3s first-inference delay. Build a warm-up call into the startup sequence.
 - **Pi 5 cable connector**: 22-pin 0.5mm only — do not force the 15-pin 1mm cable into the Pi 5 port.
 
+## 7. ROS 2 Jazzy Managed Stack (vexy Pi)
+
+On the vexy Pi (Ubuntu 24.04 + ROS 2 Jazzy), the camera is **not** driven by picamera2 directly. Instead, the full camera-to-AprilTag chain runs as a ROS 2 stack managed by `vexy-ros-stack.service`:
+
+```
+camera_ros (libcamera fork) → image_proc rectify → apriltag_ros → /tf
+```
+
+The service ExecStart passes `camera_fps:=30` and `camera_info_url:=file:///home/vexy/calibration/imx708_wide_640x480.yaml` to the launch file. To restart the managed stack:
+
+```bash
+systemctl --user restart vexy-ros-stack.service
+ros2 topic hz /camera/image_raw   # health check
+```
+
+For full service unit details and the drop-in pattern, see relates_to::[[camera-stack-startup]] and relates_to::[[vexy-ros-runtime]].
+
+## 8. Calibration and Rectified-Image Semantics
+
+derived_from::[[vision-stack-audit]] clarifies that the active vexy Pi calibration source is the service override path:
+
+```text
+file:///home/vexy/calibration/imx708_wide_640x480.yaml
+```
+
+The package config `robot/ros2-runtime/config/imx708_wide_640x480.yaml` is a starter placeholder. Patching the repo YAML does not affect the managed robot unless the service override is changed or the measured file under `/home/vexy/calibration/` is updated.
+
+Two ROS message details matter for downstream vision:
+
+- `sensor_msgs/Image.step` is the full row length in bytes. Image conversion code must account for row stride instead of assuming `height * width * channels` tightly packed data.
+- `sensor_msgs/CameraInfo.K` describes raw/distorted images, while `CameraInfo.P` is the projection matrix for processed/rectified images. Consumers of `/camera/image_rect` should use the rectified intrinsics from `P`, with `K` only as a fallback when appropriate.
+
+derived_from::[[ros2-camera-calibration-vexy]] adds the calibration workflow expectation for this stack. The canonical ROS 2 reference path is `camera_calibration` / `cameracalibrator` on `/camera/image_raw`; the practical VEXY path is the headless `vexy_calibrate_camera` command, which writes the same kind of CameraInfo YAML without requiring a GUI on the Pi:
+
+```bash
+vexy_calibrate_camera --cols 8 --rows 6 --square-m 0.025 --samples 25 --out /home/vexy/calibration/imx708_wide_640x480.yaml
+systemctl --user restart vexy-ros-stack.service
+```
+
+The checkerboard dimensions are inner-corner counts, so an `8x6` board has `9x7` printed squares. Capture samples across the full field of view, at near and far distances, with tilt/skew, and at the same camera resolution/focus/exposure used by runtime. After restart, verify `/camera/camera_info`, `/camera/image_rect`, and AprilTag `/tf`; loading a YAML alone is not proof that rectified vision is correct.
+
 derived_from::[[pi-camera-module-3]]
 derived_from::[[vision-vex-architecture]]
+derived_from::[[vision-stack-audit]]
+derived_from::[[ros2-camera-calibration-vexy]]
 relates_to::[[raspberry-pi-5]]
 relates_to::[[apriltag-library]]
+relates_to::[[camera-stack-startup]]
+relates_to::[[vexy-ros-runtime]]
+relates_to::[[ros2-camera-calibration-workflow]]

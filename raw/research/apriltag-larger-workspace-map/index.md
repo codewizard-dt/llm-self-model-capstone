@@ -98,7 +98,7 @@ The FRC/FTC ecosystem has converged on a JSON "field map" format. Limelight call
 
 ```json
 {
-  "map_id": "table-grab-toss-v1",
+  "map_id": "gen0-grab-toss-v1",
   "map_version": "1.0",
   "description": "150cm x 200cm floor arena, ball at west end, bin at east end",
   "arena": {
@@ -145,16 +145,16 @@ The `waypoints` block is the key addition beyond the tag list — it lets the pl
 **Directory layout** (follows existing `VEXY_*` config pattern):
 ```
 robot/pi-runtime/config/
-  defaults                         ← add: VEXY_MAP=table-grab-toss-v1
+  defaults                         ← add: VEXY_MAP=gen0-grab-toss-v1
   maps/
-    table-grab-toss-v1.json        ← first map
+    gen0-grab-toss-v1.json        ← first map
     hallway-test-v1.json           ← second map (future)
     l-shaped-arena-v1.json         ← irregular shape (future)
 ```
 
 **Env var selection** (consistent with existing `VEXY_BRIDGE_MODE`, `VEXY_SERIAL_PORT` etc.):
 ```bash
-VEXY_MAP=table-grab-toss-v1   # loads config/maps/table-grab-toss-v1.json
+VEXY_MAP=gen0-grab-toss-v1   # loads config/maps/gen0-grab-toss-v1.json
 ```
 
 **New module**: `robot/pi-runtime/src/vexy_system2/localizer.py`
@@ -200,7 +200,7 @@ VEXY_MAP=table-grab-toss-v1   # loads config/maps/table-grab-toss-v1.json
 ## Next Steps
 
 - `/task-add` — Implement `localizer.py` with load_map, tag-fix, odometry-step, waypoint-vector
-- `/task-add` — Create `config/maps/table-grab-toss-v1.json` first map file and add `VEXY_MAP` to `config/defaults`
+- `/task-add` — Create `config/maps/gen0-grab-toss-v1.json` first map file and add `VEXY_MAP` to `config/defaults`
 - Print 4× tag36h11 tags (IDs 0–3) at 200 mm on matte paper; laminate recommended
 - Measure and tape out a 150 cm × 200 cm rectangle on the demo floor
 - `/wiki-ingest raw/research/apriltag-larger-workspace-map/index.md` to add this to the knowledge base

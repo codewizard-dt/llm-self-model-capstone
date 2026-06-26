@@ -6,7 +6,7 @@ loop. It follows the wiki references:
 - `wiki/knowledge/concepts/apriltag-workspace-layout.md`
 - `wiki/knowledge/sources/apriltag-larger-workspace-map.md`
 
-The default map is `config/maps/table-grab-toss-v1.json`: a 150 cm x 200 cm
+The default map is `config/maps/gen0-grab-toss-v1.json`: a 150 cm x 200 cm
 floor arena with 200 mm `tag36h11` tags.
 
 | Tag | Role | Purpose |
@@ -46,9 +46,9 @@ Every pose includes both:
 As of 2026-06-24 on `vexy`:
 
 - PiCam2 calibration captured 25 checkerboard samples and wrote
-  `/home/vexy/calibration/imx708_wide_640x480.yaml`.
+  `/home/vexy/calibration/imx708_wide_640x360.yaml`.
 - `vexy-ros-stack.service` loads the measured calibration through
-  `camera_info_url:=file:///home/vexy/calibration/imx708_wide_640x480.yaml`.
+  `camera_info_url:=file:///home/vexy/calibration/imx708_wide_640x360.yaml`.
 - `/camera/camera_info` now reports measured intrinsics (`fx` about 558.33,
   `fy` about 557.27), not the starter `430/320/240` matrix.
 - `/camera/image_rect` publishes at camera rate and `/vex/ack` is green.
@@ -64,12 +64,12 @@ for separately.
 1. PiCam2 calibration:
 
 ```bash
-mkdir -p /home/vexy/calibration/imx708_wide_640x480_samples
+mkdir -p /home/vexy/calibration/imx708_wide_640x360_samples
 ros2 run vexy_ros vexy_calibrate_camera \
   --cols 8 --rows 6 --square-m 0.025 \
   --samples 25 \
-  --out /home/vexy/calibration/imx708_wide_640x480.yaml \
-  --preview-dir /home/vexy/calibration/imx708_wide_640x480_samples
+  --out /home/vexy/calibration/imx708_wide_640x360.yaml \
+  --preview-dir /home/vexy/calibration/imx708_wide_640x360_samples
 ```
 
 Move an 8x6 inner-corner checkerboard through the camera view until all samples
@@ -77,7 +77,7 @@ are captured. Relaunch with the measured calibration:
 
 ```bash
 ros2 launch vexy_ros vexy.launch.py \
-  camera_info_url:=file:///home/vexy/calibration/imx708_wide_640x480.yaml
+  camera_info_url:=file:///home/vexy/calibration/imx708_wide_640x360.yaml
 ```
 
 For the persistent Pi service, use a user-systemd drop-in:
@@ -86,7 +86,7 @@ For the persistent Pi service, use a user-systemd drop-in:
 # /home/vexy/.config/systemd/user/vexy-ros-stack.service.d/20-measured-camera-info.conf
 [Service]
 ExecStart=
-ExecStart=/bin/bash -lc 'source /opt/ros/jazzy/setup.bash && source /home/vexy/ros2_ws/install/setup.bash && exec ros2 launch vexy_ros vexy.launch.py camera_fps:=30 serial_port:=auto camera_info_url:=file:///home/vexy/calibration/imx708_wide_640x480.yaml'
+ExecStart=/bin/bash -lc 'source /opt/ros/jazzy/setup.bash && source /home/vexy/ros2_ws/install/setup.bash && exec ros2 launch vexy_ros vexy.launch.py camera_fps:=15 serial_port:=auto camera_info_url:=file:///home/vexy/calibration/imx708_wide_640x360.yaml yellow_ball_detector_enabled:=false'
 ```
 
 Then reload and restart:

@@ -24,7 +24,7 @@ Use these commands as the only direct Brain actions:
 
 | Primitive | Use When | Notes |
 | --- | --- | --- |
-| `stop` | Motion should end, pause, or fail closed. | Also used for event-driven faults such as `stuck` and `spinout`. |
+| `stop` | Motion should end, pause, or fail closed. | Also used for hard safety and terminal task states. |
 | `drive` | Move toward or away from a target while correcting heading. | `vx` and `omega` are physically meaningful; `vy` is accepted by the ROS protocol but the Brain drivetrain does not strafe. |
 | `turn` | Search for or orient toward a target without forward motion. | Preferred when no fresh target is visible. |
 | `grab` | Close/intake the end effector around an object. | The operator reports `grabbed` when manipulator telemetry suggests an object is loaded. |
@@ -122,8 +122,6 @@ The operator publishes structured JSON on `/operator/events`.
 | `apriltag_located` | A nearest fresh AprilTag was selected. |
 | `oriented` | The requested tag is within yaw tolerance and the operator sent `stop`. |
 | `arrived` | The requested tag is within distance, lateral, and yaw tolerances. |
-| `stuck` | A drive command is active but wheel velocity is unexpectedly low. |
-| `spinout` | Wheel velocity is high but visual progress toward the tag is too low. |
 | `grabbed` | Manipulator current is elevated while manipulator velocity is low after `grab`. |
 | `command_rejected` | An ad-hoc operator command was malformed or unsupported. |
 | `pose_estimated` | The operator updated map pose from visible mapped AprilTags. |
@@ -188,5 +186,6 @@ primitive packets directly. For example, ball delivery should run:
 5. `lift()`
 6. `release()`
 
-If a step emits `stuck` or `spinout`, the task must stop, save its summary, and
-wait for a human or an ad-hoc SSH command.
+If a step fails because of timeout, tag loss, bridge fault, or a hard safety
+condition, the task must stop, save its summary, and wait for a human or an
+ad-hoc SSH command.

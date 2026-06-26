@@ -1,6 +1,6 @@
 ---
 title: Wiki Index
-updated: 2026-06-25
+updated: 2026-06-26
 ---
 
 # Wiki Index — Home Map
@@ -76,6 +76,11 @@ The wiki is split into two domains with opposite organizing laws:
 - [Research: Task Contract Redesign — Single "Score" Task](knowledge/sources/task-contract-score-redesign.md) — replaces grab/pull/throw with one ScoreContract; fitness = distance_from_bin_m; motor contract layer unchanged; only 2 code files change
 - [Research — RPi OS Options for the Capstone (+ Addendum)](knowledge/sources/rpi-os-options.md) — four OS/stack options compared; Ubuntu 24.04 + Jazzy camera path confirmed (RPi libcamera fork, 85–90% success); Hailo AI HAT+ ($70) = lowest-risk FPS upgrade; ROS 2 gains: yolo_ros, apriltag_ros, foxglove, ros2 bag→Claude API; stay on Bookworm for Jun 29
 - [Research: Robot AprilTag Ball Delivery](knowledge/sources/robot-apriltag-ball-delivery.md) — implementation workflow for `vexy_deliver_ball`: scan, approach ball tag 1, approach bin tag 0, then bounded release command
+- [Research: Operator Layer — Current State](knowledge/sources/operator-layer-research.md) — comprehensive state of both operator concerns: ROS 2 operator node (feature-complete for ball delivery) and offline LLM packet builder; F10 gap analyzer is the only open blocker for F8 Generator
+- [Research — Camera Stack Startup (vexy Pi)](knowledge/sources/camera-stack-startup.md) — how to start the camera + AprilTag pipeline; camera_ros→image_proc→apriltag_ros→/tf; vexy-ros-stack.service + drop-in; calibration file path; two installed maps
+- [Vision Stack Audit](knowledge/sources/vision-stack-audit.md) — object pickup failure analysis: bbox projection is useful for coarse approach but unsafe as final claw-close evidence; recommends claw-mouth ROI + effector telemetry
+- [ROS 2 Camera Calibration for the VEXY Pi Camera Stack](knowledge/sources/ros2-camera-calibration-vexy.md) — standard ROS checkerboard calibration plus VEXY's headless CameraInfo workflow and validation checks
+- [Driver Telemetry While Using the Controller](knowledge/sources/driver-telemetry-while-using-the-controller.md) — manual V5 controller drive can emit Brain telemetry concurrently; Pi-side timestamped annotations label robot state intervals
 
 ### Concepts
 - [Agent Evolution Factory](knowledge/concepts/agent-evolution-factory.md) — evolving AI-agent architectures via ML+LLM; the recommended capstone pitch
@@ -115,6 +120,10 @@ The wiki is split into two domains with opposite organizing laws:
 - [Robot Workspace Map (Multi-Arena JSON Format)](knowledge/concepts/robot-workspace-map.md) — 2D JSON map schema; active maps now live under `robot/ros2-runtime/config/maps/`; delivery defaults depend on bin/staging roles
 - [Game Object Selection](knowledge/concepts/game-object-selection.md) — multi-criteria framework for choosing a game piece compatible with claw + scoop + flywheel; racquetball (57 mm) is GEN-0 default; compression rule ~10% of diameter; 55–65 mm intersection window
 - [RPi Coprocessor OS Options](knowledge/concepts/rpi-coprocessor-os-options.md) — four-option decision matrix (Bookworm/Ubuntu/Trixie × PiCam2/OAK-D/Hailo); Ubuntu + Jazzy camera path confirmed via libcamera fork; VEX serial always custom pyserial; sequenced upgrade path post-Jun-29
+- [Driver Telemetry Annotation](knowledge/concepts/driver-telemetry-annotation.md) — human-driver capture pattern: controller loop owns motors, telemetry task samples, Pi records timestamped labels into the same MCAP session
+- [ROS 2 Camera Calibration Workflow](knowledge/concepts/ros2-camera-calibration-workflow.md) — checkerboard calibration pattern for ROS `cameracalibrator` and VEXY's headless OpenCV tool, including post-load validation
+- [Object Indication Projection](knowledge/concepts/object-indication-projection.md) — known-size bbox-to-metric object hints; useful for coarse navigation, unsafe near occlusion without pickup-specific confirmation
+- [Claw-Mouth Pickup Vision](knowledge/concepts/claw-mouth-pickup-vision.md) — final-stage image-space ROI contract for deciding when the ball is between the claw jaws before closing
 
 ### Entities
 - People — [knowledge/entities/people/](knowledge/entities/people/)
@@ -139,7 +148,7 @@ The wiki is split into two domains with opposite organizing laws:
 - Tools — [knowledge/entities/tools/](knowledge/entities/tools/)
   - [ChatGPT](knowledge/entities/tools/chatgpt.md) — used for capstone brainstorming; also a benchmark target in Option 4
   - [LEGO Education SPIKE Prime](knowledge/entities/tools/lego-spike-prime.md) — recommended Stage-1 robot-factory platform; app-mediated, offload autonomy
-  - [VEX V5](knowledge/entities/tools/vex-v5.md) — recommended Stage-2 platform; deterministic mechanics, native AI Vision Sensor
+  - [VEX V5](knowledge/entities/tools/vex-v5.md) — recommended Stage-2 platform; deterministic mechanics, native AI Vision Sensor; supports manual controller telemetry capture
   - [VEXcode](knowledge/entities/tools/vexcode.md) — VEX programming environment; scales Blocks → Python → C++; free
   - [VEX STEM Labs](knowledge/entities/tools/stem-labs.md) — free standards-aligned VEX curriculum; CMU Robotics Academy co-designed
   - [RoFI / RoFICoM](knowledge/entities/tools/roficom.md) — open genderless blind-mate connector; the connector-first exemplar
@@ -155,7 +164,7 @@ The wiki is split into two domains with opposite organizing laws:
   - [Raspberry Pi 5](knowledge/entities/tools/raspberry-pi-5.md) — AI/vision coprocessor for VEX V5 robot; runs OpenCV + YOLO11n + AprilTags + LLM; connects to V5 via USB serial JSON
   - [Raspberry Pi Camera Module 3](knowledge/entities/tools/pi-camera-module-3.md) — 12MP Sony IMX708, PDAF autofocus, 75°/120° FOV, 1080p50, $25; CSI ribbon to Pi 5; recommended camera upgrade over USB webcam
   - [AprilTag Library](knowledge/entities/tools/apriltag-library.md) — pip-installable Python wrapper (University of Michigan, ICRA 2011); `detector.detect(gray_frame)` → tag ID + 3D pose; workspace indoor GPS using tag36h11 printed tags
-  - [PROS (Purdue Robotics OS)](knowledge/entities/tools/pros.md) — open-source FreeRTOS-based C/C++ OS for VEX V5; preemptive scheduling; pros::Serial opens Smart Ports as RS-485 coprocessor channels
+  - [PROS (Purdue Robotics OS)](knowledge/entities/tools/pros.md) — open-source FreeRTOS-based C/C++ OS for VEX V5; preemptive scheduling supports controller-owned drive plus telemetry tasks
   - [LemLib](knowledge/entities/tools/lemlib.md) — PROS template adding odometry (x/y/heading), PID, pure pursuit; enables pose-level telemetry for richer self-model gap residuals
   - [vexide](knowledge/entities/tools/vexide.md) — Rust async runtime for VEX V5; compile-time safety + QEMU simulation; deferred for capstone demo (Rust learning curve)
   - [WS2812B NeoPixel LED Strip](knowledge/entities/tools/ws2812b-neopixel.md) — individually addressable RGB LEDs, 5V, $8–15/1m strip; Pi 5 requires SPI method (GPIO 10) or Arduino Nano co-controller; highest visual-impact flair option
@@ -166,13 +175,14 @@ The wiki is split into two domains with opposite organizing laws:
   - [NVIDIA Jetson Nano](knowledge/entities/tools/jetson-nano.md) — VAIC reference coprocessor; EOL (dev kit discontinued); replaced by Pi 5 in capstone; serial protocol identical (/dev/ttyACM0, 115200 baud)
   - [NVIDIA Jetson Orin Nano Super](knowledge/entities/tools/jetson-orin-nano-super.md) — current Jetson entry-level ($249); 67 TOPS; rejected for capstone (7-20V DC power, $430+ total, overkill for 8-FPS tasks)
   - [NVIDIA JetPack SDK](knowledge/entities/tools/nvidia-jetpack.md) — mandatory Jetson OS stack; Ubuntu 18.04 + Python 3.6 (Nano/JetPack 4.6); 2-4hr setup; library compatibility friction
-  - [ROS 2 Jazzy Jalisco](knowledge/entities/tools/ros2-jazzy.md) — ROS 2 LTS for Ubuntu 24.04; Camera Module 3 works via RPi libcamera fork build; `yolo_ros`, `apriltag_ros`, `foxglove_bridge`, `ros2 bag` all apt-installable; VEX serial is always custom pyserial node
+  - [ROS 2 Jazzy Jalisco](knowledge/entities/tools/ros2-jazzy.md) — ROS 2 LTS for Ubuntu 24.04; MCAP recording can align `/vex/telemetry`, vision topics, and human annotation streams
   - [Raspberry Pi AI HAT+](knowledge/entities/tools/hailo-ai-hat.md) — Hailo-8L (13 TOPS, $70) / Hailo-8 (26 TOPS, $110) / Hailo-10H (40 TOPS, $130); works on Bookworm + Trixie; `sudo apt install hailo-all`; 30+ FPS YOLO; lowest-risk post-showcase FPS upgrade
   - [Luxonis OAK-D](knowledge/entities/tools/oak-d.md) — spatial AI camera; stereo depth + 4 TOPS onboard VPU; USB interface (no libcamera); $79–$249; best long-term architecture for 3D object localization
   - [Foxglove Studio](knowledge/entities/tools/foxglove-studio.md) — web-based ROS 2 visualization; `foxglove_bridge` apt on Jazzy; debug bounding boxes + poses in browser from any machine; invaluable for headless Pi demos
 - Components — [knowledge/entities/components/](knowledge/entities/components/) (this project's own modules, services, scripts)
   - [localizer.py](knowledge/entities/components/localizer.md) — planned Pi-side module: load_map, update_from_tag, update_from_odometry, get_vector_to_waypoint; bridges workspace map config and runtime pose state
-  - [vexy_ros ROS 2 Runtime](knowledge/entities/components/vexy-ros-runtime.md) — current ROS 2 Jazzy Pi runtime: camera, AprilTags, scene map, task planning, bounded local skills, `vexy_deliver_ball`, V5 bridge, and proof export
+  - [vexy_ros ROS 2 Runtime](knowledge/entities/components/vexy-ros-runtime.md) — current ROS 2 Jazzy Pi runtime: camera, AprilTags, scene map, object indication projection, bounded skills, V5 bridge, telemetry, proof export, and `vexy_ros.operator`
+  - [Operator LLM Packet Builder](knowledge/entities/components/operator-llm-packet-builder.md) — offline `operator-llm-critic` v0.2.0 package; assembles Markdown evidence packets for the F8 Generator; both JSONL and ROS-bundle input paths implemented; F10 gap analyzer is the only remaining blocker
 
 ---
 

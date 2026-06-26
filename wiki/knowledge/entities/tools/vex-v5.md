@@ -2,7 +2,7 @@
 id: vex-v5
 title: VEX V5
 aliases: [VEX V5, VEX]
-updated: 2026-06-25
+updated: 2026-06-26
 sources:
   - ../../../raw/Feasibility of a Human-Built Generational Robot Software Factory.pdf
   - ../../../raw/Feasibility of a Software-Factory Approach to Learning Robots That Assemble Additional Robots from M.pdf
@@ -14,6 +14,7 @@ sources:
   - ../../../raw/research/home-depot-inventory-2026-06-25/index.md
   - ../../../raw/research/flywheel-arm-retrofit/index.md
   - ../../../raw/research/vex-smart-motor-hs-shaft-flywheel/index.md
+  - ../../../raw/research/driver-telemetry-labeling/index.md
 tags: [tool, hardware, vex, platform, robotics]
 ---
 
@@ -102,6 +103,10 @@ motor.set_max_torque(50, PERCENT)
 Three swappable gear cartridges: **6:1 (600 RPM)**, **18:1 (200 RPM, default — included)**, **36:1 (100 RPM)**. Brain has 21 Smart Ports; Clawbot uses 4, leaving 17 free. Kit is explicitly scalable to add motors, sensors, aluminum, pneumatics.
 
 Task contracts (predicted + observed + gap JSON) for each task primitive: see [[task-telemetry-contract]].
+
+## Manual Driver Telemetry Capture
+
+derived_from::[[driver-telemetry-while-using-the-controller]] adds a supervised data-capture mode for the same V5 Brain and Smart Motor stack. A human can drive with the V5 controller while the Brain emits motor, battery, and controller telemetry over the user serial port. This makes VEX V5 useful not only for autonomous proof runs, but also for labeled human demonstrations where the Pi records `/vex/telemetry`, camera/scene context, and timestamped operator annotations.
 
 ## Launch-Disc Configuration — Individual Parts (from [[vex-launch-disc-parts]])
 

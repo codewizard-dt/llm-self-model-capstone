@@ -2,7 +2,7 @@
 id: llm-authored-self-model
 title: LLM-Authored Robot Self-Model
 aliases: [Robot Self-Model, Self-Description, LLM Self-Modeling]
-updated: 2026-06-15
+updated: 2026-06-25
 sources:
   - ../../raw/chatgpt-ai-powered-software-factory.md
   - ../../raw/Feasibility of a Human-Built Generational Robot Software Factory.pdf
@@ -139,6 +139,19 @@ This directly realizes the Hart/Scassellati **visual self-observation** lineage 
 **AprilTag localization enriches gap analysis**: instead of only encoder-count residuals, the self-model now receives spatial pose residuals (`dx`, `dy`, `dtheta`) from AprilTag observations — a much richer correction signal that lets the LLM Generator update the self-model's kinematic geometry directly.
 
 extended_by::[[vision-vex-architecture]]
+
+## F8 Operator Packet Builder — Concrete Preparation Artifact (2026-06-25)
+
+The `operator_llm` package (`operator-llm-critic` v0.2.0, `operator/src/operator_llm/`) is the **concrete artifact that prepares evidence for the F8 Generator**. It implements `build_operator_packet`, which assembles a structured Markdown document covering the current SelfModel, parts catalog verdict, contract evidence, gap summary, and generator guardrails. This is the machine-readable package the Generator LLM reads to produce a revised self-model.
+
+The architecture follows a **Generator/Critic pattern** (defined in `operator/docs/llm_critic_architecture.md`):
+- **Generator** (F8): reads the assembled packet and authors a revised SelfModel
+- **Three stateless Critics** (F9): physics, torque, and CoM/geometry — each attacks the Generator's output independently before it is accepted
+
+The packet builder is complete and tested. The **only remaining blocker** before the Generator can be implemented is **F10 (gap analyzer)**: until F10 lands, gap summary sections in packets are either `BLOCKED_F10_GAP` (no input) or `FIXTURE_BACKED_GAP` (fixture-supplied). The packet builder's `validate_fixture_packets` integration test verifies these invariants hold.
+
+implemented_by::[[operator-llm-packet-builder]]
+relates_to::[[operator-layer-research]]
 
 derives_from::[[agent-evolution-factory]]  
 grounded_by::[[typed-assembly-grammar]]  

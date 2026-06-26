@@ -2,7 +2,7 @@
 id: vexy-ros-runtime
 title: vexy_ros ROS 2 Runtime
 aliases: [vexy_ros, ROS2 runtime, ROS 2 runtime, VEXY ROS runtime, robot/ros2-runtime]
-updated: 2026-06-25
+updated: 2026-06-26
 sources:
   - ../../../../robot/ros2-runtime/README.md
   - ../../../../robot/ros2-runtime/docs/ARCHITECTURE.md
@@ -10,7 +10,12 @@ sources:
   - ../../../../robot/ros2-runtime/launch/vexy.launch.py
   - ../../../../robot/ros2-runtime/setup.py
   - ../../sources/robot-apriltag-ball-delivery.md
-tags: [component, ros2, jazzy, raspberry-pi, vex-v5, vision, serial, runtime]
+  - ../../sources/operator-layer-research.md
+  - ../../sources/camera-stack-startup.md
+  - ../../sources/vision-stack-audit.md
+  - ../../sources/ros2-camera-calibration-vexy.md
+  - ../../../raw/research/driver-telemetry-labeling/index.md
+tags: [component, ros2, jazzy, raspberry-pi, vex-v5, vision, serial, runtime, operator]
 ---
 
 # vexy_ros ROS 2 Runtime
@@ -78,13 +83,42 @@ The Pi talks to the Brain through newline-delimited JSON over the V5 user serial
 | `/vex/telemetry` | `std_msgs/String` JSON | Brain telemetry, motor samples, and events |
 | `/vex/bridge_status` | `std_msgs/String` JSON | Bridge health, serial faults, malformed packets, missing acks |
 
+## Service Management
+
+The stack runs on the vexy Pi under the systemd user service `vexy-ros-stack.service`. The base `ExecStart` sources both the global ROS install and the workspace, then launches:
+
+```
+ros2 launch vexy_ros vexy.launch.py camera_fps:=30 serial_port:=auto
+```
+
+A **drop-in override** in `~/.config/systemd/user/vexy-ros-stack.service.d/` replaces `ExecStart` (using the blank-then-override pattern) to add `camera_info_url` and set `VEXY_MAP`:
+
+```ini
+[Service]
+Environment=VEXY_MAP=gen0-grab-toss-v1
+ExecStart=
+ExecStart=/bin/bash -lc 'source /opt/ros/jazzy/setup.bash && source /home/vexy/ros2_ws/install/setup.bash && exec ros2 launch vexy_ros vexy.launch.py camera_fps:=30 serial_port:=auto camera_info_url:=file:///home/vexy/calibration/imx708_wide_640x480.yaml'
+```
+
+**Calibration file on Pi**: `~/calibration/imx708_wide_640x480.yaml` (Camera Module 3 Wide, 640×480).
+
+| Task | Command |
+|---|---|
+| Restart managed stack | `systemctl --user restart vexy-ros-stack.service` |
+| Manual start | `source ~/ros2_ws/install/setup.bash && ros2 launch vexy_ros vexy.launch.py` |
+| Camera health check | `ros2 topic hz /camera/image_raw` |
+
+derived_from::[[camera-stack-startup]]
+
 ## Implemented Behaviors
 
 ### Camera and AprilTag Localization
 
-The camera path is Camera Module 3 -> Raspberry Pi libcamera fork -> `camera_ros` -> `image_proc` -> `apriltag_ros`. The launch file requires `camera_info_url` to be a URL, not a plain path, because rectification and tag-pose proof depend on camera calibration data. The checked-in calibration file is a starter config; physical tag-pose proof still depends on measured calibration.
+The camera path is Camera Module 3 → Raspberry Pi libcamera fork → `camera_ros` → `image_proc` → `apriltag_ros`. The launch file requires `camera_info_url` to be a URL, not a plain path, because rectification and tag-pose proof depend on camera calibration data. The calibration file on the Pi is `~/calibration/imx708_wide_640x480.yaml`; physical tag-pose proof depends on its accuracy.
 
-`scene_map` consumes tag transforms and a JSON workspace map. The default map is `table-grab-toss-v1`; `VEXY_MAP=gen0-grab-toss-v1` selects the current Gen 0 arena map. The map output includes ROS-friendly meter/radian values and wiki-friendly millimeter/degree values.
+`scene_map` consumes tag transforms and a JSON workspace map. Two maps are installed on the Pi (`gen0-grab-toss-v1.json`, `gen0-grab-toss-v1.json`); the drop-in override selects `gen0-grab-toss-v1` as the active arena. The map output includes ROS-friendly meter/radian values and wiki-friendly millimeter/degree values.
+
+derived_from::[[ros2-camera-calibration-vexy]] identifies `vexy_calibrate_camera` as the preferred headless calibration workflow for this runtime. It follows the same checkerboard/OpenCV model as ROS `cameracalibrator`, but writes the CameraInfo YAML directly for the managed Pi service. A valid calibration run should preserve command metadata, board dimensions, resolution, sample count, timestamp, and reprojection error, then restart the stack and verify `/camera/camera_info`, `/camera/image_rect`, and AprilTag `/tf`. The standard ROS `cameracalibrator` remains the reference workflow and a useful cross-check when a GUI or remote calibration session is available.
 
 ### Object Detection and Mapping
 
@@ -94,6 +128,17 @@ Two object-detection paths feed the same `/vision/object_detections` topic:
 - `yolo_ncnn` is optional and disabled by default; it requires an NCNN `.param`/`.bin` export and a model path.
 
 `object_indication` projects detections into camera-relative object hints using CameraInfo and configured class dimensions. `scene_map` then transforms those hints into workspace coordinates. These coordinates are estimates; precise object localization still needs a tag, measurement, or a proven object controller.
+
+The 2026-06-26 vision audit identifies this as the key live pickup boundary. The yellow-ball detector publishes bboxes for visible yellow contours, and `object_indication` estimates distance from known object diameter divided by bbox pixel size. **That estimate is not reliable when the claw or motor partially occludes the ball**, because the bbox can describe only a visible fragment rather than the full object. In live pickup tests, this allowed the operator to close the claw while the ball was still physically outside the capture zone. derived_from::[[vision-stack-audit]] relates_to::[[object-indication-projection]]
+
+> **Contradiction / boundary violation:** This page already says object coordinates are estimates and object-driven motion is not proven, but the live `pickup_ball()` flow used projected object indications as a hard final-close predicate. The correction is not to treat all camera geometry as bad; AprilTag localization uses a separate calibrated pose path. The fix is to keep object indications for coarse approach and add a pickup-specific rel::[[claw-mouth-pickup-vision]] signal before closing the claw.
+
+Audit follow-ups for this component:
+- `image_to_bgr_array()` should honor ROS `Image.step` instead of assuming tightly packed rows.
+- Projection from `/camera/image_rect` should use `CameraInfo.P` intrinsics rather than raw-image `K`.
+- `/vision/object_indications` should publish explicit empty/no-detection frames or equivalent freshness state, not only positive sightings.
+- Pickup failures should record recent bbox, projection, ROI, and effector telemetry samples so live failures can be diagnosed after the run.
+- Camera calibration should fail closed on high reprojection error and should record enough metadata to distinguish a 640x480 YAML from any future 1280x720 run.
 
 ### Task Planning and Local Skills
 
@@ -114,6 +159,10 @@ Object plans are mapped but intentionally not motion-dispatchable yet. They repo
 - `/vex/bridge_status` for bridge state and faults.
 
 The protocol version is `v: 1`. Supported command values include `stop`, `drive`, `turn`, `set_goal`, and the current release command path used by the proof/delivery utilities. Linear velocity is clamped to +/-0.35 m/s, angular velocity to +/-0.6 rad/s, and `ttl_ms` to 1-5000 ms. The bridge sends automatic heartbeats every 150 ms when no command has arrived.
+
+### Manual Driver Telemetry Capture
+
+derived_from::[[driver-telemetry-while-using-the-controller]] identifies a manual capture mode that reuses the runtime's existing recording shape. In that mode, the Brain should reject or bypass ROS drivetrain commands while the V5 controller owns motor writes, but `vex_bridge_node` can still demux and publish the Brain's read-only telemetry stream on `/vex/telemetry`. A small future annotation node can publish `/operator/annotation` so human labels are recorded in the same MCAP session as camera, scene-map, and motor data.
 
 ## `/vex/cmd` Command Reference
 
@@ -278,3 +327,80 @@ The runtime has focused unit coverage under `robot/ros2-runtime/tests/` for:
 - YOLO NCNN is available only when a model export and Python `ncnn` runtime are installed on the Pi.
 - Camera pose proof requires measured calibration; the checked-in calibration is only a starter config.
 - Hardware proof should use `/vex/ack` plus `/vex/telemetry`; an ack alone proves transport, not task success.
+
+---
+
+## `vexy_ros.operator` Subpackage
+
+`robot/ros2-runtime/src/vexy_ros/operator/` is the on-robot operator layer — it runs as a ROS 2 node on the Raspberry Pi, consumes live sensor streams, and drives the VEX V5 Brain via primitive commands. It is **feature-complete for ball-delivery tasks**.
+
+relates_to::[[operator-llm-packet-builder]]
+feeds::[[task-telemetry-contract]]
+
+### File Layout
+
+| File | Key symbols | Purpose |
+|------|-------------|---------|
+| `core.py` | `Operator`, `OperatorTaskContract`, `TelemetrySnapshot`, `VisionSnapshot`, `OperatorEvent`, `OperatorResult` | Pure-Python business logic, no ROS dependency |
+| `node.py` | `OperatorNode`, `RosCommandSink` | ROS 2 node wrapper; subscribes to topics, delegates to `Operator` |
+| `__init__.py` | — | Package init |
+
+### `Operator` Class (`core.py:288–832`)
+
+The Pi-side orchestration layer above V5 primitives. Requires on construction: `april_tag_map`, `camera_in_robot` (Pose2D), `task_contract` (ContractLine mapping + method plan), and optional `task_outline`, `config`, `clock`, `event_sink`.
+
+**State maintained**: `vision` (VisionSnapshot), `telemetry` (TelemetrySnapshot | None), `map_pose` (Pose2D | None), `localization_source` (`"apriltag"` | `"dead_reckoning"` | `"unknown"`), `last_command`, `last_target_distance_m`.
+
+**Task methods (the six operator abstractions)**:
+- `locate_nearest_apriltag()` — finds nearest mapped tag or sends `turn`
+- `orient_to_tag(tag_index)` — aligns yaw, then `stop`
+- `move_to_tag(tag_index, *, target_distance_m)` — drives toward map-derived standoff pose; emits stuck/spinout events on drive-health failure
+- `grab()`, `lift()`, `release()` — claw/manipulator primitives
+- `detect_drive_health(tag_index)` — checks wheel velocity vs visual progress to detect stuck/slip/disabled
+- `has_object()` — infers object in claw from manipulator telemetry
+
+**Localization**: AprilTag-primary with dead-reckoning fallback (`_update_pose_from_vision`, `_advance_dead_reckoning`).
+
+**Standoff distances by tag role**: `bin`→0.38 m, `ball_staging`/`ball_loading`/`ball`/`home`→0.45 m, default→0.45 m.
+
+**Contract result** (`contract_result` method, `core.py:363–395`): emits a `ContractLine`-compatible dict with motor samples, vision block, gap, outcome, and source; increments `run_index` per call. This is published live to `/operator/results` after every operator method run. feeds::[[task-telemetry-contract]]
+
+**`OperatorTaskContract`** (`core.py:228–247`): a frozen dataclass wrapping the raw ContractLine mapping plus a parsed `method_plan` (tuple of `OperatorMethodCall`). Validates the contract line shape and enforces at least one operator method.
+
+### `OperatorNode` (`node.py:50–360`)
+
+ROS 2 node class extending `rclpy.node.Node` (node name: `"vexy_operator"`).
+
+**ROS parameters declared on init**:
+- `camera_in_robot_json` (default: `{"x_m":0,"y_m":0,"yaw_rad":0}`)
+- `workspace_map_path` or `tag_anchors_json`
+- `task_contract_json`
+- `task_outline_json`
+- `command_topic` → `/operator/command`
+- `event_topic` → `/operator/events`
+- `result_topic` → `/operator/results`
+- `status_topic` → `/operator/status`
+
+**Subscriptions**:
+- `/tf` (TFMessage) — AprilTag transforms → `_on_tf`
+- `/vision/scene_map` (String/JSON) — scene context → `_on_scene_map`
+- `/vision/object_detections` (String/JSON) → `_on_object_detections`
+- `/vision/object_indications` (String/JSON) → `_on_object_indications`
+- `/vex/telemetry` (String/JSON) → `_on_telemetry`
+- `/operator/command` (String/JSON) → `_on_command` (ad-hoc SSH commands)
+
+**Publishers**:
+- `/operator/events` — structured JSON event stream
+- `/operator/results` — ContractLine-compatible result per method run
+- `/operator/status` — periodic status (0.25 s timer)
+
+**Events published** (from GUIDEBOOK.md and core.py):
+`apriltag_searching`, `apriltag_map_loaded`, `apriltag_located`, `oriented`, `arrived`, `stuck`, `spinout`, `grabbed`, `command_rejected`, `pose_estimated`
+
+### Task Outline Contract
+
+`OperatorTaskContract` parses the `task_outline_json` parameter into a `method_plan`. Ad-hoc SSH commands arriving on `/operator/command` are only accepted if their action appears in the loaded task outline — this enforces that the operator cannot be driven outside the authorized task scope. An empty method plan is rejected at startup.
+
+### Operator Docs
+
+`robot/ros2-runtime/operator/GUIDEBOOK.md` documents the full operator interface: primitive commands, operator abstractions, task outline format, vision inputs, localization, telemetry events, contract results, and ad-hoc SSH commands.

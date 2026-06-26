@@ -73,11 +73,11 @@ ros2 launch vexy_ros vexy.launch.py serial_port:=/dev/ttyACM1
 # Higher resolution camera
 ros2 launch vexy_ros vexy.launch.py camera_width:=1280 camera_height:=720
 
-# Faster frame rate
-ros2 launch vexy_ros vexy.launch.py camera_fps:=30
+# Smooth streaming profile
+ros2 launch vexy_ros vexy.launch.py camera_fps:=15
 
 # Multiple overrides at once
-ros2 launch vexy_ros vexy.launch.py serial_port:=/dev/ttyACM1 camera_width:=1280 camera_height:=720 camera_fps:=30
+ros2 launch vexy_ros vexy.launch.py serial_port:=/dev/ttyACM1 camera_width:=1280 camera_height:=720 camera_fps:=15
 ```
 
 ### Individual nodes (useful for debugging)
@@ -328,19 +328,19 @@ Combine into a structured payload and pass to the Claude API for self-model revi
 
 The launch file starts `image_proc` rectification and `apriltag_ros` by default. The detector consumes `/camera/image_rect` plus `/camera/camera_info`, then publishes `/apriltag/detections` and `/tf`.
 
-Before accepting tag pose as proof, replace `config/imx708_wide_640x480.yaml` with measured Camera Module 3 calibration.
+Before accepting tag pose as proof, replace `config/imx708_wide_640x360.yaml` with measured Camera Module 3 calibration.
 
 ### Calibrate/load Camera Module 3
 
 Headless over SSH, using an 8x6 inner-corner checkerboard with 25 mm squares:
 
 ```bash
-mkdir -p /home/vexy/calibration/imx708_wide_640x480_samples
+mkdir -p /home/vexy/calibration/imx708_wide_640x360_samples
 ros2 run vexy_ros vexy_calibrate_camera \
   --cols 8 --rows 6 --square-m 0.025 \
   --samples 25 \
-  --out /home/vexy/calibration/imx708_wide_640x480.yaml \
-  --preview-dir /home/vexy/calibration/imx708_wide_640x480_samples
+  --out /home/vexy/calibration/imx708_wide_640x360.yaml \
+  --preview-dir /home/vexy/calibration/imx708_wide_640x360_samples
 ```
 
 Move the checkerboard through the frame until the command writes the YAML, then
@@ -348,7 +348,7 @@ relaunch with a URL:
 
 ```bash
 ros2 launch vexy_ros vexy.launch.py \
-  camera_info_url:=file:///home/vexy/calibration/imx708_wide_640x480.yaml
+  camera_info_url:=file:///home/vexy/calibration/imx708_wide_640x360.yaml
 ```
 
 For the persistent `vexy-ros-stack.service`, put the same launch argument in a
@@ -358,7 +358,7 @@ user-systemd drop-in and restart the service:
 # /home/vexy/.config/systemd/user/vexy-ros-stack.service.d/20-measured-camera-info.conf
 [Service]
 ExecStart=
-ExecStart=/bin/bash -lc 'source /opt/ros/jazzy/setup.bash && source /home/vexy/ros2_ws/install/setup.bash && exec ros2 launch vexy_ros vexy.launch.py camera_fps:=30 serial_port:=auto camera_info_url:=file:///home/vexy/calibration/imx708_wide_640x480.yaml'
+ExecStart=/bin/bash -lc 'source /opt/ros/jazzy/setup.bash && source /home/vexy/ros2_ws/install/setup.bash && exec ros2 launch vexy_ros vexy.launch.py camera_fps:=15 serial_port:=auto camera_info_url:=file:///home/vexy/calibration/imx708_wide_640x360.yaml yellow_ball_detector_enabled:=false'
 ```
 
 ```bash

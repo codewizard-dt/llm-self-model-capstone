@@ -183,6 +183,7 @@ ros2 topic hz /camera/image_raw
 | `scene_map` | `vexy_ros` | /tf tag poses + workspace map → /vision/scene_map |
 | `yolo_ncnn` | `vexy_ros` | Optional YOLO NCNN inference over /camera/image_rect → /vision/object_detections |
 | `yellow_ball_detector` | `vexy_ros` | Lightweight HSV yellow ball detector → /vision/object_detections |
+| `object_overlay` | `vexy_ros` | /camera/image_rect + /vision/object_detections → /vision/object_overlay for Foxglove |
 | `object_indication` | `vexy_ros` | Object boxes + /camera/camera_info → /vision/object_indications |
 | `task_plan` | `vexy_ros` | /vision/scene_map + target request → /task_plan/current |
 | `align_to_tag` | `vexy_ros` | Bounded local skill: visible tag + bridge health → /vex/cmd |
@@ -200,6 +201,7 @@ ros2 topic hz /camera/image_raw
 | `/apriltag/detections` | `apriltag_msgs/AprilTagDetectionArray` | pub (apriltag) | Tag IDs/corners from rectified frames |
 | `/tf` | `tf2_msgs/TFMessage` | pub (apriltag), sub (scene_map) | Tag transforms when pose estimation succeeds |
 | `/vision/object_detections` | `std_msgs/String` | pub (yolo_ncnn), sub (object_indication) | JSON YOLO NCNN boxes in image coordinates |
+| `/vision/object_overlay` | `sensor_msgs/Image` | pub (object_overlay) | Rectified camera stream annotated with the latest object boxes |
 | `/vision/object_indications` | `std_msgs/String` | pub (object_indication/operator), sub (scene_map) | JSON object hints in camera-relative coordinates |
 | `/vision/scene_map` | `std_msgs/String` | pub (scene_map) | JSON robot/tag/object coordinates in the active workspace map |
 | `/task_plan/request` | `std_msgs/String` | sub (task_plan) | JSON target request, e.g. `tag:0`, `object:yellow_ball`, or `survey:all` |
@@ -287,14 +289,14 @@ ros2 launch vexy_ros vexy.launch.py serial_port:=/dev/ttyACM1
 # Higher resolution
 ros2 launch vexy_ros vexy.launch.py camera_width:=1280 camera_height:=720
 
-# Higher frame rate (30 Hz match for IMX708 native)
-ros2 launch vexy_ros vexy.launch.py camera_fps:=30
+# Smooth streaming profile
+ros2 launch vexy_ros vexy.launch.py camera_fps:=15
 
 # Combined, with measured calibration override
 ros2 launch vexy_ros vexy.launch.py \
     serial_port:=auto \
     baud_rate:=115200 \
-    camera_width:=1280 camera_height:=720 camera_fps:=30 \
+    camera_width:=1280 camera_height:=720 camera_fps:=15 \
     camera_info_url:=file:///home/vexy/calibration/imx708_wide_1280x720.yaml
 
 # Select the Gen0 50x108 in arena map by id
@@ -313,7 +315,7 @@ VEXY_MAP=gen0-grab-toss-v1 ros2 launch vexy_ros vexy.launch.py
 | `camera_frame_id` | `camera_optical_frame` | Frame ID stamped into camera messages |
 | `camera_info_url` | package config URL | Must be a URL such as `file:///...`; replace the starter file with measured calibration before tag-pose proof |
 | `apriltag_config` | package config path | YAML for tag family, ID, frame name, and physical size |
-| `workspace_map_name` | `VEXY_MAP` or `table-grab-toss-v1` | Map id under package `config/maps`; use `gen0-grab-toss-v1` for the 50 x 108 in arena |
+| `workspace_map_name` | `VEXY_MAP` or `gen0-grab-toss-v1` | Map id under package `config/maps`; use `gen0-grab-toss-v1` for the 50 x 108 in arena |
 | `workspace_map_path` | derived from `workspace_map_name` | Explicit workspace map JSON path; overrides `workspace_map_name` |
 | `camera_in_robot_json` | `{"x_m":0.0,"y_m":0.0,"yaw_rad":0.0}` | Measured camera pose in the robot body frame |
 | `yolo_enabled` | `false` | Launch optional in-package YOLO NCNN detector |
@@ -326,7 +328,7 @@ VEXY_MAP=gen0-grab-toss-v1 ros2 launch vexy_ros vexy.launch.py
 | `yolo_input_size` | `640` | Square NCNN input size used for letterbox preprocessing |
 | `yolo_input_name` | auto | Override NCNN input blob name when auto-detection is wrong |
 | `yolo_output_name` | auto | Override NCNN output blob name when auto-detection is wrong |
-| `yellow_ball_detector_enabled` | `true` | Run the lightweight yellow-ball color detector |
+| `yellow_ball_detector_enabled` | `false` | Run the lightweight yellow-ball color detector |
 | `yellow_ball_max_hz` | `8.0` | Maximum yellow-ball color detection rate |
 | `yellow_ball_min_area_px` | `200.0` | Minimum yellow blob area accepted as a ball candidate |
 | `yellow_ball_min_circularity` | `0.25` | Minimum contour circularity accepted as a ball candidate |
@@ -337,6 +339,8 @@ VEXY_MAP=gen0-grab-toss-v1 ros2 launch vexy_ros vexy.launch.py
 | `object_dimensions_json` | built-in defaults | Per-class dimensions used to estimate object depth from boxes |
 | `default_object_height_m` | `0.12` | Fallback height for unlisted object classes |
 | `object_min_confidence` | `0.35` | Minimum confidence for object projection into the scene map |
+| `object_overlay_enabled` | `true` | Publish `/vision/object_overlay` for Foxglove's Image panel |
+| `object_overlay_max_detection_age_s` | `0.5` | Keep drawing the latest boxes for this many seconds after each detection message |
 
 Enable NCNN object detection only after the `.param`/`.bin` export and Python
 `ncnn` runtime are installed on the Pi:
@@ -377,7 +381,7 @@ Then open **https://app.foxglove.dev** in a browser and connect:
 | Yes (default) | `ws://vexy.local:8765` |
 | No (mDNS fails on some networks) | `ws://10.10.3.4:8765` |
 
-Useful panels: **Image** (subscribe `/camera/image_raw` or `/camera/image_rect`), **Raw Messages** (subscribe `/apriltag/detections`, `/vision/scene_map`, `/vex/ack`, `/vex/telemetry`, and `/vex/bridge_status`), **3D** (show `/tf`), **Topic Graph**.
+Useful panels: **Image** (subscribe `/camera/image_rect` for clean camera frames or `/vision/object_overlay` for bounding boxes), **Raw Messages** (subscribe `/vision/object_detections`, `/apriltag/detections`, `/vision/scene_map`, `/vex/ack`, `/vex/telemetry`, and `/vex/bridge_status`), **3D** (show `/tf`), **Topic Graph**.
 
 ---
 
@@ -390,7 +394,7 @@ Useful panels: **Image** (subscribe `/camera/image_raw` or `/camera/image_rect`)
 ros2 bag record -a -o session_$(date +%Y%m%d_%H%M%S)
 
 # Record only camera, vision, plan, and VEX bridge topics (smaller files)
-ros2 bag record /camera/image_raw /camera/camera_info /camera/image_rect /apriltag/detections /tf /vision/object_detections /vision/object_indications /vision/scene_map /task_plan/current /align_to_tag/feedback /align_to_tag/result /survey/feedback /survey/result /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status \
+ros2 bag record /camera/image_raw /camera/camera_info /camera/image_rect /apriltag/detections /tf /vision/object_detections /vision/object_indications /vision/scene_map /task_plan/current /align_to_tag/feedback /align_to_tag/result /survey/feedback /survey/result /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status /operator/annotation \
     -o session_$(date +%Y%m%d_%H%M%S)
 
 # Inspect a recorded bag

@@ -16,6 +16,8 @@ Nodes launched:
                          Publishes: /vision/object_detections
   object_indication — object boxes + CameraInfo → camera-relative object indications
                       Publishes: /vision/object_indications
+  object_overlay — rectified camera image + object boxes → annotated debug image
+                   Publishes: /vision/object_overlay
   task_plan     — scene map + target request → bounded tag/object task plan
                   Publishes: /task_plan/current
   align_to_tag  — bounded local-control skill for visible AprilTag alignment
@@ -50,6 +52,7 @@ from launch.substitutions import (
 )
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
+from vexy_ros.vision_map import DEFAULT_CAMERA_IN_ROBOT
 
 
 def _as_int(context, name):
@@ -72,7 +75,7 @@ def _launch_nodes(context, *args, **kwargs):
     if not camera_info_url:
         raise RuntimeError(
             "camera_info_url is required for rectification/tag-pose proof; "
-            "use a URL such as file:///home/vexy/ros2_ws/src/vexy_ros/config/imx708_wide_640x480.yaml"
+            "use a URL such as file:///home/vexy/ros2_ws/src/vexy_ros/config/imx708_wide_640x360.yaml"
         )
     if "://" not in camera_info_url:
         raise RuntimeError("camera_info_url must be a URL, not a plain filesystem path")
@@ -91,12 +94,19 @@ def _launch_nodes(context, *args, **kwargs):
             if workspace_map_name.endswith(".json")
             else f"{workspace_map_name}.json"
         )
-        map_path = Path(get_package_share_directory("vexy_ros")) / "config" / "maps" / map_filename
+        map_path = (
+            Path(get_package_share_directory("vexy_ros"))
+            / "config"
+            / "maps"
+            / map_filename
+        )
         if not map_path.exists():
             raise RuntimeError(f"workspace map does not exist: {map_path}")
         workspace_map_path = str(map_path)
     camera_in_robot_json = LaunchConfiguration("camera_in_robot_json").perform(context)
-    object_dimensions_json = LaunchConfiguration("object_dimensions_json").perform(context)
+    object_dimensions_json = LaunchConfiguration("object_dimensions_json").perform(
+        context
+    )
 
     return [
         # ----------------------------------------------------------
@@ -202,7 +212,9 @@ def _launch_nodes(context, *args, **kwargs):
                 {
                     "max_hz": LaunchConfiguration("yellow_ball_max_hz"),
                     "min_area_px": LaunchConfiguration("yellow_ball_min_area_px"),
-                    "min_circularity": LaunchConfiguration("yellow_ball_min_circularity"),
+                    "min_circularity": LaunchConfiguration(
+                        "yellow_ball_min_circularity"
+                    ),
                     "max_detections": LaunchConfiguration("yellow_ball_max_detections"),
                     "h_min": LaunchConfiguration("yellow_ball_h_min"),
                     "s_min": LaunchConfiguration("yellow_ball_s_min"),
@@ -226,6 +238,22 @@ def _launch_nodes(context, *args, **kwargs):
                     "object_dimensions_json": object_dimensions_json,
                     "default_height_m": LaunchConfiguration("default_object_height_m"),
                     "min_confidence": LaunchConfiguration("object_min_confidence"),
+                }
+            ],
+        ),
+        # ----------------------------------------------------------
+        # Annotated image stream for Foxglove's Image panel.
+        # ----------------------------------------------------------
+        Node(
+            package="vexy_ros",
+            executable="object_overlay_node",
+            name="object_overlay",
+            condition=IfCondition(LaunchConfiguration("object_overlay_enabled")),
+            parameters=[
+                {
+                    "max_detection_age_s": LaunchConfiguration(
+                        "object_overlay_max_detection_age_s"
+                    ),
                 }
             ],
         ),
@@ -294,15 +322,17 @@ def generate_launch_description():
             DeclareLaunchArgument("serial_port", default_value="auto"),
             DeclareLaunchArgument("baud_rate", default_value="115200"),
             DeclareLaunchArgument("camera_width", default_value="640"),
-            DeclareLaunchArgument("camera_height", default_value="480"),
-            DeclareLaunchArgument("camera_fps", default_value="15"),
-            DeclareLaunchArgument("camera_frame_id", default_value="camera_optical_frame"),
+            DeclareLaunchArgument("camera_height", default_value="360"),
+            DeclareLaunchArgument("camera_fps", default_value="5"),
+            DeclareLaunchArgument(
+                "camera_frame_id", default_value="camera_optical_frame"
+            ),
             DeclareLaunchArgument(
                 "camera_info_url",
                 default_value=[
                     TextSubstitution(text="file://"),
                     package_config,
-                    TextSubstitution(text="/imx708_wide_640x480.yaml"),
+                    TextSubstitution(text="/imx708_wide_640x360.yaml"),
                 ],
             ),
             DeclareLaunchArgument(
@@ -314,7 +344,9 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "workspace_map_name",
-                default_value=EnvironmentVariable("VEXY_MAP", default_value="table-grab-toss-v1"),
+                default_value=EnvironmentVariable(
+                    "VEXY_MAP", default_value="gen0-grab-toss-v1"
+                ),
             ),
             DeclareLaunchArgument(
                 "workspace_map_path",
@@ -322,7 +354,7 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "camera_in_robot_json",
-                default_value='{"x_m":0.0,"y_m":0.0,"yaw_rad":0.0}',
+                default_value=DEFAULT_CAMERA_IN_ROBOT,
             ),
             DeclareLaunchArgument("yolo_enabled", default_value="false"),
             DeclareLaunchArgument(
@@ -337,8 +369,10 @@ def generate_launch_description():
             DeclareLaunchArgument("yolo_input_size", default_value="640"),
             DeclareLaunchArgument("yolo_input_name", default_value=""),
             DeclareLaunchArgument("yolo_output_name", default_value=""),
-            DeclareLaunchArgument("yellow_ball_detector_enabled", default_value="true"),
-            DeclareLaunchArgument("yellow_ball_max_hz", default_value="8.0"),
+            DeclareLaunchArgument(
+                "yellow_ball_detector_enabled", default_value="false"
+            ),
+            DeclareLaunchArgument("yellow_ball_max_hz", default_value="5.0"),
             DeclareLaunchArgument("yellow_ball_min_area_px", default_value="200.0"),
             DeclareLaunchArgument("yellow_ball_min_circularity", default_value="0.25"),
             DeclareLaunchArgument("yellow_ball_max_detections", default_value="1"),
@@ -361,6 +395,10 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument("default_object_height_m", default_value="0.12"),
             DeclareLaunchArgument("object_min_confidence", default_value="0.35"),
+            DeclareLaunchArgument("object_overlay_enabled", default_value="true"),
+            DeclareLaunchArgument(
+                "object_overlay_max_detection_age_s", default_value="0.5"
+            ),
             OpaqueFunction(function=_launch_nodes),
         ]
     )

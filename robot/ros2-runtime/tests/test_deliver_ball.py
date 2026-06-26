@@ -136,7 +136,10 @@ class DeliverBallTests(unittest.TestCase):
         self.assertGreater(args.grab_ms, 0)
         self.assertGreater(args.lift_ms, 0)
         self.assertGreater(args.release_ms, 0)
-        self.assertEqual(args.camera_in_robot_json, '{"x_m":0.0,"y_m":0.0,"yaw_rad":0.0}')
+        self.assertEqual(
+            args.camera_in_robot_json,
+            deliver_ball.DEFAULT_CAMERA_IN_ROBOT,
+        )
 
     def test_deliver_ball_runs_scan_ball_bin_release_sequence(self) -> None:
         node = FakeNode()

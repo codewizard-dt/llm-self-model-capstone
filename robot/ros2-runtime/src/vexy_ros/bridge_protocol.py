@@ -10,11 +10,22 @@ MAX_OMEGA = 0.6
 DEFAULT_TTL_MS = 200
 MAX_TTL_MS = 5000
 ROUTINE_SLOTS = {2, 3, 4}
-COMMANDS = {"stop", "drive", "turn", "set_goal", "routine", "grab", "lift", "release"}
+COMMANDS = {
+    "stop",
+    "drive",
+    "turn",
+    "set_goal",
+    "routine",
+    "grab",
+    "lift",
+    "release",
+    "arm",
+}
 DEFAULT_RELEASE_MS = 650
 DEFAULT_GRAB_MS = 700
 DEFAULT_LIFT_MS = 900
 MAX_CLAW_MS = 1500
+MAX_ARM_TARGET_DEG = 360.0
 
 
 class BridgeProtocolError(ValueError):
@@ -75,6 +86,12 @@ def normalize_outbound(packet: Mapping[str, Any]) -> dict[str, Any]:
             raise BridgeProtocolError("routine slot must be one of 2, 3, or 4")
         normalized["slot"] = slot
         normalized["omega"] = clamp(float(normalized.get("omega", 0.0)), -MAX_OMEGA, MAX_OMEGA)
+    elif cmd == "arm":
+        try:
+            target_deg = float(normalized.get("target_deg"))
+        except (TypeError, ValueError) as exc:
+            raise BridgeProtocolError("target_deg must be a number") from exc
+        normalized["target_deg"] = clamp(target_deg, 0.0, MAX_ARM_TARGET_DEG)
     elif cmd in {"grab", "lift", "release"}:
         try:
             default_duration_ms = {

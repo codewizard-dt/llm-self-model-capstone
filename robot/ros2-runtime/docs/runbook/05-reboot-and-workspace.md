@@ -69,7 +69,7 @@ After=default.target
 [Service]
 Type=simple
 Environment=ROS_DOMAIN_ID=0
-ExecStart=/bin/bash -lc 'source /opt/ros/jazzy/setup.bash && source /home/vexy/ros2_ws/install/setup.bash && exec ros2 launch vexy_ros vexy.launch.py camera_fps:=30 serial_port:=auto'
+ExecStart=/bin/bash -lc 'source /opt/ros/jazzy/setup.bash && source /home/vexy/ros2_ws/install/setup.bash && exec ros2 launch vexy_ros vexy.launch.py camera_fps:=15 serial_port:=auto yellow_ball_detector_enabled:=false'
 Restart=on-failure
 RestartSec=2
 

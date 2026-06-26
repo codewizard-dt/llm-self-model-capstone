@@ -2,10 +2,11 @@
 id: vex-coprocessor-pattern
 title: VEX Coprocessor Pattern
 aliases: [V5 coprocessor, V5 + Linux host, VEX external coprocessor]
-updated: 2026-06-25
+updated: 2026-06-26
 sources:
   - ../../raw/research/vex-v5-rpi-coprocessor-opensource/index.md
   - ../sources/robot-apriltag-ball-delivery.md
+  - ../../raw/research/driver-telemetry-labeling/index.md
 tags: [concept, architecture, vex-v5, coprocessor, raspberry-pi, serial, ros]
 ---
 
@@ -113,6 +114,10 @@ The current Brain bridge (`robot/v5-brain/pros_bridge/src/main.cpp`) is a builda
 ## Bounded Release Commands
 
 [Research: Robot AprilTag Ball Delivery](../sources/robot-apriltag-ball-delivery.md) adds a concrete example of why the coprocessor boundary needs fixed command grammar. The Pi-side ROS program can decide the sequence and vision target, but the Brain must expose a deterministic actuator primitive for the final drop. **`release` is therefore a bounded Brain command with `duration_ms`, separate from ROS-side `set_goal`, which remains unsupported by the Brain.** uses::[[vexy_ros ROS 2 Runtime]]
+
+## Manual Driver Telemetry Variant
+
+derived_from::[[driver-telemetry-while-using-the-controller]] adds a human-driver capture variant of the same coprocessor pattern. The V5 Brain remains actuator authority, but the V5 controller rather than ROS owns drivetrain commands. The Pi still acts as evidence recorder: it receives `/vex/telemetry`, records vision/scene-map topics, and timestamps human state labels. The architectural rule is the same as autonomous mode: the Brain owns motor safety, the Pi owns perception/storage/analysis, and only one side writes a motor subsystem at a time.
 
 implements::[[llm-authored-self-model]]
 transports::[[task-telemetry-contract]]

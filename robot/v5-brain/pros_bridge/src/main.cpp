@@ -31,9 +31,11 @@ constexpr int MAX_DRIVE_RPM = 45;
 constexpr int MAX_TURN_RPM = 35;
 constexpr int DRIVE_CURRENT_LIMIT_MA = 1500;
 constexpr int DRIVE_VOLTAGE_LIMIT_MV = 6000;
-constexpr int GRAB_RPM = -100;
+// Positive manipulator velocity closes the claw on the current robot build.
+constexpr int GRAB_RPM = 100;
 constexpr int LIFT_RPM = 100;
-constexpr int RELEASE_RPM = 100;
+// Negative manipulator velocity opens the claw.
+constexpr int RELEASE_RPM = -100;
 constexpr int DEFAULT_RELEASE_MS = 650;
 constexpr int DEFAULT_GRAB_MS = 700;
 constexpr int DEFAULT_LIFT_MS = 900;
@@ -81,6 +83,7 @@ pros::Motor& right_drive() {
 
 pros::Motor& arm_motor() {
 	static pros::Motor motor(ARM_PORT);
+	return motor;
 }
 pros::Motor& release_motor() {
 	static pros::Motor motor(RELEASE_MOTOR_PORT);
@@ -323,6 +326,11 @@ std::string motor_samples_json(uint32_t sample_ms) {
 	if (arm_port_ok()) {
 		if (!first) out += ",";
 		out += motor_sample_json("arm", "arm", arm_motor(), sample_ms);
+		first = false;
+	}
+	if (release_port_ok()) {
+		if (!first) out += ",";
+		out += motor_sample_json("effector_motor", "manipulator", release_motor(), sample_ms);
 	}
 	out += "]";
 	return out;
@@ -628,6 +636,32 @@ void handle_line(const std::string& line) {
 		routine_cancel_requested = false;
 		pending_routine_slot = slot;
 		emit_ack(seq, "ok");
+		return;
+	}
+
+	if (has_json_value(line, "\"cmd\"", "\"arm\"")) {
+		if (routine_busy()) {
+			emit_ack(seq, "rejected", "\"busy\"");
+			return;
+		}
+		if (estop_latched) {
+			stop_all("estop latched");
+			emit_ack(seq, "rejected", "\"estop_latched\"");
+			return;
+		}
+		if (!arm_port_ok()) {
+			stop_all("arm port missing");
+			emit_ack(seq, "rejected", "\"not_assembled\"");
+			return;
+		}
+
+		const double target_deg = clamp(extract_double_field(line, "target_deg"), 0.0, 360.0);
+		stop_drive("arm command");
+		arm_motor().move_absolute(target_deg, ARM_MOVE_RPM);
+		emit_ack(seq, "ok");
+		return;
+	}
+
 	if (has_json_value(line, "\"cmd\"", "\"release\"")) {
 		if (estop_latched) {
 			stop_drive("estop latched");
@@ -676,12 +710,6 @@ void handle_line(const std::string& line) {
 	if (has_json_value(line, "\"cmd\"", "\"set_goal\"")) {
 		stop_drive("set_goal not handled by Brain");
 		emit_ack(seq, "rejected", "\"unsupported_goal\"");
-		return;
-	}
-
-	if (has_json_value(line, "\"cmd\"", "\"set_goal\"")) {
-		stop_all("set_goal not handled by Brain");
-		emit_ack(seq, "rejected", "\"unknown_command\"");
 		return;
 	}
 
