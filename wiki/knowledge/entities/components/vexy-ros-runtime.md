@@ -107,7 +107,7 @@ ExecStart=/bin/bash -lc 'source /opt/ros/jazzy/setup.bash && source /home/vexy/r
 | Task | Command |
 |---|---|
 | Restart managed stack | `systemctl --user restart vexy-ros-stack.service` |
-| Manual start | `source ~/ros2_ws/install/setup.bash && ros2 launch vexy_ros vexy.launch.py` |
+| Manual start | `source /opt/ros/jazzy/setup.zsh && source ~/ros2_ws/install/setup.zsh && ros2 launch vexy_ros vexy.launch.py` |
 | Camera health check | `ros2 topic hz /camera/image_raw` |
 
 derived_from::[[camera-stack-startup]]

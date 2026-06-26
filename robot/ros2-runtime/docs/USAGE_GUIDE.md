@@ -54,9 +54,12 @@ Then sign in at `connect.raspberrypi.com` with your Raspberry Pi ID account. Thi
 
 Always source the workspace first:
 
-```bash
-source ~/ros2_ws/install/setup.bash
+```zsh
+source /opt/ros/jazzy/setup.zsh
+source ~/ros2_ws/install/setup.zsh
 ```
+
+Use `setup.bash` instead of `setup.zsh` when running from bash.
 
 ### Full stack (camera + VEX bridge + Foxglove)
 
@@ -405,10 +408,10 @@ pip install -r requirements.txt --break-system-packages
 
 ### Build
 
-```bash
+```zsh
 cd ~/ros2_ws
 colcon build --packages-select yolo_ros --cmake-args -DCMAKE_BUILD_TYPE=Release
-source install/setup.bash
+source install/setup.zsh
 ```
 
 ### Add to vexy.launch.py

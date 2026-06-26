@@ -30,8 +30,9 @@ if [[ -n "$vexy_user" ]]; then
 fi
 
 if [[ -n "${VEXY_SSH_PW:-}" ]]; then
-  sshpass -p "$VEXY_SSH_PW" ssh "$remote" "mkdir -p \"$vexy_task_inbox\""
-  sshpass -p "$VEXY_SSH_PW" scp "$task_file" "$remote:$vexy_task_inbox/$(basename "$task_file")"
+  export SSHPASS="$VEXY_SSH_PW"
+  sshpass -e ssh "$remote" "mkdir -p \"$vexy_task_inbox\""
+  sshpass -e scp "$task_file" "$remote:$vexy_task_inbox/$(basename "$task_file")"
 else
   ssh "$remote" "mkdir -p \"$vexy_task_inbox\""
   scp "$task_file" "$remote:$vexy_task_inbox/$(basename "$task_file")"

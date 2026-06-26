@@ -98,7 +98,7 @@ def test_send_task_script_sends_deliver_ball_fixture_with_vexy_env(tmp_path) -> 
         f"printf 'sshpass ' >> {log}\n"
         f"printf '%q ' \"$@\" >> {log}\n"
         f"printf '\\n' >> {log}\n"
-        "shift 2\n"
+        'if [[ "$1" == "-p" ]]; then shift 2; else shift 1; fi\n'
         '"$@"\n'
     )
     sshpass.chmod(0o755)
@@ -127,7 +127,7 @@ def test_send_task_script_sends_deliver_ball_fixture_with_vexy_env(tmp_path) -> 
 
     assert result.returncode == 0, result.stderr
     calls = log.read_text()
-    assert "sshpass -p vexytime ssh vexy@vexy.local" in calls
-    assert "sshpass -p vexytime scp" in calls
+    assert "sshpass -e ssh vexy@vexy.local" in calls
+    assert "sshpass -e scp" in calls
     assert str(FIXTURES / "task_deliver_ball.json") in calls
     assert "vexy@vexy.local:/vexy/tasks/inbox/task_deliver_ball.json" in calls

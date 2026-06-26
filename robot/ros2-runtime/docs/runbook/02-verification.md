@@ -18,7 +18,8 @@ Expected: `SSH OK`
 ros2 pkg list | grep vexy_ros
 ```
 
-Expected: `vexy_ros` appears in output. If not, run `source ~/ros2_ws/install/setup.bash`.
+Expected: `vexy_ros` appears in output. If not, run `source ~/ros2_ws/install/setup.zsh`
+from zsh or `source ~/ros2_ws/install/setup.bash` from bash.
 
 ### 2.3 All nodes running
 

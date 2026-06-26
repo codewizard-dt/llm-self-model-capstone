@@ -4,8 +4,8 @@ Run on the Raspberry Pi with a white measuring tape laid on the robot forward
 axis:
 
     cd /home/vexy/llm-self-model-capstone
-    source /opt/ros/jazzy/setup.bash
-    source /home/vexy/ros2_ws/install/setup.bash
+    source /opt/ros/jazzy/setup.zsh
+    source /home/vexy/ros2_ws/install/setup.zsh
     python3 operator/tests/test_camera_axis_calibration.py
 
 The robot stays still. The script samples /camera/image_rect, detects the white

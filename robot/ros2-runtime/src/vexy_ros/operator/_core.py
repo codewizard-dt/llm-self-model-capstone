@@ -271,8 +271,8 @@ class OperatorConfig:
     lateral_tolerance_m: float = 0.04
     distance_tolerance_m: float = 0.05
     target_distance_m: float = 0.45
-    bin_standoff_m: float = 0.4064
-    ball_staging_standoff_m: float = 0.45
+    bin_standoff_m: float = 0.2
+    ball_staging_standoff_m: float = 0.05
     home_standoff_m: float = 0.45
     arm_raise_trigger_distance_m: float = 0.8128
     arm_raise_target_deg: float = 20.0
