@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from operator_llm.packet_builder import (
+from self_model_generator.packet_builder import (
     BLOCKED_F10_GAP,
     BLOCKED_HARDWARE_PROOF,
     build_packet_from_files,
