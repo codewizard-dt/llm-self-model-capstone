@@ -956,6 +956,51 @@ class OperatorNodeTests(unittest.TestCase):
             cmd_packet = json.loads(node._sink.pub.messages[-1].data)
             self.assertEqual(cmd_packet["cmd"], "grab")
 
+    def test_task_outline_waits_for_timed_primitive_deadline_without_resend(
+        self,
+    ) -> None:
+        install_ros_stubs()
+        node_module = importlib.import_module("vexy_ros.operator.node")
+        with tempfile.TemporaryDirectory() as tmp:
+            inbox = Path(tmp) / "inbox"
+            archive = Path(tmp) / "archive"
+            rejected = Path(tmp) / "rejected"
+            Node.parameter_defaults = {
+                "task_inbox_dir": str(inbox),
+                "task_archive_dir": str(archive),
+                "task_rejected_dir": str(rejected),
+                "task_timed_primitive_settle_s": 0.0,
+            }
+            inbox.mkdir()
+            fixture = ROOT / "fixtures" / "task_deliver_ball.json"
+            (inbox / "task_deliver_ball.json").write_text(fixture.read_text())
+            node = node_module.OperatorNode()
+
+            node._poll_task_inbox()
+            node._tick_task_outline()
+
+            self.assertIsNotNone(node._task_outline_run)
+            assert node._task_outline_run is not None
+            pending = node._task_outline_run.pending_timed_primitive
+            self.assertIsNotNone(pending)
+            assert pending is not None
+            self.assertEqual(pending.method_name, "grab")
+            self.assertEqual(pending.duration_ms, 500)
+            self.assertEqual(node._task_outline_run.step_index, 0)
+            self.assertEqual(len(node._sink.pub.messages), 1)
+
+            node._tick_task_outline()
+
+            self.assertEqual(node._task_outline_run.step_index, 0)
+            self.assertEqual(len(node._sink.pub.messages), 1)
+
+            pending.deadline_s = time.monotonic() - 1.0
+            node._tick_task_outline()
+
+            self.assertEqual(node._task_outline_run.step_index, 1)
+            self.assertIsNone(node._task_outline_run.pending_timed_primitive)
+            self.assertEqual(len(node._sink.pub.messages), 1)
+
     def test_task_outline_waits_for_pickup_ball_before_bin_steps(self) -> None:
         install_ros_stubs()
         node_module = importlib.import_module("vexy_ros.operator.node")
@@ -1017,6 +1062,14 @@ class OperatorNodeTests(unittest.TestCase):
             node._poll_task_inbox()
             while calls.count("pickup_ball") < 3:
                 node._tick_task_outline()
+                if (
+                    node._task_outline_run is not None
+                    and node._task_outline_run.pending_timed_primitive is not None
+                ):
+                    node._task_outline_run.pending_timed_primitive.deadline_s = (
+                        time.monotonic() - 1.0
+                    )
+                    node._tick_task_outline()
                 self.assertNotIn("move_to_tag:0", calls)
                 self.assertNotIn("lift", calls)
                 self.assertNotIn("release", calls)
@@ -1077,6 +1130,14 @@ class OperatorNodeTests(unittest.TestCase):
             node._poll_task_inbox()
             while "pickup_ball" not in calls:
                 node._tick_task_outline()
+                if (
+                    node._task_outline_run is not None
+                    and node._task_outline_run.pending_timed_primitive is not None
+                ):
+                    node._task_outline_run.pending_timed_primitive.deadline_s = (
+                        time.monotonic() - 1.0
+                    )
+                    node._tick_task_outline()
                 self.assertNotIn("move_to_tag:0", calls)
                 self.assertNotIn("lift", calls)
                 self.assertNotIn("release", calls)

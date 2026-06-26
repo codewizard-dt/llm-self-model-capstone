@@ -129,6 +129,15 @@ Command-specific fields (`type == "cmd"`):
 
 Ack records are published on `/vex/ack`, keyed by the `ack` sequence. Telemetry/sample/event records are published on `/vex/telemetry`. Malformed JSON, unsupported protocol versions, missing acks, stale telemetry, and serial disconnects are published on `/vex/bridge_status`.
 
+### Operator Task Outlines
+
+`vexy_operator` runs task-file outlines as a timer-driven state machine, not a
+blocking loop. Exactly one outline step is active at a time. Stateful methods
+such as `move_to_tag` and `pickup_ball` are polled until terminal success;
+timed primitives such as `grab`, `lift`, and `release` send once and remain
+pending until their duration plus settle time elapses. Bridge faults, rejected
+acks, and per-step timeouts abort the outline before later steps are invoked.
+
 ### Heartbeat
 
 `vex_bridge_node` fires a heartbeat automatically every 150 ms when no command has been sent. This keeps the V5 Brain's watchdog alive and prevents an automatic motor stop.

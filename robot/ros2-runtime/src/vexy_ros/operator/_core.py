@@ -42,6 +42,7 @@ OPERATOR_METHOD_NAMES = {
     "lift",
     "release",
 }
+TIMED_PRIMITIVE_METHOD_NAMES = {"grab", "lift", "release"}
 MOTOR_CONTRACT_FIELDS = (
     "position_deg",
     "velocity_rpm",
@@ -51,6 +52,18 @@ MOTOR_CONTRACT_FIELDS = (
     "efficiency_pct",
     "temperature_c",
 )
+
+
+def timed_primitive_default_duration_ms(method_name: str) -> int:
+    if method_name == "grab":
+        return DEFAULT_GRAB_MS
+    if method_name == "lift":
+        return DEFAULT_LIFT_MS
+    if method_name == "release":
+        return DEFAULT_RELEASE_MS
+    raise ValueError(f"unsupported timed primitive method: {method_name}")
+
+
 MOTOR_CONTRACT_METHODS = {
     "position_deg": "position",
     "velocity_rpm": "velocity",

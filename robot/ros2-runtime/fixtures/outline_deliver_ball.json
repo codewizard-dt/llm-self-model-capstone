@@ -1,4 +1,5 @@
 [
+  ["grab", [], {"duration_ms": 500}],
   ["locate_nearest_apriltag", [], {}],
   ["move_to_tag", [1], {}],
   ["pickup_ball", [], {"duration_ms": 700}],

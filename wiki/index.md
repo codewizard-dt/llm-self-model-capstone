@@ -77,6 +77,7 @@ The wiki is split into two domains with opposite organizing laws:
 - [Research — RPi OS Options for the Capstone (+ Addendum)](knowledge/sources/rpi-os-options.md) — four OS/stack options compared; Ubuntu 24.04 + Jazzy camera path confirmed (RPi libcamera fork, 85–90% success); Hailo AI HAT+ ($70) = lowest-risk FPS upgrade; ROS 2 gains: yolo_ros, apriltag_ros, foxglove, ros2 bag→Claude API; stay on Bookworm for Jun 29
 - [Research: Robot AprilTag Ball Delivery](knowledge/sources/robot-apriltag-ball-delivery.md) — implementation workflow for `vexy_deliver_ball`: scan, approach ball tag 1, approach bin tag 0, then bounded release command
 - [Research: Operator Layer — Current State](knowledge/sources/operator-layer-research.md) — comprehensive state of both operator concerns: ROS 2 operator node (feature-complete for ball delivery) and offline LLM packet builder; F10 gap analyzer is the only open blocker for F8 Generator
+- [Operator Command Sequencing](knowledge/sources/operator-command-sequencing.md) — task-outline runner should keep one active step and add completion-aware policies for timed primitives
 - [Research — Camera Stack Startup (vexy Pi)](knowledge/sources/camera-stack-startup.md) — how to start the camera + AprilTag pipeline; camera_ros→image_proc→apriltag_ros→/tf; vexy-ros-stack.service + drop-in; calibration file path; two installed maps
 - [Vision Stack Audit](knowledge/sources/vision-stack-audit.md) — object pickup failure analysis: bbox projection is useful for coarse approach but unsafe as final claw-close evidence; recommends claw-mouth ROI + effector telemetry
 - [ROS 2 Camera Calibration for the VEXY Pi Camera Stack](knowledge/sources/ros2-camera-calibration-vexy.md) — standard ROS checkerboard calibration plus VEXY's headless CameraInfo workflow and validation checks
@@ -124,6 +125,7 @@ The wiki is split into two domains with opposite organizing laws:
 - [ROS 2 Camera Calibration Workflow](knowledge/concepts/ros2-camera-calibration-workflow.md) — checkerboard calibration pattern for ROS `cameracalibrator` and VEXY's headless OpenCV tool, including post-load validation
 - [Object Indication Projection](knowledge/concepts/object-indication-projection.md) — known-size bbox-to-metric object hints; useful for coarse navigation, unsafe near occlusion without pickup-specific confirmation
 - [Claw-Mouth Pickup Vision](knowledge/concepts/claw-mouth-pickup-vision.md) — final-stage image-space ROI contract for deciding when the ball is between the claw jaws before closing
+- [Operator Command Sequencing](knowledge/concepts/operator-command-sequencing.md) — non-blocking task-outline state machine pattern: one active step, poll until terminal success, abort on failure/timeout
 
 ### Entities
 - People — [knowledge/entities/people/](knowledge/entities/people/)
@@ -181,7 +183,7 @@ The wiki is split into two domains with opposite organizing laws:
   - [Foxglove Studio](knowledge/entities/tools/foxglove-studio.md) — web-based ROS 2 visualization; `foxglove_bridge` apt on Jazzy; debug bounding boxes + poses in browser from any machine; invaluable for headless Pi demos
 - Components — [knowledge/entities/components/](knowledge/entities/components/) (this project's own modules, services, scripts)
   - [localizer.py](knowledge/entities/components/localizer.md) — planned Pi-side module: load_map, update_from_tag, update_from_odometry, get_vector_to_waypoint; bridges workspace map config and runtime pose state
-  - [vexy_ros ROS 2 Runtime](knowledge/entities/components/vexy-ros-runtime.md) — current ROS 2 Jazzy Pi runtime: camera, AprilTags, scene map, object indication projection, bounded skills, V5 bridge, telemetry, proof export, and `vexy_ros.operator`
+  - [vexy_ros ROS 2 Runtime](knowledge/entities/components/vexy-ros-runtime.md) — current ROS 2 Jazzy Pi runtime: camera, AprilTags, scene map, object indication projection, bounded skills, V5 bridge, telemetry, proof export, and `vexy_ros.operator`; task-outline sequencing now documented
   - [Operator LLM Packet Builder](knowledge/entities/components/operator-llm-packet-builder.md) — offline `operator-llm-critic` v0.2.0 package; assembles Markdown evidence packets for the F8 Generator; both JSONL and ROS-bundle input paths implemented; F10 gap analyzer is the only remaining blocker
 
 ---

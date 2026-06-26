@@ -37,6 +37,7 @@ from ..vision_map import (
 from ._core import (
     MAX_TAG_ID,
     MIN_TAG_ID,
+    TIMED_PRIMITIVE_METHOD_NAMES,
     CommandSink,
     ObjectObservation,
     Operator,
@@ -49,6 +50,7 @@ from ._core import (
     VisionSnapshot,
     packet_from_primitive,
     telemetry_snapshot_from_mapping,
+    timed_primitive_default_duration_ms,
 )
 
 
@@ -67,11 +69,23 @@ IN_PROGRESS_REASONS = {
 
 
 @dataclass
+class TimedPrimitiveStep:
+    method_name: str
+    duration_ms: int
+    started_s: float
+    deadline_s: float
+    seq: int | None
+    result: OperatorResult
+    ack_state: str | None = None
+
+
+@dataclass
 class TaskOutlineRun:
     source_name: str
     method_plan: tuple[Any, ...]
     step_index: int
     step_started_s: float
+    pending_timed_primitive: TimedPrimitiveStep | None = None
 
 
 class RosCommandSink(CommandSink):
@@ -109,6 +123,7 @@ class OperatorNode(Node):
         self.declare_parameter("task_rejected_dir", "")
         self.declare_parameter("task_poll_period_s", 1.0)
         self.declare_parameter("task_step_timeout_s", 30.0)
+        self.declare_parameter("task_timed_primitive_settle_s", 0.05)
         self.declare_parameter("command_topic", "/operator/command")
         self.declare_parameter("event_topic", "/operator/events")
         self.declare_parameter("result_topic", "/operator/results")
@@ -149,6 +164,10 @@ class OperatorNode(Node):
         self._task_step_timeout_s = max(
             0.1, self._parameter_float("task_step_timeout_s")
         )
+        self._task_timed_primitive_settle_s = max(
+            0.0, self._parameter_float("task_timed_primitive_settle_s")
+        )
+        self._ack_states: dict[int, str] = {}
         self._event_pub = self.create_publisher(
             String,
             self.get_parameter("event_topic").get_parameter_value().string_value,
@@ -424,6 +443,10 @@ class OperatorNode(Node):
             )
             return
 
+        if method_name in TIMED_PRIMITIVE_METHOD_NAMES:
+            self._tick_timed_primitive_step(run, method_name, args, kwargs)
+            return
+
         try:
             self.operator.require_allowed_method(method_name)
             method = getattr(self.operator, method_name)
@@ -463,7 +486,115 @@ class OperatorNode(Node):
             },
         )
 
+    def _tick_timed_primitive_step(
+        self,
+        run: TaskOutlineRun,
+        method_name: str,
+        args: tuple[Any, ...],
+        kwargs: Mapping[str, Any],
+    ) -> None:
+        pending = run.pending_timed_primitive
+        if pending is None:
+            try:
+                self.operator.require_allowed_method(method_name)
+                method = getattr(self.operator, method_name)
+                result = method(*args, **dict(kwargs))
+            except (TypeError, ValueError) as exc:
+                self._finish_task_outline_run(
+                    "task_file_execution_failed",
+                    {
+                        "source": run.source_name,
+                        "method": method_name,
+                        "step_index": run.step_index,
+                        "error": str(exc),
+                    },
+                )
+                return
+
+            if not isinstance(result, OperatorResult):
+                self._advance_task_outline_step(run)
+                return
+            if not result.success:
+                if result.reason in IN_PROGRESS_REASONS:
+                    return
+                self._publish_contract_result(method_name, result)
+                self._finish_task_outline_run(
+                    "task_file_execution_failed",
+                    {
+                        "source": run.source_name,
+                        "method": method_name,
+                        "step_index": run.step_index,
+                        "reason": result.reason,
+                    },
+                )
+                return
+
+            now_s = time.monotonic()
+            duration_ms = _timed_primitive_duration_ms(method_name, kwargs, result)
+            run.pending_timed_primitive = TimedPrimitiveStep(
+                method_name=method_name,
+                duration_ms=duration_ms,
+                started_s=now_s,
+                deadline_s=now_s
+                + (duration_ms / 1000.0)
+                + self._task_timed_primitive_settle_s,
+                seq=self._sink.seq if result.command is not None else None,
+                result=result,
+            )
+            return
+
+        if pending.method_name != method_name:
+            self._finish_task_outline_run(
+                "task_file_execution_failed",
+                {
+                    "source": run.source_name,
+                    "method": method_name,
+                    "step_index": run.step_index,
+                    "reason": "pending_timed_primitive_mismatch",
+                    "pending_method": pending.method_name,
+                },
+            )
+            return
+
+        if pending.seq is not None and pending.seq in self._ack_states:
+            pending.ack_state = self._ack_states[pending.seq]
+            if pending.ack_state in {"rejected", "fault"}:
+                self._publish_contract_result(method_name, pending.result)
+                self._finish_task_outline_run(
+                    "task_file_execution_failed",
+                    {
+                        "source": run.source_name,
+                        "method": method_name,
+                        "step_index": run.step_index,
+                        "reason": f"command_{pending.ack_state}",
+                        "seq": pending.seq,
+                    },
+                )
+                return
+
+        if self._bridge.fault:
+            self._publish_contract_result(method_name, pending.result)
+            self._finish_task_outline_run(
+                "task_file_execution_failed",
+                {
+                    "source": run.source_name,
+                    "method": method_name,
+                    "step_index": run.step_index,
+                    "reason": "bridge_fault",
+                    "fault": self._bridge.fault,
+                },
+            )
+            return
+
+        if time.monotonic() < pending.deadline_s:
+            return
+
+        run.pending_timed_primitive = None
+        self._publish_contract_result(method_name, pending.result)
+        self._advance_task_outline_step(run)
+
     def _advance_task_outline_step(self, run: TaskOutlineRun) -> None:
+        run.pending_timed_primitive = None
         run.step_index += 1
         run.step_started_s = time.monotonic()
         if run.step_index >= len(run.method_plan):
@@ -603,6 +734,8 @@ class OperatorNode(Node):
         except json.JSONDecodeError:
             return
         ack_seq = ack.get("ack")
+        if isinstance(ack_seq, int):
+            self._ack_states[ack_seq] = str(ack.get("state", "ack"))
         self._bridge = BridgeHealth(
             stamp_s=time.monotonic(),
             last_ack_seq=ack_seq if isinstance(ack_seq, int) else None,
@@ -894,6 +1027,16 @@ class OperatorNode(Node):
 
 def _optional_float(value: Any) -> float | None:
     return None if value is None else float(value)
+
+
+def _timed_primitive_duration_ms(
+    method_name: str, kwargs: Mapping[str, Any], result: OperatorResult
+) -> int:
+    if "duration_ms" in kwargs:
+        return int(kwargs["duration_ms"])
+    if result.command is not None and result.command.duration_ms is not None:
+        return int(result.command.duration_ms)
+    return timed_primitive_default_duration_ms(method_name)
 
 
 def _idle_task_contract() -> Mapping[str, Any]:

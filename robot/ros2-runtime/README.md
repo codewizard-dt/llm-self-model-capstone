@@ -260,7 +260,10 @@ routine while another routine is active (`fault:"busy"`) and cancels any active
 routine on `stop`, watchdog loss, or estop.
 
 Ack records are command acknowledgements; use `/vex/telemetry` for streaming
-health and motor-sample proof.
+health and motor-sample proof. Task-file outlines add a stricter sequencing
+layer inside `vexy_operator`: `grab`, `lift`, and `release` send once, remain
+the active outline step through their duration plus settle time, and only then
+allow the next outline step to run.
 
 **Bridge status** (`/vex/bridge_status`):
 ```json

@@ -20,7 +20,7 @@ WARNFLAGS+=-Wno-psabi
 SPACE := $() $()
 COMMA := ,
 
-C_STANDARD?=gnu23
+C_STANDARD?=gnu2x
 CXX_STANDARD?=gnu++20
 
 DEPDIR := .d

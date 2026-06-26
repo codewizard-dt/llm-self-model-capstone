@@ -69,6 +69,7 @@ def test_deliver_ball_task_fixture_embeds_contract_and_outline() -> None:
     envelope = TaskEnvelope.model_validate(task)
     assert envelope.contract.session_id == "stub-deliver-ball-gen0"
     assert [call[0] for call in envelope.outline.method_plan()] == [
+        "grab",
         "locate_nearest_apriltag",
         "move_to_tag",
         "pickup_ball",
