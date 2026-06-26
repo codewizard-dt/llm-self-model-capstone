@@ -15,13 +15,17 @@ import pathlib
 import subprocess
 import sys
 import time
+import unittest
 
-import rclpy
-from rclpy.node import Node
-from std_msgs.msg import String
-from tf2_msgs.msg import TFMessage
+try:
+    import rclpy
+    from ament_index_python.packages import get_package_share_directory
+    from rclpy.node import Node
+    from std_msgs.msg import String
+    from tf2_msgs.msg import TFMessage
+except ModuleNotFoundError as exc:
+    raise unittest.SkipTest("ROS 2 Python packages are not installed") from exc
 
-from ament_index_python.packages import get_package_share_directory
 from vexy_ros.operator.node import RosCommandSink
 from vexy_ros.operator.core import (
     MAX_TAG_ID,
@@ -34,7 +38,6 @@ from vexy_ros.operator.core import (
 )
 from vexy_ros.vision_map import (
     DEFAULT_CAMERA_IN_ROBOT,
-    Pose2D,
     camera_from_apriltag_translation,
     parse_tag_anchors,
     pose_from_mapping,
@@ -128,7 +131,9 @@ class AlignEachTagTestNode(Node):
                 optical_x_m=float(translation.x),
                 optical_z_m=float(translation.z),
             )
-            robot_from_tag = robot_from_camera_pose(camera_from_tag, self.camera_in_robot)
+            robot_from_tag = robot_from_camera_pose(
+                camera_from_tag, self.camera_in_robot
+            )
             if robot_from_tag.x_m <= 0.05:
                 continue
             self._tags[tag_id] = TagObservation(
@@ -140,7 +145,9 @@ class AlignEachTagTestNode(Node):
                 yaw_rad=math.atan2(robot_from_tag.y_m, robot_from_tag.x_m),
             )
         self.op.update_vision(
-            VisionSnapshot(stamp_s=stamp_s, tags=dict(self._tags), objects=self._objects)
+            VisionSnapshot(
+                stamp_s=stamp_s, tags=dict(self._tags), objects=self._objects
+            )
         )
 
     def _on_telemetry(self, msg: String) -> None:
@@ -151,7 +158,9 @@ class AlignEachTagTestNode(Node):
         self.op.update_telemetry(telemetry_snapshot_from_mapping(raw))
 
     def run(self) -> bool:
-        print("=== align-each-apriltag test: locate → orient+approach tag 0 → 1 → 2 ===")
+        print(
+            "=== align-each-apriltag test: locate → orient+approach tag 0 → 1 → 2 ==="
+        )
         arrival_distances: dict[int, float] = {}
 
         for method, args, kwargs, timeout_s in STEPS:

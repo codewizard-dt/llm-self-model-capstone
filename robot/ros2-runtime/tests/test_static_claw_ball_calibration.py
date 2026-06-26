@@ -18,12 +18,16 @@ import json
 import subprocess
 import sys
 import time
+import unittest
 from dataclasses import asdict, dataclass
 from typing import Any, Literal
 
-import rclpy
-from rclpy.node import Node
-from std_msgs.msg import String
+try:
+    import rclpy
+    from rclpy.node import Node
+    from std_msgs.msg import String
+except ModuleNotFoundError as exc:
+    raise unittest.SkipTest("ROS 2 Python packages are not installed") from exc
 
 from vexy_ros.operator.core import (
     OperatorConfig,
@@ -131,8 +135,12 @@ class StaticClawCalibrationNode(Node):
         self._pub = self.create_publisher(String, "/vex/cmd", 10)
         self.create_subscription(String, "/vex/telemetry", self._on_telemetry, 10)
         self.create_subscription(String, "/vex/ack", self._on_ack, 10)
-        self.create_subscription(String, "/vision/object_detections", self._on_detections, 10)
-        self.create_subscription(String, "/vision/object_indications", self._on_indications, 10)
+        self.create_subscription(
+            String, "/vision/object_detections", self._on_detections, 10
+        )
+        self.create_subscription(
+            String, "/vision/object_indications", self._on_indications, 10
+        )
 
     def send(
         self, cmd: CalibrationCommand, *, duration_ms: int | None = None, reason: str
@@ -146,7 +154,9 @@ class StaticClawCalibrationNode(Node):
             reason=reason,
         )
         packet = packet_from_primitive(command, seq=self.seq)
-        self._pub.publish(String(data=json.dumps(packet, separators=(",", ":"), sort_keys=True)))
+        self._pub.publish(
+            String(data=json.dumps(packet, separators=(",", ":"), sort_keys=True))
+        )
         print(
             f"  sent seq={packet['seq']} cmd={packet['cmd']} duration_ms={packet.get('duration_ms')}"
         )
@@ -205,7 +215,9 @@ class StaticClawCalibrationNode(Node):
     def recent_detection_count(self, *, window_s: float) -> int:
         cutoff = time.monotonic() - window_s
         return sum(
-            1 for _, item in self._detections if _label_for(item) in BALL_LABELS and _ >= cutoff
+            1
+            for _, item in self._detections
+            if _label_for(item) in BALL_LABELS and _ >= cutoff
         )
 
     def best_estimates(self, *, window_s: float) -> list[VisionEstimate]:
@@ -222,7 +234,9 @@ class StaticClawCalibrationNode(Node):
                 float(item.get("left_m", 0.0)),
                 float(item.get("yaw_rad", 0.0)),
             )
-            claw_from_object = robot_from_camera_pose(camera_from_object, self.camera_in_robot)
+            claw_from_object = robot_from_camera_pose(
+                camera_from_object, self.camera_in_robot
+            )
             confidence = item.get("confidence")
             estimates.append(
                 VisionEstimate(
@@ -235,7 +249,8 @@ class StaticClawCalibrationNode(Node):
                     claw_left_m=claw_from_object.y_m,
                     in_capture_window=(
                         claw_from_object.x_m <= self.config.ball_capture_forward_m
-                        and abs(claw_from_object.y_m) <= self.config.ball_capture_lateral_m
+                        and abs(claw_from_object.y_m)
+                        <= self.config.ball_capture_lateral_m
                     ),
                     source=str(item.get("source", "object_indications")),
                 )
@@ -252,7 +267,9 @@ class StaticClawCalibrationNode(Node):
     def print_vision_summary(self, *, window_s: float) -> list[VisionEstimate]:
         detection_count = self.recent_detection_count(window_s=window_s)
         estimates = self.best_estimates(window_s=window_s)
-        print(f"  raw yellow-ball detections in last {window_s:.1f}s: {detection_count}")
+        print(
+            f"  raw yellow-ball detections in last {window_s:.1f}s: {detection_count}"
+        )
         if not estimates:
             print("  object indications: no recent ball estimate")
             return []
@@ -332,7 +349,9 @@ def run_calibration(args: argparse.Namespace) -> list[dict[str, Any]]:
             {
                 "step": "initial_close_claw",
                 "telemetry": node.telemetry_summary(),
-                "user_observation": _prompt("Observed claw state after INITIAL CLOSE: "),
+                "user_observation": _prompt(
+                    "Observed claw state after INITIAL CLOSE: "
+                ),
             }
         )
 
@@ -355,7 +374,9 @@ def run_calibration(args: argparse.Namespace) -> list[dict[str, Any]]:
         )
 
         _prompt("\nPress Enter to CLOSE the claw, or Ctrl-C to abort. ")
-        node.send("grab", duration_ms=args.close_ms, reason="static_calibration_close_claw")
+        node.send(
+            "grab", duration_ms=args.close_ms, reason="static_calibration_close_claw"
+        )
         node.spin_for(args.after_claw_s)
         node.stop(reason="static_calibration_stop_after_close")
         node.spin_for(0.3)
@@ -369,7 +390,9 @@ def run_calibration(args: argparse.Namespace) -> list[dict[str, Any]]:
         )
 
         if args.ball_rounds:
-            _prompt("\nPress Enter to REOPEN the claw for ball placement, or Ctrl-C to abort. ")
+            _prompt(
+                "\nPress Enter to REOPEN the claw for ball placement, or Ctrl-C to abort. "
+            )
             node.send(
                 "release",
                 duration_ms=args.open_ms,
@@ -424,14 +447,18 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--open-ms", type=int, default=600, help="release duration for opening claw"
     )
-    parser.add_argument("--close-ms", type=int, default=700, help="grab duration for closing claw")
+    parser.add_argument(
+        "--close-ms", type=int, default=700, help="grab duration for closing claw"
+    )
     parser.add_argument(
         "--after-claw-s", type=float, default=1.0, help="settle time after claw command"
     )
     parser.add_argument(
         "--sample-s", type=float, default=3.0, help="vision sample window per ball pose"
     )
-    parser.add_argument("--settle-s", type=float, default=1.0, help="initial ROS settle time")
+    parser.add_argument(
+        "--settle-s", type=float, default=1.0, help="initial ROS settle time"
+    )
     parser.add_argument(
         "--camera-in-robot-json",
         default=DEFAULT_CAMERA_IN_ROBOT,

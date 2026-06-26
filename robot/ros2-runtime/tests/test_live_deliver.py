@@ -15,13 +15,17 @@ import pathlib
 import subprocess
 import sys
 import time
+import unittest
 
-import rclpy
-from rclpy.node import Node
-from std_msgs.msg import String
-from tf2_msgs.msg import TFMessage
+try:
+    import rclpy
+    from ament_index_python.packages import get_package_share_directory
+    from rclpy.node import Node
+    from std_msgs.msg import String
+    from tf2_msgs.msg import TFMessage
+except ModuleNotFoundError as exc:
+    raise unittest.SkipTest("ROS 2 Python packages are not installed") from exc
 
-from ament_index_python.packages import get_package_share_directory
 from vexy_ros.operator.node import RosCommandSink
 from vexy_ros.operator.core import (
     MAX_TAG_ID,
@@ -47,7 +51,10 @@ FIXTURES = HERE.parent / "fixtures"
 
 _map_name = os.environ.get("VEXY_MAP", "gen0-grab-toss-v1")
 MAP_FILE = (
-    pathlib.Path(get_package_share_directory("vexy_ros")) / "config" / "maps" / f"{_map_name}.json"
+    pathlib.Path(get_package_share_directory("vexy_ros"))
+    / "config"
+    / "maps"
+    / f"{_map_name}.json"
 )
 
 STACK_SERVICE = "vexy-ros-stack.service"
@@ -106,7 +113,9 @@ class DeliverTestNode(Node):
         )
 
         self.create_subscription(TFMessage, "/tf", self._on_tf, 10)
-        self.create_subscription(String, "/vision/object_indications", self._on_objects, 10)
+        self.create_subscription(
+            String, "/vision/object_indications", self._on_objects, 10
+        )
         self.create_subscription(String, "/vex/telemetry", self._on_telemetry, 10)
 
     def _on_tf(self, msg: TFMessage) -> None:
@@ -120,7 +129,9 @@ class DeliverTestNode(Node):
                 optical_x_m=float(translation.x),
                 optical_z_m=float(translation.z),
             )
-            robot_from_tag = robot_from_camera_pose(camera_from_tag, self.camera_in_robot)
+            robot_from_tag = robot_from_camera_pose(
+                camera_from_tag, self.camera_in_robot
+            )
             if robot_from_tag.x_m <= 0.05:
                 continue
             self._tags[tag_id] = TagObservation(
@@ -132,7 +143,9 @@ class DeliverTestNode(Node):
                 yaw_rad=math.atan2(robot_from_tag.y_m, robot_from_tag.x_m),
             )
         self.op.update_vision(
-            VisionSnapshot(stamp_s=stamp_s, tags=dict(self._tags), objects=self._objects)
+            VisionSnapshot(
+                stamp_s=stamp_s, tags=dict(self._tags), objects=self._objects
+            )
         )
 
     def _on_objects(self, msg: String) -> None:
@@ -157,7 +170,9 @@ class DeliverTestNode(Node):
                 float(item.get("left_m", 0.0)),
                 float(item.get("yaw_rad", 0.0)),
             )
-            robot_from_object = robot_from_camera_pose(camera_from_object, self.camera_in_robot)
+            robot_from_object = robot_from_camera_pose(
+                camera_from_object, self.camera_in_robot
+            )
             objects.append(
                 ObjectObservation(
                     name=name,
@@ -166,14 +181,18 @@ class DeliverTestNode(Node):
                     forward_m=robot_from_object.x_m,
                     left_m=robot_from_object.y_m,
                     confidence=(
-                        float(item["confidence"]) if item.get("confidence") is not None else None
+                        float(item["confidence"])
+                        if item.get("confidence") is not None
+                        else None
                     ),
                     source=str(item.get("source", "object_indications")),
                 )
             )
         self._objects = tuple(objects)
         self.op.update_vision(
-            VisionSnapshot(stamp_s=stamp_s, tags=dict(self._tags), objects=self._objects)
+            VisionSnapshot(
+                stamp_s=stamp_s, tags=dict(self._tags), objects=self._objects
+            )
         )
 
     def _on_telemetry(self, msg: String) -> None:
@@ -184,7 +203,9 @@ class DeliverTestNode(Node):
         self.op.update_telemetry(telemetry_snapshot_from_mapping(raw))
 
     def run(self) -> bool:
-        print("=== deliver test: locate → approach ball → grab → approach bin → lift → release ===")
+        print(
+            "=== deliver test: locate → approach ball → grab → approach bin → lift → release ==="
+        )
         for method, args, kwargs, timeout_s, is_nav in STEPS:
             kw_str = f"  kwargs={kwargs}" if kwargs else ""
             print(f"[{method}]{kw_str}")

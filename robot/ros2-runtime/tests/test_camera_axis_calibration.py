@@ -21,13 +21,17 @@ import math
 import subprocess
 import sys
 import time
+import unittest
 from dataclasses import asdict, dataclass
 from typing import Any
 
-import rclpy
-from rclpy.node import Node
-from sensor_msgs.msg import Image
-from std_msgs.msg import String
+try:
+    import rclpy
+    from rclpy.node import Node
+    from sensor_msgs.msg import Image
+    from std_msgs.msg import String
+except ModuleNotFoundError as exc:
+    raise unittest.SkipTest("ROS 2 Python packages are not installed") from exc
 
 from vexy_ros.bridge_protocol import now_ms, normalize_outbound
 from vexy_ros.yolo_ncnn_node import image_to_bgr_array
@@ -103,7 +107,9 @@ def detect_white_tape(
 
     points_f = points.reshape(-1, 2).astype(np.float32)
     points_f[:, 1] += float(roi_top)
-    vx, vy, x0, y0 = (float(v) for v in cv2.fitLine(points_f, cv2.DIST_L2, 0, 0.01, 0.01))
+    vx, vy, x0, y0 = (
+        float(v) for v in cv2.fitLine(points_f, cv2.DIST_L2, 0, 0.01, 0.01)
+    )
     if abs(vy) < 1e-6:
         return None
 
@@ -232,11 +238,15 @@ def run_calibration(args: argparse.Namespace) -> list[dict[str, Any]]:
     transcript: list[dict[str, Any]] = []
     try:
         print("=== camera forward-axis tape calibration ===")
-        print("Robot will remain still. Lay the white tape along the robot forward centerline.")
+        print(
+            "Robot will remain still. Lay the white tape along the robot forward centerline."
+        )
         node.spin_for(args.settle_s)
         node.stop(reason="camera_axis_calibration_initial_stop")
         for index in range(args.rounds):
-            _prompt(f"\nTape placement {index + 1}/{args.rounds} ready; press Enter to sample. ")
+            _prompt(
+                f"\nTape placement {index + 1}/{args.rounds} ready; press Enter to sample. "
+            )
             node.clear()
             node.spin_for(args.sample_s)
             summary = summarize_estimates(node.estimates)
@@ -246,7 +256,9 @@ def run_calibration(args: argparse.Namespace) -> list[dict[str, Any]]:
                     "step": "tape_sample",
                     "index": index + 1,
                     "summary": summary,
-                    "user_observation": _prompt("Physical note for this tape placement: "),
+                    "user_observation": _prompt(
+                        "Physical note for this tape placement: "
+                    ),
                 }
             )
         return transcript

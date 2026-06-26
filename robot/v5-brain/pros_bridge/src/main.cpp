@@ -713,12 +713,6 @@ void handle_line(const std::string& line) {
 		return;
 	}
 
-	if (has_json_value(line, "\"cmd\"", "\"set_goal\"")) {
-		stop_all("set_goal not handled by Brain");
-		emit_ack(seq, "rejected", "\"unknown_command\"");
-		return;
-	}
-
 	stop_all("unknown command");
 	emit_ack(seq, "rejected", "\"unknown_command\"");
 }
