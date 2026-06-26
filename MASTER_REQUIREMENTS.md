@@ -61,7 +61,7 @@ By the demo, the system closes the generational self-model loop **in software** 
   - root: `operator/` · ignore_folders: `.venv`, `__pycache__`, `.claude`, `out`, `.pytest_cache` · Owner: **TBD**
 - `pilot` — Python 3.11 · uv · ruff · Raspberry Pi 5 · the **online control loop**: an on-Pi LLM that reads live telemetry + vision and issues fixed control-grammar commands in real time. *(name provisional; ADR-19)*
   - root: `pilot/` · ignore_folders: `.venv`, `__pycache__`, `captures` · Owner: **TBD**
-- `coprocessor` — Python 3.11 · uv · ruff · Raspberry Pi 5 · Ubuntu 24.04 + ROS 2 Jazzy · `camera_ros` + measured `CameraInfo` + `image_proc` + `apriltag_ros` + `scene_map_node` + V5 serial bridge + MCAP capture + contract JSONL export. `robot/pi-runtime/` is retained as a legacy/fallback runtime.
+- `coprocessor` — Python 3.12 · uv · ruff · Raspberry Pi 5 · Ubuntu 24.04 + ROS 2 Jazzy · `camera_ros` + measured `CameraInfo` + `image_proc` + `apriltag_ros` + `scene_map_node` + V5 serial bridge + MCAP capture + contract JSONL export. Hardware validation on the Pi confirmed `python3` 3.12.3 and `rclpy` installed under `/opt/ros/jazzy/lib/python3.12/site-packages`; `robot/pi-runtime/` is retained as a legacy/fallback runtime.
   - root: `robot/ros2-runtime/` · legacy_fallback_root: `robot/pi-runtime/` · ignore_folders: `.venv`, `__pycache__`, `build`, `install`, `log`, `models`, `captures`, `proof` · Owner: **TBD**
 - `brain` — **PROS C++** (FreeRTOS) · PROS CLI + `arm-none-eabi` · `uv`-managed `pros-cli` (dev only) · V5 Brain · emits the telemetry contract + executes clamped control commands.
   - root: `robot/v5-brain/` · ignore_folders: PROS `bin/` (per the project's own `.gitignore`) · Owner: **TBD**
