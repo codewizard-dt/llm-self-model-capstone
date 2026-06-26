@@ -42,6 +42,7 @@ setup(
             "vexy_deliver_ball = vexy_ros.deliver_ball:main",
             "vexy_run_calibrated_tag_proof = vexy_ros.proof_runner:main",
             "vexy_extract_telemetry = vexy_ros.telemetry_extract:main",
+            "vexy_telemetry_writer_node = vexy_ros.telemetry_writer_node:main",
             "vexy_scene_observation_proof = vexy_ros.observation_proof:main",
             "vexy_calibrate_camera = vexy_ros.camera_calibration_capture:main",
         ],
