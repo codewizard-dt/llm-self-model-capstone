@@ -25,6 +25,8 @@ hardware capture remains a later integration requirement.
 - Add a no-ROS/no-MCAP loader or test path that proves downstream components can consume the fixture.
 - Update docs/requirements notes to state the handoff contract: downstream components consume
   `ContractLine` JSONL; real hardware runs later provide MCAP plus the same semantic JSONL shape.
+- Clarify PR #43 as a useful telemetry JSONL baseline with partial MCAP capture, not completion of
+  the later full hardware-capture and replay/audit requirements.
 
 ## Out of Scope
 
@@ -48,6 +50,8 @@ hardware capture remains a later integration requirement.
   `rosbag2_py`, or MCAP-specific dependencies.
 - Documentation clearly states that JSONL fixtures unblock F8/F9/F10/F11/F12 and that MCAP is deferred
   to real hardware capture.
+- Documentation clearly separates PR #43's JSONL baseline and partial MCAP capture from full
+  hardware-capture completion.
 - The feature leaves `make demo` ready to depend on fixture-backed contract JSONL without requiring
   a robot, ROS, or MCAP.
 
@@ -74,6 +78,8 @@ hardware capture remains a later integration requirement.
   should depend on `contracts.ContractLine` JSONL.
 - D6 - Closed: Validation should be wired into repo tests or `make validate` so fixture drift is
   caught before `make demo`.
+- D7 - Closed: PR #43 is scope evidence for a useful JSONL baseline plus partial MCAP capture only;
+  it does not close the later real-hardware replay/audit requirement.
 
 ## Notes For Slice Planning
 

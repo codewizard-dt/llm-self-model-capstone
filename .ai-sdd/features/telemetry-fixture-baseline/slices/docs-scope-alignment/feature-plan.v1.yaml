@@ -1,0 +1,147 @@
+summary: >-
+  Align the telemetry fixture documentation with the approved scope: fixture-backed
+  ContractLine JSONL is the MVP evidence handoff for downstream self-modeling and make demo, while
+  MCAP remains the later real-hardware replay and audit artifact.
+
+scope:
+  in:
+    - >-
+      Update requirements notes and relevant repo documentation to state that downstream
+      self-modeling components consume contracts.ContractLine JSONL as their semantic evidence
+      input.
+    - >-
+      Document that telemetry-fixtures/ contains fixture-backed evidence and may be used by F8, F9,
+      F10, F11, F12, and make demo without requiring a robot, ROS, or MCAP.
+    - >-
+      Preserve the real-hardware requirement that later captures produce replayable MCAP plus the
+      same contract-valid JSONL semantic shape.
+    - >-
+      Clarify that PR #43 is a useful JSONL baseline and partial MCAP capture, not evidence that the
+      full hardware-capture and audit/replay requirements are complete.
+    - >-
+      Keep MASTER_REQUIREMENTS.md authoritative; if it is edited, only add the narrow milestone
+      clarification needed to separate fixture-backed MVP evidence from later real-hardware evidence.
+  out:
+    - Rewriting the full milestone plan, architecture, or feature catalog.
+    - Removing MCAP from later real-hardware capture, audit, or replay requirements.
+    - Documenting fake MCAP generation as acceptable.
+    - Changing frozen task-telemetry, self-model, parts-catalog, or control-command schemas.
+    - Modifying fixture payloads, validation behavior, source code, tests, build configuration, or
+      make demo implementation.
+    - Claiming that telemetry-fixtures/ or PR #43 represent a real robot baseline capture.
+
+acceptance:
+  - id: ACC-FIXTURE-VS-HARDWARE
+    description: >-
+      Documentation explicitly separates fixture-backed MVP evidence from later real-hardware
+      evidence and does not describe telemetry-fixtures/ as a real robot run.
+  - id: ACC-CONTRACTLINE-HANDOFF
+    description: >-
+      Documentation states that F8/F9/F10/F11/F12 and make demo consume ContractLine JSONL as the
+      semantic handoff, not ROS topics or MCAP directly.
+  - id: ACC-FIXTURE-USAGE
+    description: >-
+      Documentation names telemetry-fixtures/ as fixture-backed evidence that can unblock downstream
+      self-modeling development and make demo without robot, ROS, or MCAP dependencies.
+  - id: ACC-MCAP-PRESERVED
+    description: >-
+      Existing later-stage MCAP requirements remain visible as the real-hardware replay/audit source
+      that is exported to the same ContractLine JSONL shape.
+  - id: ACC-PR43-SCOPED
+    description: >-
+      Documentation clarifies that PR #43's telemetry pipeline is a JSONL baseline and partial MCAP
+      capture only, not completion of full hardware-capture requirements.
+  - id: ACC-NO-SOURCE-OR-SCHEMA-CHANGE
+    description: >-
+      The slice changes only documentation or requirements notes; it does not change source code,
+      tests, fixture data, build configuration, or frozen schemas.
+
+decisions:
+  - id: DEC-CANONICAL-HANDOFF
+    status: closed
+    decision: >-
+      The documented downstream handoff for the MVP is contracts.ContractLine JSONL from
+      telemetry-fixtures/<run-id>/contract.jsonl.
+    rationale: >-
+      The approved feature requirements close the canonical artifact as contract.jsonl so F8/F9/F10/F11/F12
+      and make demo can advance before real hardware capture.
+    grounds: >-
+      telemetry-fixture-baseline requirements Decisions D1 and D5; MASTER_REQUIREMENTS.md Goal,
+      Components Telemetry capture & merge, Frozen Contracts Task Telemetry Contract, and ADR-11.
+  - id: DEC-MCAP-LATER-HARDWARE
+    status: closed
+    decision: >-
+      Documentation must keep MCAP as the later real-hardware replay/audit store and explain that
+      hardware runs export the same semantic ContractLine JSONL shape.
+    rationale: >-
+      ADR-11 requires MCAP raw evidence plus contract JSONL export for hardware, while this feature
+      only creates fixture-backed MVP evidence and must not fake MCAP.
+    grounds: >-
+      MASTER_REQUIREMENTS.md Scope cut V1/V1.5, Components Serial bridge / merge, Milestone m4,
+      ADR-11, and Integration Boundaries; telemetry-fixture-baseline requirements D4 and Out of
+      Scope.
+  - id: DEC-FIXTURE-PROVENANCE
+    status: closed
+    decision: >-
+      Documentation must label telemetry-fixtures/ as fixture-backed and must not imply the fixture
+      or make demo evidence is a real robot run.
+    rationale: >-
+      The MVP evidence path is intentionally no-hardware and deterministic; provenance must stay
+      explicit so demo and downstream work are not confused with hardware baseline capture.
+    grounds: >-
+      telemetry-fixture-baseline requirements Goal, Acceptance, Constraints, and Decision D3;
+      MASTER_REQUIREMENTS.md ADR-01, ADR-03, and Verification & Reviewer Runbook.
+  - id: DEC-PR43-SCOPE
+    status: closed
+    decision: >-
+      PR #43 is documented as a useful telemetry JSONL baseline with partial MCAP capture, not as
+      completion of full hardware-capture, replay, or audit requirements.
+    rationale: >-
+      The slice explicitly asks for this scope clarification and the master plan still requires a
+      later m4 real V5 + Pi baseline capture with MCAP plus contract-valid JSONL.
+    grounds: >-
+      docs-scope-alignment slice Scope; telemetry-fixture-baseline requirements Out of Scope and
+      Notes For Slice Planning; MASTER_REQUIREMENTS.md Milestone m4 and Critical Path.
+  - id: DEC-DOCS-ONLY
+    status: closed
+    decision: >-
+      This slice is documentation and requirements alignment only; source code, tests, fixture data,
+      build configuration, and frozen schemas are not changed.
+    rationale: >-
+      Fixture creation/validation and downstream loader proof are separate slices. This slice only
+      aligns the written scope so implementers and reviewers do not conflate MVP fixtures with
+      hardware capture.
+    grounds: >-
+      docs-scope-alignment slice Scope and Out of Scope; telemetry-fixture-baseline requirements
+      Notes For Slice Planning; plan-feature SKILL.md boundary rules.
+  - id: DEC-GATE-SET
+    status: closed
+    decision: >-
+      The implementer must run uv sync, make test, make validate, and make lint; make demo remains a
+      milestone concern, not a per-slice gate.
+    rationale: >-
+      The worker skill requires these baseline gates for every plan, while MASTER_REQUIREMENTS and
+      repo conventions classify make demo as the m2 milestone step.
+    grounds: >-
+      plan-feature SKILL.md tests requirement; MASTER_REQUIREMENTS.md Verification & Reviewer
+      Runbook and Milestone m2; .ai-sdd/conventions/coprocessor.md Discovery Record.
+
+files:
+  - README.md
+  - robot/README.md
+  - robot/ros2-runtime/README.md
+  - robot/ros2-runtime/docs/ARCHITECTURE.md
+  - robot/ros2-runtime/docs/RUNBOOK.md
+  - robot/ros2-runtime/docs/USAGE_GUIDE.md
+  - robot/ros2-runtime/docs/runbook/03-recording.md
+  - robot/pi-runtime/README.md
+  - robot/pi-runtime/docs/ARCHITECTURE.md
+  - robot/pi-runtime/docs/PROTOCOL.md
+  - .ai-sdd/features/telemetry-fixture-baseline/brief.md
+  - .ai-sdd/features/telemetry-fixture-baseline/requirements.md
+
+tests:
+  - uv sync
+  - make test
+  - make validate
+  - make lint

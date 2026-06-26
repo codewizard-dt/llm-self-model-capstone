@@ -9,7 +9,7 @@ separating that MVP fixture path from later full hardware MCAP capture.
 The downstream MVP features - F10 gap analyzer, F8 generator, F9 critic panel, F11 markdown
 presenter, and F12 demo replay / `make demo` - should consume stable JSON fixtures shaped as
 `contracts.ContractLine` evidence. A real robot run is not required for this feature. Hardware MCAP
-capture remains a later integration requirement and must not be faked.
+capture remains a later integration requirement and must not be faked or implied by fixture output.
 
 ## In Scope
 
@@ -21,7 +21,7 @@ capture remains a later integration requirement and must not be faked.
   or hardware.
 - Update requirements/docs so F8/F9/F10/F11/F12 are explicitly unblocked by contract JSONL fixtures.
 - Clarify that MCAP is required for later hardware audit/replay, not for fixture-backed MVP demo
-  development.
+  development, and that PR #43 is a JSONL baseline with partial MCAP capture only.
 
 ## Out of Scope
 
@@ -43,7 +43,7 @@ capture remains a later integration requirement and must not be faked.
 - Documentation states that downstream self-modeling components consume contract JSONL, while MCAP
   remains the raw hardware replay/audit source for later real runs.
 - Existing PR #43 telemetry behavior is documented as a JSONL baseline plus partial MCAP recording,
-  not as completion of full hardware-capture requirements.
+  not as completion of full hardware-capture or replay/audit requirements.
 
 ## Constraints
 

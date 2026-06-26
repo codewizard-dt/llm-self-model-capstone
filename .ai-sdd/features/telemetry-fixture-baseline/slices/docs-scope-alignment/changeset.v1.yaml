@@ -1,0 +1,52 @@
+apiVersion: ai-sdd/v1
+kind: Changeset
+metadata:
+  feature: telemetry-fixture-baseline
+  slice: docs-scope-alignment
+  stack: coprocessor
+
+summary: >-
+  Aligned the repo, robot runtime, ROS 2 recording, legacy Pi runtime, and
+  telemetry-fixture feature docs around the approved evidence boundary:
+  downstream F8/F9/F10/F11/F12 and make demo consume fixture-backed
+  contracts.ContractLine JSONL from telemetry-fixtures/<run-id>/contract.jsonl
+  for MVP work, while later real-hardware runs preserve MCAP as the replay/audit
+  source and export the same contract-valid JSONL shape. Clarified that
+  telemetry-fixtures/ are not real robot runs and that PR #43 is a useful JSONL
+  baseline with partial MCAP capture only, not completion of the full
+  hardware-capture requirement.
+
+satisfies:
+  - ACC-FIXTURE-VS-HARDWARE
+  - ACC-CONTRACTLINE-HANDOFF
+  - ACC-FIXTURE-USAGE
+  - ACC-MCAP-PRESERVED
+  - ACC-PR43-SCOPED
+  - ACC-NO-SOURCE-OR-SCHEMA-CHANGE
+
+files:
+  modified:
+    - README.md
+    - robot/README.md
+    - robot/ros2-runtime/README.md
+    - robot/ros2-runtime/docs/ARCHITECTURE.md
+    - robot/ros2-runtime/docs/RUNBOOK.md
+    - robot/ros2-runtime/docs/USAGE_GUIDE.md
+    - robot/ros2-runtime/docs/runbook/03-recording.md
+    - robot/pi-runtime/README.md
+    - robot/pi-runtime/docs/ARCHITECTURE.md
+    - robot/pi-runtime/docs/PROTOCOL.md
+    - .ai-sdd/features/telemetry-fixture-baseline/brief.md
+    - .ai-sdd/features/telemetry-fixture-baseline/requirements.md
+  created: []
+  deleted: []
+
+gates:
+  uv_sync_plan_command: 2
+  uv_sync_plan_command_note: >-
+    Failed because the repo root has no pyproject.toml; current compiled
+    changeset.build gate is make sync after the per-vertical uv split.
+  make_sync: 0
+  make_test: 0
+  make_validate: 0
+  make_lint: 0

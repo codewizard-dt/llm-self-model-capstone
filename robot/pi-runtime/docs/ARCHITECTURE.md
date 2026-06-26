@@ -19,6 +19,14 @@ System 1 runs on the V5 Brain.
 
 The Pi should never be the only safety layer. Every command has a TTL and every moving command must be safe to ignore, reject, or expire.
 
+## Evidence Boundary
+
+This legacy runtime is a fallback/reference path, not the canonical downstream
+self-modeling evidence source. MVP self-modeling features consume
+`contracts.ContractLine` JSONL from `telemetry-fixtures/<run-id>/contract.jsonl`.
+Later real hardware runs are captured in the ROS 2 runtime as replayable MCAP
+and exported to the same JSONL shape.
+
 ## Runtime Components
 
 - `camera_broker`: the only process that opens the Pi camera.

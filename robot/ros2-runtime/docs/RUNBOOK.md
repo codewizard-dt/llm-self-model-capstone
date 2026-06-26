@@ -21,6 +21,16 @@
 
 ---
 
+## Evidence Scope
+
+Hardware sessions recorded from this runbook produce MCAP for replay/audit and
+then export `contracts.ContractLine` JSONL for downstream self-modeling. For
+fixture-backed MVP development, use `telemetry-fixtures/<run-id>/contract.jsonl`
+directly; that path unblocks F8, F9, F10, F11, F12, and `make demo` without a
+robot, ROS, or MCAP and must not be described as a real robot run.
+
+---
+
 ## Quick Reference Card
 
 ```
@@ -51,6 +61,9 @@ ros2 launch vexy_ros vexy.launch.py  # foxglove_bridge starts automatically
 
 # Record session
 ros2 bag record -a -o ~/bags/session_$(date +%Y%m%d_%H%M%S)
+
+# MVP fixture handoff
+# use telemetry-fixtures/<run-id>/contract.jsonl as ContractLine JSONL
 
 # Rebuild vexy_ros only
 cd ~/ros2_ws && colcon build --packages-select vexy_ros && source install/setup.zsh

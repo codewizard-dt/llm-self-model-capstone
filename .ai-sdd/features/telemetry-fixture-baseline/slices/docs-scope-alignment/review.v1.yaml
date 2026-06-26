@@ -1,0 +1,45 @@
+items:
+  - id: ACC-FIXTURE-VS-HARDWARE
+    verdict: pass
+    notes: >-
+      README.md, robot/README.md, the ROS 2 recording docs, and the feature
+      requirements now distinguish fixture-backed MVP evidence from later
+      real-hardware evidence. The added text explicitly says telemetry-fixtures/
+      and contract.jsonl are not real robot runs and do not require ROS,
+      hardware, or MCAP.
+  - id: ACC-CONTRACTLINE-HANDOFF
+    verdict: pass
+    notes: >-
+      The updated root, robot, ROS 2, and legacy Pi runtime docs state that
+      downstream self-modeling features F8, F9, F10, F11, F12, and make demo
+      consume contracts.ContractLine JSONL as the semantic handoff. The ROS 2
+      architecture and recording runbook also clarify that downstream consumers
+      do not read ROS topics or MCAP directly.
+  - id: ACC-FIXTURE-USAGE
+    verdict: pass
+    notes: >-
+      Documentation names telemetry-fixtures/<run-id>/contract.jsonl as
+      fixture-backed evidence that unblocks MVP self-modeling and make demo
+      without a robot, ROS daemon, camera, serial device, or MCAP dependency.
+  - id: ACC-MCAP-PRESERVED
+    verdict: pass
+    notes: >-
+      MCAP remains documented as the replayable real-hardware raw evidence and
+      audit source in the ROS 2 README, architecture, runbook, and recording
+      guide. Those docs also state that hardware captures export the same
+      contract-valid ContractLine JSONL shape used by the fixture path.
+  - id: ACC-PR43-SCOPED
+    verdict: pass
+    notes: >-
+      README.md, robot/ros2-runtime/README.md, the ROS 2 architecture, the
+      recording runbook, and the telemetry-fixture feature notes now scope PR
+      #43 as a useful JSONL baseline with partial MCAP capture only, not
+      completion of full hardware-capture, replay, or audit requirements.
+  - id: ACC-NO-SOURCE-OR-SCHEMA-CHANGE
+    verdict: pass
+    notes: >-
+      git status and git diff show only Markdown documentation and requirements
+      note edits. There are no source, schema, test, fixture payload, build
+      configuration, or generated MCAP changes in this slice.
+verdict: approve
+rework: []
