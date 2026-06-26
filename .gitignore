@@ -25,6 +25,11 @@ raw/research/vex-v5-classroom-starter-kit/cad/v5-clawbot-assembly_276-6009.step
 .playwright-mcp/
 
 # ---------------------------------------------------------------------------
+# Synced telemetry (local copies from Pi — never commit)
+# ---------------------------------------------------------------------------
+telemetry/
+
+# ---------------------------------------------------------------------------
 # Secrets & local environment (NEVER commit real secrets)
 # ---------------------------------------------------------------------------
 .env

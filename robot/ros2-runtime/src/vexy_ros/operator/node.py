@@ -31,7 +31,7 @@ from ..vision_map import (
     robot_from_camera_pose,
     tag_id_from_frame_id,
 )
-from .core import (
+from ._core import (
     MAX_TAG_ID,
     MIN_TAG_ID,
     CommandSink,

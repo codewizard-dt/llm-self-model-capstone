@@ -8,23 +8,12 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-
-DEFAULT_TOPICS = (
-    "/camera/camera_info",
-    "/apriltag/detections",
-    "/tf",
-    "/vision/object_detections",
-    "/vision/object_indications",
-    "/vision/scene_map",
-    "/task_plan/current",
-    "/vex/cmd",
-    "/vex/ack",
-    "/vex/telemetry",
-    "/vex/bridge_status",
+TELEMETRY_TOPICS = (
     "/operator/run_start",
     "/operator/events",
     "/operator/results",
     "/operator/status",
+    "/vex/telemetry",
 )
 
 
@@ -33,15 +22,32 @@ def default_proof_dir() -> Path:
     return Path(f"/home/vexy/telemetry/run-{stamp}")
 
 
+def telemetry_bag_record_cmd(out_dir: Path | str) -> list[str]:
+    return [
+        "ros2",
+        "bag",
+        "record",
+        "-s",
+        "mcap",
+        "-o",
+        str(out_dir),
+        *TELEMETRY_TOPICS,
+    ]
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Run calibrated tag-action proof with MCAP and ContractLine export."
+        description="Run calibrated tag-action proof with JSON telemetry and ContractLine export."
     )
     parser.add_argument("--proof-dir", type=Path, default=None)
     parser.add_argument("--mode", default="visual-one-foot-scan")
-    parser.add_argument("--no-bag", action="store_true")
+    parser.add_argument(
+        "--no-telemetry", action="store_true", help="Skip live JSON telemetry writer"
+    )
+    parser.add_argument(
+        "--no-bag-record", action="store_true", help="Skip MCAP bag recording"
+    )
     parser.add_argument("--no-export", action="store_true")
-    parser.add_argument("--extra-topic", action="append", default=[])
     parser.add_argument("--settle-before-s", type=float, default=2.0)
     return parser
 
@@ -52,16 +58,29 @@ def main(argv: list[str] | None = None) -> int:
     proof_dir.mkdir(parents=True, exist_ok=True)
     (proof_dir / "proof-dir.txt").write_text(str(proof_dir) + "\n")
 
-    recorder = None
-    topics = list(DEFAULT_TOPICS) + list(args.extra_topic)
+    writer = None
+    bag_recorder = None
     try:
-        if not args.no_bag:
-            recorder = subprocess.Popen(
-                ["ros2", "bag", "record", "-s", "mcap", "-o", str(proof_dir / "mcap")]
-                + topics,
-                stdout=(proof_dir / "rosbag-record.log").open("w"),
+        if not args.no_telemetry:
+            writer = subprocess.Popen(
+                [
+                    "ros2",
+                    "run",
+                    "vexy_ros",
+                    "vexy_telemetry_writer_node",
+                    "--out-dir",
+                    str(proof_dir),
+                ],
+                stdout=(proof_dir / "telemetry-writer.log").open("w"),
                 stderr=subprocess.STDOUT,
             )
+        if not args.no_bag_record:
+            bag_recorder = subprocess.Popen(
+                telemetry_bag_record_cmd(proof_dir / "bag"),
+                stdout=(proof_dir / "bag-record.log").open("w"),
+                stderr=subprocess.STDOUT,
+            )
+        if writer is not None or bag_recorder is not None:
             time.sleep(max(0.0, args.settle_before_s))
 
         proof_cmd = [
@@ -79,16 +98,10 @@ def main(argv: list[str] | None = None) -> int:
         (proof_dir / "proof-rc.txt").write_text(f"proof_rc={result.returncode}\n")
         return_code = result.returncode
     finally:
-        if recorder is not None:
-            _stop_process(recorder)
-
-    if not args.no_bag:
-        with (proof_dir / "mcap-info.txt").open("w") as log:
-            subprocess.run(
-                ["ros2", "bag", "info", str(proof_dir / "mcap")],
-                stdout=log,
-                stderr=subprocess.STDOUT,
-            )
+        if writer is not None:
+            _stop_process(writer)
+        if bag_recorder is not None:
+            _stop_process(bag_recorder)
 
     if not args.no_export:
         with (proof_dir / "export.log").open("w") as log:

@@ -30,6 +30,8 @@ Nodes launched:
   vex_bridge       — USB serial bridge to V5 Brain
                      Subscribes: /vex/cmd
                      Publishes:  /vex/ack, /vex/telemetry, /vex/bridge_status
+  telemetry_writer — always-on JSONL recorder for operator topics
+                     Writes: /home/vexy/telemetry/run-<timestamp>/
   foxglove_bridge  — WebSocket bridge for Foxglove Studio
                      Connect at: ws://<Pi-IP>:8765
 
@@ -39,11 +41,12 @@ Usage:
   ros2 launch vexy_ros vexy.launch.py camera_width:=1280 camera_height:=720
 """
 
+from datetime import datetime
 from pathlib import Path
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, OpaqueFunction
 from launch.conditions import IfCondition
 from launch.substitutions import (
     EnvironmentVariable,
@@ -53,6 +56,7 @@ from launch.substitutions import (
 )
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
+from vexy_ros.proof_runner import telemetry_bag_record_cmd
 from vexy_ros.vision_map import DEFAULT_CAMERA_IN_ROBOT
 
 DEFAULT_OPERATOR_TASK_CONTRACT = (
@@ -80,6 +84,9 @@ def _as_int(context, name):
 
 
 def _launch_nodes(context, *args, **kwargs):
+    telemetry_dir = "/home/vexy/telemetry/run-" + datetime.now().strftime(
+        "%Y%m%d-%H%M%S"
+    )
     width = _as_int(context, "camera_width")
     height = _as_int(context, "camera_height")
     fps = _as_int(context, "camera_fps")
@@ -354,6 +361,18 @@ def _launch_nodes(context, *args, **kwargs):
             ],
         ),
         # ----------------------------------------------------------
+        # Always-on telemetry recorder — writes operator topics as
+        # JSONL to /home/vexy/telemetry/run-<timestamp>/ so every
+        # test and live run is captured for make sync-telemetry.
+        # ----------------------------------------------------------
+        Node(
+            package="vexy_ros",
+            executable="vexy_telemetry_writer_node",
+            name="telemetry_writer",
+            arguments=["--out-dir", telemetry_dir],
+            condition=IfCondition(LaunchConfiguration("telemetry_writer_enabled")),
+        ),
+        # ----------------------------------------------------------
         # Foxglove Studio WebSocket bridge
         # Connect from browser: ws://<Pi-IP>:8765
         # Note: use IP address, not vexy.local — mDNS fails for
@@ -364,6 +383,20 @@ def _launch_nodes(context, *args, **kwargs):
             executable="foxglove_bridge",
             name="foxglove_bridge",
             parameters=[{"port": 8765}],
+        ),
+        # ----------------------------------------------------------
+        # MCAP bag recorder — records operator and VEX telemetry topics
+        # alongside the live JSONL writer so each run has both formats.
+        # ----------------------------------------------------------
+        *(
+            [
+                ExecuteProcess(
+                    cmd=telemetry_bag_record_cmd(telemetry_dir + "/bag"),
+                )
+            ]
+            if LaunchConfiguration("bag_record_enabled").perform(context).lower()
+            == "true"
+            else []
         ),
     ]
 
@@ -468,6 +501,8 @@ def generate_launch_description():
                 "agent_scene_include_debug_tracks", default_value="false"
             ),
             DeclareLaunchArgument("object_overlay_enabled", default_value="true"),
+            DeclareLaunchArgument("telemetry_writer_enabled", default_value="true"),
+            DeclareLaunchArgument("bag_record_enabled", default_value="true"),
             DeclareLaunchArgument(
                 "object_overlay_max_detection_age_s", default_value="0.5"
             ),

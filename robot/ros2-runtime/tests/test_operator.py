@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT.parents[1] / "contracts" / "src"))
 
-from vexy_ros.operator.core import (  # noqa: E402
+from vexy_ros.operator._core import (  # noqa: E402
     MotorSample,
     ObjectObservation,
     Operator,
