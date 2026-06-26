@@ -35,13 +35,53 @@ h2 { font-size: 1.2rem; margin: 0; }
 .status-legend ul { display: flex; flex-wrap: wrap; gap: 10px 18px; justify-content: center; list-style: none; margin: 22px 0; padding: 0; }
 .status-legend li { align-items: center; color: var(--muted); display: flex; gap: 8px; font-size: 0.92rem; }
 .legend-swatch { border-radius: 999px; display: inline-block; height: 10px; width: 10px; }
-.dashboard-charts { align-items: start; display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); margin-bottom: 28px; }
+.dashboard-charts { align-items: start; display: grid; gap: 24px; grid-template-columns: minmax(0, 1fr); margin-bottom: 28px; }
+.dashboard-chart-fig { margin: 0; }
+.dashboard-chart-caption { color: var(--muted); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; margin-bottom: 6px; text-transform: uppercase; }
+.dashboard-chart-donut { justify-self: center; text-align: center; }
 .dashboard-chart { max-width: 100%; }
 .dashboard-status-donut { justify-self: center; max-width: 360px; }
 .dashboard-grouped-bars { width: 100%; }
+.temporal-eta { color: var(--muted); font-size: 0.92rem; margin-top: 8px; }
+.eta-confidence { color: var(--muted); font-size: 0.82rem; }
+.eta-suppressed { color: var(--muted); }
+.temporal-burndown { margin: 10px 0 0; }
+.temporal-burndown-caption { color: var(--muted); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; margin-bottom: 4px; text-transform: uppercase; }
+.dashboard-burndown { width: 100%; max-width: 760px; }
+.burndown-axis-label { fill: var(--muted); font-size: 0.7rem; }
 .dashboard-section { border-top: 1px solid var(--line); padding: 26px 0; }
 .dashboard-section > header { align-items: baseline; display: flex; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
 .dashboard-section > header p { color: var(--muted); margin: 0; }
+.stale-run-marker { color: var(--status-rework); font-size: 0.8rem; font-weight: 700; margin-left: 10px; white-space: nowrap; }
+.definition-pane { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid #d97706; border-radius: 8px; margin-bottom: 16px; padding: 12px 16px; }
+.definition-pane h3 { color: var(--muted); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; margin: 0 0 6px; text-transform: uppercase; }
+.definition-pane p { margin: 0; white-space: pre-line; }
+.dashboard-node.critical-path { border-left-color: #d97706; box-shadow: inset 0 0 0 1px #d97706; }
+.verdict-band { border: 1px solid var(--line); border-radius: 8px; margin: 24px 0 18px; padding: 18px 20px; }
+.verdict-kicker { color: var(--muted); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.verdict-trajectory { font-size: 1.5rem; font-weight: 700; margin: 6px 0 10px; }
+.trajectory-on-track { color: var(--status-done); }
+.trajectory-slipping { color: var(--status-rework); }
+.trajectory-stalled { color: var(--status-escalated); }
+.verdict-meta { align-items: center; color: var(--muted); display: flex; flex-wrap: wrap; gap: 12px; margin: 0; }
+.verdict-freshness { font-size: 0.82rem; font-weight: 700; }
+.verdict-freshness.stale { color: var(--status-rework); }
+.verdict-freshness.fresh { color: var(--status-done); }
+.attention-band { border: 1px solid var(--line); border-radius: 8px; margin: 0 0 18px; padding: 16px 20px; }
+.attention-band h2 { margin: 0 0 12px; }
+.attention-band h3 { color: var(--muted); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; margin: 12px 0 6px; text-transform: uppercase; }
+.attention-band ul { list-style: none; margin: 0; padding: 0; }
+.attention-band li { align-items: baseline; display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0; }
+.attention-escalation h3 { color: var(--status-escalated); }
+.attention-rework h3 { color: var(--status-rework); }
+.attention-slice { font-weight: 700; }
+.attention-feature { color: var(--muted); font-size: 0.9rem; }
+.attention-unblock-count { color: var(--muted); font-size: 0.82rem; }
+.portfolio-band { margin: 0 0 28px; }
+.portfolio-band h2 { margin-bottom: 12px; }
+.portfolio-table { border-collapse: collapse; font-size: 0.92rem; width: 100%; }
+.portfolio-table th, .portfolio-table td { border-bottom: 1px solid var(--line); padding: 10px 8px; text-align: left; vertical-align: top; }
+.portfolio-table th { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; }
 .dashboard-mermaid-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; margin-bottom: 18px; overflow-x: auto; padding: 16px; }
 .dashboard-mermaid { margin: 0; min-width: 640px; text-align: center; }
 .dashboard-graph { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr) minmax(220px, 0.45fr); margin-bottom: 18px; }
@@ -78,14 +118,14 @@ h2 { font-size: 1.2rem; margin: 0; }
       <p class="dashboard-kicker">ai-sdd project status</p>
       <h1>self-model-feature</h1>
       <div class="summary-grid" aria-label="Dashboard summary">
-        <div><span class="summary-value">1</span><span class="summary-label">features</span></div>
-        <div><span class="summary-value">27</span><span class="summary-label">slices</span></div>
-        <div><span class="summary-value">0/27</span><span class="summary-label">done</span></div>
-        <div><span class="summary-value">0%</span><span class="summary-label">progress</span></div>
+        <div><span class="summary-value">2</span><span class="summary-label">features</span></div>
+        <div><span class="summary-value">32</span><span class="summary-label">slices</span></div>
+        <div><span class="summary-value">11/32</span><span class="summary-label">done</span></div>
+        <div><span class="summary-value">34%</span><span class="summary-label">progress</span></div>
       </div>
-      <div class="progress-wrap" aria-label="0 of 27 slices done">
-        <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="progress-fill" style="width: 0.0%"></div></div>
-        <p>0/27 done</p>
+      <div class="progress-wrap" aria-label="11 of 32 slices done">
+        <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="34"><div class="progress-fill" style="width: 34.4%"></div></div>
+        <p>11/32 done</p>
       </div>
     </header>
         <nav class="status-legend" aria-label="Status legend">
@@ -99,20 +139,20 @@ h2 { font-size: 1.2rem; margin: 0; }
       </ul>
     </nav>
     <section class="dashboard-charts" aria-label="Dashboard charts">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" role="img" aria-label="Status distribution: done 0, in-progress 0, rework 0, escalated 0, runnable 5, pending 22" class="dashboard-chart dashboard-status-donut">
+      <figure class="dashboard-chart-fig dashboard-chart-donut"><figcaption class="dashboard-chart-caption">Status distribution</figcaption><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" role="img" aria-label="Status distribution: done 11, in-progress 0, rework 0, escalated 0, runnable 7, pending 14" class="dashboard-chart dashboard-status-donut">
   <g transform="translate(78 72) rotate(-90)">
     <circle cx="0" cy="0" r="48" fill="none" stroke="#eceff1" stroke-width="18"/>
-    <circle class="status-segment status-done" data-status="done" data-count="0" cx="0" cy="0" r="48" fill="none" stroke="#2e7d32" stroke-width="18" pathLength="27" stroke-dasharray="0 27" stroke-dashoffset="-0"><title>done: 0</title></circle>
-    <circle class="status-segment status-in-progress" data-status="in-progress" data-count="0" cx="0" cy="0" r="48" fill="none" stroke="#1565c0" stroke-width="18" pathLength="27" stroke-dasharray="0 27" stroke-dashoffset="-0"><title>in-progress: 0</title></circle>
-    <circle class="status-segment status-rework" data-status="rework" data-count="0" cx="0" cy="0" r="48" fill="none" stroke="#f9a825" stroke-width="18" pathLength="27" stroke-dasharray="0 27" stroke-dashoffset="-0"><title>rework: 0</title></circle>
-    <circle class="status-segment status-escalated" data-status="escalated" data-count="0" cx="0" cy="0" r="48" fill="none" stroke="#c62828" stroke-width="18" pathLength="27" stroke-dasharray="0 27" stroke-dashoffset="-0"><title>escalated: 0</title></circle>
-    <circle class="status-segment status-runnable" data-status="runnable" data-count="5" cx="0" cy="0" r="48" fill="none" stroke="#616161" stroke-width="18" pathLength="27" stroke-dasharray="5 22" stroke-dashoffset="-0"><title>runnable: 5</title></circle>
-    <circle class="status-segment status-pending" data-status="pending" data-count="22" cx="0" cy="0" r="48" fill="none" stroke="#9e9e9e" stroke-width="18" pathLength="27" stroke-dasharray="22 5" stroke-dashoffset="-5"><title>pending: 22</title></circle>
+    <circle class="status-segment status-done" data-status="done" data-count="11" cx="0" cy="0" r="48" fill="none" stroke="#2e7d32" stroke-width="18" pathLength="32" stroke-dasharray="11 21" stroke-dashoffset="-0"><title>done: 11</title></circle>
+    <circle class="status-segment status-in-progress" data-status="in-progress" data-count="0" cx="0" cy="0" r="48" fill="none" stroke="#1565c0" stroke-width="18" pathLength="32" stroke-dasharray="0 32" stroke-dashoffset="-11"><title>in-progress: 0</title></circle>
+    <circle class="status-segment status-rework" data-status="rework" data-count="0" cx="0" cy="0" r="48" fill="none" stroke="#f9a825" stroke-width="18" pathLength="32" stroke-dasharray="0 32" stroke-dashoffset="-11"><title>rework: 0</title></circle>
+    <circle class="status-segment status-escalated" data-status="escalated" data-count="0" cx="0" cy="0" r="48" fill="none" stroke="#c62828" stroke-width="18" pathLength="32" stroke-dasharray="0 32" stroke-dashoffset="-11"><title>escalated: 0</title></circle>
+    <circle class="status-segment status-runnable" data-status="runnable" data-count="7" cx="0" cy="0" r="48" fill="none" stroke="#616161" stroke-width="18" pathLength="32" stroke-dasharray="7 25" stroke-dashoffset="-11"><title>runnable: 7</title></circle>
+    <circle class="status-segment status-pending" data-status="pending" data-count="14" cx="0" cy="0" r="48" fill="none" stroke="#9e9e9e" stroke-width="18" pathLength="32" stroke-dasharray="14 18" stroke-dashoffset="-18"><title>pending: 14</title></circle>
   </g>
-  <text x="78" y="77" text-anchor="middle" class="chart-total">27</text>
+  <text x="78" y="77" text-anchor="middle" class="chart-total">32</text>
   <g class="chart-legend">
     <rect x="160" y="10" width="12" height="12" fill="#2e7d32"/>
-    <text x="180" y="20" class="legend-label">done 0</text>
+    <text x="180" y="20" class="legend-label">done 11</text>
     <rect x="160" y="36" width="12" height="12" fill="#1565c0"/>
     <text x="180" y="46" class="legend-label">in-progress 0</text>
     <rect x="160" y="62" width="12" height="12" fill="#f9a825"/>
@@ -120,71 +160,275 @@ h2 { font-size: 1.2rem; margin: 0; }
     <rect x="160" y="88" width="12" height="12" fill="#c62828"/>
     <text x="180" y="98" class="legend-label">escalated 0</text>
     <rect x="160" y="114" width="12" height="12" fill="#616161"/>
-    <text x="180" y="124" class="legend-label">runnable 5</text>
+    <text x="180" y="124" class="legend-label">runnable 7</text>
     <rect x="160" y="140" width="12" height="12" fill="#9e9e9e"/>
-    <text x="180" y="150" class="legend-label">pending 22</text>
+    <text x="180" y="150" class="legend-label">pending 14</text>
   </g>
-</svg>
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 132" role="img" aria-label="Status by owner: Erick 5, self-model-loop 22" class="dashboard-chart dashboard-grouped-bars">
+</svg></figure>
+      <figure class="dashboard-chart-fig"><figcaption class="dashboard-chart-caption">Load by owner</figcaption><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 168" role="img" aria-label="Load by owner: 215eight 8, kellyclaudeai 5, unowned 19" class="dashboard-chart dashboard-grouped-bars">
   <g class="bar-groups">
-    <g class="bar-group" data-group="Erick" data-total="5">
-      <text x="0" y="45" class="group-label">Erick</text>
+    <g class="bar-group" data-group="215eight" data-total="8">
+      <text x="0" y="45" class="group-label">215eight</text>
       <rect x="260" y="32" width="420" height="16" fill="#eceff1"/>
-      <rect class="status-bar status-done" data-status="done" data-count="0" x="260" y="32" width="0" height="16" fill="#2e7d32"><title>Erick done: 0</title></rect>
-      <rect class="status-bar status-in-progress" data-status="in-progress" data-count="0" x="260" y="32" width="0" height="16" fill="#1565c0"><title>Erick in-progress: 0</title></rect>
-      <rect class="status-bar status-rework" data-status="rework" data-count="0" x="260" y="32" width="0" height="16" fill="#f9a825"><title>Erick rework: 0</title></rect>
-      <rect class="status-bar status-escalated" data-status="escalated" data-count="0" x="260" y="32" width="0" height="16" fill="#c62828"><title>Erick escalated: 0</title></rect>
-      <rect class="status-bar status-runnable" data-status="runnable" data-count="2" x="260" y="32" width="38" height="16" fill="#616161"><title>Erick runnable: 2</title></rect>
-      <rect class="status-bar status-pending" data-status="pending" data-count="3" x="298" y="32" width="57" height="16" fill="#9e9e9e"><title>Erick pending: 3</title></rect>
+      <rect class="status-bar status-done" data-status="done" data-count="6" x="260" y="32" width="133" height="16" fill="#2e7d32"><title>215eight done: 6</title></rect>
+      <rect class="status-bar status-in-progress" data-status="in-progress" data-count="0" x="393" y="32" width="0" height="16" fill="#1565c0"><title>215eight in-progress: 0</title></rect>
+      <rect class="status-bar status-rework" data-status="rework" data-count="0" x="393" y="32" width="0" height="16" fill="#f9a825"><title>215eight rework: 0</title></rect>
+      <rect class="status-bar status-escalated" data-status="escalated" data-count="0" x="393" y="32" width="0" height="16" fill="#c62828"><title>215eight escalated: 0</title></rect>
+      <rect class="status-bar status-runnable" data-status="runnable" data-count="1" x="393" y="32" width="22" height="16" fill="#616161"><title>215eight runnable: 1</title></rect>
+      <rect class="status-bar status-pending" data-status="pending" data-count="1" x="415" y="32" width="22" height="16" fill="#9e9e9e"><title>215eight pending: 1</title></rect>
+      <text x="696" y="45" class="group-total">8</text>
+    </g>
+    <g class="bar-group" data-group="kellyclaudeai" data-total="5">
+      <text x="0" y="81" class="group-label">kellyclaudeai</text>
+      <rect x="260" y="68" width="420" height="16" fill="#eceff1"/>
+      <rect class="status-bar status-done" data-status="done" data-count="5" x="260" y="68" width="111" height="16" fill="#2e7d32"><title>kellyclaudeai done: 5</title></rect>
+      <rect class="status-bar status-in-progress" data-status="in-progress" data-count="0" x="371" y="68" width="0" height="16" fill="#1565c0"><title>kellyclaudeai in-progress: 0</title></rect>
+      <rect class="status-bar status-rework" data-status="rework" data-count="0" x="371" y="68" width="0" height="16" fill="#f9a825"><title>kellyclaudeai rework: 0</title></rect>
+      <rect class="status-bar status-escalated" data-status="escalated" data-count="0" x="371" y="68" width="0" height="16" fill="#c62828"><title>kellyclaudeai escalated: 0</title></rect>
+      <rect class="status-bar status-runnable" data-status="runnable" data-count="0" x="371" y="68" width="0" height="16" fill="#616161"><title>kellyclaudeai runnable: 0</title></rect>
+      <rect class="status-bar status-pending" data-status="pending" data-count="0" x="371" y="68" width="0" height="16" fill="#9e9e9e"><title>kellyclaudeai pending: 0</title></rect>
+      <text x="696" y="81" class="group-total">5</text>
+    </g>
+    <g class="bar-group" data-group="unowned" data-total="19">
+      <text x="0" y="117" class="group-label">unowned</text>
+      <rect x="260" y="104" width="420" height="16" fill="#eceff1"/>
+      <rect class="status-bar status-done" data-status="done" data-count="0" x="260" y="104" width="0" height="16" fill="#2e7d32"><title>unowned done: 0</title></rect>
+      <rect class="status-bar status-in-progress" data-status="in-progress" data-count="0" x="260" y="104" width="0" height="16" fill="#1565c0"><title>unowned in-progress: 0</title></rect>
+      <rect class="status-bar status-rework" data-status="rework" data-count="0" x="260" y="104" width="0" height="16" fill="#f9a825"><title>unowned rework: 0</title></rect>
+      <rect class="status-bar status-escalated" data-status="escalated" data-count="0" x="260" y="104" width="0" height="16" fill="#c62828"><title>unowned escalated: 0</title></rect>
+      <rect class="status-bar status-runnable" data-status="runnable" data-count="6" x="260" y="104" width="133" height="16" fill="#616161"><title>unowned runnable: 6</title></rect>
+      <rect class="status-bar status-pending" data-status="pending" data-count="13" x="393" y="104" width="287" height="16" fill="#9e9e9e"><title>unowned pending: 13</title></rect>
+      <text x="696" y="117" class="group-total">19</text>
+    </g>
+  </g>
+</svg></figure>
+      <figure class="dashboard-chart-fig"><figcaption class="dashboard-chart-caption">Progress by feature</figcaption><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 132" role="img" aria-label="Progress by feature: ros2-align-to-tag 5, self-model-loop 27" class="dashboard-chart dashboard-grouped-bars">
+  <g class="bar-groups">
+    <g class="bar-group" data-group="ros2-align-to-tag" data-total="5">
+      <text x="0" y="45" class="group-label">ros2-align-to-tag</text>
+      <rect x="260" y="32" width="420" height="16" fill="#eceff1"/>
+      <rect class="status-bar status-done" data-status="done" data-count="5" x="260" y="32" width="78" height="16" fill="#2e7d32"><title>ros2-align-to-tag done: 5</title></rect>
+      <rect class="status-bar status-in-progress" data-status="in-progress" data-count="0" x="338" y="32" width="0" height="16" fill="#1565c0"><title>ros2-align-to-tag in-progress: 0</title></rect>
+      <rect class="status-bar status-rework" data-status="rework" data-count="0" x="338" y="32" width="0" height="16" fill="#f9a825"><title>ros2-align-to-tag rework: 0</title></rect>
+      <rect class="status-bar status-escalated" data-status="escalated" data-count="0" x="338" y="32" width="0" height="16" fill="#c62828"><title>ros2-align-to-tag escalated: 0</title></rect>
+      <rect class="status-bar status-runnable" data-status="runnable" data-count="0" x="338" y="32" width="0" height="16" fill="#616161"><title>ros2-align-to-tag runnable: 0</title></rect>
+      <rect class="status-bar status-pending" data-status="pending" data-count="0" x="338" y="32" width="0" height="16" fill="#9e9e9e"><title>ros2-align-to-tag pending: 0</title></rect>
       <text x="696" y="45" class="group-total">5</text>
     </g>
-    <g class="bar-group" data-group="self-model-loop" data-total="22">
+    <g class="bar-group" data-group="self-model-loop" data-total="27">
       <text x="0" y="81" class="group-label">self-model-loop</text>
       <rect x="260" y="68" width="420" height="16" fill="#eceff1"/>
-      <rect class="status-bar status-done" data-status="done" data-count="0" x="260" y="68" width="0" height="16" fill="#2e7d32"><title>self-model-loop done: 0</title></rect>
-      <rect class="status-bar status-in-progress" data-status="in-progress" data-count="0" x="260" y="68" width="0" height="16" fill="#1565c0"><title>self-model-loop in-progress: 0</title></rect>
-      <rect class="status-bar status-rework" data-status="rework" data-count="0" x="260" y="68" width="0" height="16" fill="#f9a825"><title>self-model-loop rework: 0</title></rect>
-      <rect class="status-bar status-escalated" data-status="escalated" data-count="0" x="260" y="68" width="0" height="16" fill="#c62828"><title>self-model-loop escalated: 0</title></rect>
-      <rect class="status-bar status-runnable" data-status="runnable" data-count="3" x="260" y="68" width="57" height="16" fill="#616161"><title>self-model-loop runnable: 3</title></rect>
-      <rect class="status-bar status-pending" data-status="pending" data-count="19" x="317" y="68" width="363" height="16" fill="#9e9e9e"><title>self-model-loop pending: 19</title></rect>
-      <text x="696" y="81" class="group-total">22</text>
+      <rect class="status-bar status-done" data-status="done" data-count="6" x="260" y="68" width="93" height="16" fill="#2e7d32"><title>self-model-loop done: 6</title></rect>
+      <rect class="status-bar status-in-progress" data-status="in-progress" data-count="0" x="353" y="68" width="0" height="16" fill="#1565c0"><title>self-model-loop in-progress: 0</title></rect>
+      <rect class="status-bar status-rework" data-status="rework" data-count="0" x="353" y="68" width="0" height="16" fill="#f9a825"><title>self-model-loop rework: 0</title></rect>
+      <rect class="status-bar status-escalated" data-status="escalated" data-count="0" x="353" y="68" width="0" height="16" fill="#c62828"><title>self-model-loop escalated: 0</title></rect>
+      <rect class="status-bar status-runnable" data-status="runnable" data-count="7" x="353" y="68" width="109" height="16" fill="#616161"><title>self-model-loop runnable: 7</title></rect>
+      <rect class="status-bar status-pending" data-status="pending" data-count="14" x="462" y="68" width="218" height="16" fill="#9e9e9e"><title>self-model-loop pending: 14</title></rect>
+      <text x="696" y="81" class="group-total">27</text>
     </g>
   </g>
-</svg>
+</svg></figure>
     </section>
     <script type="module">
       import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
       mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' });
       await mermaid.run({ querySelector: '.dashboard-mermaid' });
     </script>
+    <section class="verdict-band" aria-label="Project verdict">
+      <span class="verdict-kicker">verdict</span>
+      <p class="verdict-trajectory trajectory-on-track">on track</p>
+      <div class="verdict-temporal" aria-label="Temporal metrics">
+        <span class="temporal-velocity">velocity 5 / 7d</span>
+        <div class="temporal-eta" aria-label="ETA band"><span class="eta-band">eta ~2.5 wk–~5.9 wk <span class="eta-confidence">(low confidence)</span></span></div>
+        <figure class="temporal-burndown">
+          <figcaption class="temporal-burndown-caption">burndown</figcaption>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 220" role="img" aria-label="Burndown: 5 of 5 slices done over 6 points" class="dashboard-chart dashboard-burndown">
+  <line class="burndown-axis" x1="44" y1="24" x2="44" y2="192" stroke="#cfd8dc"/>
+  <line class="burndown-axis" x1="44" y1="192" x2="736" y2="192" stroke="#cfd8dc"/>
+  <text x="36" y="28" text-anchor="end" class="burndown-axis-label">5</text>
+  <text x="36" y="192" text-anchor="end" class="burndown-axis-label">0</text>
+  <polyline class="burndown-line" fill="none" stroke="#2e7d32" stroke-width="2" points="44,158 46,158 46,125 69,125 69,91 332,91 332,58 334,58 334,24 736,24 736,24"/>
+  <circle class="burndown-point" data-done="1" cx="44" cy="158" r="3" fill="#2e7d32"><title>done 1</title></circle>
+  <circle class="burndown-point" data-done="2" cx="46" cy="125" r="3" fill="#2e7d32"><title>done 2</title></circle>
+  <circle class="burndown-point" data-done="3" cx="69" cy="91" r="3" fill="#2e7d32"><title>done 3</title></circle>
+  <circle class="burndown-point" data-done="4" cx="332" cy="58" r="3" fill="#2e7d32"><title>done 4</title></circle>
+  <circle class="burndown-point" data-done="5" cx="334" cy="24" r="3" fill="#2e7d32"><title>done 5</title></circle>
+  <circle class="burndown-point" data-done="5" cx="736" cy="24" r="3" fill="#2e7d32"><title>done 5</title></circle>
+</svg>
+        </figure>
+      <div class="temporal-whats-changed" aria-label="What changed since 7d">
+        <span class="whats-changed-caption">what changed · 7d</span>
+        <div class="whats-changed-completed">
+          <span class="whats-changed-label">completed</span>
+          <ul class="whats-changed-list">
+          <li>align-to-tag-action</li>
+          <li>bridge-demux-and-faults</li>
+          <li>camera-rectified-tags</li>
+          <li>hardware-proof-runbook</li>
+          <li>mcap-contract-export</li>
+          </ul>
+        </div>
+      </div>
+      </div>
+      <p class="verdict-meta">
+        <span class="verdict-generated">generated 2026-06-25 16:42 UTC</span>
+        <span class="verdict-freshness fresh">fresh</span>
+      </p>
+    </section>
+    <section class="attention-band" aria-label="Attention">
+      <h2>Attention</h2>
+      <div class="attention-group attention-unblocker">
+        <h3>Top unblockers</h3>
+        <ul>
+          <li><span class="attention-slice">live-hw-sources</span> <span class="attention-feature">Program · self-model-loop</span> <span class="attention-unblock-count">(unblocks 8)</span></li>
+          <li><span class="attention-slice">vision-pipeline</span> <span class="attention-feature">Program · self-model-loop</span> <span class="attention-unblock-count">(unblocks 8)</span></li>
+          <li><span class="attention-slice">brain-telemetry-firmware</span> <span class="attention-feature">Program · self-model-loop</span> <span class="attention-unblock-count">(unblocks 7)</span></li>
+        </ul>
+      </div>
+    </section>
+    <section class="portfolio-band" aria-label="Portfolio health">
+      <h2>Portfolio</h2>
+      <table class="portfolio-table">
+        <thead>
+          <tr><th>Feature</th><th>Slices</th><th>Owner</th><th>Blocker</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Feature · ros2-align-to-tag</td>
+            <td>5/5 (100%) slices</td>
+            <td>kellyclaudeai</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td>Program · self-model-loop</td>
+            <td>6/27 (22%) slices</td>
+            <td>215eight</td>
+            <td>—</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+    <section class="dashboard-section">
+      <header>
+        <h2>Feature · ros2-align-to-tag</h2>
+        <p>5/5 done</p>
+      </header>
+      <section class="definition-pane" aria-label="Requirements definition">
+        <h3>Definition</h3>
+        <p>Prove the first ROS 2 closed-loop robot-control slice for Vexy: calibrated Camera Module 3 frames feed rectified AprilTag pose, the ROS VEX bridge proves heartbeat/stop/motion against the V5 Brain, an `AlignToTag` action sends only short bounded commands until the robot reaches tag-alignment tolerance or reports a typed failure, and the run records both raw MCAP evidence and contract-valid JSONL semantics.
+
+This is the bridge from &quot;ROS 2 camera works&quot; to &quot;ROS 2 can safely close a local feedback loop around the real robot.&quot; It intentionally keeps Codex out of the fast loop: Codex may supervise, review evidence, and choose high-level skills, but ROS and Brain-side safety own the live loop.
+
+---</p>
+      </section>
+      <div class="dashboard-mermaid-wrap" aria-label="Dependency graph">
+        <pre class="mermaid dashboard-mermaid">
+flowchart TD
+    bridge_demux_and_faults[&quot;bridge-demux-and-faults&lt;br/&gt;done slice [coprocessor] @kellyclaudeai&quot;]:::status_done
+    camera_rectified_tags[&quot;camera-rectified-tags&lt;br/&gt;done slice [coprocessor] @kellyclaudeai&quot;]:::status_done
+    align_to_tag_action[&quot;align-to-tag-action&lt;br/&gt;done slice [coprocessor] @kellyclaudeai&quot;]:::status_done
+    mcap_contract_export[&quot;mcap-contract-export&lt;br/&gt;done slice [coprocessor] @kellyclaudeai&quot;]:::status_done
+    hardware_proof_runbook[&quot;hardware-proof-runbook&lt;br/&gt;done slice [coprocessor] @kellyclaudeai&quot;]:::status_done
+    bridge_demux_and_faults --&gt; align_to_tag_action
+    camera_rectified_tags --&gt; align_to_tag_action
+    align_to_tag_action --&gt; mcap_contract_export
+    mcap_contract_export --&gt; hardware_proof_runbook
+    classDef status_done fill:#ffffff,stroke:#2e7d32,stroke-width:3px,color:#1f2328
+    classDef status_in_progress fill:#ffffff,stroke:#1565c0,stroke-width:3px,color:#1f2328
+    classDef status_rework fill:#ffffff,stroke:#f9a825,stroke-width:3px,color:#1f2328
+    classDef status_escalated fill:#ffffff,stroke:#c62828,stroke-width:3px,color:#1f2328
+    classDef status_runnable fill:#ffffff,stroke:#616161,stroke-width:3px,color:#1f2328
+    classDef status_pending fill:#ffffff,stroke:#9e9e9e,stroke-width:3px,color:#1f2328
+    classDef critical_path stroke:#d97706,stroke-width:4px,stroke-dasharray:6 3
+    class bridge_demux_and_faults,align_to_tag_action,mcap_contract_export,hardware_proof_runbook critical_path
+        </pre>
+      </div>
+      <table class="slice-table">
+        <thead>
+          <tr><th>Node</th><th>Status</th><th>Owner</th><th>Stack</th><th>Lane</th><th>Milestone</th><th>Dependencies</th><th>Next action</th></tr>
+        </thead>
+        <tbody>
+          <tr class="status-done">
+            <td>bridge-demux-and-faults</td>
+            <td>done</td>
+            <td>kellyclaudeai</td>
+            <td>coprocessor</td>
+            <td>—</td>
+            <td>—</td>
+            <td>0</td>
+            <td>none</td>
+          </tr>
+          <tr class="status-done">
+            <td>camera-rectified-tags</td>
+            <td>done</td>
+            <td>kellyclaudeai</td>
+            <td>coprocessor</td>
+            <td>—</td>
+            <td>—</td>
+            <td>0</td>
+            <td>none</td>
+          </tr>
+          <tr class="status-done">
+            <td>align-to-tag-action</td>
+            <td>done</td>
+            <td>kellyclaudeai</td>
+            <td>coprocessor</td>
+            <td>—</td>
+            <td>—</td>
+            <td>2</td>
+            <td>none</td>
+          </tr>
+          <tr class="status-done">
+            <td>mcap-contract-export</td>
+            <td>done</td>
+            <td>kellyclaudeai</td>
+            <td>coprocessor</td>
+            <td>—</td>
+            <td>—</td>
+            <td>1</td>
+            <td>none</td>
+          </tr>
+          <tr class="status-done">
+            <td>hardware-proof-runbook</td>
+            <td>done</td>
+            <td>kellyclaudeai</td>
+            <td>coprocessor</td>
+            <td>—</td>
+            <td>—</td>
+            <td>1</td>
+            <td>none</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
     <section class="dashboard-section">
       <header>
         <h2>Program · self-model-loop</h2>
-        <p>0/27 done</p>
+        <p>6/27 done</p>
       </header>
       <div class="dashboard-mermaid-wrap" aria-label="Dependency graph">
         <pre class="mermaid dashboard-mermaid">
 flowchart TD
-    telemetry_contract[&quot;telemetry-contract&lt;br/&gt;runnable slice [contracts] @Erick&quot;]:::status_runnable
-    self_model_schema[&quot;self-model-schema&lt;br/&gt;runnable slice [contracts] @Erick&quot;]:::status_runnable
-    parts_catalog_grammar[&quot;parts-catalog-grammar&lt;br/&gt;runnable slice [contracts]&quot;]:::status_runnable
-    adapter_interfaces[&quot;adapter-interfaces&lt;br/&gt;runnable slice [contracts]&quot;]:::status_runnable
-    control_grammar[&quot;control-grammar&lt;br/&gt;runnable slice [contracts]&quot;]:::status_runnable
-    m1{{&quot;m1&lt;br/&gt;pending milestone-gate @Erick&quot;}}:::milestone_pending
-    synthetic_oracle[&quot;synthetic-oracle&lt;br/&gt;pending slice [contracts] @Erick&quot;]:::status_pending
-    m1b{{&quot;m1b&lt;br/&gt;pending milestone-gate @Erick&quot;}}:::milestone_pending
-    replay_source[&quot;replay-source&lt;br/&gt;pending slice [contracts]&quot;]:::status_pending
-    gap_analyzer[&quot;gap-analyzer&lt;br/&gt;pending slice [operator]&quot;]:::status_pending
-    critic_panel[&quot;critic-panel&lt;br/&gt;pending slice [operator]&quot;]:::status_pending
+    telemetry_contract[&quot;telemetry-contract&lt;br/&gt;done slice [contracts] @215eight&quot;]:::status_done
+    self_model_schema[&quot;self-model-schema&lt;br/&gt;done slice [contracts] @215eight&quot;]:::status_done
+    parts_catalog_grammar[&quot;parts-catalog-grammar&lt;br/&gt;done slice [contracts] @215eight&quot;]:::status_done
+    adapter_interfaces[&quot;adapter-interfaces&lt;br/&gt;done slice [contracts] @215eight&quot;]:::status_done
+    control_grammar[&quot;control-grammar&lt;br/&gt;done slice [contracts] @215eight&quot;]:::status_done
+    m1{{&quot;m1&lt;br/&gt;done milestone-gate @215eight&quot;}}:::milestone_done
+    synthetic_oracle[&quot;synthetic-oracle&lt;br/&gt;runnable slice [contracts] @215eight&quot;]:::status_runnable
+    m1b{{&quot;m1b&lt;br/&gt;pending milestone-gate @215eight&quot;}}:::milestone_pending
+    replay_source[&quot;replay-source&lt;br/&gt;runnable slice [contracts]&quot;]:::status_runnable
+    gap_analyzer[&quot;gap-analyzer&lt;br/&gt;runnable slice [operator]&quot;]:::status_runnable
+    critic_panel[&quot;critic-panel&lt;br/&gt;runnable slice [operator]&quot;]:::status_runnable
     generator[&quot;generator&lt;br/&gt;pending slice [operator]&quot;]:::status_pending
     markdown_presenter[&quot;markdown-presenter&lt;br/&gt;pending slice [operator]&quot;]:::status_pending
     demo_replay[&quot;demo-replay&lt;br/&gt;pending slice [operator]&quot;]:::status_pending
     m2{{&quot;m2&lt;br/&gt;pending milestone-gate&quot;}}:::milestone_pending
-    vision_pipeline[&quot;vision-pipeline&lt;br/&gt;pending slice [coprocessor]&quot;]:::status_pending
+    vision_pipeline[&quot;vision-pipeline&lt;br/&gt;runnable slice [coprocessor]&quot;]:::status_runnable
     serial_bridge_merge[&quot;serial-bridge-merge&lt;br/&gt;pending slice [coprocessor]&quot;]:::status_pending
-    live_hw_sources[&quot;live-hw-sources&lt;br/&gt;pending slice [coprocessor]&quot;]:::status_pending
+    live_hw_sources[&quot;live-hw-sources&lt;br/&gt;runnable slice [coprocessor]&quot;]:::status_runnable
     m3{{&quot;m3&lt;br/&gt;pending milestone-gate&quot;}}:::milestone_pending
-    brain_telemetry_firmware[&quot;brain-telemetry-firmware&lt;br/&gt;pending slice [brain]&quot;]:::status_pending
+    brain_telemetry_firmware[&quot;brain-telemetry-firmware&lt;br/&gt;runnable slice [brain]&quot;]:::status_runnable
     hw_baseline_capture[&quot;hw-baseline-capture&lt;br/&gt;pending slice [coprocessor]&quot;]:::status_pending
     oracle_baseline_request[&quot;oracle-baseline-request&lt;br/&gt;pending slice [contracts]&quot;]:::status_pending
     m4{{&quot;m4&lt;br/&gt;pending milestone-gate&quot;}}:::milestone_pending
@@ -238,6 +482,7 @@ flowchart TD
     classDef status_escalated fill:#ffffff,stroke:#c62828,stroke-width:3px,color:#1f2328
     classDef status_runnable fill:#ffffff,stroke:#616161,stroke-width:3px,color:#1f2328
     classDef status_pending fill:#ffffff,stroke:#9e9e9e,stroke-width:3px,color:#1f2328
+    classDef milestone_done fill:#f6f8fa,stroke:#2e7d32,stroke-width:4px,color:#1f2328,stroke-dasharray:0
     classDef milestone_pending fill:#f6f8fa,stroke:#9e9e9e,stroke-width:4px,color:#1f2328,stroke-dasharray:0
         </pre>
       </div>
@@ -246,115 +491,115 @@ flowchart TD
           <tr><th>Node</th><th>Status</th><th>Owner</th><th>Stack</th><th>Lane</th><th>Milestone</th><th>Dependencies</th><th>Next action</th></tr>
         </thead>
         <tbody>
-          <tr class="status-runnable">
+          <tr class="status-done">
             <td>telemetry-contract</td>
-            <td>runnable</td>
-            <td>Erick</td>
+            <td>done</td>
+            <td>215eight</td>
             <td>contracts</td>
             <td>—</td>
             <td>—</td>
             <td>0</td>
-            <td>start-work</td>
+            <td>none</td>
           </tr>
-          <tr class="status-runnable">
+          <tr class="status-done">
             <td>self-model-schema</td>
-            <td>runnable</td>
-            <td>Erick</td>
+            <td>done</td>
+            <td>215eight</td>
             <td>contracts</td>
             <td>—</td>
             <td>—</td>
             <td>0</td>
-            <td>start-work</td>
+            <td>none</td>
           </tr>
-          <tr class="status-runnable">
+          <tr class="status-done">
             <td>parts-catalog-grammar</td>
-            <td>runnable</td>
-            <td>self-model-loop</td>
+            <td>done</td>
+            <td>215eight</td>
             <td>contracts</td>
             <td>—</td>
             <td>—</td>
             <td>0</td>
-            <td>start-work</td>
+            <td>none</td>
           </tr>
-          <tr class="status-runnable">
+          <tr class="status-done">
             <td>adapter-interfaces</td>
-            <td>runnable</td>
-            <td>self-model-loop</td>
+            <td>done</td>
+            <td>215eight</td>
             <td>contracts</td>
             <td>—</td>
             <td>—</td>
             <td>0</td>
-            <td>start-work</td>
+            <td>none</td>
           </tr>
-          <tr class="status-runnable">
+          <tr class="status-done">
             <td>control-grammar</td>
-            <td>runnable</td>
-            <td>self-model-loop</td>
+            <td>done</td>
+            <td>215eight</td>
             <td>contracts</td>
             <td>—</td>
             <td>—</td>
             <td>0</td>
-            <td>start-work</td>
+            <td>none</td>
           </tr>
-          <tr class="status-pending">
+          <tr class="status-done">
             <td>m1</td>
-            <td>pending</td>
-            <td>Erick</td>
+            <td>done</td>
+            <td>215eight</td>
             <td>—</td>
             <td>—</td>
             <td>—</td>
             <td>5</td>
-            <td>waiting-on-dependencies</td>
+            <td>none</td>
           </tr>
-          <tr class="status-pending">
+          <tr class="status-runnable">
             <td>synthetic-oracle</td>
-            <td>pending</td>
-            <td>Erick</td>
+            <td>runnable</td>
+            <td>215eight</td>
             <td>contracts</td>
             <td>—</td>
             <td>—</td>
             <td>1</td>
-            <td>waiting-on-dependencies</td>
+            <td>start-work</td>
           </tr>
           <tr class="status-pending">
             <td>m1b</td>
             <td>pending</td>
-            <td>Erick</td>
+            <td>215eight</td>
             <td>—</td>
             <td>—</td>
             <td>—</td>
             <td>1</td>
             <td>waiting-on-dependencies</td>
           </tr>
-          <tr class="status-pending">
+          <tr class="status-runnable">
             <td>replay-source</td>
-            <td>pending</td>
+            <td>runnable</td>
             <td>self-model-loop</td>
             <td>contracts</td>
             <td>—</td>
             <td>—</td>
             <td>1</td>
-            <td>waiting-on-dependencies</td>
+            <td>start-work</td>
           </tr>
-          <tr class="status-pending">
+          <tr class="status-runnable">
             <td>gap-analyzer</td>
-            <td>pending</td>
+            <td>runnable</td>
             <td>self-model-loop</td>
             <td>operator</td>
             <td>—</td>
             <td>—</td>
             <td>1</td>
-            <td>waiting-on-dependencies</td>
+            <td>start-work</td>
           </tr>
-          <tr class="status-pending">
+          <tr class="status-runnable">
             <td>critic-panel</td>
-            <td>pending</td>
+            <td>runnable</td>
             <td>self-model-loop</td>
             <td>operator</td>
             <td>—</td>
             <td>—</td>
             <td>1</td>
-            <td>waiting-on-dependencies</td>
+            <td>start-work</td>
           </tr>
           <tr class="status-pending">
             <td>generator</td>
@@ -396,15 +641,15 @@ flowchart TD
             <td>1</td>
             <td>waiting-on-dependencies</td>
           </tr>
-          <tr class="status-pending">
+          <tr class="status-runnable">
             <td>vision-pipeline</td>
-            <td>pending</td>
+            <td>runnable</td>
             <td>self-model-loop</td>
             <td>coprocessor</td>
             <td>—</td>
             <td>—</td>
             <td>1</td>
-            <td>waiting-on-dependencies</td>
+            <td>start-work</td>
           </tr>
           <tr class="status-pending">
             <td>serial-bridge-merge</td>
@@ -416,15 +661,15 @@ flowchart TD
             <td>2</td>
             <td>waiting-on-dependencies</td>
           </tr>
-          <tr class="status-pending">
+          <tr class="status-runnable">
             <td>live-hw-sources</td>
-            <td>pending</td>
+            <td>runnable</td>
             <td>self-model-loop</td>
             <td>coprocessor</td>
             <td>—</td>
             <td>—</td>
             <td>1</td>
-            <td>waiting-on-dependencies</td>
+            <td>start-work</td>
           </tr>
           <tr class="status-pending">
             <td>m3</td>
@@ -436,15 +681,15 @@ flowchart TD
             <td>1</td>
             <td>waiting-on-dependencies</td>
           </tr>
-          <tr class="status-pending">
+          <tr class="status-runnable">
             <td>brain-telemetry-firmware</td>
-            <td>pending</td>
+            <td>runnable</td>
             <td>self-model-loop</td>
             <td>brain</td>
             <td>—</td>
             <td>—</td>
             <td>1</td>
-            <td>waiting-on-dependencies</td>
+            <td>start-work</td>
           </tr>
           <tr class="status-pending">
             <td>hw-baseline-capture</td>

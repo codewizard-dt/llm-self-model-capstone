@@ -1,6 +1,6 @@
 apiVersion: ai-sdd/v1
 kind: Pipeline
-metadata: { name: ros2-align-to-tag, version: 1, assignee: Jake }
+metadata: { name: ros2-align-to-tag, version: 1, owner: [kellyclaudeai] }
 spec:
   semantics: enabler
   nodes:
