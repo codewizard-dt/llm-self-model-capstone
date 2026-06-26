@@ -1,0 +1,145 @@
+summary: >-
+  Add a small operator-side fixture loading smoke path that treats the existing telemetry fixture's
+  contract.jsonl as ordinary contracts.ContractLine evidence for F8/F9/F10/F11/F12, while proving the
+  downstream path has no ROS, MCAP, camera, serial, or robot-hardware import dependency.
+
+scope:
+  in:
+    - >-
+      Create the first minimal operator fixture-loading surface if no suitable reusable operator path
+      already exists.
+    - >-
+      Load the dependency-provided telemetry-fixtures/<run-id>/contract.jsonl as the canonical
+      downstream evidence artifact, not raw ROS topic JSONL and not MCAP.
+    - >-
+      Validate loaded non-empty fixture lines through the runtime contracts.ContractLine model.
+    - >-
+      Expose the downstream evidence fields required by upcoming F8/F9/F10/F11/F12 work: task,
+      predicted, gap, outcome, motor_samples, and optional vision.
+    - >-
+      Add a targeted smoke test proving the loader path imports no rclpy, rosbag2_py, MCAP package,
+      camera package, serial package, or robot hardware module.
+    - >-
+      Wire the new operator package/test target into the root Makefile only as far as needed for uv
+      sync, make test, make validate, and make lint to exercise or preserve the smoke.
+  out:
+    - Implementing the F8 generator, F9 critic panel, F10 gap analyzer, F11 markdown presenter, or
+      F12 demo replay behavior.
+    - Adding LLM calls, prompts, cached LLM transcripts, or prompt-generation workflows.
+    - Reading raw ROS topic JSONL as the canonical downstream artifact.
+    - Running robot hardware, ROS daemons, cameras, serial devices, MCAP tooling, or network calls.
+    - Creating, faking, parsing, or committing MCAP files.
+    - Defining or changing frozen schemas outside contracts.
+    - Modifying telemetry fixture payloads or manifest content unless a missing dependency artifact
+      makes the smoke impossible; in that case stop and route back to the fixture-and-validation slice.
+
+acceptance:
+  - id: ACC-LOADER-CONTRACTLINE
+    description: >-
+      A focused operator loader or smoke helper reads telemetry-fixtures/<run-id>/contract.jsonl and
+      returns at least one record validated as contracts.ContractLine.
+  - id: ACC-DOWNSTREAM-FIELDS
+    description: >-
+      The smoke asserts the loaded evidence exposes task, predicted, gap, outcome, motor_samples, and
+      optional vision without reshaping those fields into a new schema.
+  - id: ACC-FINITE-GAP
+    description: >-
+      The targeted test finds at least one finite numeric residual inside a loaded ContractLine gap
+      block, so F10/F8 can consume real signed gap evidence later.
+  - id: ACC-NO-ROS-MCAP-IMPORTS
+    description: >-
+      The targeted test demonstrates the downstream fixture-loading path imports no rclpy,
+      rosbag2_py, mcap, camera, serial, robot/pi-runtime, robot/ros2-runtime, or hardware-specific
+      modules at import time or during fixture loading.
+  - id: ACC-REUSABLE-SURFACE
+    description: >-
+      The loader is a small reusable operator-facing function or module that upcoming F8/F9/F10/F11/F12
+      work can import, rather than a one-off assertion embedded only in a test.
+  - id: ACC-FROZEN-SCHEMAS-UNCHANGED
+    description: >-
+      No schema is defined or changed outside contracts; validation relies on the existing
+      contracts.ContractLine runtime model.
+
+decisions:
+  - id: DEC-OPERATOR-SURFACE
+    status: closed
+    decision: >-
+      This slice creates or reuses an operator-facing fixture loader, keeping downstream self-modeling
+      smoke behavior in the offline operator vertical rather than extending contracts with operator
+      convenience APIs.
+    rationale: >-
+      The contract source of truth and fixture validation already belong to contracts; this slice is
+      specifically the downstream operator proof that F8/F9/F10/F11/F12 can consume the semantic JSONL
+      artifact.
+    grounds: >-
+      MASTER_REQUIREMENTS.md Components boundary rule and Sub-features F8-F12; operator conventions
+      Vertical and Boundary rules; downstream-loader-smoke slice Scope.
+  - id: DEC-CANONICAL-INPUT
+    status: closed
+    decision: >-
+      The loader consumes telemetry-fixtures/<run-id>/contract.jsonl as ContractLine JSONL and does
+      not consume raw ROS topic JSONL or MCAP as the canonical input.
+    rationale: >-
+      The approved feature requirements close the canonical handoff as fixture-backed ContractLine
+      JSONL, while MCAP-backed hardware capture remains a later integration milestone.
+    grounds: >-
+      telemetry-fixture-baseline requirements Decisions D1, D4, and D5; MASTER_REQUIREMENTS.md Scope
+      cut MVP, Components Telemetry capture & merge, and ADR-11.
+  - id: DEC-RUNTIME-CONTRACT-VALIDATION
+    status: closed
+    decision: >-
+      Loaded fixture records are validated through contracts.ContractLine and no operator-local schema
+      or ad hoc contract shape is introduced.
+    rationale: >-
+      The project freezes schemas in contracts and requires downstream verticals to import those
+      schemas rather than redefine them.
+    grounds: >-
+      MASTER_REQUIREMENTS.md Authority and Components boundary rule; task-telemetry.schema.yaml;
+      operator conventions Boundary rules.
+  - id: DEC-HARDWARE-FREE-SMOKE
+    status: closed
+    decision: >-
+      The smoke path must stay pure local-file plus pydantic validation, with explicit test coverage
+      that ROS, MCAP, camera, serial, network, and robot hardware modules are not imported.
+    rationale: >-
+      The feature exists to unblock MVP downstream work without real robot capture; live ROS/MCAP
+      evidence remains behind adapters and later hardware-capture work.
+    grounds: >-
+      telemetry-fixture-baseline requirements Constraints and Out of Scope; MASTER_REQUIREMENTS.md
+      Goal, Scope cut MVP/V1.5, ADR-01, and Integration Boundaries.
+  - id: DEC-GAP-SMOKE
+    status: closed
+    decision: >-
+      The smoke verifies at least one finite numeric value in the ContractLine gap block instead of
+      validating only that lines parse.
+    rationale: >-
+      Downstream F10 and F8 need signed residual evidence, so the smoke should prove the fixture is
+      useful for gap analysis and model revision without implementing those features.
+    grounds: >-
+      MASTER_REQUIREMENTS.md Context, Goal, Sub-features F8/F10, and Verification; downstream-loader-smoke
+      Acceptance item 2.
+  - id: DEC-GATE-SET
+    status: closed
+    decision: >-
+      The implementer must run uv sync, make test, make validate, and make lint; make demo remains
+      outside this per-slice gate.
+    rationale: >-
+      The worker skill requires those baseline gates, and the repo conventions classify make demo as
+      the m2 milestone step rather than a slice-level check.
+    grounds: >-
+      plan-feature SKILL.md tests requirement; MASTER_REQUIREMENTS.md Verification & Reviewer
+      Runbook and Milestone m2; operator conventions Run commands.
+
+files:
+  - operator/pyproject.toml
+  - operator/Makefile
+  - operator/src/self_model_operator/fixture_loader.py
+  - operator/src/self_model_operator/__init__.py
+  - operator/tests/test_fixture_loader.py
+  - Makefile
+
+tests:
+  - uv sync
+  - make test
+  - make validate
+  - make lint

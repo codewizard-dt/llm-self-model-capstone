@@ -11,18 +11,22 @@ m1-judge:
 sync:
 	$(MAKE) -C contracts sync
 	$(MAKE) -C self_model_generator sync
+	$(MAKE) -C operator sync
 
 validate:
 	$(MAKE) -C contracts validate
 	$(MAKE) -C self_model_generator validate
+	$(MAKE) -C operator validate
 
 test:
 	$(MAKE) -C contracts test
 	$(MAKE) -C self_model_generator test
+	$(MAKE) -C operator test
 
 lint:
 	$(MAKE) -C contracts lint
 	$(MAKE) -C self_model_generator lint
+	$(MAKE) -C operator lint
 
 schema:
 	$(MAKE) -C contracts schema
