@@ -9,7 +9,7 @@ test:
 	$(UV) pytest tests/ -v
 
 validate:
-	$(UV) python -m operator_llm.validate
+	$(UV) python -m self_model_generator.validate
 
 lint:
 	$(UV) ruff check src/ tests/

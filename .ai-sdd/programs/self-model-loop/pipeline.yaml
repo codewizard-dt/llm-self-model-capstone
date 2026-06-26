@@ -3,7 +3,7 @@ kind: Pipeline
 metadata: { name: self-model-loop, version: 1 }
 # MASTER graph for the LLM self-model program (ADR-0028 recursive Pipeline composition).
 # Nodes are whole sub-features (kind: pipeline → ../../features/<slug>) and 7 MANUAL milestone gates
-# (worker: milestone-gate, workerKind human). Owners: Erick is fixed (ADR-18); all other owners inherit
+# (worker: milestone-gate, workerKind human). Owners: 215eight is fixed (ADR-18); all other owners inherit
 # the vertical lead at runtime (ADR-0027). All milestones are human merge checkpoints (D1).
 #
 # ORGANIZED BY MILESTONE PHASE so it reads sequentially m1 → m1b → m2 → m3 → m4 → m5 → m6 (the team
@@ -17,15 +17,15 @@ spec:
   semantics: enabler
   nodes:
     # ===== Phase 0 — contracts freeze (→ m1) =====
-    - { id: telemetry-contract,       kind: pipeline, pipeline: ../../features/telemetry-contract,       stack: contracts, owner: [Erick] }
-    - { id: self-model-schema,        kind: pipeline, pipeline: ../../features/self-model-schema,        stack: contracts, owner: [Erick] }
-    - { id: parts-catalog-grammar,    kind: pipeline, pipeline: ../../features/parts-catalog-grammar,    stack: contracts }
-    - { id: adapter-interfaces,       kind: pipeline, pipeline: ../../features/adapter-interfaces,       stack: contracts }
-    - { id: control-grammar,          kind: pipeline, pipeline: ../../features/control-grammar,          stack: contracts }
-    - { id: m1,  worker: milestone-gate, owner: [Erick] }   # contracts-frozen — gates all downstream
+    - { id: telemetry-contract,       kind: pipeline, pipeline: ../../features/telemetry-contract,       stack: contracts, owner: [215eight] }
+    - { id: self-model-schema,        kind: pipeline, pipeline: ../../features/self-model-schema,        stack: contracts, owner: [215eight] }
+    - { id: parts-catalog-grammar,    kind: pipeline, pipeline: ../../features/parts-catalog-grammar,    stack: contracts, owner: [215eight] }
+    - { id: adapter-interfaces,       kind: pipeline, pipeline: ../../features/adapter-interfaces,       stack: contracts, owner: [215eight] }
+    - { id: control-grammar,          kind: pipeline, pipeline: ../../features/control-grammar,          stack: contracts, owner: [215eight] }
+    - { id: m1,  worker: milestone-gate, owner: [215eight] }   # contracts-frozen — gates all downstream
     # ===== Phase 1 — oracle ready (→ m1b) =====
-    - { id: synthetic-oracle,         kind: pipeline, pipeline: ../../features/synthetic-oracle,         stack: contracts, owner: [Erick] }
-    - { id: m1b, worker: milestone-gate, owner: [Erick] }   # oracle-ready — gates the demo loop
+    - { id: synthetic-oracle,         kind: pipeline, pipeline: ../../features/synthetic-oracle,         stack: contracts, owner: [215eight] }
+    - { id: m1b, worker: milestone-gate, owner: [215eight] }   # oracle-ready — gates the demo loop
     # ===== Phase 2 — offline self-model loop (→ m2) =====
     - { id: replay-source,            kind: pipeline, pipeline: ../../features/replay-source,            stack: contracts }
     - { id: gap-analyzer,             kind: pipeline, pipeline: ../../features/gap-analyzer,             stack: operator }

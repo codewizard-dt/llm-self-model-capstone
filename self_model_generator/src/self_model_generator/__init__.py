@@ -1,6 +1,6 @@
-"""Offline operator LLM/Critic orchestration helpers."""
+"""Offline self-model generator (LLM/Critic) orchestration helpers."""
 
-from operator_llm.packet_builder import (
+from self_model_generator.packet_builder import (
     BLOCKED_F10_GAP,
     BLOCKED_HARDWARE_PROOF,
     BLOCKED_NO_CONTRACT_EVIDENCE,

@@ -10,19 +10,19 @@ m1-judge:
 
 sync:
 	$(MAKE) -C contracts sync
-	$(MAKE) -C operator sync
+	$(MAKE) -C self_model_generator sync
 
 validate:
 	$(MAKE) -C contracts validate
-	$(MAKE) -C operator validate
+	$(MAKE) -C self_model_generator validate
 
 test:
 	$(MAKE) -C contracts test
-	$(MAKE) -C operator test
+	$(MAKE) -C self_model_generator test
 
 lint:
 	$(MAKE) -C contracts lint
-	$(MAKE) -C operator lint
+	$(MAKE) -C self_model_generator lint
 
 schema:
 	$(MAKE) -C contracts schema
@@ -37,7 +37,6 @@ catalog-check:
 	$(MAKE) -C contracts catalog-check
 
 # Stubs — filled in by later features
-# operator:    $(MAKE) -C operator           sync / validate / test / lint
 # coprocessor: $(MAKE) -C robot/pi-runtime   sync / validate / test / lint
 # brain:       $(MAKE) -C robot/v5-brain     sync / validate / test / lint
 # pilot:       $(MAKE) -C pilot              sync / validate / test / lint
