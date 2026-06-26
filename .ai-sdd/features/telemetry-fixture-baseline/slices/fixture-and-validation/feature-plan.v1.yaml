@@ -1,0 +1,143 @@
+summary: >-
+  Add a small deterministic telemetry fixture baseline with explicit fixture provenance,
+  contract-valid ContractLine JSONL evidence, and validation coverage that catches invalid fixture
+  contract lines without requiring robot, ROS, MCAP, camera, serial, or network dependencies.
+
+scope:
+  in:
+    - >-
+      Create a repo-level telemetry fixture run at telemetry-fixtures/<run-id>/ with manifest.json
+      and contract.jsonl as the canonical downstream evidence artifact.
+    - >-
+      Keep contract.jsonl deterministic, small, reviewable, and representative of the grab/alignment
+      telemetry baseline using the runtime contracts.ContractLine shape.
+    - >-
+      Mark manifest provenance as fixture-backed, include run id, task, fixture status, and point to
+      the canonical contract.jsonl evidence path.
+    - >-
+      Add deterministic validation coverage that reads every non-empty fixture contract.jsonl line
+      and validates it through contracts.ContractLine.
+    - >-
+      Wire the fixture validation through the existing contracts validation/test path so make
+      validate or make test fails on invalid fixture lines.
+  out:
+    - Running robot hardware, ROS daemons, cameras, serial devices, or network calls.
+    - Creating, faking, parsing, or committing MCAP files.
+    - Changing frozen task-telemetry, self-model, or parts-catalog schemas.
+    - Implementing F8, F9, F10, F11, F12, or make demo behavior.
+    - Introducing a new schema outside contracts or a second telemetry contract shape.
+
+acceptance:
+  - id: ACC-FIXTURE-MANIFEST
+    description: >-
+      telemetry-fixtures/<run-id>/manifest.json exists, is checked in, and points to
+      telemetry-fixtures/<run-id>/contract.jsonl as the canonical evidence file.
+  - id: ACC-MANIFEST-PROVENANCE
+    description: >-
+      The manifest includes run id, task, provenance, fixture status, and canonical evidence path,
+      and clearly labels the data as fixture-backed rather than real hardware.
+  - id: ACC-CONTRACTLINE-JSONL
+    description: >-
+      telemetry-fixtures/<run-id>/contract.jsonl contains at least one non-empty line that validates
+      through the runtime contracts.ContractLine model.
+  - id: ACC-ALL-LINES-VALIDATED
+    description: >-
+      A deterministic test or make validate path reads every non-empty line from every fixture
+      contract.jsonl and fails if contracts.ContractLine rejects any line.
+  - id: ACC-NO-HARDWARE-DEPS
+    description: >-
+      The fixture and validation path imports no ROS, rosbag2_py, MCAP, camera, serial, hardware, or
+      network-specific dependencies.
+  - id: ACC-FROZEN-SCHEMAS-UNCHANGED
+    description: >-
+      The three frozen contract schemas and their runtime model semantics are not redefined or
+      expanded for this fixture; validation uses the existing contracts.ContractLine model.
+
+decisions:
+  - id: DEC-CANONICAL-ARTIFACT
+    status: closed
+    decision: >-
+      The canonical downstream evidence artifact for this feature is ContractLine JSONL at
+      telemetry-fixtures/<run-id>/contract.jsonl, not MCAP.
+    rationale: >-
+      The approved requirements close D1 and D4 this way: fixture-backed JSONL unblocks F8/F9/F10/F11/F12
+      MVP work, while MCAP remains deferred to real hardware capture.
+    grounds: >-
+      telemetry-fixture-baseline requirements Decisions D1 and D4; MASTER_REQUIREMENTS.md ADR-11 and
+      Scope cut MVP.
+  - id: DEC-FIXTURE-ROOT
+    status: closed
+    decision: >-
+      The fixture run lives under repo-level telemetry-fixtures/<run-id>/ and carries a manifest.json
+      that points to contract.jsonl.
+    rationale: >-
+      The user-approved requirements choose repo-level telemetry-fixtures/ to keep generated/synced
+      telemetry separate from checked deterministic fixtures and require manifest provenance.
+    grounds: >-
+      telemetry-fixture-baseline requirements Decisions D2 and D3; fixture-and-validation slice Scope.
+  - id: DEC-RUNTIME-VALIDATION
+    status: closed
+    decision: >-
+      Fixture contract lines are validated through the existing runtime contracts.ContractLine model,
+      not by adding a new schema or ad hoc validator.
+    rationale: >-
+      MASTER_REQUIREMENTS makes contracts/ the schema source of truth and ADR-06 requires pydantic v2
+      validation. Reusing ContractLine preserves the boundary rule that no schema is defined outside
+      contracts.
+    grounds: >-
+      MASTER_REQUIREMENTS.md Components boundary rule and ADR-06; .ai-sdd/conventions/contracts.md
+      Boundary rules.
+  - id: DEC-NO-ROS-MCAP-DEPENDENCY
+    status: closed
+    decision: >-
+      The fixture validation path is pure local file + pydantic validation and must not import ROS,
+      rosbag2_py, MCAP, camera, serial, hardware, or network-specific dependencies.
+    rationale: >-
+      The fixture is the no-hardware MVP evidence path. Hardware capture and MCAP export are later
+      integration concerns behind the same semantic ContractLine JSONL handoff.
+    grounds: >-
+      telemetry-fixture-baseline requirements Constraints and Out of Scope; MASTER_REQUIREMENTS.md
+      ADR-01, ADR-11, and Integration Boundaries & Swap Paths.
+  - id: DEC-GATE-SET
+    status: closed
+    decision: >-
+      The implementer must run uv sync, make test, make validate, and make lint; make demo is not a
+      per-slice gate.
+    rationale: >-
+      The plan-feature skill and contracts convention set these as the reviewer baseline, while make
+      demo is explicitly the m2 milestone step.
+    grounds: >-
+      plan-feature SKILL.md tests requirement; MASTER_REQUIREMENTS.md Verification & Reviewer
+      Runbook; .ai-sdd/conventions/contracts.md Run commands.
+  - id: DEC-FILE-MANIFEST-COMPATIBILITY
+    status: closed
+    decision: >-
+      Because the current feature-plan structure gate only accepts vertical and shared prefixes in
+      files, the checked file manifest lists the contracts validation/test surfaces and shared build
+      surfaces; the required repo-level telemetry-fixtures/<run-id>/ paths are specified in scope and
+      acceptance.
+    rationale: >-
+      The approved slice requires telemetry-fixtures/, but .ai-sdd/schemas/feature-plan.schema.yaml
+      does not currently allow that top-level prefix. This plan keeps the source-node artifact
+      structurally valid while preserving the requirement explicitly for implementer/reviewer
+      coverage.
+    grounds: >-
+      .ai-sdd/schemas/feature-plan.schema.yaml files invariant; telemetry-fixture-baseline
+      requirements Decision D2.
+
+files:
+  - contracts/src/contracts/validate.py
+  - contracts/tests/test_validate.py
+  - telemetry-fixtures/grab-align-baseline/contract.jsonl
+  - telemetry-fixtures/grab-align-baseline/manifest.json
+  - contracts/tests/test_contract_line.py
+  - contracts/uv.lock
+  - self_model_generator/uv.lock
+  - Makefile
+  - .gitignore
+
+tests:
+  - uv sync
+  - make test
+  - make validate
+  - make lint

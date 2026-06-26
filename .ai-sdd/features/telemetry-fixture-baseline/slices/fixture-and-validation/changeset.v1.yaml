@@ -1,0 +1,14 @@
+summary: >-
+  Added a deterministic repo-level telemetry fixture run at
+  telemetry-fixtures/grab-align-baseline with fixture-backed provenance and
+  ContractLine JSONL evidence, then wired make validate to parse every non-empty
+  telemetry-fixtures/*/contract.jsonl line through contracts.ContractLine with
+  committed-fixture and negative-path test coverage. Refreshed the uv lockfiles
+  that make sync updates to match current pyproject versions.
+satisfies:
+  - ACC-FIXTURE-MANIFEST
+  - ACC-MANIFEST-PROVENANCE
+  - ACC-CONTRACTLINE-JSONL
+  - ACC-ALL-LINES-VALIDATED
+  - ACC-NO-HARDWARE-DEPS
+  - ACC-FROZEN-SCHEMAS-UNCHANGED

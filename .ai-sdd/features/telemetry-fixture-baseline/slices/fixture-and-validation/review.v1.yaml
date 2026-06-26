@@ -1,0 +1,33 @@
+items:
+  - id: ACC-FIXTURE-MANIFEST
+    verdict: pass
+    notes: >-
+      telemetry-fixtures/grab-align-baseline/manifest.json is present and its
+      canonical_evidence_path points to telemetry-fixtures/grab-align-baseline/contract.jsonl.
+  - id: ACC-MANIFEST-PROVENANCE
+    verdict: pass
+    notes: >-
+      The manifest carries run_id, task, provenance, fixture_status, and canonical evidence path,
+      and provenance explicitly says fixture-backed and not real robot hardware.
+  - id: ACC-CONTRACTLINE-JSONL
+    verdict: pass
+    notes: >-
+      contract.jsonl has one non-empty line and it validates through the runtime
+      contracts.ContractLine model.
+  - id: ACC-ALL-LINES-VALIDATED
+    verdict: pass
+    notes: >-
+      contracts.validate now scans every telemetry-fixtures/*/contract.jsonl non-empty line
+      and test_validate covers both the committed fixture and a bad-line rejection path.
+  - id: ACC-NO-HARDWARE-DEPS
+    verdict: pass
+    notes: >-
+      The fixture validation path uses pathlib plus ContractLine validation only; no ROS, MCAP,
+      camera, serial, hardware, or network-specific imports were introduced.
+  - id: ACC-FROZEN-SCHEMAS-UNCHANGED
+    verdict: pass
+    notes: >-
+      No frozen schema files or runtime ContractLine semantics were changed; the new fixture reuses
+      the existing contracts.ContractLine model.
+verdict: approve
+rework: []
