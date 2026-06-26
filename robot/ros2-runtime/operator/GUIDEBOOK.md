@@ -168,9 +168,9 @@ Supported actions are `locate_nearest_apriltag`, `orient_to_tag`,
 ## Self-Model Task Files
 
 The operator watches a Raspberry Pi inbox for task files from the offline
-self-model loop. The default inbox is `~/vexy/tasks/inbox`; accepted files move
-to the sibling `archive/` folder, and invalid files move to `rejected/` with an
-`.error.json` sidecar.
+self-model loop. The default inbox is the absolute path `/vexy/tasks/inbox`.
+Accepted files move to the sibling `archive/` folder, and invalid files move to
+`rejected/` with an `.error.json` sidecar.
 
 Each dropped `*.json` file must contain exactly two top-level keys:
 

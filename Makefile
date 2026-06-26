@@ -45,6 +45,7 @@ send-task:
 
 rebuild-pi:
 	git pull
+	pip install --break-system-packages -e contracts/
 	bash -c "cd ~/ros2_ws && source /opt/ros/jazzy/setup.bash && colcon build --packages-select vexy_ros --cmake-args -DCMAKE_BUILD_TYPE=Release --event-handlers console_direct+"
 	systemctl --user restart vexy-ros-stack.service
 	systemctl --user status vexy-ros-stack.service

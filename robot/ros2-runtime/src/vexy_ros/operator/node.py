@@ -82,7 +82,7 @@ class OperatorNode(Node):
         self.declare_parameter("tag_anchors_json", "")
         self.declare_parameter("task_contract_json", "")
         self.declare_parameter("task_outline_json", "")
-        self.declare_parameter("task_inbox_dir", "~/vexy/tasks/inbox")
+        self.declare_parameter("task_inbox_dir", "/vexy/tasks/inbox")
         self.declare_parameter("task_archive_dir", "")
         self.declare_parameter("task_rejected_dir", "")
         self.declare_parameter("task_poll_period_s", 1.0)

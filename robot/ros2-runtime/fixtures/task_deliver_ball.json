@@ -1,0 +1,137 @@
+{
+  "contract": {
+    "schema_version": "1.0",
+    "session_id": "stub-deliver-ball-gen0",
+    "generation": 0,
+    "round": 1,
+    "task": "deliver_ball",
+    "motor_samples": [
+      {
+        "device": "left_drive",
+        "subsystem": "drivetrain",
+        "api_binding": "vexcode_python",
+        "sample_ms": 1500,
+        "values": {
+          "position_deg": 720.0,
+          "velocity_rpm": 110.0,
+          "current_amp": 0.9,
+          "power_w": 10.8,
+          "torque_nm": 0.55,
+          "efficiency_pct": 78.0,
+          "temperature_c": 30.0
+        },
+        "source_api": {
+          "position_deg": "left_drive.position(DEGREES)",
+          "velocity_rpm": "left_drive.velocity(RPM)",
+          "current_amp": "left_drive.current(AMP)",
+          "power_w": "left_drive.power(WATT)",
+          "torque_nm": "left_drive.torque(NM)",
+          "efficiency_pct": "left_drive.efficiency(PERCENT)",
+          "temperature_c": "left_drive.temperature(CELSIUS)"
+        }
+      },
+      {
+        "device": "right_drive",
+        "subsystem": "drivetrain",
+        "api_binding": "vexcode_python",
+        "sample_ms": 1500,
+        "values": {
+          "position_deg": 715.0,
+          "velocity_rpm": 108.0,
+          "current_amp": 0.88,
+          "power_w": 10.5,
+          "torque_nm": 0.54,
+          "efficiency_pct": 77.5,
+          "temperature_c": 30.5
+        },
+        "source_api": {
+          "position_deg": "right_drive.position(DEGREES)",
+          "velocity_rpm": "right_drive.velocity(RPM)",
+          "current_amp": "right_drive.current(AMP)",
+          "power_w": "right_drive.power(WATT)",
+          "torque_nm": "right_drive.torque(NM)",
+          "efficiency_pct": "right_drive.efficiency(PERCENT)",
+          "temperature_c": "right_drive.temperature(CELSIUS)"
+        }
+      },
+      {
+        "device": "arm_motor",
+        "subsystem": "arm",
+        "api_binding": "vexcode_python",
+        "sample_ms": 1500,
+        "values": {
+          "position_deg": 90.0,
+          "velocity_rpm": 50.0,
+          "current_amp": 0.6,
+          "power_w": 7.2,
+          "torque_nm": 0.8,
+          "efficiency_pct": 70.0,
+          "temperature_c": 28.0
+        },
+        "source_api": {
+          "position_deg": "arm_motor.position(DEGREES)",
+          "velocity_rpm": "arm_motor.velocity(RPM)",
+          "current_amp": "arm_motor.current(AMP)",
+          "power_w": "arm_motor.power(WATT)",
+          "torque_nm": "arm_motor.torque(NM)",
+          "efficiency_pct": "arm_motor.efficiency(PERCENT)",
+          "temperature_c": "arm_motor.temperature(CELSIUS)"
+        }
+      },
+      {
+        "device": "claw_motor",
+        "subsystem": "claw",
+        "api_binding": "vexcode_python",
+        "sample_ms": 1500,
+        "values": {
+          "position_deg": 115.0,
+          "velocity_rpm": 12.0,
+          "current_amp": 1.7,
+          "power_w": 20.4,
+          "torque_nm": 0.88,
+          "efficiency_pct": 71.0,
+          "temperature_c": 33.0
+        },
+        "source_api": {
+          "position_deg": "claw_motor.position(DEGREES)",
+          "velocity_rpm": "claw_motor.velocity(RPM)",
+          "current_amp": "claw_motor.current(AMP)",
+          "power_w": "claw_motor.power(WATT)",
+          "torque_nm": "claw_motor.torque(NM)",
+          "efficiency_pct": "claw_motor.efficiency(PERCENT)",
+          "temperature_c": "claw_motor.temperature(CELSIUS)"
+        }
+      }
+    ],
+    "predicted": {
+      "success": true,
+      "distance_to_bin_m": 0.38,
+      "grip_force_N": 14.5,
+      "duration_s": 6.0
+    },
+    "gap": {
+      "distance_error_m": 0.02,
+      "force_error_N": -1.2,
+      "duration_error_s": 0.4
+    },
+    "outcome": {
+      "success": true,
+      "method": "deliver_ball",
+      "reason": "arrived"
+    },
+    "vision": {
+      "object_detected": true,
+      "object_bbox": [295, 210, 68, 62],
+      "apriltag_pose": {"x": 0.38, "y": 0.01, "heading": 0.03},
+      "bbox_iou": null
+    }
+  },
+  "outline": [
+    ["locate_nearest_apriltag", [], {}],
+    ["move_to_tag", [1], {}],
+    ["pickup_ball", [], {"duration_ms": 700}],
+    ["move_to_tag", [0], {}],
+    ["lift", [], {}],
+    ["release", [], {"duration_ms": 650}]
+  ]
+}
