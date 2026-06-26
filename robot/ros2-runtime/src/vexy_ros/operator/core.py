@@ -64,12 +64,13 @@ MOTOR_CONTRACT_METHODS = {
 
 @dataclass(frozen=True)
 class PrimitiveCommand:
-    cmd: Literal["stop", "drive", "turn", "grab", "lift", "release"]
+    cmd: Literal["stop", "drive", "turn", "grab", "lift", "release", "arm"]
     ttl_ms: int = 180
     vx: float = 0.0
     vy: float = 0.0
     omega: float = 0.0
     duration_ms: int | None = None
+    target_deg: float | None = None
     reason: str | None = None
 
 
@@ -257,9 +258,11 @@ class OperatorConfig:
     lateral_tolerance_m: float = 0.04
     distance_tolerance_m: float = 0.05
     target_distance_m: float = 0.45
-    bin_standoff_m: float = 0.38
+    bin_standoff_m: float = 0.4064
     ball_staging_standoff_m: float = 0.45
     home_standoff_m: float = 0.45
+    arm_raise_trigger_distance_m: float = 0.8128
+    arm_raise_target_deg: float = 20.0
     max_vx: float = 0.14
     search_omega: float = 0.35
     max_omega: float = 0.45
@@ -349,6 +352,7 @@ class Operator:
         self.pickup_visual_capture_confirmed = False
         self.pickup_attempts = 0
         self.run_index = 0
+        self.arm_raise_sent_for_tags: set[int] = set()
         self._emit(
             "apriltag_map_loaded",
             {
@@ -670,6 +674,38 @@ class Operator:
                 target_pose=target_pose,
                 map_pose=self.map_pose,
                 localization_source=self.localization_source,
+            )
+
+        if (
+            distance_m <= self.config.arm_raise_trigger_distance_m
+            and tag_index not in self.arm_raise_sent_for_tags
+        ):
+            self.arm_raise_sent_for_tags.add(tag_index)
+            command = PrimitiveCommand(
+                "arm",
+                ttl_ms=self.config.stop_ttl_ms,
+                target_deg=self.config.arm_raise_target_deg,
+                reason=f"raise_arm_for_tag_{tag_index}",
+            )
+            self._send(command)
+            self._emit(
+                "arm_raise_requested",
+                {
+                    "tag_index": tag_index,
+                    "distance_m": distance_m,
+                    "target_deg": self.config.arm_raise_target_deg,
+                },
+            )
+            return OperatorResult(
+                False,
+                "raising_arm_for_tag",
+                command=command,
+                tag=tag,
+                target_distance_m=target_distance_m,
+                target_pose=target_pose,
+                map_pose=self.map_pose,
+                localization_source=self.localization_source,
+                drive_health=drive_health,
             )
 
         vx = clamp(0.45 * distance_error_m, -self.config.max_vx, self.config.max_vx)
@@ -1415,6 +1451,8 @@ def packet_from_primitive(command: PrimitiveCommand, *, seq: int) -> dict[str, A
         packet.update({"vx": command.vx, "vy": command.vy, "omega": command.omega})
     elif command.cmd == "turn":
         packet["omega"] = command.omega
+    elif command.cmd == "arm" and command.target_deg is not None:
+        packet["target_deg"] = command.target_deg
     elif command.cmd in {"grab", "lift", "release"} and command.duration_ms is not None:
         packet["duration_ms"] = command.duration_ms
     if command.reason:

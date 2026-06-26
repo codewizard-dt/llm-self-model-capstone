@@ -70,7 +70,7 @@ The drop-in: (a) sets `VEXY_MAP=gen0-grab-toss-v1` (read by `launch.py` to selec
 
 The launch file resolves the map via:
 ```python
-EnvironmentVariable("VEXY_MAP", default_value="table-grab-toss-v1")
+EnvironmentVariable("VEXY_MAP", default_value="gen0-grab-toss-v1")
 # → finds config/maps/<VEXY_MAP>.json in the installed vexy_ros package share
 ```
 
@@ -78,11 +78,11 @@ Test scripts should use `ament_index_python.packages.get_package_share_directory
 ```python
 import os
 from ament_index_python.packages import get_package_share_directory
-_map_name = os.environ.get("VEXY_MAP", "table-grab-toss-v1")
+_map_name = os.environ.get("VEXY_MAP", "gen0-grab-toss-v1")
 MAP_FILE = Path(get_package_share_directory("vexy_ros")) / "config" / "maps" / f"{_map_name}.json"
 ```
 
-Both available maps (`gen0-grab-toss-v1.json` and `table-grab-toss-v1.json`) use the same tag IDs (0=bin, 1=ball_staging, 2=home) and the same role-based standoff distances, so either works for standoff logic. However, using `VEXY_MAP` ensures alignment with the running apriltag detection setup.
+Both available maps (`gen0-grab-toss-v1.json` and `gen0-grab-toss-v1.json`) use the same tag IDs (0=bin, 1=ball_staging, 2=home) and the same role-based standoff distances, so either works for standoff logic. However, using `VEXY_MAP` ensures alignment with the running apriltag detection setup.
 
 ## Key Findings
 
@@ -130,7 +130,7 @@ And update `MAP_FILE` to use the installed package path + `VEXY_MAP`:
 
 ```python
 from ament_index_python.packages import get_package_share_directory
-_map_name = os.environ.get("VEXY_MAP", "table-grab-toss-v1")
+_map_name = os.environ.get("VEXY_MAP", "gen0-grab-toss-v1")
 MAP_FILE = pathlib.Path(get_package_share_directory("vexy_ros")) / "config" / "maps" / f"{_map_name}.json"
 ```
 

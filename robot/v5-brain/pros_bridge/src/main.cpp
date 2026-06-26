@@ -638,6 +638,30 @@ void handle_line(const std::string& line) {
 		emit_ack(seq, "ok");
 		return;
 	}
+
+	if (has_json_value(line, "\"cmd\"", "\"arm\"")) {
+		if (routine_busy()) {
+			emit_ack(seq, "rejected", "\"busy\"");
+			return;
+		}
+		if (estop_latched) {
+			stop_all("estop latched");
+			emit_ack(seq, "rejected", "\"estop_latched\"");
+			return;
+		}
+		if (!arm_port_ok()) {
+			stop_all("arm port missing");
+			emit_ack(seq, "rejected", "\"not_assembled\"");
+			return;
+		}
+
+		const double target_deg = clamp(extract_double_field(line, "target_deg"), 0.0, 360.0);
+		stop_drive("arm command");
+		arm_motor().move_absolute(target_deg, ARM_MOVE_RPM);
+		emit_ack(seq, "ok");
+		return;
+	}
+
 	if (has_json_value(line, "\"cmd\"", "\"release\"")) {
 		if (estop_latched) {
 			stop_drive("estop latched");

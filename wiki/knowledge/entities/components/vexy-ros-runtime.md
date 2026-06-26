@@ -116,7 +116,7 @@ derived_from::[[camera-stack-startup]]
 
 The camera path is Camera Module 3 → Raspberry Pi libcamera fork → `camera_ros` → `image_proc` → `apriltag_ros`. The launch file requires `camera_info_url` to be a URL, not a plain path, because rectification and tag-pose proof depend on camera calibration data. The calibration file on the Pi is `~/calibration/imx708_wide_640x480.yaml`; physical tag-pose proof depends on its accuracy.
 
-`scene_map` consumes tag transforms and a JSON workspace map. Two maps are installed on the Pi (`gen0-grab-toss-v1.json`, `table-grab-toss-v1.json`); the drop-in override selects `gen0-grab-toss-v1` as the active arena. The map output includes ROS-friendly meter/radian values and wiki-friendly millimeter/degree values.
+`scene_map` consumes tag transforms and a JSON workspace map. Two maps are installed on the Pi (`gen0-grab-toss-v1.json`, `gen0-grab-toss-v1.json`); the drop-in override selects `gen0-grab-toss-v1` as the active arena. The map output includes ROS-friendly meter/radian values and wiki-friendly millimeter/degree values.
 
 derived_from::[[ros2-camera-calibration-vexy]] identifies `vexy_calibrate_camera` as the preferred headless calibration workflow for this runtime. It follows the same checkerboard/OpenCV model as ROS `cameracalibrator`, but writes the CameraInfo YAML directly for the managed Pi service. A valid calibration run should preserve command metadata, board dimensions, resolution, sample count, timestamp, and reprojection error, then restart the stack and verify `/camera/camera_info`, `/camera/image_rect`, and AprilTag `/tf`. The standard ROS `cameracalibrator` remains the reference workflow and a useful cross-check when a GUI or remote calibration session is available.
 

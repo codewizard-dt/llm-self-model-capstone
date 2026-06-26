@@ -29,7 +29,7 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn("workspace_map_name", launch_text)
         self.assertIn("workspace_map_path", launch_text)
         self.assertIn("VEXY_MAP", launch_text)
-        self.assertIn("table-grab-toss-v1", launch_text)
+        self.assertIn("gen0-grab-toss-v1", launch_text)
         self.assertIn("workspace map does not exist", launch_text)
         self.assertIn("camera_in_robot_json", launch_text)
         self.assertIn("yolo_enabled", launch_text)
@@ -46,6 +46,8 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn("yellow_ball_v_max", launch_text)
         self.assertIn('"yellow_ball":{"diameter_m":0.065}', launch_text)
         self.assertIn("object_indication_node", launch_text)
+        self.assertIn("object_overlay_node", launch_text)
+        self.assertIn("/vision/object_overlay", launch_text)
         self.assertIn("object_dimensions_json", launch_text)
         self.assertIn("task_plan_node", launch_text)
         self.assertIn('executable="align_to_tag_node"', launch_text)
@@ -74,7 +76,7 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn("robot_from_camera_pose", node_text)
 
     def test_camera_info_config_is_nonzero_and_marked_as_starter(self) -> None:
-        config_text = (ROOT / "config" / "imx708_wide_640x480.yaml").read_text()
+        config_text = (ROOT / "config" / "imx708_wide_640x360.yaml").read_text()
 
         self.assertIn(
             "Replace this with a measured camera_calibration output", config_text
@@ -103,6 +105,9 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn(
             "yellow_ball_detector_node = vexy_ros.yellow_ball_detector_node:main",
             setup_text,
+        )
+        self.assertIn(
+            "object_overlay_node = vexy_ros.object_overlay_node:main", setup_text
         )
         self.assertIn(
             "object_indication_node = vexy_ros.object_indication_node:main",

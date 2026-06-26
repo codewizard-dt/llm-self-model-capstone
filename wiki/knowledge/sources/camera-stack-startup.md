@@ -66,7 +66,7 @@ Two workspace maps installed at `~/ros2_ws/install/vexy_ros/share/vexy_ros/confi
 | File | Status |
 |---|---|
 | `gen0-grab-toss-v1.json` | Active (selected by drop-in) |
-| `table-grab-toss-v1.json` | Alternate arena |
+| `gen0-grab-toss-v1.json` | Alternate arena |
 
 ## Operations Quick Reference
 

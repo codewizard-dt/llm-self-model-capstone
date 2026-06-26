@@ -201,7 +201,7 @@ The bag captures all topics simultaneously — camera frames, VEX telemetry, any
 `scene_map` consumes `/tf` tag transforms and the active workspace JSON map,
 then publishes `/vision/scene_map`. `/apriltag/detections` is still recorded as
 the detector activity/ID stream. The default map is
-`config/maps/table-grab-toss-v1.json`, which follows the wiki reference in
+`config/maps/gen0-grab-toss-v1.json`, which follows the wiki reference in
 `wiki/knowledge/concepts/apriltag-workspace-layout.md` and
 `wiki/knowledge/sources/apriltag-larger-workspace-map.md`: a 150 cm x 200 cm
 floor arena, 200 mm `tag36h11` tags, tag `0` at the bin, tag `1` at ball
@@ -258,8 +258,8 @@ robot/ros2-runtime/
 ├── setup.py / setup.cfg
 ├── config/
 │   ├── apriltag_36h11.yaml
-│   ├── imx708_wide_640x480.yaml
-│   └── maps/table-grab-toss-v1.json
+│   ├── imx708_wide_640x360.yaml
+│   └── maps/gen0-grab-toss-v1.json
 ├── launch/
 │   └── vexy.launch.py          ← main entry point
 ├── scripts/

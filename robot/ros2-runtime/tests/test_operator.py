@@ -44,7 +44,7 @@ TASK_CONTRACT = {
 TASK_OUTLINE = (
     ("locate_nearest_apriltag", ()),
     ("orient_to_tag", (0,)),
-    ("move_to_tag", (1,)),
+    ("move_to_tag", (1,), {"target_distance_m": 0.45}),
     ("grab", (), {"duration_ms": 700}),
     ("lift", ()),
     ("release", ()),
@@ -120,7 +120,7 @@ class OperatorCoreTests(unittest.TestCase):
                 april_tag_map=APRIL_TAG_MAP,
                 camera_in_robot=Pose2D(0.0, 0.0, 0.0),
                 task_contract=TASK_CONTRACT,
-                task_outline=(("move_to_tag", ()),),
+                task_outline=(("move_to_tag", (), {"target_distance_m": 0.45}),),
             )
         operator = Operator(
             sink,
@@ -175,7 +175,7 @@ class OperatorCoreTests(unittest.TestCase):
         self.assertTrue(result.success)
         self.assertEqual(result.tag.tag_id if result.tag else None, 0)
         with self.assertRaises(ValueError):
-            operator.move_to_tag(1)
+            operator.move_to_tag(1, target_distance_m=0.45)
 
     def test_locate_nearest_apriltag_uses_fresh_distance(self) -> None:
         sink = PacketCommandSink()
@@ -198,30 +198,58 @@ class OperatorCoreTests(unittest.TestCase):
         self.assertEqual(result.localization_source, "apriltag")
         self.assertIsNotNone(result.map_pose)
 
-    def test_move_to_tag_derives_standoff_from_loaded_map_role(self) -> None:
+    def test_move_to_tag_uses_explicit_standoff_for_loaded_map_pose(self) -> None:
         sink = PacketCommandSink()
+        target_distance_m = 0.4064
+        tag_anchor = TagAnchor(0, Pose2D(0.8, 0.0, math.pi / 2), "bin")
         operator = Operator(
             sink,
-            april_tag_map={0: TagAnchor(0, Pose2D(0.8, 0.0, math.pi / 2), "bin")},
+            april_tag_map={0: tag_anchor},
             camera_in_robot=Pose2D(0.0, 0.0, 0.0),
             task_contract=TASK_CONTRACT,
-            task_outline=(("move_to_tag", (0,)),),
+            task_outline=(("move_to_tag", (0,), {"target_distance_m": target_distance_m}),),
             clock=lambda: 10.0,
         )
         operator.update_vision(
             VisionSnapshot(
                 stamp_s=10.0,
-                tags={0: TagObservation(0, 9.9, forward_m=0.8, left_m=0.0)},
+                tags={0: TagObservation(0, 9.9, forward_m=1.0, left_m=0.0)},
             )
         )
 
-        result = operator.move_to_tag(0)
+        result = operator.move_to_tag(0, target_distance_m=target_distance_m)
+        expected_target = tag_anchor.map_from_tag.compose(
+            Pose2D(target_distance_m, 0.0, 0.0)
+        )
 
         self.assertEqual(result.reason, "moving_to_tag")
-        self.assertAlmostEqual(result.target_distance_m, 0.38)
+        self.assertAlmostEqual(result.target_distance_m, target_distance_m)
         self.assertIsNotNone(result.target_pose)
-        self.assertAlmostEqual(result.target_pose.x_m, 0.8)
-        self.assertAlmostEqual(result.target_pose.y_m, 0.38)
+        self.assertAlmostEqual(result.target_pose.x_m, expected_target.x_m)
+        self.assertAlmostEqual(result.target_pose.y_m, expected_target.y_m)
+        self.assertAlmostEqual(result.target_pose.yaw_rad, expected_target.yaw_rad)
+
+    def test_move_to_tag_raises_arm_once_at_32_inches(self) -> None:
+        sink = PacketCommandSink()
+        operator = make_operator(sink, clock=lambda: 10.0)
+        operator.update_vision(
+            VisionSnapshot(
+                stamp_s=10.0,
+                tags={0: TagObservation(0, 9.9, forward_m=0.8128, left_m=0.0)},
+            )
+        )
+
+        result = operator.move_to_tag(0, target_distance_m=0.4064)
+
+        self.assertFalse(result.success)
+        self.assertEqual(result.reason, "raising_arm_for_tag")
+        self.assertEqual(sink.packets[-1]["cmd"], "arm")
+        self.assertEqual(sink.packets[-1]["target_deg"], 20.0)
+
+        result = operator.move_to_tag(0, target_distance_m=0.4064)
+
+        self.assertEqual(result.reason, "moving_to_tag")
+        self.assertEqual(sink.packets[-1]["cmd"], "drive")
 
     def test_pose_is_estimated_from_visible_mapped_apriltags(self) -> None:
         sink = PacketCommandSink()
@@ -271,7 +299,7 @@ class OperatorCoreTests(unittest.TestCase):
         operator.update_vision(
             VisionSnapshot(
                 stamp_s=10.0,
-                tags={0: TagObservation(0, 9.9, forward_m=0.8, left_m=0.0)},
+                tags={0: TagObservation(0, 9.9, forward_m=0.9, left_m=0.0)},
             )
         )
         operator.move_to_tag(0, target_distance_m=0.4)
@@ -669,7 +697,7 @@ class Node:
             "task_outline_json": json.dumps(
                 [
                     ["locate_nearest_apriltag", []],
-                    ["move_to_tag", [1]],
+                    ["move_to_tag", [1], {"target_distance_m": 0.45}],
                     ["grab", [], {"duration_ms": 700}],
                 ]
             ),
@@ -744,7 +772,7 @@ class OperatorNodeTests(unittest.TestCase):
         node.operator.update_vision(
             VisionSnapshot(
                 stamp_s=stamp_s,
-                tags={1: TagObservation(1, stamp_s, forward_m=0.8, left_m=0.0)},
+                tags={1: TagObservation(1, stamp_s, forward_m=0.9, left_m=0.0)},
             )
         )
 
@@ -754,6 +782,7 @@ class OperatorNodeTests(unittest.TestCase):
                     {
                         "action": "move_to_tag",
                         "tag_index": 1,
+                        "target_distance_m": 0.45,
                     }
                 )
             )

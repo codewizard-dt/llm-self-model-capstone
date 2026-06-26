@@ -26,7 +26,7 @@ Maps live at `robot/pi-runtime/config/maps/<map-id>.json`. The active map is sel
 
 ```json
 {
-  "map_id": "table-grab-toss-v1",
+  "map_id": "gen0-grab-toss-v1",
   "map_version": "1.0",
   "description": "150cm x 200cm floor arena, ball at west end, bin at east end",
   "arena": {
@@ -98,9 +98,9 @@ When a tag enters the camera frame, `update_from_tag()` computes an absolute pos
 
 ```
 robot/pi-runtime/config/
-  defaults                      ← VEXY_MAP=table-grab-toss-v1
+  defaults                      ← VEXY_MAP=gen0-grab-toss-v1
   maps/
-    table-grab-toss-v1.json     ← first arena (rectangle)
+    gen0-grab-toss-v1.json     ← first arena (rectangle)
     hallway-test-v1.json        ← future
     l-shaped-arena-v1.json      ← future (add boundary_points array)
 ```
