@@ -41,11 +41,11 @@ Override defaults if needed:
 # Different serial port
 ros2 launch vexy_ros vexy.launch.py serial_port:=/dev/ttyACM1
 
-# Higher resolution
-ros2 launch vexy_ros vexy.launch.py camera_width:=1280 camera_height:=720 camera_fps:=30
+# Higher resolution at the smooth streaming rate
+ros2 launch vexy_ros vexy.launch.py camera_width:=1280 camera_height:=720 camera_fps:=15
 
 # Both overrides
-ros2 launch vexy_ros vexy.launch.py serial_port:=/dev/ttyACM1 camera_width:=1280 camera_height:=720 camera_fps:=30
+ros2 launch vexy_ros vexy.launch.py serial_port:=/dev/ttyACM1 camera_width:=1280 camera_height:=720 camera_fps:=15
 ```
 
 Default launch parameters:

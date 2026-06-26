@@ -287,14 +287,14 @@ ros2 launch vexy_ros vexy.launch.py serial_port:=/dev/ttyACM1
 # Higher resolution
 ros2 launch vexy_ros vexy.launch.py camera_width:=1280 camera_height:=720
 
-# Higher frame rate (30 Hz match for IMX708 native)
-ros2 launch vexy_ros vexy.launch.py camera_fps:=30
+# Smooth streaming profile
+ros2 launch vexy_ros vexy.launch.py camera_fps:=15
 
 # Combined, with measured calibration override
 ros2 launch vexy_ros vexy.launch.py \
     serial_port:=auto \
     baud_rate:=115200 \
-    camera_width:=1280 camera_height:=720 camera_fps:=30 \
+    camera_width:=1280 camera_height:=720 camera_fps:=15 \
     camera_info_url:=file:///home/vexy/calibration/imx708_wide_1280x720.yaml
 
 # Select the Gen0 50x108 in arena map by id
@@ -326,7 +326,7 @@ VEXY_MAP=gen0-grab-toss-v1 ros2 launch vexy_ros vexy.launch.py
 | `yolo_input_size` | `640` | Square NCNN input size used for letterbox preprocessing |
 | `yolo_input_name` | auto | Override NCNN input blob name when auto-detection is wrong |
 | `yolo_output_name` | auto | Override NCNN output blob name when auto-detection is wrong |
-| `yellow_ball_detector_enabled` | `true` | Run the lightweight yellow-ball color detector |
+| `yellow_ball_detector_enabled` | `false` | Run the lightweight yellow-ball color detector |
 | `yellow_ball_max_hz` | `8.0` | Maximum yellow-ball color detection rate |
 | `yellow_ball_min_area_px` | `200.0` | Minimum yellow blob area accepted as a ball candidate |
 | `yellow_ball_min_circularity` | `0.25` | Minimum contour circularity accepted as a ball candidate |

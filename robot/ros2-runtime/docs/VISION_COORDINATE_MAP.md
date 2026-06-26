@@ -86,7 +86,7 @@ For the persistent Pi service, use a user-systemd drop-in:
 # /home/vexy/.config/systemd/user/vexy-ros-stack.service.d/20-measured-camera-info.conf
 [Service]
 ExecStart=
-ExecStart=/bin/bash -lc 'source /opt/ros/jazzy/setup.bash && source /home/vexy/ros2_ws/install/setup.bash && exec ros2 launch vexy_ros vexy.launch.py camera_fps:=30 serial_port:=auto camera_info_url:=file:///home/vexy/calibration/imx708_wide_640x480.yaml'
+ExecStart=/bin/bash -lc 'source /opt/ros/jazzy/setup.bash && source /home/vexy/ros2_ws/install/setup.bash && exec ros2 launch vexy_ros vexy.launch.py camera_fps:=15 serial_port:=auto camera_info_url:=file:///home/vexy/calibration/imx708_wide_640x480.yaml yellow_ball_detector_enabled:=false'
 ```
 
 Then reload and restart:

@@ -351,7 +351,7 @@ def generate_launch_description():
             DeclareLaunchArgument("yolo_input_size", default_value="640"),
             DeclareLaunchArgument("yolo_input_name", default_value=""),
             DeclareLaunchArgument("yolo_output_name", default_value=""),
-            DeclareLaunchArgument("yellow_ball_detector_enabled", default_value="true"),
+            DeclareLaunchArgument("yellow_ball_detector_enabled", default_value="false"),
             DeclareLaunchArgument("yellow_ball_max_hz", default_value="8.0"),
             DeclareLaunchArgument("yellow_ball_min_area_px", default_value="200.0"),
             DeclareLaunchArgument("yellow_ball_min_circularity", default_value="0.25"),
