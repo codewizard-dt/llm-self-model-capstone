@@ -40,12 +40,11 @@ def ensure_stack_running() -> bool:
     return True
 
 
-FAIL_REASONS = {"stuck", "spinout", "disabled", "unmapped_tag"}
+FAIL_REASONS = {"stuck", "spinout", "disabled", "unmapped_tag", "command_rejected"}
 
 # (action, payload_extras, timeout_s)  — all steps are nav steps
 STEPS = [
     ("locate_nearest_apriltag", {}, 20.0),
-    ("orient_to_tag", {"tag_index": 0}, 15.0),
     ("move_to_tag", {"tag_index": 0, "target_distance_m": 0.4064}, 20.0),
 ]
 
@@ -77,7 +76,7 @@ class AlignTestNode(Node):
         )
 
     def run(self) -> bool:
-        print("=== align test: locate → orient → approach ===")
+        print("=== align test: locate → approach ===")
         for action, extras, timeout_s in STEPS:
             extras_str = f"  extras={extras}" if extras else ""
             print(f"[{action}]{extras_str}")
