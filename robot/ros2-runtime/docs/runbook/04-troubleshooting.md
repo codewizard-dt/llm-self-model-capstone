@@ -11,6 +11,8 @@
 | Foxglove "Waiting for image messages" | Wrong topic name selected | See §4.5 below |
 | `cannot open ... ttyACM...` | Brain not connected, permissions missing, or different port | See §4.6 below |
 | Heartbeat timeout from Brain | `vex_bridge_node` crashed | See §4.7 below |
+| Commands ack but robot does not move | Brain program uploaded but not running, or wrong slot active | See §4.8 below |
+| Delivery test passes but ball is not delivered | Vision/manipulation false positive | See §4.9 below |
 
 ---
 
@@ -226,3 +228,54 @@ ros2 run vexy_ros vex_bridge_node \
 1. On the V5 Brain, confirm the driver program is running (not paused at a print statement).
 2. Power-cycle the Brain if needed.
 3. Re-plug the USB cable.
+
+---
+
+### 4.8 Commands ack but robot does not move
+
+**Symptom:** `/vex/ack` is publishing and tests appear to send commands, but the
+robot never starts moving.
+
+**Likely cause:** The PROS binary was uploaded with `--after none`, so the
+program is present on the Brain but not running. This was confirmed during live
+delivery debugging: the software stack was healthy, but the active Brain program
+had not been started.
+
+**Fix:**
+
+1. On the V5 Brain touchscreen, manually start the intended development slot.
+   For the current David workflow, use Slot 8.
+2. Confirm `/vex/ack` continues publishing.
+3. Confirm `/vex/telemetry` shows expected drive motor samples and
+   `motion_enabled:true`.
+4. Re-run only the smallest safe motion proof before re-running delivery.
+
+Do not infer physical motion from command publication alone. Use spotter
+observation plus `/vex/telemetry` motor samples.
+
+---
+
+### 4.9 Delivery test passes but ball is not delivered
+
+**Symptom:** `vexy_deliver_ball` or a live operator test reports success, but the
+ball was not picked up, was dropped before the bin, or never entered the bin.
+
+**Likely cause:** The software success criteria proved command/tag progress but
+not physical possession of the ball. Near the claw, the ball can be partially
+occluded by the claw or motor, causing bbox-derived object projection to report a
+capturable distance while the ball is still outside the claw.
+
+**Fix / diagnosis:**
+
+1. Treat the run as failed unless the spotter confirms: open claw → approach
+   ball into claw → close/grab → travel holding ball → release at bin.
+2. Record `/camera/image_rect`, `/vision/object_detections`,
+   `/vision/object_indications`, `/vision/scene_map`, `/vex/cmd`, `/vex/ack`,
+   and `/vex/telemetry`.
+3. Review whether close/grab happened while the ball was still visibly short of
+   the claw mouth.
+4. Re-run static claw calibration (§2.12 in the verification runbook) before
+   changing thresholds.
+
+Command acknowledgements and tag alignment can be green while the manipulation
+task is physically wrong.

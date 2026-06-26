@@ -14,6 +14,7 @@ from tf2_msgs.msg import TFMessage
 
 from .bridge_protocol import PROTOCOL_VERSION, clamp, now_ms
 from .vision_map import (
+    DEFAULT_CAMERA_IN_ROBOT,
     Pose2D,
     camera_from_apriltag_translation,
     pose_from_mapping,
@@ -38,7 +39,9 @@ class TagActionProof(Node):
         self.commands_sent = 0
         self.last_command: dict[str, Any] | None = None
         self.seq = 24000
-        self.camera_in_robot = camera_in_robot or Pose2D(0.0, 0.0, 0.0)
+        self.camera_in_robot = camera_in_robot or pose_from_mapping(
+            json.loads(DEFAULT_CAMERA_IN_ROBOT)
+        )
 
     def _on_tf(self, msg: TFMessage) -> None:
         stamp_s = time.monotonic()
@@ -191,19 +194,12 @@ def approach_tag(
     turn_kp: float,
     max_omega: float,
     ttl_ms: int,
-    stuck_window_s: float = 1.2,
-    stuck_min_progress_m: float = 0.015,
-    stuck_min_drive_vx: float = 0.03,
 ) -> tuple[bool, str, dict[str, float | int] | None]:
     deadline_s = time.monotonic() + timeout_s
     last_tag: dict[str, float | int] | None = None
-    progress_window_start_s: float | None = None
-    progress_window_start_distance_m: float | None = None
     while time.monotonic() < deadline_s:
         tag = node.fresh_tag(tag_id=tag_id, max_age_s=0.45)
         if tag is None:
-            progress_window_start_s = None
-            progress_window_start_distance_m = None
             node.send("turn", omega=0.25, ttl_ms=ttl_ms)
             node.spin_for(0.08)
             continue
@@ -218,34 +214,14 @@ def approach_tag(
         vx = drive_vx if abs(yaw_rad) <= 0.45 else 0.04
         if abs(yaw_rad) > 0.9:
             vx = 0.0
-        now_s = time.monotonic()
-        if vx >= stuck_min_drive_vx:
-            if progress_window_start_distance_m is None or distance_m < (
-                progress_window_start_distance_m - stuck_min_progress_m
-            ):
-                progress_window_start_s = now_s
-                progress_window_start_distance_m = distance_m
-            elif (
-                progress_window_start_s is not None
-                and now_s - progress_window_start_s >= stuck_window_s
-            ):
-                stuck_tag = dict(tag)
-                stuck_tag.update(
-                    {
-                        "stuck_window_s": now_s - progress_window_start_s,
-                        "stuck_distance_delta_m": distance_m - progress_window_start_distance_m,
-                    }
-                )
-                return False, "stuck_no_progress", stuck_tag
-        else:
-            progress_window_start_s = None
-            progress_window_start_distance_m = None
         node.send("drive", vx=vx, omega=omega, ttl_ms=ttl_ms)
         node.spin_for(0.08)
     return False, "timeout", last_tag
 
 
-def visual_one_foot_scan(node: TagActionProof, args: argparse.Namespace) -> dict[str, Any]:
+def visual_one_foot_scan(
+    node: TagActionProof, args: argparse.Namespace
+) -> dict[str, Any]:
     node.spin_for(args.settle_s)
     start = reacquire_visible_tag(
         node,
@@ -285,9 +261,6 @@ def visual_one_foot_scan(node: TagActionProof, args: argparse.Namespace) -> dict
             turn_kp=args.turn_kp,
             max_omega=args.max_omega,
             ttl_ms=args.ttl_ms,
-            stuck_window_s=getattr(args, "stuck_window_s", 1.2),
-            stuck_min_progress_m=getattr(args, "stuck_min_progress_m", 0.015),
-            stuck_min_drive_vx=getattr(args, "stuck_min_drive_vx", 0.03),
         )
         node.stop("approach_complete")
         post_tag = node.fresh_tag(tag_id=tag_id, max_age_s=1.0) or post_tag
@@ -297,7 +270,9 @@ def visual_one_foot_scan(node: TagActionProof, args: argparse.Namespace) -> dict
                 "target_distance_m": target_distance_m,
                 "post_drive_distance_m": post_distance_m,
                 "distance_closed_m": (
-                    None if post_distance_m is None else start_distance_m - post_distance_m
+                    None
+                    if post_distance_m is None
+                    else start_distance_m - post_distance_m
                 ),
                 "approach_reached_target": reached,
                 "approach_reason": reason,
@@ -373,12 +348,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--reacquire-omega", type=float, default=0.35)
     parser.add_argument("--scan-omega", type=float, default=0.45)
     parser.add_argument("--ttl-ms", type=int, default=180)
-    parser.add_argument("--stuck-window-s", type=float, default=1.2)
-    parser.add_argument("--stuck-min-progress-m", type=float, default=0.015)
-    parser.add_argument("--stuck-min-drive-vx", type=float, default=0.03)
     parser.add_argument(
         "--camera-in-robot-json",
-        default='{"x_m":0.0,"y_m":0.0,"yaw_rad":0.0}',
+        default=DEFAULT_CAMERA_IN_ROBOT,
         help="Measured camera pose in the robot/action frame.",
     )
     return parser

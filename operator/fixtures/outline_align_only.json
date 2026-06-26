@@ -1,0 +1,5 @@
+[
+  ["locate_nearest_apriltag", [], {}],
+  ["orient_to_tag", [0], {}],
+  ["move_to_tag", [0], {"target_distance_m": 0.38}]
+]

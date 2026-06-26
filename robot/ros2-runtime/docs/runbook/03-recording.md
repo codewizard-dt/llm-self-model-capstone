@@ -12,7 +12,7 @@ ros2 bag record -a -o session_$(date +%Y%m%d_%H%M%S)
 Record specific topics only (smaller files):
 
 ```bash
-ros2 bag record /camera/image_raw /camera/camera_info /camera/image_rect /apriltag/detections /tf /vision/scene_map /align_to_tag/feedback /align_to_tag/result /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status \
+ros2 bag record /camera/image_raw /camera/camera_info /camera/image_rect /apriltag/detections /tf /vision/scene_map /align_to_tag/feedback /align_to_tag/result /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status /operator/annotation \
   -o session_$(date +%Y%m%d_%H%M%S)
 ```
 
@@ -41,6 +41,37 @@ ros2 bag record -a -o ~/bags/session_$(date +%Y%m%d_%H%M%S)
 # From laptop:
 scp -r vexy@vexy.local:~/bags/session_20260623_143012 .
 ```
+
+### Driver telemetry calibration recording
+
+Use this when the Brain is running Slot 7 `Driver Telemetry` and a human is
+driving with the V5 controller. Start the annotation helper in one terminal:
+
+```bash
+source ~/ros2_ws/install/setup.bash
+ros2 run vexy_ros vexy_operator_annotation
+```
+
+Record calibration evidence in another terminal:
+
+```bash
+mkdir -p ~/bags
+ros2 bag record /camera/image_raw /camera/image_rect /apriltag/detections /tf /vision/scene_map /vex/telemetry /vex/bridge_status /operator/annotation \
+  -o ~/bags/driver_calibration_$(date +%Y%m%d_%H%M%S)
+```
+
+Default annotation keys:
+
+| Key | Label |
+|---|---|
+| `1` | `normal_drive` |
+| `2` | `turning` |
+| `3` | `contact` |
+| `4` | `stuck_or_slipping` |
+| `5` | `ball_controlled` |
+| `6` | `scored_or_delivered` |
+| `0` | `uncertain` |
+| `space` | `clear_label` |
 
 ### Export VEX bridge topics and scene map to JSON for LLM analysis
 

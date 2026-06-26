@@ -2,10 +2,12 @@
 id: task-telemetry-contract
 title: Task Telemetry Contract
 aliases: [Task Contract, Telemetry Contract, Score Contract]
-updated: 2026-06-23
+updated: 2026-06-26
 sources:
   - ../../raw/research/vex-v5-customization-grab-pull-throw/index.md
   - ../../raw/research/task-contract-score-redesign/index.md
+  - ../sources/operator-layer-research.md
+  - ../../raw/research/driver-telemetry-labeling/index.md
 tags: [concept, quantification, telemetry, gap-model, task, vex-v5]
 ---
 
@@ -148,6 +150,21 @@ Once a contract JSON is assembled on the V5 Brain, it travels through a three-st
 **Fallback**: SD card on V5 Brain (`brain.sdcard.is_inserted()` + file I/O, FAT32 ≤32GB) for untethered runs without Pi connection.
 
 **Stage 2 upgrade**: relates_to::[[pros]] `pros::Serial` opens a Smart Port as RS-485 at up to 921,600 baud — 8× USB speed, decoupled from the debug port.
+
+## Live ContractLine Emission from the ROS Operator (2026-06-25)
+
+`Operator.contract_result()` (`core.py:363–395`) in `vexy_ros.operator` emits a **ContractLine-compatible dict** after every operator method run. This dict includes motor samples, the vision block, gap, outcome, and source fields. The `run_index` field is incremented with each call, giving a monotonic ordering of runs within a session.
+
+`OperatorNode` publishes each result to the `/operator/results` ROS topic as it is produced — **live, per method run** — not only at session close. This means the contract evidence stream is available in real time on the Pi during task execution, and can be recorded to MCAP or forwarded to the offline packet builder via `vexy_ros.evidence_export.contract_jsonl_from_bundle`.
+
+emitted_by::[[vexy-ros-runtime]]
+consumed_by::[[operator-llm-packet-builder]]
+
+## Driver-Labeled Telemetry Windows (2026-06-26)
+
+derived_from::[[driver-telemetry-while-using-the-controller]] extends the contract evidence path to supervised manual driving. Instead of waiting for every action to be autonomously dispatched, the Pi can record `/vex/telemetry` plus timestamped `/operator/annotation` labels while a human drives. Each label is joined to nearby telemetry and vision windows, creating observed evidence for states like contact, stall, spinout, or successful alignment. This does not replace the formal `predicted/observed/gap` contract; it supplies labeled observations that can later be summarized into contract-valid outcomes or used to train state detectors.
+
+extended_by::[[driver-telemetry-annotation]]
 
 platform_filter::[[picobricks-rex-vs-vex-v5]]
 grounds::[[llm-authored-self-model]]

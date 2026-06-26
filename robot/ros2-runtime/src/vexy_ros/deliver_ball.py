@@ -15,7 +15,7 @@ from .tag_action_proof import (
     finalize_summary,
     run_scan,
 )
-from .vision_map import pose_from_mapping
+from .vision_map import DEFAULT_CAMERA_IN_ROBOT, pose_from_mapping
 
 
 def _approach_required_tag(
@@ -29,9 +29,6 @@ def _approach_required_tag(
     turn_kp: float,
     max_omega: float,
     ttl_ms: int,
-    stuck_window_s: float,
-    stuck_min_progress_m: float,
-    stuck_min_drive_vx: float,
 ) -> dict[str, Any]:
     start_tag = node.fresh_tag(tag_id=tag_id, max_age_s=1.0)
     reached, reason, post_tag = approach_tag(
@@ -43,27 +40,32 @@ def _approach_required_tag(
         turn_kp=turn_kp,
         max_omega=max_omega,
         ttl_ms=ttl_ms,
-        stuck_window_s=stuck_window_s,
-        stuck_min_progress_m=stuck_min_progress_m,
-        stuck_min_drive_vx=stuck_min_drive_vx,
     )
     node.stop(f"{label}_approach_complete")
     return {
         "label": label,
         "tag_id": tag_id,
         "target_distance_m": target_distance_m,
-        "start_distance_m": (None if start_tag is None else float(start_tag["distance_m"])),
-        "start_left_m": (None if start_tag is None else _optional_float(start_tag, "left_m")),
-        "start_yaw_rad": (None if start_tag is None else _optional_float(start_tag, "yaw_rad")),
-        "post_distance_m": (None if post_tag is None else float(post_tag["distance_m"])),
-        "post_left_m": (None if post_tag is None else _optional_float(post_tag, "left_m")),
-        "post_yaw_rad": (None if post_tag is None else _optional_float(post_tag, "yaw_rad")),
+        "start_distance_m": (
+            None if start_tag is None else float(start_tag["distance_m"])
+        ),
+        "start_left_m": (
+            None if start_tag is None else _optional_float(start_tag, "left_m")
+        ),
+        "start_yaw_rad": (
+            None if start_tag is None else _optional_float(start_tag, "yaw_rad")
+        ),
+        "post_distance_m": (
+            None if post_tag is None else float(post_tag["distance_m"])
+        ),
+        "post_left_m": (
+            None if post_tag is None else _optional_float(post_tag, "left_m")
+        ),
+        "post_yaw_rad": (
+            None if post_tag is None else _optional_float(post_tag, "yaw_rad")
+        ),
         "reached_target": reached,
         "reason": reason,
-        "stuck_window_s": (None if post_tag is None else post_tag.get("stuck_window_s")),
-        "stuck_distance_delta_m": (
-            None if post_tag is None else post_tag.get("stuck_distance_delta_m")
-        ),
         "observed_tags": sorted(node.observed_tags),
     }
 
@@ -127,7 +129,9 @@ def deliver_ball(node: TagActionProof, args: argparse.Namespace) -> dict[str, An
         "status": "running",
         "ball_tag_id": args.ball_tag_id,
         "bin_tag_id": args.bin_tag_id,
-        "camera_in_robot": pose_from_mapping(json.loads(args.camera_in_robot_json)).to_json(),
+        "camera_in_robot": pose_from_mapping(
+            json.loads(args.camera_in_robot_json)
+        ).to_json(),
         "observed_tags_after_orientation": sorted(node.observed_tags),
         "ball_approach": None,
         "grab": None,
@@ -149,9 +153,6 @@ def deliver_ball(node: TagActionProof, args: argparse.Namespace) -> dict[str, An
         turn_kp=args.turn_kp,
         max_omega=args.max_omega,
         ttl_ms=args.ttl_ms,
-        stuck_window_s=args.stuck_window_s,
-        stuck_min_progress_m=args.stuck_min_progress_m,
-        stuck_min_drive_vx=args.stuck_min_drive_vx,
     )
     summary["ball_approach"] = ball_approach
     if not ball_approach["reached_target"]:
@@ -182,9 +183,6 @@ def deliver_ball(node: TagActionProof, args: argparse.Namespace) -> dict[str, An
         turn_kp=args.turn_kp,
         max_omega=args.max_omega,
         ttl_ms=args.ttl_ms,
-        stuck_window_s=args.stuck_window_s,
-        stuck_min_progress_m=args.stuck_min_progress_m,
-        stuck_min_drive_vx=args.stuck_min_drive_vx,
     )
     summary["bin_approach"] = bin_approach
     if not bin_approach["reached_target"]:
@@ -244,15 +242,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-omega", type=float, default=0.45)
     parser.add_argument("--scan-omega", type=float, default=0.45)
     parser.add_argument("--ttl-ms", type=int, default=180)
-    parser.add_argument("--stuck-window-s", type=float, default=1.2)
-    parser.add_argument("--stuck-min-progress-m", type=float, default=0.015)
-    parser.add_argument("--stuck-min-drive-vx", type=float, default=0.03)
     parser.add_argument("--grab-ms", type=int, default=DEFAULT_GRAB_MS)
     parser.add_argument("--lift-ms", type=int, default=DEFAULT_LIFT_MS)
     parser.add_argument("--release-ms", type=int, default=DEFAULT_RELEASE_MS)
     parser.add_argument(
         "--camera-in-robot-json",
-        default='{"x_m":0.0,"y_m":0.0,"yaw_rad":0.0}',
+        default=DEFAULT_CAMERA_IN_ROBOT,
         help="Measured camera pose in the robot/action frame.",
     )
     return parser
@@ -261,7 +256,9 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     rclpy.init()
-    node = TagActionProof(camera_in_robot=pose_from_mapping(json.loads(args.camera_in_robot_json)))
+    node = TagActionProof(
+        camera_in_robot=pose_from_mapping(json.loads(args.camera_in_robot_json))
+    )
     try:
         summary = deliver_ball(node, args)
     finally:

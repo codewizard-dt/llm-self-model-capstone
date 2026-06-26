@@ -22,6 +22,7 @@ from .align_to_tag import (
 )
 from .bridge_protocol import PROTOCOL_VERSION, now_ms
 from .vision_map import (
+    DEFAULT_CAMERA_IN_ROBOT,
     camera_from_apriltag_translation,
     pose_from_mapping,
     robot_from_camera_pose,
@@ -34,9 +35,7 @@ class AlignToTagNode(Node):
         super().__init__("align_to_tag")
 
         self.declare_parameter("control_period_s", 0.15)
-        self.declare_parameter(
-            "camera_in_robot_json", '{"x_m":0.0,"y_m":0.0,"yaw_rad":0.0}'
-        )
+        self.declare_parameter("camera_in_robot_json", DEFAULT_CAMERA_IN_ROBOT)
 
         self._controller = AlignToTagController()
         self._camera_in_robot = pose_from_mapping(
@@ -58,7 +57,9 @@ class AlignToTagNode(Node):
         self.create_subscription(String, "/align_to_tag/goal", self._on_goal, 10)
         self.create_subscription(String, "/align_to_tag/cancel", self._on_cancel, 10)
         self.create_subscription(String, "/vex/ack", self._on_ack, 10)
-        self.create_subscription(String, "/vex/bridge_status", self._on_bridge_status, 10)
+        self.create_subscription(
+            String, "/vex/bridge_status", self._on_bridge_status, 10
+        )
         self.create_subscription(
             AprilTagDetectionArray,
             "/apriltag/detections",
@@ -67,7 +68,9 @@ class AlignToTagNode(Node):
         )
         self.create_subscription(TFMessage, "/tf", self._on_tf, 10)
 
-        period = self.get_parameter("control_period_s").get_parameter_value().double_value
+        period = (
+            self.get_parameter("control_period_s").get_parameter_value().double_value
+        )
         self.create_timer(period, self._tick)
 
     def _on_goal(self, msg: String) -> None:
@@ -75,7 +78,9 @@ class AlignToTagNode(Node):
             raw = json.loads(msg.data)
             goal = AlignToTagGoal(**raw)
         except (TypeError, ValueError, json.JSONDecodeError) as exc:
-            self._publish_result({"success": False, "reason": "bad_goal", "fault": str(exc)})
+            self._publish_result(
+                {"success": False, "reason": "bad_goal", "fault": str(exc)}
+            )
             return
 
         decision = self._controller.start(
@@ -217,7 +222,9 @@ class AlignToTagNode(Node):
     def _tag_observation_from_transform(
         self, transform_stamped: Any, now_s: float
     ) -> TagObservation | None:
-        tag_id = tag_id_from_frame_id(str(getattr(transform_stamped, "child_frame_id", "")))
+        tag_id = tag_id_from_frame_id(
+            str(getattr(transform_stamped, "child_frame_id", ""))
+        )
         if tag_id is None:
             return None
         transform = getattr(transform_stamped, "transform", None)

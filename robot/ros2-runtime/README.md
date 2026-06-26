@@ -390,7 +390,7 @@ Useful panels: **Image** (subscribe `/camera/image_raw` or `/camera/image_rect`)
 ros2 bag record -a -o session_$(date +%Y%m%d_%H%M%S)
 
 # Record only camera, vision, plan, and VEX bridge topics (smaller files)
-ros2 bag record /camera/image_raw /camera/camera_info /camera/image_rect /apriltag/detections /tf /vision/object_detections /vision/object_indications /vision/scene_map /task_plan/current /align_to_tag/feedback /align_to_tag/result /survey/feedback /survey/result /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status \
+ros2 bag record /camera/image_raw /camera/camera_info /camera/image_rect /apriltag/detections /tf /vision/object_detections /vision/object_indications /vision/scene_map /task_plan/current /align_to_tag/feedback /align_to_tag/result /survey/feedback /survey/result /vex/cmd /vex/ack /vex/telemetry /vex/bridge_status /operator/annotation \
     -o session_$(date +%Y%m%d_%H%M%S)
 
 # Inspect a recorded bag

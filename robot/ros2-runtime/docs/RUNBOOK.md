@@ -3,7 +3,7 @@
 **System:** Raspberry Pi 5 · Ubuntu 24.04 LTS · ROS 2 Jazzy  
 **Hostname:** vexy.local · **SSH user:** vexy  
 **Workspace:** `~/ros2_ws` (libcamera fork + camera_ros + vexy_ros)  
-**Last updated:** 2026-06-25
+**Last updated:** 2026-06-26
 
 ---
 
@@ -59,11 +59,12 @@ tail -f ~/.ros/log/latest/vex_bridge-1-stdout.log
 
 # Upload PROS binary (stop stack → upload → restart):
 # Slot ownership: David=7,8 | Jake=2-4 | Grace=5-6 | NEVER slot 1
-SLOT=7
+SLOT=8
 ssh vexy@vexy.local "
   systemctl --user stop vexy-ros-bridge.service vexy-ros-stack.service 2>/dev/null
   cd ~/llm-self-model-capstone/robot/v5-brain/pros_bridge
   uv run pros upload --slot $SLOT --after none
   systemctl --user start vexy-ros-stack.service vexy-ros-bridge.service
 "
+# Important: --after none uploads only. Start Slot 8 manually on the Brain before live tests.
 ```

@@ -1,0 +1,56 @@
+{
+  "map_id": "gen1-corner-base-v1",
+  "map_version": "1.0",
+  "description": "70 in x 68 in floor arena (1778x1727mm); four corner AprilTags, each 4.5 in from nearest wall",
+  "arena": {
+    "width_mm": 1778.0,
+    "height_mm": 1727.2,
+    "origin": "bottom-left",
+    "shape": "rectangle"
+  },
+  "tag_family": "tag36h11",
+  "tag_size_mm": 200,
+  "tags": [
+    {
+      "id": 10,
+      "role": "corner",
+      "description": "Bottom-left corner, facing east (heading 0); 4.5 in from left wall, on south wall",
+      "pose": {
+        "x_mm": 114.3,
+        "y_mm": 0.0,
+        "heading_deg": 0
+      }
+    },
+    {
+      "id": 11,
+      "role": "corner",
+      "description": "Bottom-right corner, facing north (heading 90); on east wall, 4.5 in from south wall",
+      "pose": {
+        "x_mm": 1778.0,
+        "y_mm": 114.3,
+        "heading_deg": 90
+      }
+    },
+    {
+      "id": 12,
+      "role": "corner",
+      "description": "Top-right corner, facing west (heading 180); 4.5 in from right wall, on north wall",
+      "pose": {
+        "x_mm": 1663.7,
+        "y_mm": 1727.2,
+        "heading_deg": 180
+      }
+    },
+    {
+      "id": 13,
+      "role": "corner",
+      "description": "Top-left corner, facing south (heading 270); on west wall, 4.5 in from north wall",
+      "pose": {
+        "x_mm": 0.0,
+        "y_mm": 1612.9,
+        "heading_deg": 270
+      }
+    }
+  ],
+  "waypoints": {}
+}

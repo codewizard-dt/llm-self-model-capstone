@@ -25,6 +25,7 @@ OperatorMethodName: TypeAlias = Literal[
     "locate_nearest_apriltag",
     "orient_to_tag",
     "move_to_tag",
+    "pickup_ball",
     "grab",
     "lift",
     "release",
@@ -36,6 +37,7 @@ OPERATOR_METHOD_NAMES = {
     "locate_nearest_apriltag",
     "orient_to_tag",
     "move_to_tag",
+    "pickup_ball",
     "grab",
     "lift",
     "release",
@@ -199,10 +201,9 @@ class TelemetrySnapshot:
 
 @dataclass(frozen=True)
 class DriveHealth:
-    state: Literal["ok", "stuck", "slip", "disabled", "unknown"]
+    state: Literal["ok", "disabled", "unknown"]
     reason: str
     wheel_velocity_rpm: float | None = None
-    visual_progress_m: float | None = None
 
 
 @dataclass(frozen=True)
@@ -260,16 +261,25 @@ class OperatorConfig:
     ball_staging_standoff_m: float = 0.45
     home_standoff_m: float = 0.45
     max_vx: float = 0.14
-    search_omega: float = 0.25
+    search_omega: float = 0.35
     max_omega: float = 0.45
     turn_kp: float = 0.9
     drive_ttl_ms: int = 180
     stop_ttl_ms: int = 200
-    stuck_expected_min_rpm: float = 8.0
-    slip_visual_progress_m: float = 0.015
-    slip_high_rpm: float = 25.0
+    pickup_open_ms: int = 600
+    pickup_open_settle_s: float = 0.2
+    pickup_grab_settle_s: float = 0.35
+    ball_capture_forward_m: float = 0.14
+    ball_capture_lateral_m: float = 0.08
+    ball_approach_target_forward_m: float = 0.07
+    ball_approach_max_vx: float = 0.09
+    ball_blind_approach_s: float = 1.35
+    ball_blind_approach_vx: float = 0.07
     end_effector_current_object_amp: float = 0.25
     end_effector_low_velocity_rpm: float = 8.0
+    end_effector_object_max_closed_deg: float = 430.0
+    end_effector_open_max_deg: float = 80.0
+    pickup_max_attempts: int = 2
 
 
 class PacketCommandSink:
@@ -332,7 +342,12 @@ class Operator:
         )
         self.last_pose_update_s: float | None = None
         self.last_command: PrimitiveCommand | None = None
-        self.last_target_distance_m: dict[int, float] = {}
+        self.pickup_phase: Literal[
+            "idle", "opening", "approaching", "closing", "done"
+        ] = "idle"
+        self.pickup_phase_start_s: float | None = None
+        self.pickup_visual_capture_confirmed = False
+        self.pickup_attempts = 0
         self.run_index = 0
         self._emit(
             "apriltag_map_loaded",
@@ -404,11 +419,6 @@ class Operator:
                 gap["distance_error_m"] = float(result.tag.distance_m or 0.0) - float(
                     result.target_distance_m or self.config.target_distance_m
                 )
-        if (
-            result.drive_health is not None
-            and result.drive_health.visual_progress_m is not None
-        ):
-            gap["visual_progress_m"] = float(result.drive_health.visual_progress_m)
         return gap or {"result_error": 0.0}
 
     def _contract_outcome(
@@ -476,9 +486,76 @@ class Operator:
 
     def orient_to_tag(self, tag_index: int) -> OperatorResult:
         self._validate_tag_index(tag_index)
-        tag = self._fresh_tag_or_search(tag_index)
-        if isinstance(tag, OperatorResult):
-            return tag
+        tag = self.vision.fresh_tag(
+            tag_index, now_s=self.clock(), max_age_s=self.config.tag_stale_s
+        )
+
+        if tag is None:
+            # Tag not directly visible — use map localization to turn toward its known position.
+            # As the robot rotates, the tag will come into view and direct visual tracking takes over.
+            if self.map_pose is not None:
+                anchor = self.april_tag_map[tag_index]
+                tag_map = anchor.map_from_tag
+                dx = tag_map.x_m - self.map_pose.x_m
+                dy = tag_map.y_m - self.map_pose.y_m
+                bearing = math.atan2(dy, dx)
+                yaw_error = normalize_angle(bearing - self.map_pose.yaw_rad)
+                if abs(yaw_error) <= self.config.yaw_tolerance_rad:
+                    command = PrimitiveCommand(
+                        "stop",
+                        ttl_ms=self.config.stop_ttl_ms,
+                        reason=f"oriented_to_tag_{tag_index}_via_map",
+                    )
+                    self._send(command)
+                    self._emit(
+                        "oriented",
+                        {"tag_index": tag_index, "yaw_rad": yaw_error, "source": "map"},
+                    )
+                    return OperatorResult(
+                        True,
+                        "oriented",
+                        command=command,
+                        map_pose=self.map_pose,
+                        localization_source=self.localization_source,
+                    )
+                command = PrimitiveCommand(
+                    "turn",
+                    omega=clamp(
+                        self.config.turn_kp * yaw_error,
+                        -self.config.max_omega,
+                        self.config.max_omega,
+                    ),
+                    ttl_ms=self.config.drive_ttl_ms,
+                    reason=f"orient_to_tag_{tag_index}_via_map",
+                )
+                self._send(command)
+                self._emit(
+                    "apriltag_map_orient",
+                    {"tag_index": tag_index, "yaw_error_rad": yaw_error},
+                )
+                return OperatorResult(
+                    False,
+                    "turning_to_map_tag",
+                    command=command,
+                    map_pose=self.map_pose,
+                    localization_source=self.localization_source,
+                )
+            # No map pose — blind search spin
+            command = PrimitiveCommand(
+                "turn",
+                omega=self.config.search_omega,
+                ttl_ms=self.config.drive_ttl_ms,
+                reason=f"search_for_tag_{tag_index}",
+            )
+            self._send(command)
+            self._emit("apriltag_searching", {"tag_index": tag_index})
+            return OperatorResult(
+                False,
+                "tag_not_visible",
+                command=command,
+                map_pose=self.map_pose,
+                localization_source=self.localization_source,
+            )
 
         yaw_rad = float(tag.yaw_rad or 0.0)
         if abs(yaw_rad) <= self.config.yaw_tolerance_rad:
@@ -532,8 +609,16 @@ class Operator:
         if isinstance(tag, OperatorResult):
             return tag
 
-        drive_health = self.detect_drive_health(tag_index=tag_index)
-        if drive_health.state in {"stuck", "slip", "disabled"}:
+        previous_command_is_approach = (
+            self.last_command is not None
+            and self.last_command.reason == f"move_to_tag_{tag_index}"
+        )
+        drive_health = (
+            self.detect_drive_health(tag_index=tag_index)
+            if previous_command_is_approach
+            else DriveHealth("ok", "approach_not_started")
+        )
+        if drive_health.state == "disabled":
             command = PrimitiveCommand(
                 "stop",
                 ttl_ms=self.config.stop_ttl_ms,
@@ -541,12 +626,11 @@ class Operator:
             )
             self._send(command)
             self._emit(
-                drive_health.state if drive_health.state == "stuck" else "spinout",
+                drive_health.state,
                 {
                     "tag_index": tag_index,
                     "reason": drive_health.reason,
                     "wheel_velocity_rpm": drive_health.wheel_velocity_rpm,
-                    "visual_progress_m": drive_health.visual_progress_m,
                 },
             )
             return OperatorResult(
@@ -605,7 +689,6 @@ class Operator:
             ttl_ms=self.config.drive_ttl_ms,
             reason=f"move_to_tag_{tag_index}",
         )
-        self.last_target_distance_m[tag_index] = distance_m
         self._send(command)
         return OperatorResult(
             False,
@@ -621,6 +704,237 @@ class Operator:
 
     def grab(self, *, duration_ms: int = DEFAULT_GRAB_MS) -> OperatorResult:
         return self._timed_claw("grab", duration_ms, reason="operator_grab")
+
+    def pickup_ball(self, *, duration_ms: int = DEFAULT_GRAB_MS) -> OperatorResult:
+        now_s = self.clock()
+        if self.pickup_phase == "idle":
+            if self.pickup_attempts >= self.config.pickup_max_attempts:
+                return OperatorResult(
+                    False,
+                    "grab_failed",
+                    map_pose=self.map_pose,
+                    localization_source=self.localization_source,
+                    has_object=self.has_object(),
+                )
+            self.pickup_attempts += 1
+            command = PrimitiveCommand(
+                "release",
+                ttl_ms=max(self.config.stop_ttl_ms, self.config.pickup_open_ms),
+                duration_ms=self.config.pickup_open_ms,
+                reason="open_claw_for_ball_pickup",
+            )
+            self._send(command)
+            self.pickup_phase = "opening"
+            self.pickup_phase_start_s = now_s
+            self.pickup_visual_capture_confirmed = False
+            self._emit(
+                "claw_opening_for_pickup", {"duration_ms": self.config.pickup_open_ms}
+            )
+            return OperatorResult(
+                False,
+                "opening_claw",
+                command=command,
+                map_pose=self.map_pose,
+                localization_source=self.localization_source,
+            )
+
+        if self.pickup_phase == "opening":
+            opened_for_s = now_s - float(self.pickup_phase_start_s or now_s)
+            required_s = (
+                self.config.pickup_open_ms / 1000.0 + self.config.pickup_open_settle_s
+            )
+            if opened_for_s < required_s:
+                return OperatorResult(
+                    False,
+                    "opening_claw",
+                    map_pose=self.map_pose,
+                    localization_source=self.localization_source,
+                )
+            self.pickup_phase = "approaching"
+            self.pickup_phase_start_s = now_s
+
+        if self.pickup_phase == "approaching":
+            ball = self.fresh_ball()
+            if ball is None or ball.forward_m is None or ball.left_m is None:
+                approach_elapsed_s = now_s - float(self.pickup_phase_start_s or now_s)
+                if approach_elapsed_s >= self.config.ball_blind_approach_s:
+                    command = PrimitiveCommand(
+                        "grab",
+                        ttl_ms=max(self.config.stop_ttl_ms, duration_ms),
+                        duration_ms=duration_ms,
+                        reason="close_claw_after_ball_intake",
+                    )
+                    self._send(command)
+                    self.pickup_phase = "closing"
+                    self.pickup_phase_start_s = now_s
+                    self._emit(
+                        "ball_intake_elapsed",
+                        {
+                            "approach_elapsed_s": approach_elapsed_s,
+                            "duration_ms": duration_ms,
+                        },
+                    )
+                    return OperatorResult(
+                        False,
+                        "closing_claw",
+                        command=command,
+                        map_pose=self.map_pose,
+                        localization_source=self.localization_source,
+                    )
+                command = PrimitiveCommand(
+                    "drive",
+                    vx=self.config.ball_blind_approach_vx,
+                    vy=0.0,
+                    omega=0.0,
+                    ttl_ms=self.config.drive_ttl_ms,
+                    reason="intake_ball_without_visual_lock",
+                )
+                self._send(command)
+                self._emit(
+                    "ball_blind_approach",
+                    {
+                        "reason": "no_fresh_ball",
+                        "approach_elapsed_s": approach_elapsed_s,
+                    },
+                )
+                return OperatorResult(
+                    False,
+                    "moving_to_ball",
+                    command=command,
+                    map_pose=self.map_pose,
+                    localization_source=self.localization_source,
+                )
+
+            forward_m = float(ball.forward_m)
+            left_m = float(ball.left_m)
+            if (
+                forward_m <= self.config.ball_capture_forward_m
+                and abs(left_m) <= self.config.ball_capture_lateral_m
+            ):
+                command = PrimitiveCommand(
+                    "grab",
+                    ttl_ms=max(self.config.stop_ttl_ms, duration_ms),
+                    duration_ms=duration_ms,
+                    reason="close_claw_on_visual_ball",
+                )
+                self._send(command)
+                self.pickup_phase = "closing"
+                self.pickup_phase_start_s = now_s
+                self.pickup_visual_capture_confirmed = True
+                self._emit(
+                    "ball_in_claw_zone",
+                    {
+                        "forward_m": forward_m,
+                        "left_m": left_m,
+                        "duration_ms": duration_ms,
+                    },
+                )
+                return OperatorResult(
+                    False,
+                    "closing_claw",
+                    command=command,
+                    map_pose=self.map_pose,
+                    localization_source=self.localization_source,
+                )
+
+            yaw_rad = math.atan2(left_m, max(forward_m, 0.05))
+            distance_error_m = forward_m - self.config.ball_approach_target_forward_m
+            vx = clamp(
+                0.45 * distance_error_m,
+                0.0,
+                self.config.ball_approach_max_vx,
+            )
+            if abs(yaw_rad) > 0.45:
+                vx = min(vx, 0.04)
+            if abs(yaw_rad) > 0.9:
+                vx = 0.0
+            command = PrimitiveCommand(
+                "drive",
+                vx=vx,
+                vy=0.0,
+                omega=clamp(
+                    self.config.turn_kp * yaw_rad,
+                    -self.config.max_omega,
+                    self.config.max_omega,
+                ),
+                ttl_ms=self.config.drive_ttl_ms,
+                reason="move_ball_into_claw",
+            )
+            self._send(command)
+            self._emit(
+                "ball_approach",
+                {"forward_m": forward_m, "left_m": left_m, "yaw_rad": yaw_rad},
+            )
+            return OperatorResult(
+                False,
+                "moving_to_ball",
+                command=command,
+                map_pose=self.map_pose,
+                localization_source=self.localization_source,
+            )
+
+        if self.pickup_phase == "closing":
+            closed_for_s = now_s - float(self.pickup_phase_start_s or now_s)
+            required_s = duration_ms / 1000.0 + self.config.pickup_grab_settle_s
+            if closed_for_s < required_s:
+                return OperatorResult(
+                    False,
+                    "closing_claw",
+                    map_pose=self.map_pose,
+                    localization_source=self.localization_source,
+                )
+            has_object = self.has_object()
+            ball_after_close = self.fresh_ball()
+            ball_still_outside_claw = (
+                ball_after_close is not None
+                and ball_after_close.forward_m is not None
+                and float(ball_after_close.forward_m)
+                > self.config.ball_capture_forward_m
+            )
+            if has_object is not True or ball_still_outside_claw:
+                self.pickup_phase = "idle"
+                self.pickup_phase_start_s = now_s
+                self.pickup_visual_capture_confirmed = False
+                self._emit(
+                    "grab_retry",
+                    {
+                        "has_object": has_object,
+                        "attempts": self.pickup_attempts,
+                        "ball_still_outside_claw": ball_still_outside_claw,
+                    },
+                )
+                return OperatorResult(
+                    False,
+                    "grab_not_confirmed",
+                    map_pose=self.map_pose,
+                    localization_source=self.localization_source,
+                    has_object=has_object,
+                )
+            self.pickup_phase = "done"
+            self.pickup_attempts = 0
+            self._emit(
+                "grabbed",
+                {
+                    "duration_ms": duration_ms,
+                    "has_object": has_object,
+                    "visual_capture_confirmed": self.pickup_visual_capture_confirmed,
+                },
+            )
+            return OperatorResult(
+                True,
+                "ball_grabbed",
+                map_pose=self.map_pose,
+                localization_source=self.localization_source,
+                has_object=has_object,
+            )
+
+        return OperatorResult(
+            True,
+            "ball_grabbed",
+            map_pose=self.map_pose,
+            localization_source=self.localization_source,
+            has_object=self.has_object(),
+        )
 
     def lift(self, *, duration_ms: int = DEFAULT_LIFT_MS) -> OperatorResult:
         return self._timed_claw("lift", duration_ms, reason="operator_lift")
@@ -666,34 +980,27 @@ class Operator:
         left = abs(float(telemetry.left_vel_rpm or 0.0))
         right = abs(float(telemetry.right_vel_rpm or 0.0))
         mean_rpm = (left + right) / 2.0
-        expected_rpm = expected_wheel_rpm(
-            vx_mps=self.last_command.vx, omega_rad_s=self.last_command.omega
-        )
-        if expected_rpm >= self.config.stuck_expected_min_rpm and mean_rpm < (
-            self.config.stuck_expected_min_rpm * 0.5
-        ):
-            return DriveHealth("stuck", "wheel_velocity_too_low", mean_rpm)
+        return DriveHealth("ok", "drive_telemetry_nominal", mean_rpm)
 
-        progress = None
-        if tag_index is not None:
-            tag = self.vision.fresh_tag(
-                tag_index, now_s=self.clock(), max_age_s=self.config.tag_stale_s
-            )
-            previous = self.last_target_distance_m.get(tag_index)
-            if tag is not None and previous is not None:
-                progress = previous - float(tag.distance_m or 0.0)
-        if (
-            mean_rpm >= self.config.slip_high_rpm
-            and progress is not None
-            and progress < self.config.slip_visual_progress_m
-        ):
-            return DriveHealth(
-                "slip",
-                "wheel_velocity_high_without_visual_progress",
-                mean_rpm,
-                progress,
-            )
-        return DriveHealth("ok", "drive_telemetry_nominal", mean_rpm, progress)
+    def fresh_ball(self) -> ObjectObservation | None:
+        now_s = self.clock()
+        candidates = [
+            obj
+            for obj in self.vision.objects
+            if now_s - obj.stamp_s <= self.config.object_stale_s
+            and obj.forward_m is not None
+            and obj.left_m is not None
+            and obj.category.strip().lower().replace(" ", "_")
+            in {"yellow_ball", "ball", "sports_ball"}
+        ]
+        if not candidates:
+            return None
+        return min(
+            candidates,
+            key=lambda obj: math.hypot(
+                float(obj.forward_m or 0.0), float(obj.left_m or 0.0)
+            ),
+        )
 
     def has_object(self) -> bool | None:
         telemetry = self.telemetry
@@ -704,6 +1011,16 @@ class Operator:
             return None
         current_amp = abs(float(sample.current_amp or 0.0))
         velocity_rpm = abs(float(sample.velocity_rpm or 0.0))
+        if sample.position_deg is not None:
+            position_deg = abs(float(sample.position_deg))
+            if position_deg <= self.config.end_effector_open_max_deg:
+                return False
+            if (
+                position_deg <= self.config.end_effector_object_max_closed_deg
+                and velocity_rpm <= self.config.end_effector_low_velocity_rpm
+            ):
+                return True
+            return False
         return (
             current_amp >= self.config.end_effector_current_object_amp
             and velocity_rpm <= self.config.end_effector_low_velocity_rpm
@@ -1014,6 +1331,16 @@ def _validate_operator_method_call(
             _require_nonnegative_number(
                 method_name, "target_distance_m", kwargs["target_distance_m"]
             )
+        return
+    if method_name == "pickup_ball":
+        _require_arg_count(method_name, args, 0)
+        _require_kwargs(method_name, kwargs, {"duration_ms"})
+        if "duration_ms" in kwargs:
+            duration_ms = kwargs["duration_ms"]
+            if not isinstance(duration_ms, int) or duration_ms <= 0:
+                raise ValueError(
+                    f"{method_name}.duration_ms must be a positive integer"
+                )
         return
     if method_name in {"grab", "lift", "release"}:
         _require_arg_count(method_name, args, 0)

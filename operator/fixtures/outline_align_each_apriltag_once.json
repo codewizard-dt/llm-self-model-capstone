@@ -1,0 +1,55 @@
+[
+  [
+    "locate_nearest_apriltag",
+    [],
+    {}
+  ],
+  [
+    "orient_to_tag",
+    [
+      0
+    ],
+    {}
+  ],
+  [
+    "move_to_tag",
+    [
+      0
+    ],
+    {
+      "target_distance_m": 0.3048
+    }
+  ],
+  [
+    "orient_to_tag",
+    [
+      1
+    ],
+    {}
+  ],
+  [
+    "move_to_tag",
+    [
+      1
+    ],
+    {
+      "target_distance_m": 0.3048
+    }
+  ],
+  [
+    "orient_to_tag",
+    [
+      2
+    ],
+    {}
+  ],
+  [
+    "move_to_tag",
+    [
+      2
+    ],
+    {
+      "target_distance_m": 0.3048
+    }
+  ]
+]
