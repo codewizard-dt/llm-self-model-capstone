@@ -165,7 +165,33 @@ ros2 topic pub --once /operator/command std_msgs/msg/String \
 Supported actions are `locate_nearest_apriltag`, `orient_to_tag`,
 `move_to_tag`, `grab`, `lift`, and `release`.
 
-`vexy_operator_node` requires a task contract at startup:
+## Self-Model Task Files
+
+The operator watches a Raspberry Pi inbox for task files from the offline
+self-model loop. The default inbox is `~/vexy/tasks/inbox`; accepted files move
+to the sibling `archive/` folder, and invalid files move to `rejected/` with an
+`.error.json` sidecar.
+
+Each dropped `*.json` file must contain exactly two top-level keys:
+
+```json
+{
+  "contract": { "schema_version": "1.0" },
+  "outline": [["grab", [], { "duration_ms": 700 }]]
+}
+```
+
+`contract` validates as a locked `ContractLine`; `outline` validates as an
+operator method-call list. From the repo root, send a file to the Pi with:
+
+```bash
+PI_HOST=raspberrypi.local make send-task FILE=path/to/task.json
+```
+
+Optional environment variables are `PI_USER` and `PI_TASK_INBOX`.
+
+`vexy_operator_node` can still load a task contract at startup for calibration
+or tests:
 
 ```bash
 ros2 run vexy_ros vexy_operator_node --ros-args \

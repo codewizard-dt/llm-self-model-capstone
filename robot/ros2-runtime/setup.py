@@ -19,7 +19,7 @@ setup(
             glob("config/maps/*.json"),
         ),
     ],
-    install_requires=["setuptools"],
+    install_requires=["setuptools", "pydantic>=2"],
     zip_safe=True,
     maintainer="David Taylor",
     maintainer_email="dt@davidtaylor.codes",

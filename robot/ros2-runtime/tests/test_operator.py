@@ -4,6 +4,7 @@ import importlib
 import json
 import math
 import sys
+import tempfile
 import time
 import types
 import unittest
@@ -207,7 +208,9 @@ class OperatorCoreTests(unittest.TestCase):
             april_tag_map={0: tag_anchor},
             camera_in_robot=Pose2D(0.0, 0.0, 0.0),
             task_contract=TASK_CONTRACT,
-            task_outline=(("move_to_tag", (0,), {"target_distance_m": target_distance_m}),),
+            task_outline=(
+                ("move_to_tag", (0,), {"target_distance_m": target_distance_m}),
+            ),
             clock=lambda: 10.0,
         )
         operator.update_vision(
@@ -870,13 +873,126 @@ class OperatorNodeTests(unittest.TestCase):
         node_module = importlib.import_module("vexy_ros.operator.node")
         node = node_module.OperatorNode()
 
-        node._on_command(
-            String(data=json.dumps({"action": "run_routine", "slot": 3}))
-        )
+        node._on_command(String(data=json.dumps({"action": "run_routine", "slot": 3})))
 
         cmd_packet = json.loads(node._sink.pub.messages[-1].data)
         self.assertEqual(cmd_packet["cmd"], "routine")
         self.assertEqual(cmd_packet["slot"], 3)
+
+    def test_node_consumes_task_file_and_archives_it(self) -> None:
+        install_ros_stubs()
+        node_module = importlib.import_module("vexy_ros.operator.node")
+        with tempfile.TemporaryDirectory() as tmp:
+            inbox = Path(tmp) / "inbox"
+            archive = Path(tmp) / "archive"
+            rejected = Path(tmp) / "rejected"
+            Node.parameter_defaults = {
+                "task_inbox_dir": str(inbox),
+                "task_archive_dir": str(archive),
+                "task_rejected_dir": str(rejected),
+            }
+            inbox.mkdir()
+            (inbox / "task.json").write_text(
+                json.dumps(
+                    {
+                        "contract": {
+                            "schema_version": "1.0",
+                            "session_id": "from-file",
+                            "generation": 2,
+                            "round": 1,
+                            "task": "grab_task",
+                            "motor_samples": [
+                                {
+                                    "device": "left_drive",
+                                    "subsystem": "drivetrain",
+                                    "sample_ms": 100,
+                                    "values": {
+                                        "position_deg": 0.0,
+                                        "velocity_rpm": 0.0,
+                                        "current_amp": 0.0,
+                                        "power_w": 0.0,
+                                        "torque_nm": 0.0,
+                                        "efficiency_pct": 100.0,
+                                        "temperature_c": 25.0,
+                                    },
+                                    "source_api": {
+                                        "position_deg": "left_drive.position(DEGREES)",
+                                        "velocity_rpm": "left_drive.velocity(RPM)",
+                                        "current_amp": (
+                                            "left_drive.current(CurrentUnits.AMP)"
+                                        ),
+                                        "power_w": "left_drive.power(WattUnits.WATT)",
+                                        "torque_nm": (
+                                            "left_drive.torque(TorqueUnits.NM)"
+                                        ),
+                                        "efficiency_pct": (
+                                            "left_drive.efficiency(PERCENT)"
+                                        ),
+                                        "temperature_c": (
+                                            "left_drive.temperature(CELSIUS)"
+                                        ),
+                                    },
+                                }
+                            ],
+                            "predicted": {"success": True},
+                            "gap": {"distance_error_m": 0.0},
+                        },
+                        "outline": [["grab", [], {"duration_ms": 700}]],
+                    }
+                )
+            )
+            node = node_module.OperatorNode()
+
+            node._poll_task_inbox()
+
+            self.assertFalse((inbox / "task.json").exists())
+            self.assertEqual(len(list(archive.glob("task.*.json"))), 1)
+            self.assertEqual(list(rejected.glob("*.json")), [])
+            self.assertEqual(
+                node.operator.task_contract.contract_line["session_id"], "from-file"
+            )
+            cmd_packet = json.loads(node._sink.pub.messages[-1].data)
+            self.assertEqual(cmd_packet["cmd"], "grab")
+
+    def test_node_rejects_invalid_task_file_with_error_sidecar(self) -> None:
+        install_ros_stubs()
+        node_module = importlib.import_module("vexy_ros.operator.node")
+        with tempfile.TemporaryDirectory() as tmp:
+            inbox = Path(tmp) / "inbox"
+            archive = Path(tmp) / "archive"
+            rejected = Path(tmp) / "rejected"
+            Node.parameter_defaults = {
+                "task_inbox_dir": str(inbox),
+                "task_archive_dir": str(archive),
+                "task_rejected_dir": str(rejected),
+            }
+            inbox.mkdir()
+            (inbox / "bad.json").write_text(
+                json.dumps(
+                    {
+                        "contract": {"schema_version": "1.0"},
+                        "outline": [["drive", []]],
+                        "extra": True,
+                    }
+                )
+            )
+            node = node_module.OperatorNode()
+
+            node._poll_task_inbox()
+
+            self.assertFalse((inbox / "bad.json").exists())
+            self.assertEqual(list(archive.glob("*.json")), [])
+            rejected_files = [
+                path
+                for path in rejected.glob("bad.*.json")
+                if not path.name.endswith(".error.json")
+            ]
+            self.assertEqual(len(rejected_files), 1)
+            self.assertTrue(
+                rejected_files[0]
+                .with_suffix(rejected_files[0].suffix + ".error.json")
+                .exists()
+            )
 
     def test_node_applies_camera_offset_to_tag_observations(self) -> None:
         Node.parameter_defaults = {

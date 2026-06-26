@@ -362,6 +362,20 @@ class Operator:
             },
         )
 
+    def set_task_contract(self, task_contract: OperatorTaskContract) -> None:
+        self.task_contract = task_contract
+        self.allowed_operator_methods = tuple(
+            dict.fromkeys(call[0] for call in self.task_contract.method_plan)
+        )
+        self._emit(
+            "task_contract_loaded",
+            {
+                "session_id": self.task_contract.contract_line.get("session_id"),
+                "task": self.task_contract.contract_line.get("task"),
+                "operator_methods": list(self.allowed_operator_methods),
+            },
+        )
+
     def update_vision(self, snapshot: VisionSnapshot) -> None:
         self.vision = snapshot
         self._update_pose_from_vision()

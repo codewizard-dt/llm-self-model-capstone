@@ -44,6 +44,7 @@ from contracts.motor_telemetry import (
 )
 from contracts.parts_catalog import PartsCatalog, validate_config
 from contracts.self_model import SelfModel, SelfModelConfig
+from contracts.task_envelope import TaskEnvelope, TaskOutline
 from contracts.task_contracts import ScoreGap, ScoreObserved, ScorePredicted
 from contracts.vocabulary import Cartridge, EndEffector, MotorAllocation
 
@@ -55,6 +56,8 @@ __all__ = [
     "ScorePredicted",
     "ScoreObserved",
     "ScoreGap",
+    "TaskEnvelope",
+    "TaskOutline",
     "VisionBlock",
     "AprilTagPose",
     "MotorApiSample",

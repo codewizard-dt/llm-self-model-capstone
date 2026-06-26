@@ -1,5 +1,5 @@
 # Delegate to per-vertical Makefiles. Add a vertical's target once its Makefile exists.
-.PHONY: sync validate test lint schema schema-check catalog catalog-check m1 m1-judge
+.PHONY: sync validate test lint schema schema-check catalog catalog-check m1 m1-judge send-task rebuild-pi
 
 # m1 contracts-frozen milestone gate (delegates into contracts/).
 m1:
@@ -38,6 +38,16 @@ catalog-check:
 
 sync-telemetry:
 	bash scripts/sync_telemetry.sh
+
+send-task:
+	@test -n "$(FILE)" || (echo "usage: make send-task FILE=path/to/task.json" >&2; exit 2)
+	bash scripts/send_task_to_pi.sh "$(FILE)"
+
+rebuild-pi:
+	git pull
+	bash -c "cd ~/ros2_ws && source /opt/ros/jazzy/setup.bash && colcon build --packages-select vexy_ros --cmake-args -DCMAKE_BUILD_TYPE=Release --event-handlers console_direct+"
+	systemctl --user restart vexy-ros-stack.service
+	systemctl --user status vexy-ros-stack.service
 
 # Stubs — filled in by later features
 # coprocessor: $(MAKE) -C robot/pi-runtime   sync / validate / test / lint
