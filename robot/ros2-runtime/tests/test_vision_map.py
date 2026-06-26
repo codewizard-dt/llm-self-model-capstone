@@ -14,6 +14,7 @@ from vexy_ros.vision_map import (
     TagDetection2D,
     build_scene_map,
     camera_from_apriltag_translation,
+    parse_object_observations,
     parse_tag_anchors,
     pose_from_mapping,
     robot_from_camera_pose,
@@ -36,9 +37,13 @@ class VisionMapTests(unittest.TestCase):
 
         self.assertAlmostEqual(scene.map_from_camera.x_m, 1.0, places=6)
         self.assertAlmostEqual(scene.map_from_camera.y_m, 2.0, places=6)
-        self.assertAlmostEqual(scene.map_from_robot.x_m, 1.0 - 0.10 * math.cos(0.2), places=6)
+        self.assertAlmostEqual(
+            scene.map_from_robot.x_m, 1.0 - 0.10 * math.cos(0.2), places=6
+        )
         self.assertEqual(scene.anchor_tag_ids, [0])
         self.assertEqual(scene.observed_tag_ids, [0])
+        self.assertEqual(scene.localization["source"], "apriltag")
+        self.assertGreater(scene.localization["pose_confidence"], 0.0)
 
     def test_maps_indicated_objects_into_scene_coordinates(self) -> None:
         scene = build_scene_map(
@@ -58,6 +63,36 @@ class VisionMapTests(unittest.TestCase):
         self.assertAlmostEqual(scene.objects[0].map_from_object.x_m, 1.5)
         self.assertAlmostEqual(scene.objects[0].map_from_object.y_m, -0.2)
 
+    def test_maps_object_tracks_with_status_and_uncertainty(self) -> None:
+        observations = parse_object_observations(
+            {
+                "tracks": [
+                    {
+                        "id": "yellow_ball_01",
+                        "class": "yellow_ball",
+                        "status": "confirmed",
+                        "camera_pose": {"forward_m": 0.5, "left_m": -0.2},
+                        "confidence": 0.8,
+                        "seen_frames": 3,
+                        "range_source": "floor_plane",
+                        "position_uncertainty_m": 0.09,
+                    }
+                ]
+            },
+            stamp_s=10.0,
+        )
+        scene = build_scene_map(
+            anchors={0: TagAnchor(0, Pose2D(2.0, 0.0, 0.0))},
+            detections=[TagDetection2D(0, Pose2D(1.0, 0.0, 0.0), stamp_s=10.0)],
+            object_observations=observations,
+        )
+        payload = scene.to_json()
+
+        self.assertEqual(payload["objects"][0]["id"], "yellow_ball_01")
+        self.assertEqual(payload["objects"][0]["status"], "confirmed")
+        self.assertEqual(payload["objects"][0]["range_source"], "floor_plane")
+        self.assertEqual(payload["objects"][0]["position_uncertainty_m"], 0.09)
+
     def test_converts_ros_optical_translation_to_planar_camera_pose(self) -> None:
         pose = camera_from_apriltag_translation(optical_x_m=0.25, optical_z_m=1.2)
 
@@ -72,6 +107,7 @@ class VisionMapTests(unittest.TestCase):
 
         self.assertAlmostEqual(robot_from_tag.x_m, 1.3)
         self.assertAlmostEqual(robot_from_tag.y_m, -0.21)
+
     def test_transforms_camera_relative_pose_into_robot_frame(self) -> None:
         camera_from_tag = Pose2D(1.0, 0.0, 0.0)
         camera_in_robot = Pose2D(0.2, -0.08, 0.0)
@@ -104,7 +140,10 @@ class VisionMapTests(unittest.TestCase):
 
     def test_parse_gen0_workspace_map_from_current_pr(self) -> None:
         raw = (
-            Path(__file__).resolve().parents[1] / "config" / "maps" / "gen0-grab-toss-v1.json"
+            Path(__file__).resolve().parents[1]
+            / "config"
+            / "maps"
+            / "gen0-grab-toss-v1.json"
         ).read_text()
 
         anchors = parse_tag_anchors(raw)
@@ -126,3 +165,4 @@ class VisionMapTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+    (parse_object_observations,)

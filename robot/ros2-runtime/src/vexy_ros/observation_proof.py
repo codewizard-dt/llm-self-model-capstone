@@ -48,13 +48,35 @@ def task_request_payload(target: str) -> str:
     )
 
 
-def summarize_observation_bundle(bundle: Mapping[str, Any]) -> dict[str, Any]:
+def summarize_observation_bundle(
+    bundle: Mapping[str, Any],
+    *,
+    expected_ball_count: int | None = None,
+    ground_truth: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     scene = bundle.get("scene_map") or {}
     detections_payload = bundle.get("object_detections") or {}
     detections = detections_payload.get("detections", [])
     indications = bundle.get("object_indications") or []
+    tracks_payload = bundle.get("object_tracks") or {}
+    tracks = tracks_payload.get("tracks", [])
+    agent_scene = bundle.get("agent_scene") or {}
+    agent_objects = agent_scene.get("objects", [])
     objects = scene.get("objects", [])
     task_plans = bundle.get("task_plans") or {}
+    confirmed_tracks = [track for track in tracks if track.get("status") == "confirmed"]
+    stale_tracks = [track for track in tracks if track.get("status") == "stale"]
+    localization_errors = object_localization_errors(agent_scene, ground_truth or {})
+    observed_count = len(
+        [
+            item
+            for item in agent_objects or confirmed_tracks or objects
+            if str(item.get("class", item.get("name", ""))) == "yellow_ball"
+        ]
+    )
+    expected_count_delta = (
+        None if expected_ball_count is None else observed_count - expected_ball_count
+    )
     return {
         "motion_commanded": False,
         "requested_targets": list(bundle.get("requested_targets", [])),
@@ -63,6 +85,38 @@ def summarize_observation_bundle(bundle: Mapping[str, Any]) -> dict[str, Any]:
         "object_detection_count": len(detections),
         "object_indication_count": len(indications),
         "scene_object_count": len(objects),
+        "object_track_count": len(tracks),
+        "confirmed_object_track_count": len(confirmed_tracks),
+        "stale_object_track_count": len(stale_tracks),
+        "agent_scene_object_count": len(agent_objects),
+        "expected_ball_count": expected_ball_count,
+        "observed_ball_count": observed_count,
+        "expected_count_delta": expected_count_delta,
+        "false_negative_count": (
+            None
+            if expected_ball_count is None
+            else max(0, expected_ball_count - observed_count)
+        ),
+        "false_positive_count": (
+            None
+            if expected_ball_count is None
+            else max(0, observed_count - expected_ball_count)
+        ),
+        "localization_error_count": len(localization_errors),
+        "per_object_localization_errors": localization_errors,
+        "mean_object_localization_error_m": _mean(
+            [item["error_m"] for item in localization_errors]
+        ),
+        "max_object_localization_error_m": (
+            max(item["error_m"] for item in localization_errors)
+            if localization_errors
+            else None
+        ),
+        "pose_confidence": (agent_scene.get("robot") or {}).get("pose_confidence"),
+        "tag_residual_m": (agent_scene.get("localization") or {}).get("tag_residual_m"),
+        "tag_residual_deg": (agent_scene.get("localization") or {}).get(
+            "tag_residual_deg"
+        ),
         "task_plan_statuses": {
             str(target): {
                 "status": plan.get("status"),
@@ -100,6 +154,18 @@ class ObservationProofNode(Node):
             lambda msg: self._capture_json("scene_map", msg),
             10,
         )
+        self.create_subscription(
+            String,
+            "/vision/object_tracks",
+            lambda msg: self._capture_json("object_tracks", msg),
+            10,
+        )
+        self.create_subscription(
+            String,
+            "/vision/agent_scene",
+            lambda msg: self._capture_json("agent_scene", msg),
+            10,
+        )
         self.create_subscription(String, "/task_plan/current", self._on_task_plan, 10)
         self.create_subscription(
             String,
@@ -135,12 +201,25 @@ class ObservationProofNode(Node):
         for target in self.targets:
             self._request_pub.publish(String(data=task_request_payload(target)))
 
-    def bundle(self) -> dict[str, Any]:
+    def bundle(
+        self,
+        *,
+        expected_ball_count: int | None = None,
+        ground_truth: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
         payload = dict(self.latest)
         payload["requested_targets"] = list(self.targets)
         payload["task_plans"] = dict(self.task_plans)
         payload["captured_at_s"] = time.monotonic()
-        payload["summary"] = summarize_observation_bundle(payload)
+        if expected_ball_count is not None:
+            payload["expected_ball_count"] = expected_ball_count
+        if ground_truth:
+            payload["ground_truth"] = dict(ground_truth)
+        payload["summary"] = summarize_observation_bundle(
+            payload,
+            expected_ball_count=expected_ball_count,
+            ground_truth=ground_truth,
+        )
         return payload
 
 
@@ -153,6 +232,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--timeout-s", type=float, default=20.0)
     parser.add_argument("--settle-s", type=float, default=2.0)
     parser.add_argument("--request-period-s", type=float, default=0.5)
+    parser.add_argument("--expected-count", type=int, default=None)
+    parser.add_argument("--ground-truth", type=Path, default=None)
     return parser
 
 
@@ -163,6 +244,9 @@ def main(argv: list[str] | None = None) -> int:
     proof_dir = args.proof_dir or default_proof_dir()
     proof_dir.mkdir(parents=True, exist_ok=True)
     targets = list(args.target or DEFAULT_TARGETS)
+    ground_truth = (
+        json.loads(args.ground_truth.read_text()) if args.ground_truth else None
+    )
 
     rclpy.init()
     node = ObservationProofNode(targets)
@@ -179,12 +263,15 @@ def main(argv: list[str] | None = None) -> int:
                 node.publish_requests()
                 next_request_s = now_s + max(0.1, args.request_period_s)
             rclpy.spin_once(node, timeout_sec=0.1)
-            if "scene_map" in node.latest and all(
-                target in node.task_plans for target in targets
-            ):
+            if {"scene_map", "object_tracks", "agent_scene"} <= set(
+                node.latest
+            ) and all(target in node.task_plans for target in targets):
                 break
 
-        bundle = node.bundle()
+        bundle = node.bundle(
+            expected_ball_count=args.expected_count,
+            ground_truth=ground_truth,
+        )
         output_path = proof_dir / "scene_observation_proof.json"
         output_path.write_text(json.dumps(bundle, indent=2, sort_keys=True) + "\n")
         print(
@@ -198,10 +285,79 @@ def main(argv: list[str] | None = None) -> int:
                 sort_keys=True,
             )
         )
-        return 0 if all(target in node.task_plans for target in targets) else 2
+        return 0 if proof_passed(bundle, targets=targets) else 2
     finally:
         node.destroy_node()
         rclpy.shutdown()
+
+
+def proof_passed(bundle: Mapping[str, Any], *, targets: list[str]) -> bool:
+    required = {"scene_map", "object_tracks", "agent_scene"}
+    if not required <= set(bundle):
+        return False
+    task_plans = bundle.get("task_plans") or {}
+    if not all(target in task_plans for target in targets):
+        return False
+    expected = bundle.get("expected_ball_count")
+    if expected is None:
+        return True
+    observed = (bundle.get("summary") or {}).get("observed_ball_count", 0)
+    return int(observed) >= int(expected)
+
+
+def object_localization_errors(
+    agent_scene: Mapping[str, Any], ground_truth: Mapping[str, Any]
+) -> list[dict[str, Any]]:
+    truth_objects = ground_truth.get("objects", []) if ground_truth else []
+    observed = [
+        item
+        for item in agent_scene.get("objects", [])
+        if isinstance(item, Mapping) and item.get("pose")
+    ]
+    errors: list[dict[str, Any]] = []
+    used_observed: set[int] = set()
+    for truth in truth_objects:
+        if not isinstance(truth, Mapping):
+            continue
+        truth_pose = truth.get("pose") or truth.get("map_pose")
+        if not isinstance(truth_pose, Mapping):
+            continue
+        truth_class = str(truth.get("class", truth.get("name", "object")))
+        best: tuple[float, int, Mapping[str, Any]] | None = None
+        for index, item in enumerate(observed):
+            if index in used_observed:
+                continue
+            if str(item.get("class", item.get("name", "object"))) != truth_class:
+                continue
+            pose = item.get("pose") or {}
+            error_m = _distance_m(truth_pose, pose)
+            if best is None or error_m < best[0]:
+                best = (error_m, index, item)
+        if best is None:
+            continue
+        error_m, index, item = best
+        used_observed.add(index)
+        errors.append(
+            {
+                "truth_id": truth.get("id"),
+                "observed_id": item.get("id"),
+                "class": truth_class,
+                "error_m": error_m,
+            }
+        )
+    return errors
+
+
+def _distance_m(a: Mapping[str, Any], b: Mapping[str, Any]) -> float:
+    ax = float(a.get("x_m", a.get("x", 0.0)))
+    ay = float(a.get("y_m", a.get("y", 0.0)))
+    bx = float(b.get("x_m", b.get("x", 0.0)))
+    by = float(b.get("y_m", b.get("y", 0.0)))
+    return ((ax - bx) ** 2 + (ay - by) ** 2) ** 0.5
+
+
+def _mean(values: list[float]) -> float | None:
+    return None if not values else sum(values) / len(values)
 
 
 if __name__ == "__main__":

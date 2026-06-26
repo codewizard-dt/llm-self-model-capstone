@@ -71,6 +71,13 @@ class ObjectObservation:
     stamp_s: float
     confidence: float | None = None
     source: str = "operator_indication"
+    object_id: str | None = None
+    status: str = "confirmed"
+    seen_frames: int | None = None
+    last_seen_s: float | None = None
+    age_s: float | None = None
+    range_source: str | None = None
+    position_uncertainty_m: float | None = None
 
 
 @dataclass(frozen=True)
@@ -79,6 +86,13 @@ class SceneObject:
     map_from_object: Pose2D
     source: str
     confidence: float | None = None
+    object_id: str | None = None
+    status: str = "confirmed"
+    seen_frames: int | None = None
+    last_seen_s: float | None = None
+    age_s: float | None = None
+    range_source: str | None = None
+    position_uncertainty_m: float | None = None
 
 
 @dataclass(frozen=True)
@@ -91,6 +105,7 @@ class SceneMap:
     objects: list[SceneObject]
     anchor_tag_ids: list[int]
     observed_tag_ids: list[int]
+    localization: dict[str, Any] | None = None
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -103,16 +118,36 @@ class SceneMap:
                 for tag_id, pose in sorted(self.tags.items())
             },
             "objects": [
-                {
-                    "name": obj.name,
-                    "pose": obj.map_from_object.to_json(),
-                    "source": obj.source,
-                    "confidence": obj.confidence,
-                }
+                _strip_none(
+                    {
+                        "id": obj.object_id,
+                        "name": obj.name,
+                        "class": obj.name,
+                        "pose": obj.map_from_object.to_json(),
+                        "map_pose": obj.map_from_object.to_json(),
+                        "source": obj.source,
+                        "confidence": obj.confidence,
+                        "status": obj.status,
+                        "seen_frames": obj.seen_frames,
+                        "last_seen_s": obj.last_seen_s,
+                        "age_s": obj.age_s,
+                        "range_source": obj.range_source,
+                        "position_uncertainty_m": obj.position_uncertainty_m,
+                    }
+                )
                 for obj in self.objects
             ],
             "anchor_tag_ids": self.anchor_tag_ids,
             "observed_tag_ids": self.observed_tag_ids,
+            "localization": self.localization
+            or {
+                "source": "apriltag",
+                "pose_confidence": 1.0,
+                "pose_age_s": 0.0,
+                "visible_anchor_count": len(self.observed_tag_ids),
+                "tag_residual_m": 0.0,
+                "tag_residual_deg": 0.0,
+            },
         }
 
     def to_json_string(self) -> str:
@@ -171,7 +206,7 @@ def parse_tag_anchors(raw: str | Mapping[str, Any]) -> dict[int, TagAnchor]:
 
 
 def parse_object_observations(
-    raw: str | list[Mapping[str, Any]], *, stamp_s: float
+    raw: str | Mapping[str, Any] | list[Mapping[str, Any]], *, stamp_s: float
 ) -> list[ObjectObservation]:
     payload: Any
     if isinstance(raw, str):
@@ -179,7 +214,7 @@ def parse_object_observations(
     else:
         payload = raw
     if isinstance(payload, Mapping):
-        payload = [payload]
+        payload = payload.get("tracks", payload.get("objects", [payload]))
     if not isinstance(payload, list):
         raise ValueError("object indications must be a JSON object or list")
 
@@ -187,8 +222,21 @@ def parse_object_observations(
     for item in payload:
         if not isinstance(item, Mapping):
             raise ValueError("each object indication must be a JSON object")
-        name = str(item["name"])
-        if "forward_m" in item or "left_m" in item:
+        status = str(item.get("status", "confirmed"))
+        if status == "expired":
+            continue
+        name = str(item.get("name", item.get("class", "object")))
+        camera_pose = item.get("camera_pose")
+        if isinstance(camera_pose, Mapping):
+            if "forward_m" in camera_pose or "left_m" in camera_pose:
+                pose = Pose2D(
+                    x_m=float(camera_pose.get("forward_m", 0.0)),
+                    y_m=float(camera_pose.get("left_m", 0.0)),
+                    yaw_rad=float(camera_pose.get("yaw_rad", 0.0)),
+                )
+            else:
+                pose = pose_from_mapping(camera_pose)
+        elif "forward_m" in item or "left_m" in item:
             pose = Pose2D(
                 x_m=float(item.get("forward_m", 0.0)),
                 y_m=float(item.get("left_m", 0.0)),
@@ -205,6 +253,37 @@ def parse_object_observations(
                     float(item["confidence"]) if "confidence" in item else None
                 ),
                 source=str(item.get("source", "operator_indication")),
+                object_id=(
+                    str(item["id"])
+                    if item.get("id") is not None
+                    else (
+                        str(item["track_id"])
+                        if item.get("track_id") is not None
+                        else None
+                    )
+                ),
+                status=status,
+                seen_frames=(
+                    int(item["seen_frames"])
+                    if item.get("seen_frames") is not None
+                    else None
+                ),
+                last_seen_s=(
+                    float(item["last_seen_s"])
+                    if item.get("last_seen_s") is not None
+                    else None
+                ),
+                age_s=float(item["age_s"]) if item.get("age_s") is not None else None,
+                range_source=(
+                    str(item["range_source"])
+                    if item.get("range_source") is not None
+                    else None
+                ),
+                position_uncertainty_m=(
+                    float(item["position_uncertainty_m"])
+                    if item.get("position_uncertainty_m") is not None
+                    else None
+                ),
             )
         )
     return observations
@@ -244,6 +323,16 @@ def estimate_camera_pose(
     anchors: Mapping[int, TagAnchor],
     detections: list[TagDetection2D],
 ) -> Pose2D:
+    candidates = estimate_camera_pose_candidates(anchors, detections)
+    if not candidates:
+        raise ValueError("at least one observed tag must match a configured map anchor")
+    return average_poses(candidates)
+
+
+def estimate_camera_pose_candidates(
+    anchors: Mapping[int, TagAnchor],
+    detections: list[TagDetection2D],
+) -> list[Pose2D]:
     candidates: list[Pose2D] = []
     for detection in detections:
         anchor = anchors.get(detection.tag_id)
@@ -252,10 +341,7 @@ def estimate_camera_pose(
         candidates.append(
             anchor.map_from_tag.compose(detection.camera_from_tag.inverse())
         )
-
-    if not candidates:
-        raise ValueError("at least one observed tag must match a configured map anchor")
-    return average_poses(candidates)
+    return candidates
 
 
 def average_poses(poses: list[Pose2D]) -> Pose2D:
@@ -280,7 +366,10 @@ def build_scene_map(
     frame_id: str = "map",
     stamp_s: float | None = None,
 ) -> SceneMap:
-    map_from_camera = estimate_camera_pose(anchors, detections)
+    pose_candidates = estimate_camera_pose_candidates(anchors, detections)
+    if not pose_candidates:
+        raise ValueError("at least one observed tag must match a configured map anchor")
+    map_from_camera = average_poses(pose_candidates)
     robot_from_camera = camera_in_robot or Pose2D(0.0, 0.0, 0.0)
     map_from_robot = map_from_camera.compose(robot_from_camera.inverse())
     tags = {
@@ -293,22 +382,36 @@ def build_scene_map(
             map_from_object=map_from_camera.compose(observation.camera_from_object),
             source=observation.source,
             confidence=observation.confidence,
+            object_id=observation.object_id,
+            status=observation.status,
+            seen_frames=observation.seen_frames,
+            last_seen_s=observation.last_seen_s,
+            age_s=observation.age_s,
+            range_source=observation.range_source,
+            position_uncertainty_m=observation.position_uncertainty_m,
         )
         for observation in object_observations or []
     ]
+    scene_stamp_s = (
+        float(stamp_s)
+        if stamp_s is not None
+        else max(detection.stamp_s for detection in detections)
+    )
     return SceneMap(
         frame_id=frame_id,
-        stamp_s=(
-            float(stamp_s)
-            if stamp_s is not None
-            else max(detection.stamp_s for detection in detections)
-        ),
+        stamp_s=scene_stamp_s,
         map_from_camera=map_from_camera,
         map_from_robot=map_from_robot,
         tags=tags,
         objects=objects,
         anchor_tag_ids=sorted(anchors),
         observed_tag_ids=sorted({detection.tag_id for detection in detections}),
+        localization=_localization_summary(
+            candidates=pose_candidates,
+            detections=detections,
+            stamp_s=scene_stamp_s,
+            observed_anchor_ids=sorted({detection.tag_id for detection in detections}),
+        ),
     )
 
 
@@ -322,6 +425,29 @@ def scene_map_from_json(raw: str | Mapping[str, Any]) -> SceneMap:
             confidence=(
                 float(item["confidence"])
                 if item.get("confidence") is not None
+                else None
+            ),
+            object_id=str(item["id"]) if item.get("id") is not None else None,
+            status=str(item.get("status", "confirmed")),
+            seen_frames=(
+                int(item["seen_frames"])
+                if item.get("seen_frames") is not None
+                else None
+            ),
+            last_seen_s=(
+                float(item["last_seen_s"])
+                if item.get("last_seen_s") is not None
+                else None
+            ),
+            age_s=float(item["age_s"]) if item.get("age_s") is not None else None,
+            range_source=(
+                str(item["range_source"])
+                if item.get("range_source") is not None
+                else None
+            ),
+            position_uncertainty_m=(
+                float(item["position_uncertainty_m"])
+                if item.get("position_uncertainty_m") is not None
                 else None
             ),
         )
@@ -341,7 +467,70 @@ def scene_map_from_json(raw: str | Mapping[str, Any]) -> SceneMap:
         observed_tag_ids=[
             int(tag_id) for tag_id in payload.get("observed_tag_ids", [])
         ],
+        localization=dict(payload.get("localization") or {}),
     )
+
+
+def _localization_summary(
+    *,
+    candidates: list[Pose2D],
+    detections: list[TagDetection2D],
+    stamp_s: float,
+    observed_anchor_ids: list[int],
+) -> dict[str, Any]:
+    pose = average_poses(candidates)
+    residuals_m = [
+        math.hypot(item.x_m - pose.x_m, item.y_m - pose.y_m) for item in candidates
+    ]
+    residuals_deg = [
+        abs(math.degrees(normalize_angle(item.yaw_rad - pose.yaw_rad)))
+        for item in candidates
+    ]
+    mean_position_error_m = sum(residuals_m) / len(residuals_m)
+    mean_heading_error_deg = sum(residuals_deg) / len(residuals_deg)
+    max_position_error_m = max(residuals_m)
+    confidence = localization_confidence(
+        visible_anchor_count=len(observed_anchor_ids),
+        tag_residual_m=mean_position_error_m,
+        tag_residual_deg=mean_heading_error_deg,
+    )
+    latest_detection_s = max(detection.stamp_s for detection in detections)
+    return {
+        "source": "apriltag",
+        "pose_confidence": confidence,
+        "pose_age_s": max(0.0, stamp_s - latest_detection_s),
+        "visible_anchor_count": len(observed_anchor_ids),
+        "tag_residual_m": mean_position_error_m,
+        "tag_residual_deg": mean_heading_error_deg,
+        "max_position_error_m": max_position_error_m,
+        "observed_tag_ids": observed_anchor_ids,
+        "dead_reckoning_age_s": 0.0,
+    }
+
+
+def localization_confidence(
+    *,
+    visible_anchor_count: int,
+    tag_residual_m: float,
+    tag_residual_deg: float,
+    pose_age_s: float = 0.0,
+) -> float:
+    if visible_anchor_count <= 0:
+        return 0.0
+    tag_bonus = 0.18 if visible_anchor_count >= 2 else 0.0
+    residual_penalty = min(0.45, tag_residual_m * 3.0 + tag_residual_deg / 90.0)
+    age_penalty = min(0.35, max(0.0, pose_age_s) * 0.12)
+    return max(0.0, min(1.0, 0.72 + tag_bonus - residual_penalty - age_penalty))
+
+
+def _strip_none(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: _strip_none(item) for key, item in value.items() if item is not None
+        }
+    if isinstance(value, list):
+        return [_strip_none(item) for item in value]
+    return value
 
 
 def dataclass_to_dict(value: Any) -> dict[str, Any]:

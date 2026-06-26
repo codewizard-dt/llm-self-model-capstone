@@ -39,6 +39,9 @@ class ObjectIndicationNode(Node):
         self.declare_parameter("object_dimensions_json", DEFAULT_OBJECT_DIMENSIONS_JSON)
         self.declare_parameter("default_height_m", 0.12)
         self.declare_parameter("min_confidence", 0.35)
+        self.declare_parameter("floor_projection_enabled", False)
+        self.declare_parameter("camera_height_m", 0.0)
+        self.declare_parameter("camera_pitch_rad", 0.0)
 
         dimensions_raw = (
             self.get_parameter("object_dimensions_json")
@@ -52,6 +55,11 @@ class ObjectIndicationNode(Node):
         self._min_confidence = (
             self.get_parameter("min_confidence").get_parameter_value().double_value
         )
+        self._floor_projection_enabled = bool(
+            self.get_parameter("floor_projection_enabled").value
+        )
+        self._camera_height_m = float(self.get_parameter("camera_height_m").value)
+        self._camera_pitch_rad = float(self.get_parameter("camera_pitch_rad").value)
         self._intrinsics = None
         self._pub = self.create_publisher(
             String,
@@ -91,6 +99,9 @@ class ObjectIndicationNode(Node):
                 default_height_m=self._default_height_m,
                 min_confidence=self._min_confidence,
                 source=source,
+                floor_projection_enabled=self._floor_projection_enabled,
+                camera_height_m=self._camera_height_m,
+                camera_pitch_rad=self._camera_pitch_rad,
             )
         except (TypeError, ValueError, json.JSONDecodeError) as exc:
             self.get_logger().warn(f"ignored bad object detection payload: {exc}")

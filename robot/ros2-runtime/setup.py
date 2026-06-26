@@ -34,6 +34,8 @@ setup(
             "yellow_ball_detector_node = vexy_ros.yellow_ball_detector_node:main",
             "object_overlay_node = vexy_ros.object_overlay_node:main",
             "object_indication_node = vexy_ros.object_indication_node:main",
+            "object_track_node = vexy_ros.object_track_node:main",
+            "agent_scene_node = vexy_ros.agent_scene_node:main",
             "task_plan_node = vexy_ros.task_plan_node:main",
             "survey_scan_node = vexy_ros.survey_scan_node:main",
             "vexy_operator_node = vexy_ros.operator.node:main",
@@ -43,6 +45,7 @@ setup(
             "vexy_run_calibrated_tag_proof = vexy_ros.proof_runner:main",
             "vexy_scene_observation_proof = vexy_ros.observation_proof:main",
             "vexy_calibrate_camera = vexy_ros.camera_calibration_capture:main",
+            "vexy_localization_benchmark = vexy_ros.localization_benchmark:main",
         ],
     },
 )
