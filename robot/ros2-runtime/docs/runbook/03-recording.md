@@ -49,7 +49,6 @@ driving with the V5 controller. Start the annotation helper in one terminal:
 
 ```bash
 source ~/ros2_ws/install/setup.bash
-ros2 run vexy_ros vexy_operator_annotation
 ```
 
 Record calibration evidence in another terminal:
