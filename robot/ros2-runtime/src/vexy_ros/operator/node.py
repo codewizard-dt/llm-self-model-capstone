@@ -1048,6 +1048,22 @@ class OperatorNode(Node):
                 )
             )
             return
+        except Exception as exc:
+            self.get_logger().error(
+                f"_on_command unhandled {type(exc).__name__}: {exc}"
+            )
+            self._publish_event(
+                OperatorEvent(
+                    name="command_error",
+                    stamp_s=time.monotonic(),
+                    detail={
+                        "error": str(exc),
+                        "type": type(exc).__name__,
+                        "raw": msg.data,
+                    },
+                )
+            )
+            return
         self._status_pub.publish(
             String(
                 data=json.dumps(
