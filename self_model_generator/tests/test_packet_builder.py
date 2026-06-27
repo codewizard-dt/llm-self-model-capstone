@@ -11,6 +11,7 @@ from self_model_generator.packet_builder import (
     FIXTURE_BACKED_GAP,
     build_packet_from_files,
     build_self_model_packet,
+    main as packet_builder_main,
     load_parts_catalog,
     read_contract_lines_jsonl,
 )
@@ -87,6 +88,43 @@ def test_fixture_gap_summary_is_visibly_labeled(tmp_path: Path) -> None:
 
     assert FIXTURE_BACKED_GAP in packet
     assert '"force_error_N": -3.4' in packet
+
+
+def test_packet_builder_cli_writes_gap_backed_packet(tmp_path: Path) -> None:
+    gap_path = tmp_path / "gap-summary.json"
+    gap_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "1.0",
+                "kind": "gap_summary",
+                "residuals": {"force_error_N": {"latest": -1.2}},
+                "diagnoses": [],
+            }
+        )
+    )
+    out_path = tmp_path / "packet.md"
+
+    exit_code = packet_builder_main(
+        [
+            "--self-model",
+            str(SELF_MODEL),
+            "--parts-catalog",
+            str(PARTS),
+            "--contract-jsonl",
+            str(SESSION),
+            "--gap-summary",
+            str(gap_path),
+            "--human-constraint",
+            "review runtime knobs before deploy",
+            "--out",
+            str(out_path),
+        ]
+    )
+
+    assert exit_code == 0
+    packet = out_path.read_text()
+    assert FIXTURE_BACKED_GAP in packet
+    assert "review runtime knobs before deploy" in packet
 
 
 def test_catalog_violations_are_exposed_without_local_schema() -> None:

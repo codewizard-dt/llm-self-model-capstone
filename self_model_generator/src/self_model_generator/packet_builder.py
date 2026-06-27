@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import json
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -77,6 +78,41 @@ def build_packet_from_files(
         human_constraints=human_constraints,
         gap_summary=gap_summary,
     )
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Build an offline self-model LLM packet from contract evidence."
+    )
+    parser.add_argument("--self-model", type=Path, required=True)
+    parser.add_argument("--parts-catalog", type=Path, required=True)
+    parser.add_argument("--contract-jsonl", type=Path, default=None)
+    parser.add_argument("--ros-bundle", type=Path, default=None)
+    parser.add_argument("--gap-summary", type=Path, default=None)
+    parser.add_argument(
+        "--human-constraint",
+        action="append",
+        default=[],
+        help="Human constraint to include; may be supplied multiple times.",
+    )
+    parser.add_argument("--out", type=Path, default=None)
+    args = parser.parse_args(argv)
+
+    packet = build_packet_from_files(
+        self_model_path=args.self_model,
+        parts_catalog_path=args.parts_catalog,
+        contract_jsonl_path=args.contract_jsonl,
+        ros_bundle_path=args.ros_bundle,
+        gap_summary_path=args.gap_summary,
+        human_constraints=tuple(args.human_constraint),
+    )
+    if args.out is None:
+        print(packet)
+    else:
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        args.out.write_text(packet + "\n")
+        print(f"wrote self-model packet: {args.out}")
+    return 0
 
 
 def build_self_model_packet(
@@ -230,3 +266,7 @@ def _hardware_proof_status(contract_lines: Sequence[ContractLine]) -> str:
         return BLOCKED_HARDWARE_PROOF
     joined = ", ".join(f"`{path}`" for path in sorted(set(paths)))
     return f"contract-valid JSONL references hardware/proof source(s): {joined}"
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
