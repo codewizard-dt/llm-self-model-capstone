@@ -1,0 +1,10 @@
+apiVersion: ai-sdd/v1
+kind: Pipeline
+metadata: { name: skill-registry, version: 1 }
+spec:
+  semantics: enabler
+  nodes:
+    - { id: registry-definitions, kind: pipeline, pipeline: ../.., stack: pilot }
+    - { id: registry-tests-and-exports, kind: pipeline, pipeline: ../.., stack: pilot }
+  edges:
+    - { from: registry-definitions, to: registry-tests-and-exports }
