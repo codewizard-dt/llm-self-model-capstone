@@ -22,6 +22,7 @@ from pydantic import TypeAdapter
 from contracts import (
     TTL_MS_MAX,
     AckLine,
+    ContractLine,
     ControlLine,
     FaultCode,
     PartsCatalog,
@@ -32,13 +33,17 @@ from contracts.validate import main
 
 # contracts/tests/test_validate.py -> parents[1] is the contracts root.
 CONTRACTS_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = CONTRACTS_ROOT.parent
 CATALOG_JSON = CONTRACTS_ROOT / "parts_catalog.json"
 FIXTURES_DIR = CONTRACTS_ROOT / "fixtures"
 SCHEMAS_DIR = CONTRACTS_ROOT / "schemas"
+TELEMETRY_FIXTURE_DIR = REPO_ROOT / "telemetry-fixtures" / "grab-align-baseline"
 
 GRAB_FIXTURE = FIXTURES_DIR / "control_command_grab_cycle.jsonl"
 FLYWHEEL_FIXTURE = FIXTURES_DIR / "control_command_flywheel_cycle.jsonl"
 REJECTIONS_FIXTURE = FIXTURES_DIR / "control_command_rejections.jsonl"
+TELEMETRY_CONTRACT_FIXTURE = TELEMETRY_FIXTURE_DIR / "contract.jsonl"
+TELEMETRY_MANIFEST_FIXTURE = TELEMETRY_FIXTURE_DIR / "manifest.json"
 
 _control_line_adapter: TypeAdapter[ControlLine] = TypeAdapter(ControlLine)
 
@@ -71,6 +76,27 @@ def test_validate_entrypoint_exits_zero_over_committed_tree():
     # The real contracts tree: F1 jsonl + F2 self-models + the F3 catalog/buildability
     # dispatch all pass against the committed fixtures.
     assert main() == 0
+
+
+def test_committed_telemetry_fixture_manifest_points_to_contract_jsonl():
+    manifest = json.loads(TELEMETRY_MANIFEST_FIXTURE.read_text())
+    assert manifest["run_id"] == "grab-align-baseline"
+    assert manifest["task"] == "grab_align"
+    assert "fixture-backed" in manifest["provenance"]
+    assert "not real robot hardware" in manifest["provenance"]
+    assert manifest["fixture_status"] == "committed_fixture"
+    assert (
+        manifest["canonical_evidence_path"]
+        == "telemetry-fixtures/grab-align-baseline/contract.jsonl"
+    )
+    assert (REPO_ROOT / manifest["canonical_evidence_path"]).is_file()
+
+
+def test_committed_telemetry_fixture_lines_validate_as_contract_lines():
+    lines = [raw for raw in TELEMETRY_CONTRACT_FIXTURE.read_text().splitlines() if raw.strip()]
+    assert lines, "expected telemetry fixture contract.jsonl to contain evidence lines"
+    for line in lines:
+        ContractLine.model_validate_json(line)
 
 
 # --- unbuildable fixture is rejected with a readable reason ------------------
@@ -262,6 +288,31 @@ def test_validate_main_rejects_bad_cmd(tmp_path, monkeypatch, capsys):
     # plan's "ValidationError on stderr" surface (acc-type-routing-rejects-bad-cmd).
     assert "validation error" in err
     assert "vx" in err
+
+
+def test_validate_main_rejects_bad_telemetry_fixture_line(tmp_path, monkeypatch, capsys):
+    """Repo-level telemetry-fixtures/*/contract.jsonl must parse as ContractLine."""
+
+    repo_root = tmp_path
+    contracts_root = repo_root / "contracts"
+    (contracts_root / "fixtures").mkdir(parents=True)
+    (contracts_root / "parts_catalog.json").write_text(CATALOG_JSON.read_text())
+    fixture_run = repo_root / "telemetry-fixtures" / "bad-run"
+    fixture_run.mkdir(parents=True)
+    (fixture_run / "contract.jsonl").write_text(
+        '{"schema_version":"1.0","session_id":"bad","generation":0,'
+        '"round":1,"task":"grab","predicted":{"success":true},"gap":{}}\n'
+    )
+
+    monkeypatch.setattr(
+        "contracts.validate.Path",
+        _PathStub(contracts_root / "src" / "contracts" / "validate.py"),
+    )
+
+    assert main() == 1
+    err = capsys.readouterr().err
+    assert "telemetry-fixtures/bad-run/contract.jsonl:1:" in err
+    assert "motor_samples" in err
 
 
 def test_validate_main_rejects_unknown_cmd(tmp_path, monkeypatch, capsys):

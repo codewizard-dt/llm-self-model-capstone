@@ -28,11 +28,11 @@ spec:
     - { id: m1b, worker: milestone-gate, owner: [215eight] }   # oracle-ready — gates the demo loop
     # ===== Phase 2 — offline self-model loop (→ m2) =====
     - { id: replay-source,            kind: pipeline, pipeline: ../../features/replay-source,            stack: contracts }
-    - { id: gap-analyzer,             kind: pipeline, pipeline: ../../features/gap-analyzer,             stack: operator }
-    - { id: critic-panel,             kind: pipeline, pipeline: ../../features/critic-panel,             stack: operator }
-    - { id: generator,                kind: pipeline, pipeline: ../../features/generator,                stack: operator }
-    - { id: markdown-presenter,       kind: pipeline, pipeline: ../../features/markdown-presenter,       stack: operator }
-    - { id: demo-replay,              kind: pipeline, pipeline: ../../features/demo-replay,              stack: operator }
+    - { id: gap-analyzer,             kind: pipeline, pipeline: ../../features/gap-analyzer,             stack: self_model_generator }
+    - { id: critic-panel,             kind: pipeline, pipeline: ../../features/critic-panel,             stack: self_model_generator }
+    - { id: generator,                kind: pipeline, pipeline: ../../features/generator,                stack: self_model_generator }
+    - { id: markdown-presenter,       kind: pipeline, pipeline: ../../features/markdown-presenter,       stack: self_model_generator }
+    - { id: demo-replay,              kind: pipeline, pipeline: ../../features/demo-replay,              stack: self_model_generator }
     - { id: m2,  worker: milestone-gate }                   # loop-closes-synthetic — gates hw integration
     # ===== Phase 3 — vision integration (→ m3) =====
     - { id: vision-pipeline,          kind: pipeline, pipeline: ../../features/vision-pipeline,          stack: coprocessor }

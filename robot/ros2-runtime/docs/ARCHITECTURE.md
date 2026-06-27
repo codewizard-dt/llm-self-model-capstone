@@ -2,7 +2,7 @@
 
 ## Overview
 
-The robot is a VEX V5 Clawbot augmented with a Raspberry Pi 5 AI coprocessor. The Pi runs a ROS 2 Jazzy stack (`vexy_ros`) that handles computer vision, session recording, and the LLM self-model feedback loop. The V5 Brain retains exclusive authority over actuators via a deterministic PROS C++/FreeRTOS program.
+The robot is a VEX V5 Clawbot augmented with a Raspberry Pi 5 AI coprocessor. The Pi runs a ROS 2 Jazzy stack (`vexy_ros`) that handles computer vision, session recording, and export of evidence for the LLM self-model feedback loop. The V5 Brain retains exclusive authority over actuators via a deterministic PROS C++/FreeRTOS program.
 
 ## Migration Rationale — pi-runtime → ros2-runtime
 
@@ -15,6 +15,20 @@ The original `robot/pi-runtime` was written in Python against Bookworm/picamera2
 | Headless visualization | SSH + custom scripts | `foxglove_bridge` → browser UI, zero local display needed |
 
 The wire protocol to the V5 Brain is intentionally unchanged (protocol version 1, newline-delimited JSON). The ROS bridge uses a continuous reader thread so Brain acknowledgements, streaming telemetry, and bridge faults are demultiplexed before any motion proof is interpreted.
+
+## Evidence Handoff Scope
+
+The downstream self-modeling components consume `contracts.ContractLine` JSONL,
+not ROS topics or MCAP directly. During the fixture-backed MVP, the repo-level
+`telemetry-fixtures/` data provides that semantic JSONL handoff for F8, F9, F10,
+F11, F12, and `make demo` without requiring a robot, ROS daemon, camera, serial
+device, or MCAP file.
+
+Real hardware runs still use MCAP as the replayable raw evidence and audit
+source. The ROS 2 stack exports those captures to the same contract-valid JSONL
+shape used by the fixture path. PR #43 should be treated as a useful telemetry
+JSONL baseline with partial MCAP capture, not as completion of the later
+hardware-capture and replay/audit requirements.
 
 ## Two-Computer Model
 
@@ -41,7 +55,8 @@ The wire protocol to the V5 Brain is intentionally unchanged (protocol version 1
 │   ros2 bag record -a                │
 │              │                      │
 │   ┌──────────▼──────────────┐       │
-│   │  .bag → JSON → Claude   │       │  ← LLM self-model loop
+│   │  MCAP → ContractLine    │       │  ← LLM self-model loop
+│   │  JSONL export           │       │
 │   │  API (feedback loop)    │       │
 │   └─────────────────────────┘       │
 └─────────────────────────────────────┘

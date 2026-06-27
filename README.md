@@ -28,11 +28,25 @@ If you are new here, start with this page, then drill into the linked docs.
 |-- PLAN.md / ARCHITECTURE.md   Planning docs; defer to MASTER_REQUIREMENTS.md.
 |-- raw/                        Source material, research notes, PDFs, and CAD files.
 |-- wiki/                       Structured knowledge base and work lifecycle docs.
+|-- telemetry-fixtures/         Fixture-backed ContractLine JSONL evidence for MVP self-modeling.
 |-- robot/
 |   |-- pi-runtime/             Raspberry Pi runtime: bridge, camera, dashboard, demo.
 |   |-- v5-brain/               VEX V5 Brain PROS C++ code and bring-up notes.
 |-- build-history/              Hardware build photos and screenshots.
 ```
+
+## Evidence Handoff Scope
+
+Downstream MVP self-modeling features consume `contracts.ContractLine` JSONL as
+their semantic evidence input. The checked-in `telemetry-fixtures/` runs are
+fixture-backed evidence for F8, F9, F10, F11, F12, and `make demo`; they do not
+represent a real robot run and do not require ROS, hardware, or MCAP files.
+
+Real hardware capture remains a later integration requirement. Those runs should
+record replayable MCAP as the raw audit artifact and export the same
+contract-valid JSONL shape for the self-model loop. PR #43 is useful as a JSONL
+baseline with partial MCAP capture, but it is not completion of the full
+hardware-capture and replay/audit requirement.
 
 ## Current Code Surfaces
 
@@ -47,8 +61,11 @@ Most of the current runnable code lives under `robot/`.
 - `robot/v5-brain/v5-test/src/main.cpp` - working PROS C++ arm telemetry test.
 - `robot/v5-brain/BRINGUP.md` - detailed VEX Brain setup and debugging notes.
 
-Some directories described in `AGENTS.md`, such as `contracts/`, `operator/`,
-and `pilot/`, are planned verticals and may not exist yet in the current tree.
+Some directories described in `AGENTS.md`, such as `contracts/`,
+`self_model_generator/`, and `pilot/`, are planned verticals and may not exist
+yet in the current tree. A repo-root `operator/` directory is intentionally not
+a vertical name; `operator` is reserved for the live robot-control surface under
+`robot/ros2-runtime/`.
 
 ## Run The Local Smoke Test
 

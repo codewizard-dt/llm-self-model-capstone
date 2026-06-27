@@ -438,7 +438,17 @@ Useful panels: **Image** (subscribe `/camera/image_rect` for clean camera frames
 
 ## Recording Sessions for the LLM Feedback Loop
 
-`ros2 bag` records all topics to a self-describing MCAP file for offline replay and ingestion:
+For real hardware evidence, `ros2 bag` records all topics to a self-describing
+MCAP file for offline replay and audit. The semantic handoff to the downstream
+self-modeling components is still `contracts.ContractLine` JSONL exported from
+that hardware evidence.
+
+For fixture-backed MVP work, use the repo-level `telemetry-fixtures/` run data
+instead. F8, F9, F10, F11, F12, and `make demo` should consume its
+`contract.jsonl` directly; the fixture path is not a real robot run and does not
+require ROS, hardware, or MCAP. PR #43 provides a useful JSONL baseline with
+partial MCAP capture, not proof that the full hardware capture and replay/audit
+requirements are complete.
 
 ```bash
 # Record everything

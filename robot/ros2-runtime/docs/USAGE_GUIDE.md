@@ -215,6 +215,13 @@ The Brain will echo an ack on `/vex/ack`:
 
 ## 5. Recording a Session and Exporting for LLM Analysis
 
+Downstream self-modeling code consumes `contracts.ContractLine` JSONL as the
+semantic handoff. For fixture-backed MVP development, use
+`telemetry-fixtures/<run-id>/contract.jsonl`; that path is enough for F8, F9,
+F10, F11, F12, and `make demo` and does not require a robot, ROS, or MCAP.
+Real hardware sessions recorded here keep MCAP as the replay/audit source and
+export the same JSONL shape afterward.
+
 ### Align to a visible tag
 
 The `align_to_tag` node is a bounded local-control skill. It does not call an
@@ -303,7 +310,10 @@ ros2 bag play session_20260623_143000/
 
 ### Export topics to JSON for LLM analysis
 
-Extract the telemetry and command topics to newline-delimited JSON:
+Extract the telemetry and command topics to newline-delimited JSON when
+debugging raw ROS messages. This is not the downstream semantic handoff; export
+or assemble `contracts.ContractLine` JSONL before passing evidence to the
+self-modeling pipeline.
 
 ```bash
 # Install ros2_bag_exporter if not present, or use the built-in convert
@@ -323,7 +333,9 @@ ros2 topic echo /survey/result --no-arr > survey_result.txt
 ros2 topic echo /vex/cmd --no-arr > commands.txt
 ```
 
-Combine into a structured payload and pass to the Claude API for self-model revision. See the LLM feedback loop in [ARCHITECTURE.md](ARCHITECTURE.md).
+Combine into a structured proof payload, then export contract-valid
+`ContractLine` JSONL before using it for self-model revision. See the LLM
+feedback loop in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ---
 

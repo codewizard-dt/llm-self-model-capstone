@@ -336,7 +336,7 @@ The runtime has focused unit coverage under `robot/ros2-runtime/tests/` for:
 
 `robot/ros2-runtime/src/vexy_ros/operator/` is the on-robot operator layer — it runs as a ROS 2 node on the Raspberry Pi, consumes live sensor streams, and drives the VEX V5 Brain via primitive commands. It is **feature-complete for ball-delivery tasks**.
 
-relates_to::[[operator-llm-packet-builder]]
+relates_to::[[self-model-packet-builder]]
 feeds::[[task-telemetry-contract]]
 
 ### File Layout

@@ -4,6 +4,12 @@ Transport: newline-delimited UTF-8 JSON.
 
 Initial physical transport: V5 Brain Micro-USB console/user serial port.
 
+This command/ack protocol is transport evidence, not the downstream
+self-modeling handoff. F8, F9, F10, F11, F12, and `make demo` consume
+`contracts.ContractLine` JSONL; fixture-backed MVP runs read it from
+`telemetry-fixtures/<run-id>/contract.jsonl`, while later hardware runs export
+the same shape from MCAP-backed ROS 2 captures.
+
 Every packet includes:
 
 - `v`: protocol version, currently `1`

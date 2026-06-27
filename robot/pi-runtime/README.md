@@ -97,6 +97,14 @@ The full physical-port and protocol notes are documented in
 - **Send commands** through ROS `/vex/cmd`; the guarded Brain bridge accepts
   `stop`, `drive`, `turn`, and fixed `routine` slots `2`, `3`, and `4`.
 
+## Telemetry Evidence Scope
+
+This legacy runtime is not the canonical evidence exporter. Downstream MVP
+self-modeling uses `contracts.ContractLine` JSONL from
+`../../telemetry-fixtures/<run-id>/contract.jsonl` without requiring this runtime,
+ROS, MCAP, or hardware. Later real-hardware evidence is captured by
+`../ros2-runtime` as MCAP plus an exported contract-valid JSONL handoff.
+
 ### Original first-contact checklist
 
 1. Connect the V5 Brain Micro-USB to the Pi.
