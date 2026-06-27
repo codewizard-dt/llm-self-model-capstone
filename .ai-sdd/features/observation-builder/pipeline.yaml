@@ -1,0 +1,10 @@
+apiVersion: ai-sdd/v1
+kind: Pipeline
+metadata: { name: observation-builder, version: 1 }
+spec:
+  semantics: enabler
+  nodes:
+    - { id: pilot-scaffold-and-cache, kind: pipeline, pipeline: ../.., stack: pilot }
+    - { id: observation-snapshot-builder, kind: pipeline, pipeline: ../.., stack: pilot }
+  edges:
+    - { from: pilot-scaffold-and-cache, to: observation-snapshot-builder }
