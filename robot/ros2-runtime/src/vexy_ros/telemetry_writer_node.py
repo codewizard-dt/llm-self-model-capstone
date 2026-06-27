@@ -10,13 +10,9 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
 
-TELEMETRY_TOPICS = (
-    "/operator/run_start",
-    "/operator/events",
-    "/operator/results",
-    "/operator/status",
-    "/vex/telemetry",
-)
+from .operator_run_capture import STRING_TELEMETRY_TOPICS
+
+TELEMETRY_TOPICS = STRING_TELEMETRY_TOPICS
 
 
 def _topic_to_filename(topic: str) -> str:

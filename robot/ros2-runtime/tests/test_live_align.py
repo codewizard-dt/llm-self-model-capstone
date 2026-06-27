@@ -8,7 +8,10 @@ Requires Brain slot 8 running and AprilTags physically visible to the camera.
 Exits 0 on success, 1 on failure or timeout.
 """
 
+import argparse
+from datetime import datetime
 import json
+from pathlib import Path
 import subprocess
 import sys
 import time
@@ -18,10 +21,19 @@ try:
     import rclpy
     from rclpy.node import Node
     from std_msgs.msg import String
+    from vexy_ros.operator_run_capture import (
+        start_operator_run_capture,
+        stop_operator_run_capture,
+    )
 except ModuleNotFoundError as exc:
     raise unittest.SkipTest("ROS 2 Python packages are not installed") from exc
 
 STACK_SERVICE = "vexy-ros-stack.service"
+
+
+def default_telemetry_dir() -> Path:
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    return Path(f"/home/vexy/telemetry/live-align-{stamp}")
 
 
 def ensure_stack_running() -> bool:
@@ -75,8 +87,40 @@ class AlignTestNode(Node):
             String(data=json.dumps({"action": action, **extras}, separators=(",", ":")))
         )
 
+    def _wait_for_result(self, action: str, timeout_s: float) -> dict | None:
+        deadline = time.monotonic() + timeout_s
+        while time.monotonic() < deadline:
+            rclpy.spin_once(self, timeout_sec=0.02)
+            result = self._last_result
+            if result is None:
+                continue
+            outcome = result.get("outcome", {})
+            if outcome.get("method") != action:
+                self._last_result = None
+                continue
+            self._last_result = None
+            return result
+        return None
+
+    def _reset_operator(self) -> bool:
+        print("[reset_operator]")
+        self._last_result = None
+        self._send("reset_operator", {})
+        result = self._wait_for_result("reset_operator", 3.0)
+        if result is None:
+            print("  TIMEOUT after 3.0s")
+            return False
+        outcome = result.get("outcome", {})
+        if not outcome.get("success"):
+            print(f"  FAIL  {outcome.get('reason')}")
+            return False
+        print(f"  OK  {outcome.get('reason')}")
+        return True
+
     def run(self) -> bool:
         print("=== align test: locate → approach ===")
+        if not self._reset_operator():
+            return False
         for action, extras, timeout_s in STEPS:
             extras_str = f"  extras={extras}" if extras else ""
             print(f"[{action}]{extras_str}")
@@ -113,10 +157,28 @@ class AlignTestNode(Node):
         return True
 
 
-def main() -> None:
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--telemetry-dir", type=Path, default=None)
+    parser.add_argument("--no-telemetry-capture", action="store_true")
+    parser.add_argument("--capture-settle-s", type=float, default=1.0)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = build_parser().parse_args(argv)
     print("=== pre-flight: camera stack ===")
     if not ensure_stack_running():
         sys.exit(1)
+    telemetry_dir = args.telemetry_dir or default_telemetry_dir()
+    capture_processes: list[subprocess.Popen] = []
+    if not args.no_telemetry_capture:
+        print(f"=== telemetry capture: {telemetry_dir} ===")
+        capture_processes = start_operator_run_capture(
+            telemetry_dir,
+            label="test_live_align.py",
+        )
+        time.sleep(max(0.0, args.capture_settle_s))
     rclpy.init()
     node = AlignTestNode()
     try:
@@ -125,6 +187,9 @@ def main() -> None:
     finally:
         node.destroy_node()
         rclpy.shutdown()
+        stop_operator_run_capture(capture_processes)
+        if capture_processes:
+            print(f"=== telemetry written under: {telemetry_dir} ===")
 
 
 if __name__ == "__main__":

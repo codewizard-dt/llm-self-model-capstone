@@ -285,6 +285,7 @@ class OperatorConfig:
     turn_kp: float = 0.9
     drive_ttl_ms: int = 180
     stop_ttl_ms: int = 200
+    arm_ttl_ms: int = 4000
     pickup_open_ms: int = 600
     pickup_open_settle_s: float = 0.2
     pickup_grab_settle_s: float = 0.35
@@ -294,6 +295,8 @@ class OperatorConfig:
     ball_approach_max_vx: float = 0.09
     ball_blind_approach_s: float = 1.35
     ball_blind_approach_vx: float = 0.07
+    ball_close_forward_m: float = 0.025
+    ball_close_min_approach_s: float = 0.35
     ball_wall_contact_s: float = 3.4
     ball_wall_contact_vx: float = 0.10
     end_effector_grip_current_amp: float = 0.45
@@ -406,6 +409,21 @@ class Operator:
             snapshot.manipulator_sample
         ):
             self.pickup_grip_confirmed = True
+
+    def reset_state(self) -> None:
+        self.vision = VisionSnapshot(stamp_s=0.0)
+        self.telemetry = None
+        self.map_pose = None
+        self.localization_source = "unknown"
+        self.last_pose_update_s = None
+        self.last_command = None
+        self.pickup_phase = "idle"
+        self.pickup_phase_start_s = None
+        self.pickup_visual_capture_confirmed = False
+        self.pickup_grip_confirmed = False
+        self.pickup_attempts = 0
+        self.arm_raise_sent_for_tags.clear()
+        self._emit("operator_state_reset", {"run_index": self.run_index})
 
     def current_pose(self) -> Pose2D | None:
         self._advance_dead_reckoning(self.clock())
@@ -721,7 +739,7 @@ class Operator:
             self.arm_raise_sent_for_tags.add(tag_index)
             command = PrimitiveCommand(
                 "arm",
-                ttl_ms=self.config.stop_ttl_ms,
+                ttl_ms=self.config.arm_ttl_ms,
                 target_deg=self.config.arm_raise_target_deg,
                 reason=f"raise_arm_for_tag_{tag_index}",
             )
@@ -831,7 +849,17 @@ class Operator:
         if self.pickup_phase == "approaching":
             ball = self.fresh_ball()
             approach_elapsed_s = now_s - float(self.pickup_phase_start_s or now_s)
+            close_reason = None
             if approach_elapsed_s >= self.config.ball_wall_contact_s:
+                close_reason = "wall_contact_timeout"
+            elif (
+                ball is not None
+                and ball.forward_m is not None
+                and approach_elapsed_s >= self.config.ball_close_min_approach_s
+                and float(ball.forward_m) <= self.config.ball_close_forward_m
+            ):
+                close_reason = "ball_at_claw"
+            if close_reason is not None:
                 command = PrimitiveCommand(
                     "grab",
                     ttl_ms=max(self.config.stop_ttl_ms, duration_ms),
@@ -846,6 +874,7 @@ class Operator:
                     {
                         "approach_elapsed_s": approach_elapsed_s,
                         "duration_ms": duration_ms,
+                        "reason": close_reason,
                     },
                 )
                 return OperatorResult(
@@ -883,17 +912,11 @@ class Operator:
 
             forward_m = float(ball.forward_m)
             left_m = float(ball.left_m)
-            yaw_rad = math.atan2(left_m, max(forward_m, 0.05))
-            omega = clamp(
-                0.35 * yaw_rad,
-                -self.config.max_omega,
-                self.config.max_omega,
-            )
             command = PrimitiveCommand(
                 "drive",
                 vx=self.config.ball_wall_contact_vx,
                 vy=0.0,
-                omega=omega,
+                omega=0.0,
                 ttl_ms=self.config.drive_ttl_ms,
                 reason="push_ball_to_wall",
             )
@@ -903,7 +926,7 @@ class Operator:
                 {
                     "forward_m": forward_m,
                     "left_m": left_m,
-                    "yaw_rad": yaw_rad,
+                    "vision_used_for_steering": False,
                     "approach_elapsed_s": approach_elapsed_s,
                 },
             )
@@ -998,13 +1021,19 @@ class Operator:
         return self._timed_claw("lift", duration_ms, reason="operator_lift")
 
     def release(self, *, duration_ms: int = DEFAULT_RELEASE_MS) -> OperatorResult:
-        return self._timed_claw("release", duration_ms, reason="operator_release")
+        result = self._timed_claw("release", duration_ms, reason="operator_release")
+        self.pickup_phase = "idle"
+        self.pickup_phase_start_s = None
+        self.pickup_visual_capture_confirmed = False
+        self.pickup_grip_confirmed = False
+        self.pickup_attempts = 0
+        return result
 
     def arm(self, *, target_deg: float) -> OperatorResult:
         target_deg = clamp(float(target_deg), 0.0, 360.0)
         command = PrimitiveCommand(
             "arm",
-            ttl_ms=self.config.stop_ttl_ms,
+            ttl_ms=self.config.arm_ttl_ms,
             target_deg=target_deg,
             reason="operator_arm",
         )

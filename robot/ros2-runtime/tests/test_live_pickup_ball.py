@@ -10,7 +10,6 @@ Exits 0 on success, 1 on failure or timeout.
 
 import argparse
 import json
-import signal
 import subprocess
 import sys
 import time
@@ -22,6 +21,10 @@ try:
     import rclpy
     from rclpy.node import Node
     from std_msgs.msg import String
+    from vexy_ros.operator_run_capture import (
+        start_operator_run_capture,
+        stop_operator_run_capture,
+    )
 except ModuleNotFoundError as exc:
     raise unittest.SkipTest("ROS 2 Python packages are not installed") from exc
 
@@ -53,14 +56,6 @@ def ensure_stack_running() -> bool:
 
 
 FAIL_REASONS = {"disabled", "grab_failed", "grab_not_confirmed", "unmapped_tag"}
-TELEMETRY_TOPICS = (
-    "/operator/run_start",
-    "/operator/events",
-    "/operator/results",
-    "/operator/status",
-    "/vex/telemetry",
-)
-
 # (action, payload_extras, timeout_s, repeat_until_success, post_wait_s)
 STEPS = [
     ("locate_nearest_apriltag", {}, 20.0, True, 0.0),
@@ -78,6 +73,7 @@ class PickupBallTestNode(Node):
         self._cmd_pub = self.create_publisher(String, "/operator/command", 10)
         self._last_result: dict | None = None
         self._telemetry_count = 0
+        self._last_arm_position_deg: float | None = None
         self.create_subscription(String, "/operator/results", self._on_result, 10)
         self.create_subscription(String, "/operator/events", self._on_event, 10)
         self.create_subscription(String, "/vex/telemetry", self._on_telemetry, 10)
@@ -95,13 +91,38 @@ class PickupBallTestNode(Node):
         except json.JSONDecodeError:
             pass
 
-    def _on_telemetry(self, _msg: String) -> None:
+    def _on_telemetry(self, msg: String) -> None:
         self._telemetry_count += 1
+        try:
+            payload = json.loads(msg.data)
+        except json.JSONDecodeError:
+            return
+        for sample in payload.get("motor_samples", []):
+            if not isinstance(sample, dict):
+                continue
+            if sample.get("device") != "arm" and sample.get("subsystem") != "arm":
+                continue
+            values = sample.get("values", {})
+            if not isinstance(values, dict):
+                continue
+            position = values.get("position_deg")
+            if position is not None:
+                self._last_arm_position_deg = float(position)
+                return
 
     def _send(self, action: str, extras: dict) -> None:
         self._cmd_pub.publish(
             String(data=json.dumps({"action": action, **extras}, separators=(",", ":")))
         )
+
+    def _wait_for_operator_command_subscription(self, timeout_s: float = 5.0) -> bool:
+        deadline = time.monotonic() + timeout_s
+        while time.monotonic() < deadline:
+            rclpy.spin_once(self, timeout_sec=0.05)
+            if self._cmd_pub.get_subscription_count() > 0:
+                return True
+        print("  FAIL  operator command subscription not discovered")
+        return False
 
     def _wait_for_result(self, action: str, timeout_s: float) -> dict | None:
         deadline = time.monotonic() + timeout_s
@@ -117,6 +138,36 @@ class PickupBallTestNode(Node):
             self._last_result = None
             return result
         return None
+
+    def _reset_operator(self) -> bool:
+        print("[reset_operator]")
+        self._last_result = None
+        self._send("reset_operator", {})
+        result = self._wait_for_result("reset_operator", 3.0)
+        if result is None:
+            print("  TIMEOUT after 3.0s")
+            return False
+        outcome = result.get("outcome", {})
+        if not outcome.get("success"):
+            print(f"  FAIL  {outcome.get('reason')}")
+            return False
+        print(f"  OK  {outcome.get('reason')}")
+        return True
+
+    def _wait_for_arm_target(self, target_deg: float, timeout_s: float) -> bool:
+        deadline = time.monotonic() + timeout_s
+        while time.monotonic() < deadline:
+            rclpy.spin_once(self, timeout_sec=0.02)
+            position = self._last_arm_position_deg
+            if position is not None and abs(position - target_deg) <= 15.0:
+                print(f"  ARM at {position:.1f} deg")
+                return True
+        print(
+            "  FAIL  arm_target_not_reached"
+            f" target={target_deg:.1f}"
+            f" last={self._last_arm_position_deg}"
+        )
+        return False
 
     def _run_repeated_step(self, action: str, extras: dict, timeout_s: float) -> bool:
         deadline = time.monotonic() + timeout_s
@@ -159,6 +210,11 @@ class PickupBallTestNode(Node):
             print(f"  FAIL  {outcome.get('reason')}")
             return False
         print(f"  OK  {outcome.get('reason')}")
+        if action == "arm":
+            return self._wait_for_arm_target(
+                float(extras["target_deg"]),
+                post_wait_s if post_wait_s > 0 else timeout_s,
+            )
         deadline = time.monotonic() + post_wait_s
         while time.monotonic() < deadline:
             rclpy.spin_once(self, timeout_sec=0.02)
@@ -166,6 +222,10 @@ class PickupBallTestNode(Node):
 
     def run(self) -> bool:
         print("=== pickup test: tag 1 → pickup → arm up/down → release ===")
+        if not self._wait_for_operator_command_subscription():
+            return False
+        if not self._reset_operator():
+            return False
         for action, extras, timeout_s, repeat_until_success, post_wait_s in STEPS:
             extras_str = f"  extras={extras}" if extras else ""
             print(f"[{action}]{extras_str}")
@@ -184,68 +244,9 @@ class PickupBallTestNode(Node):
         return self._telemetry_count
 
 
-def start_telemetry_capture(
-    telemetry_dir: Path, *, bag_record: bool
-) -> list[subprocess.Popen]:
-    telemetry_dir.mkdir(parents=True, exist_ok=True)
-    (telemetry_dir / "test.txt").write_text("test_live_pickup_ball.py\n")
-    processes = [
-        subprocess.Popen(
-            [
-                "ros2",
-                "run",
-                "vexy_ros",
-                "vexy_telemetry_writer_node",
-                "--out-dir",
-                str(telemetry_dir),
-                "--run-id",
-                telemetry_dir.name,
-            ],
-            stdout=(telemetry_dir / "telemetry-writer.log").open("w"),
-            stderr=subprocess.STDOUT,
-        )
-    ]
-    if bag_record:
-        processes.append(
-            subprocess.Popen(
-                [
-                    "ros2",
-                    "bag",
-                    "record",
-                    "-o",
-                    str(telemetry_dir / "bag"),
-                    *TELEMETRY_TOPICS,
-                ],
-                stdout=(telemetry_dir / "bag-record.log").open("w"),
-                stderr=subprocess.STDOUT,
-            )
-        )
-    return processes
-
-
-def stop_process(process: subprocess.Popen) -> None:
-    if process.poll() is not None:
-        return
-    process.send_signal(signal.SIGINT)
-    try:
-        process.wait(timeout=8)
-        return
-    except subprocess.TimeoutExpired:
-        pass
-    process.terminate()
-    try:
-        process.wait(timeout=3)
-        return
-    except subprocess.TimeoutExpired:
-        pass
-    process.kill()
-    process.wait(timeout=3)
-
-
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--telemetry-dir", type=Path, default=None)
-    parser.add_argument("--no-bag-record", action="store_true")
     parser.add_argument("--no-telemetry-capture", action="store_true")
     parser.add_argument("--capture-settle-s", type=float, default=1.0)
     return parser
@@ -260,8 +261,9 @@ def main(argv: list[str] | None = None) -> None:
     capture_processes: list[subprocess.Popen] = []
     if not args.no_telemetry_capture:
         print(f"=== telemetry capture: {telemetry_dir} ===")
-        capture_processes = start_telemetry_capture(
-            telemetry_dir, bag_record=not args.no_bag_record
+        capture_processes = start_operator_run_capture(
+            telemetry_dir,
+            label="test_live_pickup_ball.py",
         )
         time.sleep(max(0.0, args.capture_settle_s))
     rclpy.init()
@@ -273,8 +275,7 @@ def main(argv: list[str] | None = None) -> None:
     finally:
         node.destroy_node()
         rclpy.shutdown()
-        for process in reversed(capture_processes):
-            stop_process(process)
+        stop_operator_run_capture(capture_processes)
         if capture_processes:
             print(f"=== telemetry written under: {telemetry_dir} ===")
 

@@ -1,0 +1,14 @@
+{
+  "hooks" : {
+    "SessionStart" : [
+      {
+        "hooks" : [
+          {
+            "command" : "ai-sdd update --check",
+            "type" : "command"
+          }
+        ]
+      }
+    ]
+  }
+}
