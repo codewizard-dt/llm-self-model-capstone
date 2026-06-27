@@ -231,6 +231,28 @@ def test_gap_summary_rejects_unmatched_expected_run_id() -> None:
         analyze_contract_lines(lines, expected_run_id="run_43")
 
 
+def test_live_gap_summary_requires_every_line_to_carry_run_id() -> None:
+    lines = [
+        _deliver_ball_line(
+            round_id=1,
+            method="pickup_ball",
+            success=False,
+            reason="grab_failed",
+            run_id="run_42",
+        ),
+        _deliver_ball_line(
+            round_id=2,
+            method="pickup_ball",
+            success=False,
+            reason="grab_failed",
+            run_id=None,
+        ),
+    ]
+
+    with pytest.raises(ValueError, match="missing run_id"):
+        analyze_contract_lines(lines, expected_run_id="run_42", provenance="live")
+
+
 def test_residual_latest_uses_round_order_not_input_order() -> None:
     earlier = _deliver_ball_line(
         round_id=1,

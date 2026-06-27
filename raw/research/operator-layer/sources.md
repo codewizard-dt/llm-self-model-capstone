@@ -8,23 +8,23 @@ researched: 2026-06-25
 
 | ID | Type | Locator | Accessed | What it contributed |
 |----|------|---------|----------|---------------------|
-| S1 | codebase | `operator/src/operator_llm/packet_builder.py::build_operator_packet` | 2026-06-25 | Full packet structure: all 8 sections, blocked-state constants, source-refs stamping for ROS bundles |
+| S1 | codebase | `self_model_generator/src/self_model_generator/packet_builder.py::build_self_model_packet` | 2026-06-25 | Full packet structure, blocked-state constants, source-refs stamping for ROS bundles |
 | S2 | codebase | `robot/ros2-runtime/src/vexy_ros/operator/core.py::Operator` | 2026-06-25 | Complete method list, localization state machine, `contract_result` schema, `OperatorTaskContract` structure |
-| S3 | codebase | `operator/docs/llm_critic_architecture.md` | 2026-06-25 | F8/F9 architecture contract, Generator/Critic input-output specs, F10 blocker, implementation slice list |
+| S3 | codebase | `self_model_generator/docs/llm_critic_architecture.md` | 2026-06-25 | F8/F9 architecture contract, Generator/Critic input-output specs, F10 blocker, implementation slice list |
 | S4 | codebase | `robot/ros2-runtime/operator/GUIDEBOOK.md` | 2026-06-25 | Primitive commands, operator abstractions, task outline format, vision inputs, localization, telemetry events, contract results, SSH command format |
 | S5 | codebase | `robot/ros2-runtime/src/vexy_ros/operator/node.py::OperatorNode` | 2026-06-25 | ROS topics (subscriptions + publishers), parameters, 0.25 s status timer |
 | S6 | codebase | `robot/ros2-runtime/src/vexy_ros/evidence_export.py::contract_jsonl_from_bundle` | 2026-06-25 | Proof-export routine cited in packets: validates and serializes bundle to ContractLine JSONL |
-| S7 | codebase | `operator/src/operator_llm/validate.py::validate_fixture_packets` | 2026-06-25 | Integration test confirming blocked-state invariants for both JSONL and ROS-bundle packet paths |
-| S8 | codebase | `operator/tests/test_packet_builder.py` | 2026-06-25 | 5 test functions: F10 + hardware-proof blockers, ROS bundle naming, missing-contract label, fixture gap label, catalog violations |
-| S9 | codebase | `operator/pyproject.toml` | 2026-06-25 | Package name `operator-llm-critic` v0.2.0, Python 3.12 constraint, pydantic + reactivex deps |
-| S10 | codebase | `operator/Makefile` | 2026-06-25 | PYTHONPATH includes `../contracts/src` and `../robot/ros2-runtime/src` — confirms shared dependency |
-| S11 | codebase | `operator/docs/README.md` | 2026-06-25 | Operator vertical purpose: Generator (Gen 0 + Gen N+1), Critic panel, gap analyzer, presenter/demo replay |
+| S7 | codebase | `self_model_generator/src/self_model_generator/validate.py::validate_fixture_packets` | 2026-06-25 | Integration test confirming blocked-state invariants for both JSONL and ROS-bundle packet paths |
+| S8 | codebase | `self_model_generator/tests/test_packet_builder.py` | 2026-06-25 | Packet-builder tests: F10 + hardware-proof blockers, ROS bundle naming, missing-contract label, fixture gap label, catalog violations |
+| S9 | codebase | `self_model_generator/pyproject.toml` | 2026-06-25 | Package name `self-model-generator`, Python 3.12 constraint, pydantic + reactivex deps |
+| S10 | codebase | `self_model_generator/Makefile` | 2026-06-25 | PYTHONPATH includes `../contracts/src` and `../robot/ros2-runtime/src` — confirms shared dependency |
+| S11 | codebase | `self_model_generator/docs/README.md` | 2026-06-25 | Self-model generator vertical purpose: Generator (Gen 0 + Gen N+1), Critic panel, gap analyzer, presenter/demo replay |
 
 ## Excerpts
 
-### S1 — `build_operator_packet` sections
-`operator/src/operator_llm/packet_builder.py` lines 81–140
-> Sections produced: `# Operator Packet`, `## Track 1 - M1 + ROS Proof Intake`, `## Track 2 - Operator LLM Packet`, `### Source References`, `### Current SelfModel`, `### Parts Catalog Verdict`, `### Contract Evidence`, `### Gap Summary`, `### Human Constraints`, `### Generator Guardrails`
+### S1 — `build_self_model_packet` sections
+`self_model_generator/src/self_model_generator/packet_builder.py`
+> Sections produced: `# Self-Model Generator Packet`, `## Track 1 - M1 + ROS Proof Intake`, `## Track 2 - Self-Model Generator Packet`, `### Source References`, `### Current SelfModel`, `### Parts Catalog Verdict`, `### Contract Evidence`, `### Gap Summary`, `### Human Constraints`, `### Generator Guardrails`
 
 ### S2 — `Operator` method list
 `robot/ros2-runtime/src/vexy_ros/operator/core.py` lines 288–832
@@ -47,5 +47,5 @@ researched: 2026-06-25
 > `payload = contract_payload_from_bundle(bundle); line = json.dumps(payload, ..., sort_keys=True); if validate: validate_contract_line(line); return line + "\n"`
 
 ### S7 — ROS packet validation invariant
-`operator/src/operator_llm/validate.py` lines 36–43
+`self_model_generator/src/self_model_generator/validate.py`
 > `if "vexy_ros.evidence_export.contract_jsonl_from_bundle" not in ros_packet: raise AssertionError(...)` and `if "proof/rosbags/align_to_tag_fixture" not in ros_packet: raise AssertionError(...)`

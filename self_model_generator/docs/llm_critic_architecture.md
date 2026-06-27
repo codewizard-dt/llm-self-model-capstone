@@ -18,9 +18,10 @@ related:
 ## Purpose
 
 This document is the bridge from Grace's pre-schema LLM/Critic requirements to
-the concrete F8/F9 implementation slices. It does not implement the Generator or
-Critic panel yet. It freezes the architecture vocabulary the team should use
-when those slices are created.
+the concrete F8/F9 implementation slices. The first deterministic Generator,
+Critic panel, and TaskEnvelope exporter now live in
+`self_model_generator.loop_closure`; future work can swap in external LLM
+adapters behind the same contract boundaries.
 
 The core rule is simple: `self_model_generator/` orchestrates offline LLM work,
 but `contracts/` owns the durable shapes. The Generator and Critics consume
@@ -43,6 +44,7 @@ As of 2026-06-27, the architecture can assume:
 | `TelemetrySource` / `VisionSource` | Merged in F4 / PR #14 | Runtime sources can be replay, synthetic, serial, or camera without changing generator logic. |
 | ROS 2 align-to-tag evidence path | Merged software PR #15 | MCAP/raw ROS proof should be exported into `ContractLine` before the self-model generator loop consumes it. |
 | F10 gap analyzer first slice | Implemented in `self_model_generator.gap_analyzer` | ContractLine JSONL can now produce provenance-labeled residual/diagnosis summaries for packet input. |
+| F8/F9 loop-closure first slice | Implemented in `self_model_generator.loop_closure` | Gap summaries can now produce a candidate `SelfModel`, receive deterministic critic review, and export an approved next `TaskEnvelope`. |
 
 F3 parts-catalog grammar has landed. F10 is no longer completely blocked, but
 the current analyzer is still a first self-model generator slice: it covers
@@ -165,6 +167,10 @@ For the MVP, Critic outputs can be markdown with a strict heading template. If
 F9 needs a formal `CriticReview` model later, the team should decide whether it
 belongs in `contracts/` before treating it as durable schema.
 
+The first implementation returns a dict-shaped report from
+`run_critic_panel(...)`. It is intentionally deterministic so tests can verify
+the closed artifact path before an external LLM adapter is introduced.
+
 ## Blocked-State Rules
 
 The LLM must say when a required dependency is missing. Use exact blocked labels
@@ -230,15 +236,16 @@ After this doc is accepted, split implementation into small AI-SDD slices:
 |---|---|---|
 | `self-model-packet-builder` | F8 support | Builds a markdown/JSON packet from `SelfModel`, `ContractLine` JSONL, F3 catalog constraints, human constraints, and blocked-state notes. |
 | `self-model-gap-analyzer` | F10 support | Builds a residual/diagnosis summary from contract-valid JSONL and recommends known runtime knobs for review. |
-| `generator-prompt-and-fixtures` | F8 | Prompt skeleton plus fixture proving Gen 0 and Gen N+1 candidate output validates against `contracts.SelfModel`. |
-| `generator-gap-revision` | F8 | Uses a fixture F10 residual summary to revise `predictive`, `gap_model`, and keyed `reasoning`. |
-| `critic-prompt-panel` | F9 | Three stateless critic prompt templates: physics, torque, CoM/geometry. |
-| `critic-review-aggregation` | F9 | Aggregates pass/flag reviews into a human-gate report without self-approval. |
+| `generator-gap-revision` | F8 | Implemented first deterministic slice: uses an F10 residual summary to revise `predictive`, `gap_model`, and keyed `reasoning`. |
+| `critic-review-aggregation` | F9 | Implemented first deterministic slice: physics, torque, and CoM/geometry reviews aggregate into a non-self-approving report. |
+| `approved-task-envelope-export` | F8/F9 to runtime | Implemented first deterministic slice: approved candidates compile into the next `TaskEnvelope`. |
+| `generator-prompt-and-fixtures` | F8 | Future external-LLM adapter around the same candidate `SelfModel` contract. |
+| `critic-prompt-panel` | F9 | Future prompt templates for external physics, torque, and CoM/geometry critics. |
 | `planted-fault-critic-tests` | F9 | Fixtures with known bad self-models that each critic must flag. |
 
-Suggested order: build the packet builder first, then Generator fixture output,
-then critic prompts, then planted-fault tests. That keeps every step tied to
-visible repo data.
+Suggested order from here: harden live-run residual coverage and planted-fault
+critic tests, then introduce external LLM prompt adapters behind the deterministic
+contract-tested harness.
 
 ## Acceptance Checklist
 
@@ -256,6 +263,7 @@ visible repo data.
 
 Grace can say:
 
-> I built the LLM/Critic architecture doc. It keeps schemas in `contracts`,
-> defines the Generator and three stateless Critics, names the remaining F10
-> blocker, and translates the work into F8/F9 implementation slices.
+> I built the first repo-local LLM/Critic loop slice. It keeps schemas in
+> `contracts`, turns F10 gap summaries into candidate `SelfModel` revisions,
+> runs deterministic physics/torque/CoM critic checks, and exports an approved
+> next `TaskEnvelope` for the robot.

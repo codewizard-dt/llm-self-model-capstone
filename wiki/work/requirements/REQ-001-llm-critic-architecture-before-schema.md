@@ -12,7 +12,7 @@ stakeholders:
 tags:
   - llm
   - critic
-  - operator
+  - self-model-generator
   - contracts
   - m1
   - ai-sdd
@@ -26,7 +26,7 @@ Grace's current assignment is to define the high-level architecture for the LLM 
 
 The output of this requirement should help the team answer: what the Generator consumes, what it produces, what the Critics inspect, what data the contracts must expose, and whether the agent team can run on a Raspberry Pi or needs an external runtime.
 
-This requirement must stay aligned with the current GitHub state, especially merged PR #9, because PR #9 moved the project toward a top-level `contracts/` package that downstream LLM/operator work should import rather than duplicate.
+This requirement must stay aligned with the current GitHub state, especially merged PR #9 and the later PR #39 rename, because PR #9 moved the project toward a top-level `contracts/` package that downstream `self_model_generator` work should import rather than duplicate.
 
 ## Current GitHub Snapshot
 
@@ -39,7 +39,7 @@ and F4 as hypothetical. The architecture brief should consume
 `VisionSource` adapter protocols directly. PR #15 `ROS 2 align-to-tag bridge
 and tag slices` is merged; hardware proof remains a separate truth gate. PR
 #16 `parts-catalog-grammar` is merged, so F3 is no longer hypothetical: the
-operator LLM/Critic work should consume `contracts.PartsCatalog`,
+`self_model_generator` LLM/Critic work should consume `contracts.PartsCatalog`,
 `contracts/parts_catalog.json`, and `contracts.validate_config` directly.
 
 | PR | State | Review | Author | Assignee | Alignment note |
@@ -84,7 +84,7 @@ The approved AI-SDD program in `.ai-sdd/programs/self-model-loop/requirements.md
 
 - F1 telemetry-contract is in `contracts/` and unblocks F4, F7, F10, F14, and F15.
 - F2 self-model-schema is in `contracts/` and unblocks F8, F9, and F11.
-- F8 and F9 are operator-layer work after the schema is stable enough to consume.
+- F8 and F9 are `self_model_generator` work after the schema is stable enough to consume.
 
 Merged PR #9 adds or stages:
 
@@ -94,11 +94,11 @@ Merged PR #9 adds or stages:
 - `.ai-sdd/features/telemetry-contract/requirements.md`: F1 requirements and constraints.
 - `.ai-sdd/features/self-model-schema/brief.md`: draft F2 brief for `SelfModel`, shared vocabulary, fixtures, JSON Schema export, and validation gates.
 
-Therefore this requirement must not create any competing schema in `operator/`. The operator architecture must depend on the merged `contracts/` package as the cross-vertical source of truth.
+Therefore this requirement must not create any competing schema in `self_model_generator/`. The self-model generator architecture must depend on the merged `contracts/` package as the cross-vertical source of truth.
 
 ## Problem
 
-The team needs to design the LLM/operator side while contract work is still in motion. Without a written LLM and Critic architecture, the project risks:
+The team needs to design the `self_model_generator` LLM side while contract work is still in motion. Without a written LLM and Critic architecture, the project risks:
 
 - inventing prompt fields that do not map to F1 telemetry or F2 self-model schema;
 - duplicating contract definitions outside `contracts/`;
@@ -128,7 +128,7 @@ The team needs to design the LLM/operator side while contract work is still in m
 
 ## Personas
 
-### Grace: LLM/operator architecture owner
+### Grace: LLM/self-model-generator architecture owner
 
 Needs a clear, nontechnical-to-technical bridge: what she is supposed to produce, how it maps to repo features, and how to avoid stepping on contracts work.
 
@@ -147,9 +147,9 @@ Needs a fixed Critic panel shape and pass/flag/rationale outputs tied to F2 self
 
 ## Functional Requirements
 
-### LLM-001: Define the Operator Agent Team
+### LLM-001: Define the Self-Model Generator Agent Team
 
-The architecture must define at least four operator roles:
+The architecture must define at least four self-model generator roles:
 
 | Role | Purpose | Build timing |
 |---|---|---|
@@ -233,12 +233,12 @@ Allowed:
 - reference landed `contracts.SelfModel`;
 - reference `contracts.vocabulary`, `contracts.PartsCatalog`, and
   `contracts.validate_config` from landed F2/F3;
-- write prompt/interface docs in `operator/` or `wiki/work/`.
+- write prompt/interface docs in `self_model_generator/` or `wiki/work/`.
 
 Not allowed:
 
-- define telemetry JSON shapes under `operator/`;
-- define self-model JSON shapes under `operator/`;
+- define telemetry JSON shapes under `self_model_generator/`;
+- define self-model JSON shapes under `self_model_generator/`;
 - duplicate `contracts.vocabulary` enums;
 - assume task names are enums if F1 keeps `task: str`.
 
@@ -289,7 +289,7 @@ Therefore the Generator's `reasoning` field and the Critic rationales are not co
 
 ### Deliverable A: Architecture Brief
 
-Path: `operator/docs/llm_critic_architecture.md`.
+Path: `self_model_generator/docs/llm_critic_architecture.md`.
 
 Must include:
 
@@ -348,7 +348,7 @@ This requirement is satisfied when:
 3. Use the landed F2/F3 fields and catalog verdicts in the Generator and
    Critics requirements.
 4. With F2/F3 accepted, create an AI-SDD feature plan for
-   `operator-llm-critic-architecture` or split directly into F8/F9 planning
+   `self-model-generator-critic-architecture` or split directly into F8/F9 planning
    docs.
 5. Only after F10 is stable, implement the full gap-revision path for F8
    Generator and F9 Critic panel.

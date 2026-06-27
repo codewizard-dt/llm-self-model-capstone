@@ -340,6 +340,7 @@ class Operator:
         config: OperatorConfig | None = None,
         clock: Any = time.monotonic,
         event_sink: Callable[[OperatorEvent], None] | None = None,
+        raw_session_path: str | None = None,
     ) -> None:
         self.april_tag_map = validate_april_tag_map(april_tag_map)
         self.camera_in_robot = camera_in_robot
@@ -358,6 +359,7 @@ class Operator:
         self.config = config or OperatorConfig()
         self.clock = clock
         self.event_sink = event_sink
+        self.raw_session_path = raw_session_path
         self.available_april_tag_ids = tuple(sorted(self.april_tag_map))
         self.vision = VisionSnapshot(stamp_s=0.0)
         self.telemetry: TelemetrySnapshot | None = None
@@ -461,7 +463,7 @@ class Operator:
             "outcome": self._contract_outcome(method_name, result),
             "vision": self._contract_vision(pose),
             "source": {
-                "raw_session_path": None,
+                "raw_session_path": self.raw_session_path,
                 "brain_start_ms": None,
                 "brain_end_ms": None if telemetry is None else telemetry.raw_t_ms,
                 "pi_received_ms": None if telemetry is None else telemetry.raw_t_ms,
@@ -471,7 +473,13 @@ class Operator:
         return _strip_none(payload)
 
     def _contract_gap(self, result: OperatorResult) -> dict[str, float]:
-        gap = dict(self.task_contract.contract_line.get("gap", {}))
+        gap: dict[str, float] = {}
+        predicted = self.task_contract.contract_line.get("predicted", {})
+        if isinstance(predicted, Mapping) and isinstance(predicted.get("success"), bool):
+            gap["success_error"] = _bool_residual(
+                predicted=predicted["success"],
+                observed=result.success,
+            )
         if result.tag is not None:
             gap["yaw_error_rad"] = float(result.tag.yaw_rad or 0.0)
             gap["lateral_error_m"] = float(result.tag.left_m)
@@ -479,6 +487,8 @@ class Operator:
                 gap["distance_error_m"] = float(result.tag.distance_m or 0.0) - float(
                     result.target_distance_m or self.config.target_distance_m
                 )
+        if result.has_object is not None:
+            gap["object_confirmed_error"] = 0.0 if result.has_object else -1.0
         return gap or {"result_error": 0.0}
 
     def _contract_outcome(
@@ -1453,6 +1463,12 @@ def expected_wheel_rpm(*, vx_mps: float, omega_rad_s: float) -> float:
     rpm_per_mps = 60.0 / WHEEL_CIRCUMFERENCE_M
     turn_mps = abs(omega_rad_s) * (TRACK_WIDTH_M / 2.0)
     return max(abs(vx_mps) * rpm_per_mps, turn_mps * rpm_per_mps)
+
+
+def _bool_residual(*, predicted: bool, observed: bool) -> float:
+    if predicted == observed:
+        return 0.0
+    return -1.0 if predicted and not observed else 1.0
 
 
 def validate_contract_line_shape(raw: Mapping[str, Any]) -> None:
