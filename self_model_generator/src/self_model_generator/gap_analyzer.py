@@ -4,19 +4,35 @@ import argparse
 import json
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from contracts import ContractLine
 
 GAP_SUMMARY_SCHEMA_VERSION = "1.0"
+PROVENANCE_FIXTURE = "fixture"
+PROVENANCE_LIVE = "live"
+PROVENANCE_REPLAY = "replay"
+GapSummaryProvenance = Literal["fixture", "live", "replay"]
+PROVENANCE_VALUES = frozenset({PROVENANCE_FIXTURE, PROVENANCE_LIVE, PROVENANCE_REPLAY})
 PICKUP_IN_PROGRESS_REASONS = frozenset({"opening_claw", "moving_to_ball", "closing_claw"})
 POST_PICKUP_METHODS = frozenset(
     {"lift", "release", "move_to_tag", "locate_nearest_apriltag", "align_to_tag"}
 )
 
 
-def build_gap_summary_from_jsonl(path: Path) -> dict[str, Any]:
-    return analyze_contract_lines(read_contract_lines_jsonl(path))
+def build_gap_summary_from_jsonl(
+    path: Path,
+    *,
+    expected_run_id: str | None = None,
+    expected_session_id: str | None = None,
+    provenance: GapSummaryProvenance | None = None,
+) -> dict[str, Any]:
+    return analyze_contract_lines(
+        read_contract_lines_jsonl(path),
+        expected_run_id=expected_run_id,
+        expected_session_id=expected_session_id,
+        provenance=provenance or _infer_provenance(path),
+    )
 
 
 def read_contract_lines_jsonl(path: Path) -> list[ContractLine]:
@@ -32,22 +48,44 @@ def write_gap_summary(summary: dict[str, Any], path: Path) -> None:
     path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
 
 
-def analyze_contract_lines(lines: Sequence[ContractLine]) -> dict[str, Any]:
-    diagnoses = _diagnose(lines)
-    residuals = _residual_summary(lines)
+def analyze_contract_lines(
+    lines: Sequence[ContractLine],
+    *,
+    expected_run_id: str | None = None,
+    expected_session_id: str | None = None,
+    provenance: GapSummaryProvenance = PROVENANCE_FIXTURE,
+) -> dict[str, Any]:
+    provenance = _normalize_provenance(provenance)
+    ordered_lines = _ordered_lines(lines)
+    _validate_single_run_scope(ordered_lines, expected_run_id, expected_session_id)
+    diagnoses = _diagnose(ordered_lines)
+    residuals = _residual_summary(ordered_lines)
     return {
         "schema_version": GAP_SUMMARY_SCHEMA_VERSION,
         "kind": "gap_summary",
-        "source": _source_summary(lines),
+        "source": _source_summary(
+            ordered_lines,
+            expected_run_id=expected_run_id,
+            expected_session_id=expected_session_id,
+            provenance=provenance,
+        ),
         "residuals": residuals,
         "diagnoses": diagnoses,
-        "generator_handoff": _generator_handoff(lines, residuals, diagnoses),
+        "generator_handoff": _generator_handoff(ordered_lines, residuals, diagnoses),
     }
 
 
-def _source_summary(lines: Sequence[ContractLine]) -> dict[str, Any]:
+def _source_summary(
+    lines: Sequence[ContractLine],
+    *,
+    expected_run_id: str | None,
+    expected_session_id: str | None,
+    provenance: GapSummaryProvenance,
+) -> dict[str, Any]:
+    run_ids = _run_ids(lines)
     session_ids = sorted({line.session_id for line in lines})
     tasks = sorted({line.task for line in lines})
+    generations = sorted({line.generation for line in lines})
     raw_session_paths = sorted(
         {
             line.source.raw_session_path
@@ -58,10 +96,16 @@ def _source_summary(lines: Sequence[ContractLine]) -> dict[str, Any]:
     rounds = [line.round for line in lines]
     return {
         "contract_line_count": len(lines),
+        "run_ids": run_ids,
         "session_ids": session_ids,
+        "generations": generations,
         "tasks": tasks,
         "raw_session_paths": raw_session_paths,
         "round_range": [] if not rounds else [min(rounds), max(rounds)],
+        "expected_run_id": expected_run_id,
+        "expected_session_id": expected_session_id,
+        "provenance": provenance,
+        "single_run": len(run_ids) <= 1 and len(session_ids) <= 1,
     }
 
 
@@ -130,6 +174,7 @@ def _append_pickup_advanced_diagnoses(
                     "was actually confirmed."
                 ),
                 evidence={
+                    "run_id": _line_run_id(line),
                     "session_id": line.session_id,
                     "methods": [method, next_method],
                     "pickup_reason": reason,
@@ -170,6 +215,7 @@ def _append_object_confirmation_diagnoses(
                         "object after a pickup or grab step."
                     ),
                     evidence={
+                        "run_id": _line_run_id(line),
                         "session_id": line.session_id,
                         "round": line.round,
                         "method": method,
@@ -198,6 +244,7 @@ def _append_object_confirmation_diagnoses(
                         "capture zone or approach offset may be wrong."
                     ),
                     evidence={
+                        "run_id": _line_run_id(line),
                         "session_id": line.session_id,
                         "round": line.round,
                         "method": method,
@@ -260,8 +307,12 @@ def _generator_handoff(
         update_scope.add("runtime_config")
 
     focus = [item["code"] for item in diagnoses if item["code"] != "NO_CONTRACT_EVIDENCE"]
+    run_ids = _run_ids(lines)
+    session_ids = sorted({line.session_id for line in lines})
     return {
         "blocked": blocked,
+        "run_id": run_ids[0] if len(run_ids) == 1 else None,
+        "session_id": session_ids[0] if len(session_ids) == 1 else None,
         "focus": focus,
         "candidate_update_scope": sorted(update_scope),
         "instructions": [
@@ -306,15 +357,102 @@ def _manipulator_sample(line: ContractLine) -> dict[str, float] | None:
     return None
 
 
+def _ordered_lines(lines: Sequence[ContractLine]) -> list[ContractLine]:
+    return [line for _, line in sorted(enumerate(lines), key=lambda item: (item[1].round, item[0]))]
+
+
+def _normalize_provenance(provenance: str) -> GapSummaryProvenance:
+    if provenance not in PROVENANCE_VALUES:
+        raise ValueError(
+            f"gap summary provenance must be one of {sorted(PROVENANCE_VALUES)}; got {provenance!r}"
+        )
+    return provenance  # type: ignore[return-value]
+
+
+def _infer_provenance(path: Path) -> GapSummaryProvenance:
+    parts = set(path.parts)
+    if "telemetry-fixtures" in parts or ("contracts" in parts and "fixtures" in parts):
+        return PROVENANCE_FIXTURE
+    if "telemetry" in parts or path.name.startswith("live-"):
+        return PROVENANCE_LIVE
+    if "proof" in parts or "rosbags" in parts:
+        return PROVENANCE_REPLAY
+    return PROVENANCE_FIXTURE
+
+
+def _validate_single_run_scope(
+    lines: Sequence[ContractLine],
+    expected_run_id: str | None,
+    expected_session_id: str | None,
+) -> None:
+    if not lines:
+        return
+
+    run_ids = _run_ids(lines)
+    session_ids = sorted({line.session_id for line in lines})
+    if expected_run_id is not None:
+        if not run_ids:
+            raise ValueError("expected_run_id requires ContractLine run_id evidence")
+        if run_ids != [expected_run_id]:
+            raise ValueError(
+                f"expected_run_id {expected_run_id!r} does not match run_ids {run_ids!r}"
+            )
+    elif len(run_ids) > 1:
+        raise ValueError(
+            f"gap analysis requires a single run_id; got {run_ids!r}. "
+            "Filter the JSONL or pass --expected-run-id for the intended run."
+        )
+
+    if expected_session_id is not None and session_ids != [expected_session_id]:
+        raise ValueError(
+            f"expected_session_id {expected_session_id!r} does not match session_ids "
+            f"{session_ids!r}"
+        )
+    if expected_session_id is None and len(session_ids) > 1:
+        raise ValueError(
+            f"gap analysis requires a single session_id; got {session_ids!r}. "
+            "Filter the JSONL or pass --expected-session-id for the intended session."
+        )
+
+
+def _run_ids(lines: Sequence[ContractLine]) -> list[str]:
+    return sorted({run_id for line in lines if (run_id := _line_run_id(line)) is not None})
+
+
+def _line_run_id(line: ContractLine) -> str | None:
+    value = None
+    model_extra = getattr(line, "model_extra", None)
+    if isinstance(model_extra, dict):
+        value = model_extra.get("run_id")
+    if value is None:
+        value = getattr(line, "run_id", None)
+    if value is None:
+        return None
+    return str(value)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Build an F10 gap summary from contract-valid ContractLine JSONL."
     )
     parser.add_argument("contract_jsonl", type=Path)
     parser.add_argument("--out", type=Path, default=None)
+    parser.add_argument("--expected-run-id", default=None)
+    parser.add_argument("--expected-session-id", default=None)
+    parser.add_argument(
+        "--provenance",
+        choices=sorted(PROVENANCE_VALUES),
+        default=None,
+        help="Evidence source label for the gap summary.",
+    )
     args = parser.parse_args(argv)
 
-    summary = build_gap_summary_from_jsonl(args.contract_jsonl)
+    summary = build_gap_summary_from_jsonl(
+        args.contract_jsonl,
+        expected_run_id=args.expected_run_id,
+        expected_session_id=args.expected_session_id,
+        provenance=args.provenance,
+    )
     if args.out is None:
         print(json.dumps(summary, indent=2, sort_keys=True))
     else:

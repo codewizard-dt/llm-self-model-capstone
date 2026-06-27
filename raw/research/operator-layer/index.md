@@ -158,7 +158,7 @@ Neither `operator/` nor `vexy_ros/operator/` defines their own telemetry or self
 
 3. **The packet builder implements both input paths** [S1]: standard ContractLine JSONL and ROS-bundle intake via `vexy_ros.evidence_export.contract_jsonl_from_bundle`. The bundle path stamps `source_refs["ros_export_routine"]` for traceability.
 
-4. **F10 gap analyzer is the only open blocker** [S3]: Gap summary sections are blocked (`BLOCKED_F10_GAP`) when no `gap_summary_path` is provided, or labeled `FIXTURE_BACKED_GAP` when a fixture is supplied. The `validate_fixture_packets` integration test confirms this invariant.
+4. **F10 gap analyzer has a first slice** [S3]: Gap summary sections are blocked (`BLOCKED_F10_GAP`) when no `gap_summary_path` is provided, or labeled with fixture/live/replay provenance when the supplied summary source metadata matches the packet evidence.
 
 5. **F8 Generator and F9 Critics are not yet implemented** [S3]: The architecture doc defines their input/output contracts but lists them as future slices. The packet builder is the completed prerequisite for both.
 
@@ -171,7 +171,7 @@ Neither `operator/` nor `vexy_ros/operator/` defines their own telemetry or self
 ## Constraints
 
 - **No second schemas**: `operator/` must import from `contracts/`, not define its own telemetry, self-model, or parts shapes.
-- **F10 gap required for full F8**: Until F10 lands, gap summary sections in packets must use `FIXTURE_BACKED_GAP` labels or remain `BLOCKED_F10_GAP`.
+- **F10 gap required for full F8**: Until broader F10 coverage lands, gap summary sections in packets must use provenance-backed labels or remain `BLOCKED_F10_GAP`.
 - **Generator cannot read oracle parameters**: Information separation is enforced by the packet builder (generator guardrails section).
 - **ROS operator runs on Pi**: Fast control loop (0.25 s status timer) must stay on-Pi; Generator/Critics run offline.
 - **AprilTag map required**: `OperatorNode` cannot start without a valid workspace map (either `workspace_map_path` or `tag_anchors_json`).

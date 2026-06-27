@@ -148,7 +148,7 @@ The architecture follows a **Generator/Critic pattern** (defined in `self_model_
 - **Generator** (F8): reads the assembled packet and authors a revised SelfModel
 - **Three stateless Critics** (F9): physics, torque, and CoM/geometry — each attacks the Generator's output independently before it is accepted
 
-The packet builder is complete and tested. The **only remaining blocker** before the Generator can be implemented is **F10 (gap analyzer)**: until F10 lands, gap summary sections in packets are either `BLOCKED_F10_GAP` (no input) or `FIXTURE_BACKED_GAP` (fixture-supplied). The packet builder's `validate_fixture_packets` integration test verifies these invariants hold.
+The packet builder is complete and tested. F10 (gap analyzer) now has a first slice: gap summary sections in packets are either `BLOCKED_F10_GAP` (no input) or provenance-labeled as fixture, live, or replay when supplied. The packet builder cross-checks the summary source metadata against the actual `ContractLine` evidence before it builds the Generator packet.
 
 implemented_by::[[self-model-packet-builder]]
 relates_to::[[operator-layer-research]]

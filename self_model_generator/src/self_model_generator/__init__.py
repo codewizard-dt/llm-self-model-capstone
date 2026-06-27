@@ -20,10 +20,14 @@ _PACKET_BUILDER_EXPORTS = {
     "BLOCKED_F10_GAP",
     "BLOCKED_HARDWARE_PROOF",
     "BLOCKED_NO_CONTRACT_EVIDENCE",
+    "FIXTURE_BACKED_GAP",
+    "LIVE_BACKED_GAP",
+    "REPLAY_BACKED_GAP",
     "build_packet_from_files",
     "build_self_model_packet",
     "contract_lines_from_ros_bundle",
     "read_contract_lines_jsonl",
+    "validate_gap_summary_matches_contract_lines",
 }
 
 __all__ = sorted(_FIXTURE_LOADER_EXPORTS | _GAP_ANALYZER_EXPORTS | _PACKET_BUILDER_EXPORTS)
