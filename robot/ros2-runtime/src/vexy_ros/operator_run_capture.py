@@ -66,6 +66,8 @@ def start_operator_run_capture(
                 "ros2",
                 "bag",
                 "record",
+                "-s",
+                "mcap",
                 "-o",
                 str(out_dir / "bag"),
                 *BAG_TOPICS,
