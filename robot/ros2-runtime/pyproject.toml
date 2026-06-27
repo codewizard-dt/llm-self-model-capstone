@@ -1,7 +1,6 @@
 [project]
 name = "vexy-ros"
 version = "1.1.0"
-requires-python = ">=3.12,<3.13"
 dependencies = [
     "contracts",
     "numpy>=2.2,<3",
