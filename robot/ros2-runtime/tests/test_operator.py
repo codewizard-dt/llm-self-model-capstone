@@ -1894,6 +1894,22 @@ class OperatorNodeTests(unittest.TestCase):
         self.assertAlmostEqual(observed.left_m, -0.08)
         self.assertAlmostEqual(node.operator.camera_in_robot.y_m, -0.08)
 
+    def test_node_applies_operator_pickup_config_parameters(self) -> None:
+        Node.parameter_defaults = {
+            "operator_ball_claw_lateral_target_m": "-0.14",
+            "operator_ball_close_forward_m": "0.06",
+            "operator_ball_wall_contact_vx": "0.05",
+            "operator_pickup_verify_settle_s": "0.9",
+        }
+        install_ros_stubs()
+        node_module = importlib.import_module("vexy_ros.operator.node")
+        node = node_module.OperatorNode()
+
+        self.assertAlmostEqual(node.operator.config.ball_claw_lateral_target_m, -0.14)
+        self.assertAlmostEqual(node.operator.config.ball_close_forward_m, 0.06)
+        self.assertAlmostEqual(node.operator.config.ball_wall_contact_vx, 0.05)
+        self.assertAlmostEqual(node.operator.config.pickup_verify_settle_s, 0.9)
+
     def test_node_rejects_bad_ad_hoc_command_with_event(self) -> None:
         install_ros_stubs()
         node_module = importlib.import_module("vexy_ros.operator.node")

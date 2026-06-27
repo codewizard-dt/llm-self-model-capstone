@@ -43,6 +43,7 @@ from ._core import (
     DriveHealth,
     ObjectObservation,
     Operator,
+    OperatorConfig,
     OperatorEvent,
     OperatorResult,
     OperatorTaskContract,
@@ -165,6 +166,15 @@ class OperatorNode(Node):
         self.declare_parameter("task_poll_period_s", 1.0)
         self.declare_parameter("task_step_timeout_s", 30.0)
         self.declare_parameter("task_timed_primitive_settle_s", 0.05)
+        self.declare_parameter("operator_ball_claw_lateral_target_m", -0.08)
+        self.declare_parameter("operator_ball_close_forward_m", 0.08)
+        self.declare_parameter("operator_ball_capture_forward_m", 0.14)
+        self.declare_parameter("operator_ball_capture_lateral_m", 0.08)
+        self.declare_parameter("operator_ball_wall_contact_vx", 0.10)
+        self.declare_parameter("operator_ball_search_s", 32.0)
+        self.declare_parameter("operator_ball_search_segment_s", 8.0)
+        self.declare_parameter("operator_ball_search_omega", 0.28)
+        self.declare_parameter("operator_pickup_verify_settle_s", 0.6)
         self.declare_parameter("brain_program_slot", 8)
         self.declare_parameter("require_brain_program_ready", False)
         self.declare_parameter("command_topic", "/operator/command")
@@ -183,6 +193,7 @@ class OperatorNode(Node):
             .string_value
         )
         self.camera_in_robot = pose_from_mapping(json.loads(camera_raw))
+        operator_config = self._load_operator_config()
         april_tag_map = self._load_april_tag_map()
         task_contract = self._load_task_contract()
         task_outline = self._load_task_outline()
@@ -274,6 +285,7 @@ class OperatorNode(Node):
             camera_in_robot=self.camera_in_robot,
             task_contract=task_contract,
             task_outline=task_outline,
+            config=operator_config,
             event_sink=self._publish_event,
         )
 
@@ -356,6 +368,29 @@ class OperatorNode(Node):
         if not task_outline_json:
             return _idle_task_outline()
         return json.loads(task_outline_json)
+
+    def _load_operator_config(self) -> OperatorConfig:
+        return OperatorConfig(
+            ball_claw_lateral_target_m=self._parameter_float(
+                "operator_ball_claw_lateral_target_m"
+            ),
+            ball_close_forward_m=self._parameter_float("operator_ball_close_forward_m"),
+            ball_capture_forward_m=self._parameter_float(
+                "operator_ball_capture_forward_m"
+            ),
+            ball_capture_lateral_m=self._parameter_float(
+                "operator_ball_capture_lateral_m"
+            ),
+            ball_wall_contact_vx=self._parameter_float("operator_ball_wall_contact_vx"),
+            ball_search_s=self._parameter_float("operator_ball_search_s"),
+            ball_search_segment_s=self._parameter_float(
+                "operator_ball_search_segment_s"
+            ),
+            ball_search_omega=self._parameter_float("operator_ball_search_omega"),
+            pickup_verify_settle_s=self._parameter_float(
+                "operator_pickup_verify_settle_s"
+            ),
+        )
 
     def _parameter_path(self, name: str) -> Path | None:
         raw = self.get_parameter(name).get_parameter_value().string_value

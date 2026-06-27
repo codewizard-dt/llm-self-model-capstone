@@ -55,6 +55,9 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn("object_dimensions_json", launch_text)
         self.assertIn("task_plan_node", launch_text)
         self.assertIn('executable="vexy_operator_node"', launch_text)
+        self.assertIn("operator_ball_claw_lateral_target_m", launch_text)
+        self.assertIn("operator_ball_close_forward_m", launch_text)
+        self.assertIn("operator_pickup_verify_settle_s", launch_text)
         self.assertNotIn('executable="align_to_tag_node"', launch_text)
         self.assertNotIn('executable="survey_scan_node"', launch_text)
 

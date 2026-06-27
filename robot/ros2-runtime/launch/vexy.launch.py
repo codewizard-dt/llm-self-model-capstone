@@ -343,6 +343,33 @@ def _launch_nodes(context, *args, **kwargs):
                     "camera_in_robot_json": camera_in_robot_json,
                     "task_contract_json": DEFAULT_OPERATOR_TASK_CONTRACT,
                     "task_outline_json": DEFAULT_OPERATOR_TASK_OUTLINE,
+                    "operator_ball_claw_lateral_target_m": LaunchConfiguration(
+                        "operator_ball_claw_lateral_target_m"
+                    ),
+                    "operator_ball_close_forward_m": LaunchConfiguration(
+                        "operator_ball_close_forward_m"
+                    ),
+                    "operator_ball_capture_forward_m": LaunchConfiguration(
+                        "operator_ball_capture_forward_m"
+                    ),
+                    "operator_ball_capture_lateral_m": LaunchConfiguration(
+                        "operator_ball_capture_lateral_m"
+                    ),
+                    "operator_ball_wall_contact_vx": LaunchConfiguration(
+                        "operator_ball_wall_contact_vx"
+                    ),
+                    "operator_ball_search_s": LaunchConfiguration(
+                        "operator_ball_search_s"
+                    ),
+                    "operator_ball_search_segment_s": LaunchConfiguration(
+                        "operator_ball_search_segment_s"
+                    ),
+                    "operator_ball_search_omega": LaunchConfiguration(
+                        "operator_ball_search_omega"
+                    ),
+                    "operator_pickup_verify_settle_s": LaunchConfiguration(
+                        "operator_pickup_verify_settle_s"
+                    ),
                     "brain_program_slot": LaunchConfiguration("brain_program_slot"),
                     "require_brain_program_ready": LaunchConfiguration(
                         "require_brain_program_ready"
@@ -518,6 +545,29 @@ def generate_launch_description():
             DeclareLaunchArgument("object_track_stale_after_s", default_value="0.75"),
             DeclareLaunchArgument("object_track_expire_after_s", default_value="3.0"),
             DeclareLaunchArgument("object_track_publish_hz", default_value="4.0"),
+            DeclareLaunchArgument(
+                "operator_ball_claw_lateral_target_m", default_value="-0.08"
+            ),
+            DeclareLaunchArgument(
+                "operator_ball_close_forward_m", default_value="0.08"
+            ),
+            DeclareLaunchArgument(
+                "operator_ball_capture_forward_m", default_value="0.14"
+            ),
+            DeclareLaunchArgument(
+                "operator_ball_capture_lateral_m", default_value="0.08"
+            ),
+            DeclareLaunchArgument(
+                "operator_ball_wall_contact_vx", default_value="0.10"
+            ),
+            DeclareLaunchArgument("operator_ball_search_s", default_value="32.0"),
+            DeclareLaunchArgument(
+                "operator_ball_search_segment_s", default_value="8.0"
+            ),
+            DeclareLaunchArgument("operator_ball_search_omega", default_value="0.28"),
+            DeclareLaunchArgument(
+                "operator_pickup_verify_settle_s", default_value="0.6"
+            ),
             DeclareLaunchArgument("agent_scene_publish_hz", default_value="3.0"),
             DeclareLaunchArgument(
                 "agent_scene_include_debug_tracks", default_value="false"
