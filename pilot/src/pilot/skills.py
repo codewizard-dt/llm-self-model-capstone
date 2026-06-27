@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TypeAlias
 
 from contracts.control_command import (
     ARM_DEG_MAX,
@@ -40,6 +41,10 @@ from contracts.pilot import (
     VerifyGraspParams,
     VerifyGraspSkillCommand,
 )
+
+JsonScalar: TypeAlias = str | int | float | bool | None
+JsonValue: TypeAlias = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
+SkillSummary: TypeAlias = dict[str, JsonValue]
 
 
 @dataclass(frozen=True, slots=True)
@@ -573,13 +578,84 @@ def get_skill_definition(name: PilotSkillName | str) -> SkillDefinition:
         raise KeyError(f"missing pilot skill definition: {skill_name.value}") from exc
 
 
+def list_skill_summaries() -> list[SkillSummary]:
+    """Return compact JSON-compatible skill metadata in contract enum order."""
+
+    return [_summarize_skill_definition(definition) for definition in list_skill_definitions()]
+
+
+def get_skill_summary(name: PilotSkillName | str) -> SkillSummary:
+    """Return one compact JSON-compatible skill summary."""
+
+    return _summarize_skill_definition(get_skill_definition(name))
+
+
+def _summarize_skill_definition(definition: SkillDefinition) -> SkillSummary:
+    return {
+        "name": definition.name.value,
+        "params_model": _qualified_name(definition.params_model),
+        "command_model": _qualified_name(definition.command_model),
+        "inputs": [
+            {
+                "name": input_metadata.name,
+                "description": input_metadata.description,
+                "required": input_metadata.required,
+                "bound": input_metadata.bound,
+            }
+            for input_metadata in definition.inputs
+        ],
+        "defaults": [
+            {
+                "name": default.name,
+                "value": default.value,
+            }
+            for default in definition.defaults
+        ],
+        "preconditions": list(definition.preconditions),
+        "max_duration_ms": definition.max_duration_ms,
+        "movement": {
+            "linear_mps": definition.movement.linear_mps,
+            "omega_rad_s": definition.movement.omega_rad_s,
+            "arm_deg_min": definition.movement.arm_deg_min,
+            "arm_deg_max": definition.movement.arm_deg_max,
+            "arm_rpm": definition.movement.arm_rpm,
+            "claw_grip_force_n": definition.movement.claw_grip_force_n,
+        },
+        "command_path": definition.command_path,
+        "expected_result_source": definition.expected_result_source,
+        "success_assertion": {
+            "assertion_id": definition.success_assertion.assertion_id,
+            "name": definition.success_assertion.name,
+        },
+        "failure_reasons": list(definition.failure_reasons),
+        "recovery_hints": list(definition.recovery_hints),
+        "bound_references": [
+            {
+                "source": bound.source,
+                "name": bound.name,
+                "value": bound.value,
+            }
+            for bound in definition.bound_references
+        ],
+    }
+
+
+def _qualified_name(model: type[object]) -> str:
+    return f"{model.__module__}.{model.__qualname__}"
+
+
 __all__ = [
     "BoundReference",
+    "JsonScalar",
+    "JsonValue",
     "MovementEnvelope",
     "SkillDefault",
     "SkillDefinition",
     "SkillInput",
+    "SkillSummary",
     "SkillSuccessAssertion",
     "get_skill_definition",
+    "get_skill_summary",
     "list_skill_definitions",
+    "list_skill_summaries",
 ]

@@ -1,0 +1,29 @@
+apiVersion: ai-sdd/v1
+kind: Changeset
+metadata:
+  feature: skill-registry
+  slice: registry-tests-and-exports
+  stack: pilot
+
+summary: >-
+  Added deterministic JSON-compatible pilot skill summary helpers alongside the
+  immutable registry definitions. The summary surface preserves contract skill
+  names, contract model identities as module-qualified strings, input/default
+  metadata, preconditions, max durations, movement envelopes, symbolic
+  command/result declarations, success assertions, failure/recovery guidance,
+  and contract bound references. Extended focused registry tests for
+  serialization, deterministic order, complete metadata, contract bounds,
+  symbolic ROS-free route declarations, contract-name reuse, module-level
+  exports, and ROS-free import/summarization.
+
+satisfies:
+  - ACC-SUMMARY-HELPERS-EXIST
+  - ACC-SUMMARY-JSON-SERIALIZABLE
+  - ACC-SUMMARY-DETERMINISTIC-ORDER
+  - ACC-SUMMARY-COMPLETE-METADATA
+  - ACC-BOUNDED-EVERY-SKILL
+  - ACC-CONTRACT-NAMES-REUSED
+  - ACC-SYMBOLIC-ROUTE-DECLARATIONS
+  - ACC-SKILLS-IMPORT-ROS-FREE
+  - ACC-SCOPE-LIMITED-FILES
+  - ACC-REGRESSION-GATES
