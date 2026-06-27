@@ -92,7 +92,7 @@ By the demo we expect to have completed at least two self-model iterations, carr
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│  OPERATOR (Claude Code — subscription)              │
+│  self_model_generator (Claude Code)                 │
 │  ├─ Generator: reads JSONL → revises self-model     │
 │  └─ Critic panel: parallel agents attack design     │
 └──────────────────┬──────────────────────────────────┘
@@ -207,7 +207,7 @@ VEX V5 Brain  (PROS C++ main.cpp, 20 ms tick)
              └───────────────────────────────────────────────┘
                         │
                         ▼
-             Operator opens Claude Code session
+             self_model_generator loads evidence
              Claude reads JSONL → analyzes gap blocks
              → revised self-model JSON
 ```
@@ -246,7 +246,7 @@ The `gap` block is the only signal Claude needs to revise the model. A platform 
          └───────────────┼───────────────┘
                          │  pass / flag + rationale
                          ▼
-                   Operator reviews
+                   Human reviews
                    → approved self-model + BOM
                    → human builds
 ```
@@ -289,7 +289,7 @@ Critic agents stay stateless. Each one reads only the proposed self-model, never
     └─ repeat until demo (June 29)
 ```
 
-Stage 4 is the only fully autonomous stage, where the robot runs without human intervention. Every other stage has the operator working through Claude Code.
+Stage 4 is the only fully autonomous stage, where the robot runs without human intervention. Every other stage has a human driving the `self_model_generator` workflow through Claude Code.
 
 ---
 
@@ -384,13 +384,13 @@ The aesthetic layer gives the generator a way to make each generation visually d
 
 ## How the Work Is Divided
 
-The system decomposes into five code verticals — `contracts`, `self_model_generator`, and `pilot` at the repo root, with `coprocessor` → `robot/ros2-runtime/` and `brain` → `robot/v5-brain/` — across the task list in [MASTER_REQUIREMENTS.md](MASTER_REQUIREMENTS.md), which is authoritative for scope, sequencing, and ownership. **Ownership is TBD** for every vertical except Erick's contracts + oracle work:
+The system decomposes into five code verticals — `contracts`, `self_model_generator`, and `pilot` at the repo root, with `coprocessor` → `robot/ros2-runtime/` and `brain` → `robot/v5-brain/` — across the task list in [MASTER_REQUIREMENTS.md](MASTER_REQUIREMENTS.md), which is authoritative for scope, sequencing, and ownership. **Ownership is TBD** for every vertical except the contracts + oracle work:
 
 | Owner | Owns | Vertical |
 |-------|------|----------|
-| **Erick Andrade** | telemetry + self-model contracts, synthetic oracle, oracle recalibration | contracts |
+| **215eight** | telemetry + self-model contracts, synthetic oracle, oracle recalibration | contracts |
 | **TBD** | parts-catalog grammar, control grammar, adapter interfaces, replay source | contracts |
-| **TBD** | Generator, critic panel, gap analyzer, presenter, demo replay | operator |
+| **TBD** | Generator, critic panel, gap analyzer, presenter, demo replay | self_model_generator |
 | **TBD** | vision pipeline, serial-bridge merge, live HW sources, baseline capture | coprocessor (`robot/ros2-runtime`) |
 | **TBD** | brain telemetry firmware + command bridge (PROS C++) | brain (`robot/v5-brain`) |
 | **TBD** | online-control harness (on-Pi LLM real-time loop) | pilot |
@@ -406,7 +406,7 @@ The seven component chunks below remain the **interface reference** — each wit
 | 3 | **Robot Configuration** | `parts_catalog.json`, typed grammar vocabulary, valid-config rules, optional expansion decisions | Physical kit BOM | Grammar spec that Generator and Critic both read |
 | 4 | **Telemetry Pipeline** | JSON schema (`predicted`/`observed`/`gap`/`vision` field names), `serial_bridge.py` merge logic, JSONL format | Contract lines from V5; vision state from Pi | `session_*.jsonl` consumable by Claude |
 | 5 | **Self-Model & Generator** | Self-model JSON schema (4 layers plus `reasoning`), Claude Code prompts and workflow for authoring and revision | `parts_catalog.json` + `session_*.jsonl` | Revised self-model JSON + BOM |
-| 6 | **Critic LLM Panel** | Critic prompts (one per dimension), parallel invocation workflow, pass/flag output format | Proposed self-model from Generator | Structured critique for operator review |
+| 6 | **Critic LLM Panel** | Critic prompts (one per dimension), parallel invocation workflow, pass/flag output format | Proposed self-model from Generator | Structured critique for human review |
 | 7 | **Aesthetic Vocabulary** | Non-functional grammar (body_panel / markings / appendages / lighting), materials guide, NeoPixel SPI wiring for Pi 5 | Approved self-model (for per-generation identity) | Aesthetic spec appended to self-model |
 
 **Dependencies worth noting:**

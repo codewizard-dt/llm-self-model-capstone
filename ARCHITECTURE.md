@@ -15,7 +15,7 @@ How the verticals stack — from the LLM software down to the motors. Every vert
 ```mermaid
 flowchart TB
   subgraph dev["Dev machine"]
-    OP["operator (Python)<br/>Generator · 3 critics · gap analyzer · presenter · make demo<br/><b>offline self-model loop</b>"]
+    OP["self_model_generator (Python)<br/>Generator · 3 critics · gap analyzer · presenter · make demo<br/><b>offline self-model loop</b>"]
   end
   subgraph contracts["contracts (Python · pydantic v2)"]
     SCH["Frozen schemas<br/>task-telemetry · self-model · parts-catalog · control-command"]
@@ -56,14 +56,14 @@ flowchart LR
   BR -->|telemetry JSON · USB serial 115200| MG["serial_bridge<br/>rx.zip(telemetry.observe(), vision.observe())<br/>→ ContractLine stream → session_*.jsonl"]
   VL -->|VisionBlock| MG
   MG -->|append| JL[("session_*.jsonl<br/>predicted · observed · gap · vision")]
-  JL -->|read offline| GEN["operator Generator<br/>compute gap → revise self-model"]
+  JL -->|read offline| GEN["self_model_generator<br/>compute gap → revise self-model"]
   GEN -->|self-model + reasoning| SM[("self-model vN<br/>JSON")]
   SM -.next generation.-> BR
   JL -->|read live| PIL["pilot LLM<br/>decide next action"]
   PIL -->|control-command · USB serial| BR
 ```
 
-> Transmission mechanisms: motor API (in-Brain), **USB serial 115,200** (Brain ↔ Pi, newline-delimited JSON, COBS off), **CSI** (camera → Pi), and the **append-only `session_*.jsonl`** file (Pi → operator). On the MVP path the `TelemetrySource`/`VisionSource` adapters resolve to cold `Replay`/`Synthetic` Observables; on hardware they resolve to hot `Serial`/`Camera` Observables — the `rx.zip` merge pipeline and all consumers are unchanged (ADR-20).
+> Transmission mechanisms: motor API (in-Brain), **USB serial 115,200** (Brain ↔ Pi, newline-delimited JSON, COBS off), **CSI** (camera → Pi), and the **append-only `session_*.jsonl`** file (Pi → `self_model_generator`). On the MVP path the `TelemetrySource`/`VisionSource` adapters resolve to cold `Replay`/`Synthetic` Observables; on hardware they resolve to hot `Serial`/`Camera` Observables — the `rx.zip` merge pipeline and all consumers are unchanged (ADR-20).
 
 ---
 
@@ -90,7 +90,7 @@ The data-collection layer. Runs two cooperating Python scripts: `vision_loop.py`
 - **Power**: 10,000 mAh USB-C PD bank — ~3–5 W draw, 12–15 hr runtime
 - **Weight**: ~280–350 g (board + case + camera + bank)
 
-**Interface in**: JSON lines from `/dev/ttyACM0`. **Interface out**: `session_*.jsonl` on Pi filesystem — read directly by the operator's Claude Code session at analysis time.
+**Interface in**: JSON lines from `/dev/ttyACM0`. **Interface out**: `session_*.jsonl` on Pi filesystem — read directly by the `self_model_generator` Claude Code workflow at analysis time.
 
 ---
 
@@ -135,13 +135,13 @@ Add-ons that extend the vocabulary without replacing the base kit. Each row is a
 
 ## Telemetry Pipeline
 
-The data contract between the V5 Brain and the operator's Claude Code session. Owning this means owning the JSON schema — everything else in the system reads or writes to it.
+The data contract between the V5 Brain and the `self_model_generator` workflow. Owning this means owning the JSON schema — everything else in the system reads or writes to it.
 
 **Data flow:**
 ```
 V5 Brain → emit contract JSON → USB serial → Pi serial_bridge.py
   → merge with vision state → append to session_*.jsonl
-  → operator opens Claude Code session → reads JSONL → revises self-model
+  → self_model_generator loads evidence → reads JSONL → revises self-model
 ```
 
 **Task Telemetry Contract** — three blocks per task execution:
@@ -152,7 +152,7 @@ V5 Brain → emit contract JSON → USB serial → Pi serial_bridge.py
 | `observed` | Actual motor API readings during execution |
 | `gap` | Signed residuals — the only signal Claude needs to revise the model |
 
-Storage: JSONL — append-only, `flush()` per contract, fast on Pi SD card. The operator's Claude Code session reads the file directly at analysis time; no API polling or streaming required.
+Storage: JSONL — append-only, `flush()` per contract, fast on Pi SD card. The `self_model_generator` Claude Code workflow reads the file directly at analysis time; no API polling or streaming required.
 
 **Interface contract**: `session_YYYYMMDD_HHMMSS.jsonl` on Pi filesystem. V5 Brain writes to it (via Pi bridge); Claude Code reads it. Both sides must agree on the JSON field names.
 
@@ -160,7 +160,7 @@ Storage: JSONL — append-only, `flush()` per contract, fast on Pi SD card. The 
 
 ## LLM Integration
 
-All LLM work runs through Claude Code (subscription) — no API keys, no billing per call, no scripted HTTP. The operator opens a Claude Code session, points it at the JSONL on the Pi, and drives the generational loop interactively.
+All offline self-model LLM work runs through Claude Code (subscription) — no API keys, no billing per call, no scripted HTTP. The `self_model_generator` workflow points Claude Code at the JSONL evidence and drives the generational loop interactively.
 
 ### Self-Model & Generator
 
@@ -177,14 +177,14 @@ The self-model has four layers in a single versioned JSON document:
 
 The `reasoning` field is first-class: Claude explains *why* it made each structural choice and what gap evidence drove each parameter change. This is the human-readable audit trail across generations.
 
-At analysis time the operator loads the latest `session_*.jsonl` into the Claude Code session and asks Claude to revise the self-model. Claude reads the file directly — no intermediary script required.
+At analysis time the `self_model_generator` workflow loads the latest `session_*.jsonl` into the Claude Code session and asks Claude to revise the self-model. Claude reads the file directly — no intermediary script required.
 
 ### Critic LLM Panel
 
 A separate owned piece — different workflow, different prompts, different output format. Runs *before* the human build step, so design errors are caught before a physical assembly is wasted.
 
 - Parallel Claude Code subagents, each assigned a single attack dimension: physics validity, torque budget, CoM stability, reach geometry
-- Each critic returns `pass` / `flag` + rationale; operator reviews and incorporates before finalizing the BOM
+- Each critic returns `pass` / `flag` + rationale; a human reviews and incorporates before finalizing the BOM
 - Stateless relative to execution — reads only the proposed self-model, not telemetry; testable against synthetic self-models without a physical robot
 
 ---
@@ -195,11 +195,11 @@ The orchestration that ties all other chunks together. Not independently ownable
 
 | Stage | Owner | Inputs | Outputs |
 |-------|-------|--------|---------|
-| 1. Design | Operator + Claude Code | `parts_catalog.json` + prior gap residuals | Self-model JSON vN |
-| 2. Critique | Operator + Claude Code agents | Self-model vN | Pass / revise flags |
+| 1. Design | self_model_generator + Claude Code | `parts_catalog.json` + prior gap residuals | Self-model JSON vN |
+| 2. Critique | self_model_generator + Claude Code agents | Self-model vN | Pass / revise flags |
 | 3. Build | Human | BOM + ordered build steps | Physical robot Gen N |
 | 4. Execute | V5 + Pi (autonomous) | Robot + task description | `session_*.jsonl` |
-| 5. Analyze | Operator + Claude Code | `session_*.jsonl` gap blocks | Revised self-model vN+1 |
+| 5. Analyze | self_model_generator + Claude Code | `session_*.jsonl` gap blocks | Revised self-model vN+1 |
 
 **Minimum Viable Demo (June 29):** The loop closes in software first (synthetic oracle, then grounded by a real baseline capture); the live Gen-2 segment runs on hardware with a recorded fallback ready.
 1. Gen 0 Clawbot — LLM authors self-model from specs; run grab, pull, and throw tasks; collect telemetry (synthetic oracle, then real capture)

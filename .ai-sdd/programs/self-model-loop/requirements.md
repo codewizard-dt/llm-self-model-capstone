@@ -8,9 +8,9 @@
 ## Goal
 
 Close the generational self-model loop **in software** across the offline verticals
-(`contracts`, `operator`, `coprocessor`, `brain`): `brain` emits the telemetry contract, `coprocessor`
-merges telemetry + vision into `session_*.jsonl` through swap-in adapters, `operator` runs the Generator
-+ Critic panel + gap analysis to revise the self-model, and `contracts` holds the frozen schemas every
+(`contracts`, `self_model_generator`, `coprocessor`, `brain`): `brain` emits the telemetry contract, `coprocessor`
+merges telemetry + vision into `session_*.jsonl` through swap-in adapters, `self_model_generator` runs the Generator
+and Critic panel plus gap analysis to revise the self-model, and `contracts` holds the frozen schemas every
 vertical imports. Demonstrate **monotonically tightening gap residuals across ≥2 generations
 (Gen 0 → Gen 2)** for the grab primitive (Gen 0/1 recorded, Gen 2 live), and expand to the full physical
 loop by **replacing an adapter implementation only** — no contract change. A second, **required** loop
@@ -31,11 +31,11 @@ their vertical lead at runtime (ADR-0027). 215eight is fixed by ADR-18.
 | 5 | F19 | `control-grammar` | contracts | freeze `control-command` vocabulary + command/ack (draft) | TBD |
 | 6 | F14 | `synthetic-oracle` | contracts | hidden-ground-truth `SyntheticTelemetrySource` | **215eight** |
 | 7 | F15 | `replay-source` | contracts | `Replay` telemetry/vision readers over recorded sessions | TBD |
-| 8 | F10 | `gap-analyzer` | operator | compute signed residuals from contract lines | TBD |
-| 9 | F9 | `critic-panel` | operator | 3 stateless pre-build critics, pass/flag + rationale | TBD |
-| 10 | F8 | `generator` | operator | author Gen 0; revise Gen N+1 from gap residuals | TBD |
-| 11 | F11 | `markdown-presenter` | operator | gap tables + self-model diff + reasoning | TBD |
-| 12 | F12 | `demo-replay` | operator | `make demo` deterministic Gen 0 → Gen 2 | TBD |
+| 8 | F10 | `gap-analyzer` | self_model_generator | compute signed residuals from contract lines | TBD |
+| 9 | F9 | `critic-panel` | self_model_generator | 3 stateless pre-build critics, pass/flag + rationale | TBD |
+| 10 | F8 | `generator` | self_model_generator | author Gen 0; revise Gen N+1 from gap residuals | TBD |
+| 11 | F11 | `markdown-presenter` | self_model_generator | gap tables + self-model diff + reasoning | TBD |
+| 12 | F12 | `demo-replay` | self_model_generator | `make demo` deterministic Gen 0 → Gen 2 | TBD |
 | 13 | F5 | `vision-pipeline` | coprocessor | YOLO11n + AprilTag → vision block | TBD |
 | 14 | F6 | `serial-bridge-merge` | coprocessor | merge telemetry + vision → `session_*.jsonl` | TBD |
 | 15 | F7 | `brain-telemetry-firmware` | brain | PROS C++ emits the contract on a 20 ms tick | TBD |
