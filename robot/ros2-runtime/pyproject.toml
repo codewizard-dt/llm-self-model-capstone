@@ -6,7 +6,6 @@ build-backend = "setuptools.build_meta"
 name = "vexy-ros"
 version = "1.2.0"
 dynamic = ["description", "maintainers", "scripts"]
-requires-python = ">=3.12,<3.13"
 dependencies = [
     "contracts",
     "numpy>=2.2,<3",

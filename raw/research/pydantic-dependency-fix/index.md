@@ -67,7 +67,8 @@ Use Option C.
 Implementation outline:
 
 1. In `robot/ros2-runtime/pyproject.toml`, make the project installable:
-   - Add `requires-python = ">=3.12,<3.13"` to match the contracts vertical.
+   - Do not set `requires-python`; ROS Jazzy/colcon setup introspection can emit a
+     non-literal `SpecifierSet(...)` value that fails `ast.literal_eval`.
    - Add a setuptools build backend:
      - `[build-system]`
      - `requires = ["setuptools>=61", "wheel"]`
