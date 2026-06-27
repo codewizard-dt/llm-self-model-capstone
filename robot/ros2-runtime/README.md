@@ -1,6 +1,6 @@
 # vexy_ros — ROS 2 Jazzy Runtime
 
-ROS 2 Jazzy coprocessor stack for the Raspberry Pi 5 (`vexy`). Replaces `robot/pi-runtime` (Bookworm + picamera2).
+ROS 2 Jazzy coprocessor stack for the Raspberry Pi 5 (`vexy`).
 
 **What it does:** Runs two nodes on the Pi — a camera pipeline publishing raw frames from the Camera Module 3, and a serial bridge forwarding JSON command packets to the VEX V5 Brain. The bridge publishes command acknowledgements, telemetry samples, and bridge fault/status separately so serial proof is not confused with motion proof. Foxglove Studio connects over WebSocket for real-time visualization, and `ros2 bag` captures sessions for the LLM feedback loop.
 
@@ -615,5 +615,5 @@ robot/ros2-runtime/
 
 ## Related
 
-- `robot/pi-runtime/` — legacy Bookworm/picamera2 stack (superseded by this package)
-- V5 Brain firmware protocol: see `robot/pi-runtime/` serial protocol documentation
+- V5 Brain interface: see `docs/BRAIN_INTERFACE.md`
+- V5 Brain firmware protocol: see `docs/PROTOCOL.md`

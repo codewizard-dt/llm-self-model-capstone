@@ -41,7 +41,7 @@ By the demo, the system closes the generational self-model loop **in software** 
 
 **Scope cut**
 - **MVP (V1) — required:** frozen contracts with validating models + fixtures; Generator authoring Gen 0 and revising Gen 1/Gen 2 from gap residuals; 3-critic panel; telemetry pipeline on a `TelemetrySource` adapter (Replay + Synthetic implemented); vision pipeline (YOLO11n + AprilTag) behind a `VisionSource` adapter merged into the JSONL `vision` block; gap analyzer + `make demo` deterministic replay; markdown/terminal presenter.
-- **V1.5 — integration window (post-4-day):** ROS 2 Jazzy on the Pi 5 is the active live runtime: `camera_ros` publishes PiCam2 frames and measured `CameraInfo`, `image_proc` rectifies frames, `apriltag_ros` publishes detections/TF, `scene_map_node` publishes `/vision/scene_map`, and `vex_bridge_node` demultiplexes V5 ack/telemetry/faults. Raw hardware episodes are captured as MCAP and exported to contract-valid JSONL; `robot/pi-runtime/` remains a fallback, not the preferred live path.
+- **V1.5 — integration window (post-4-day):** ROS 2 Jazzy on the Pi 5 is the active live runtime: `camera_ros` publishes PiCam2 frames and measured `CameraInfo`, `image_proc` rectifies frames, `apriltag_ros` publishes detections/TF, `scene_map_node` publishes `/vision/scene_map`, and `vex_bridge_node` demultiplexes V5 ack/telemetry/faults. Raw hardware episodes are captured as MCAP and exported to contract-valid JSONL.
 - **V2 — stretch (deadline-safe only):** live Gen-3 revision on-stage; RS-485 Smart-Port transport.
 - **OUT of scope:** autonomous robotic assembly; Booster Kit / extra cartridges / custom 3D-printed end-effectors as MVP; scripted Anthropic API runtime; any web UI; a physics simulation engine.
 
@@ -61,8 +61,8 @@ By the demo, the system closes the generational self-model loop **in software** 
   - root: `self_model_generator/` · package: `self_model_generator` · project: `self-model-generator` · ignore_folders: `.venv`, `__pycache__`, `.claude`, `out`, `.pytest_cache` · Owner: **TBD**
 - `pilot` — Python 3.11 · uv · ruff · Raspberry Pi 5 · the **online control loop**: an on-Pi LLM that reads live telemetry + vision and issues fixed control-grammar commands in real time. *(name provisional; ADR-19)*
   - root: `pilot/` · ignore_folders: `.venv`, `__pycache__`, `captures` · Owner: **TBD**
-- `coprocessor` — Python 3.12 · uv · ruff · Raspberry Pi 5 · Ubuntu 24.04 + ROS 2 Jazzy · `camera_ros` + measured `CameraInfo` + `image_proc` + `apriltag_ros` + `scene_map_node` + V5 serial bridge + MCAP capture + contract JSONL export. Hardware validation on the Pi confirmed `python3` 3.12.3 and `rclpy` installed under `/opt/ros/jazzy/lib/python3.12/site-packages`; `robot/pi-runtime/` is retained as a legacy/fallback runtime.
-  - root: `robot/ros2-runtime/` · legacy_fallback_root: `robot/pi-runtime/` · ignore_folders: `.venv`, `__pycache__`, `build`, `install`, `log`, `models`, `captures`, `proof` · Owner: **TBD**
+- `coprocessor` — Python 3.12 · uv · ruff · Raspberry Pi 5 · Ubuntu 24.04 + ROS 2 Jazzy · `camera_ros` + measured `CameraInfo` + `image_proc` + `apriltag_ros` + `scene_map_node` + V5 serial bridge + MCAP capture + contract JSONL export. Hardware validation on the Pi confirmed `python3` 3.12.3 and `rclpy` installed under `/opt/ros/jazzy/lib/python3.12/site-packages`.
+  - root: `robot/ros2-runtime/` · ignore_folders: `.venv`, `__pycache__`, `build`, `install`, `log`, `models`, `captures`, `proof` · Owner: **TBD**
 - `brain` — **PROS C++** (FreeRTOS) · PROS CLI + `arm-none-eabi` · `uv`-managed `pros-cli` (dev only) · V5 Brain · emits the telemetry contract + executes clamped control commands.
   - root: `robot/v5-brain/` · ignore_folders: PROS `bin/` (per the project's own `.gitignore`) · Owner: **TBD**
 
@@ -338,7 +338,7 @@ Closed decisions use definitive language — no "if needed / or / prefer / may b
 > **Additions 2026-06-21.** New research + hands-on bringup add to the decisions above:
 >
 > - **Vertical roots.** `coprocessor` → `robot/ros2-runtime/` for the active Ubuntu/Jazzy
->   deployment; `robot/pi-runtime/` remains the legacy/fallback surface. `brain` → `robot/v5-brain/`
+>   deployment. `brain` → `robot/v5-brain/`
 >   (DEC-0001 deployable surface); `contracts/`, `self_model_generator/`, `pilot/` are repo-root dirs.
 >   The name `operator` is reserved for the live robot-control operator under
 >   `robot/ros2-runtime/src/vexy_ros/operator`; do not create a repo-root `operator/` vertical for

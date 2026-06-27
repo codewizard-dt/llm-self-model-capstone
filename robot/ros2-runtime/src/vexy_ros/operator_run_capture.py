@@ -17,6 +17,7 @@ STRING_TELEMETRY_TOPICS = (
 
 BAG_TOPICS = (
     *STRING_TELEMETRY_TOPICS,
+    "/camera/image_rect",
     "/apriltag/detections",
     "/tf",
 )

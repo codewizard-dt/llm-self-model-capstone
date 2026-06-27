@@ -1,7 +1,7 @@
 """Motor telemetry contract tests.
 
 The three VEXcode-grounded tests are migrated from the now-deleted
-``robot/pi-runtime/tests/test_motor_telemetry_contracts.py`` with imports rewritten
+legacy motor-telemetry contract tests with imports rewritten
 to the ``contracts`` package (DEC-MIGRATE-NOT-REWRITE-TESTS). The four ScoreContract
 tests are dropped because ScoreContract was discarded in the pydantic-models slice;
 the schema-export test now targets ContractLine instead.

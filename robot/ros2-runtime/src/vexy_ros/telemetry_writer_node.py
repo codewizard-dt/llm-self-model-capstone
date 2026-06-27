@@ -25,6 +25,7 @@ class TelemetryWriterNode(Node):
         self._out_dir = out_dir
         self._out_dir.mkdir(parents=True, exist_ok=True)
         self._run_id = run_id if run_id is not None else out_dir.name
+        self._active_run_id = self._run_id
         self._files: dict[str, object] = {}
         for topic in TELEMETRY_TOPICS:
             self.create_subscription(String, topic, self._make_callback(topic), 10)
@@ -37,7 +38,9 @@ class TelemetryWriterNode(Node):
             except json.JSONDecodeError:
                 payload = {"_raw": msg.data}
             payload["_wall_s"] = time.time()
-            payload.setdefault("run_id", self._run_id)
+            if topic == "/operator/run_start" and isinstance(payload.get("run_id"), str):
+                self._active_run_id = payload["run_id"]
+            payload.setdefault("run_id", self._active_run_id)
             fname = _topic_to_filename(topic)
             if fname not in self._files:
                 self._files[fname] = (self._out_dir / fname).open("a")

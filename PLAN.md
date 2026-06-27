@@ -32,7 +32,7 @@ We build a generational self-model loop that runs on real hardware:
 
 The self-model is a versioned JSON document with a `reasoning` field where the LLM explains why it made each structural choice and what evidence led to each revision. Every generation stays human-inspectable.
 
-**Build strategy.** The loop is built software-first: telemetry and vision sources sit behind swap-in adapters that expose a `reactivex.Observable` stream via `observe()`, and early milestones run on a parametric **synthetic oracle** — a hidden-ground-truth model whose true parameters the Generator never sees — grounded by one real baseline capture once the hardware is up. This keeps the team unblocked on day one and lets the full physical loop drop in by swapping an adapter, with no pipeline change. Cold observables (`Replay`/`Synthetic`) emit on subscribe; hot observables (`Serial`/`Camera`) push frames in real time via a `Subject`; `serial_bridge.py` merges both streams with `rx.zip` (ADR-20). The code is organized into five verticals — `contracts`, `operator`, and `pilot` at the repo root, with `coprocessor` → `robot/pi-runtime/` and `brain` → `robot/v5-brain/`. The Python verticals use `uv` + `ruff`; the `brain` is **PROS C++** (PROS CLI + `arm-none-eabi` cross-compiler), chosen because a real-time, bidirectional serial executor needs C++ (VEXcode MicroPython is too slow for tight loops and cannot be confirmed to receive serial on the Brain).
+**Build strategy.** The loop is built software-first: telemetry and vision sources sit behind swap-in adapters that expose a `reactivex.Observable` stream via `observe()`, and early milestones run on a parametric **synthetic oracle** — a hidden-ground-truth model whose true parameters the Generator never sees — grounded by one real baseline capture once the hardware is up. This keeps the team unblocked on day one and lets the full physical loop drop in by swapping an adapter, with no pipeline change. Cold observables (`Replay`/`Synthetic`) emit on subscribe; hot observables (`Serial`/`Camera`) push frames in real time via a `Subject`; the ROS 2 bridge demultiplexes V5 serial telemetry/acks and exports captured evidence. The code is organized into five verticals — `contracts`, `self_model_generator`, and `pilot` at the repo root, with `coprocessor` → `robot/ros2-runtime/` and `brain` → `robot/v5-brain/`. The Python verticals use `uv` + `ruff`; the `brain` is **PROS C++** (PROS CLI + `arm-none-eabi` cross-compiler), chosen because a real-time, bidirectional serial executor needs C++ (VEXcode MicroPython is too slow for tight loops and cannot be confirmed to receive serial on the Brain).
 
 **Two loops.** Beyond this *offline self-model loop* (revise a readable design across generations), the project includes an *online control loop*: the `pilot` vertical puts an LLM on the Pi that reads live telemetry + vision and issues fixed **control-grammar** commands to drive the robot through an open-ended task in real time — bounded by iteration/time limits with a human interrupt, and informed by the offline analysis.
 
@@ -384,14 +384,14 @@ The aesthetic layer gives the generator a way to make each generation visually d
 
 ## How the Work Is Divided
 
-The system decomposes into five code verticals — `contracts`, `operator`, and `pilot` at the repo root, with `coprocessor` → `robot/pi-runtime/` and `brain` → `robot/v5-brain/` — across the task list in [MASTER_REQUIREMENTS.md](MASTER_REQUIREMENTS.md), which is authoritative for scope, sequencing, and ownership. **Ownership is TBD** for every vertical except Erick's contracts + oracle work:
+The system decomposes into five code verticals — `contracts`, `self_model_generator`, and `pilot` at the repo root, with `coprocessor` → `robot/ros2-runtime/` and `brain` → `robot/v5-brain/` — across the task list in [MASTER_REQUIREMENTS.md](MASTER_REQUIREMENTS.md), which is authoritative for scope, sequencing, and ownership. **Ownership is TBD** for every vertical except Erick's contracts + oracle work:
 
 | Owner | Owns | Vertical |
 |-------|------|----------|
 | **Erick Andrade** | telemetry + self-model contracts, synthetic oracle, oracle recalibration | contracts |
 | **TBD** | parts-catalog grammar, control grammar, adapter interfaces, replay source | contracts |
 | **TBD** | Generator, critic panel, gap analyzer, presenter, demo replay | operator |
-| **TBD** | vision pipeline, serial-bridge merge, live HW sources, baseline capture | coprocessor (`robot/pi-runtime`) |
+| **TBD** | vision pipeline, serial-bridge merge, live HW sources, baseline capture | coprocessor (`robot/ros2-runtime`) |
 | **TBD** | brain telemetry firmware + command bridge (PROS C++) | brain (`robot/v5-brain`) |
 | **TBD** | online-control harness (on-Pi LLM real-time loop) | pilot |
 

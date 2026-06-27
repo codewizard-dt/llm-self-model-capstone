@@ -44,12 +44,13 @@ send-task:
 	bash scripts/send_task_to_pi.sh "$(FILE)"
 
 rebuild-pi:
+	pip install --break-system-packages "pydantic>=2,<3"
 	pip install --break-system-packages -e contracts/
 	bash -c "cd ~/ros2_ws && source /opt/ros/jazzy/setup.bash && colcon build --packages-select vexy_ros --cmake-args -DCMAKE_BUILD_TYPE=Release --event-handlers console_direct+"
 	systemctl --user restart vexy-ros-stack.service
 	systemctl --user status vexy-ros-stack.service
 
 # Stubs — filled in by later features
-# coprocessor: $(MAKE) -C robot/pi-runtime   sync / validate / test / lint
+# coprocessor: $(MAKE) -C robot/ros2-runtime sync / validate / test / lint
 # brain:       $(MAKE) -C robot/v5-brain     sync / validate / test / lint
 # pilot:       $(MAKE) -C pilot              sync / validate / test / lint

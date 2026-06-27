@@ -24,7 +24,7 @@ Five verticals (each its own stack; logical names map onto the repo):
 - `pilot/` — Python 3.11 · the online control loop (LLM-on-Pi). *(new; name provisional.)*
 - `coprocessor` → `robot/ros2-runtime/` — Python 3.12 · ROS 2 Jazzy on Ubuntu 24.04 ·
   PiCam2 via `camera_ros`, rectification, AprilTag scene mapping, V5 serial bridge, MCAP capture,
-  and contract-valid JSONL export. `robot/pi-runtime/` remains the legacy/fallback runtime.
+  and contract-valid JSONL export.
 - `brain` → `robot/v5-brain/` — **PROS C++** (FreeRTOS two-task) · emits telemetry + executes clamped commands.
 
 ## Naming convention

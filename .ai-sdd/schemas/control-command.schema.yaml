@@ -3,7 +3,7 @@ kind: Schema
 metadata: { name: control-command, version: 1 }
 spec:
   # CONTROL GRAMMAR (DRAFT — not yet frozen). The fixed command vocabulary + command/ack envelope the
-  # online `pilot` LLM uses to drive the robot. Grounded in robot/pi-runtime/docs/PROTOCOL.md +
+  # online `pilot` LLM uses to drive the robot. Grounded in robot/ros2-runtime/docs/PROTOCOL.md +
   # BRAIN_INTERFACE.md. Requirement-level shape; canonical runtime copy is a pydantic-v2 model in
   # contracts/. The envelope below is stable; OPEN (do not treat as frozen): the full `cmd` vocabulary
   # (arm/manipulation beyond drive/turn/stop) and the telemetry-vs-ack multiplex strategy

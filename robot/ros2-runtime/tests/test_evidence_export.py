@@ -15,6 +15,7 @@ from vexy_ros.evidence_export import (  # noqa: E402
     bundle_from_proof_dir,
     bundle_from_tag_action_summary,
     contract_jsonl_from_bundle,
+    contract_jsonl_from_operator_results,
     main,
 )
 
@@ -120,6 +121,43 @@ class EvidenceExportTests(unittest.TestCase):
             self.assertTrue(bundle_path.exists())
             self.assertTrue(jsonl_path.exists())
             ContractLine.model_validate_json(jsonl_path.read_text())
+
+    def test_operator_results_export_enforces_run_id_as_session_id(self) -> None:
+        bundle = json.loads(FIXTURE.read_text())
+        payload = json.loads(contract_jsonl_from_bundle(bundle))
+        payload["session_id"] = "stale-session"
+        payload["run_id"] = "run-20260627-120000-000001"
+        payload["_wall_s"] = 123.4
+
+        with tempfile.TemporaryDirectory() as tmp:
+            results_path = Path(tmp) / "operator_results.jsonl"
+            results_path.write_text(json.dumps(payload) + "\n")
+
+            line = contract_jsonl_from_operator_results(results_path)
+            model = ContractLine.model_validate_json(line)
+
+        exported = json.loads(line)
+        self.assertEqual(model.session_id, "run-20260627-120000-000001")
+        self.assertEqual(exported["run_id"], "run-20260627-120000-000001")
+        self.assertNotIn("_wall_s", exported)
+
+    def test_capture_dir_cli_writes_contract_jsonl_from_operator_results(self) -> None:
+        bundle = json.loads(FIXTURE.read_text())
+        payload = json.loads(contract_jsonl_from_bundle(bundle))
+        payload["run_id"] = payload["session_id"]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            capture_dir = Path(tmp)
+            (capture_dir / "operator_results.jsonl").write_text(
+                json.dumps(payload) + "\n"
+            )
+
+            code = main(["--capture-dir", str(capture_dir)])
+
+            self.assertEqual(code, 0)
+            ContractLine.model_validate_json(
+                (capture_dir / "contract.jsonl").read_text()
+            )
 
 
 def live_tag_action_summary() -> dict[str, object]:

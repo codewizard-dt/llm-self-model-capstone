@@ -184,7 +184,7 @@ class OperatorNode(Node):
         self._survey_controller = SurveyScanController()
         self._align_cancel_requested = False
         self._survey_cancel_requested = False
-        self._run_id = datetime.now().strftime("run-%Y%m%d-%H%M%S")
+        self._run_id = "operator-idle"
         self._task_inbox_dir = self._parameter_path("task_inbox_dir")
         archive_dir = self._parameter_path("task_archive_dir")
         rejected_dir = self._parameter_path("task_rejected_dir")
@@ -396,6 +396,9 @@ class OperatorNode(Node):
 
         try:
             self.operator.set_task_contract(operator_task)
+            run_payload = self._begin_operator_run(
+                action="task_file", source=path.name
+            )
             self._publish_event(
                 OperatorEvent(
                     name="task_file_accepted",
@@ -403,12 +406,13 @@ class OperatorNode(Node):
                     detail={
                         "source": str(path),
                         "archive": str(archived_path),
-                        "session_id": operator_task.contract_line.get("session_id"),
+                        "session_id": run_payload["session_id"],
+                        "source_session_id": run_payload["source_session_id"],
                         "task": operator_task.contract_line.get("task"),
                     },
                 )
             )
-            self._run_task_outline(path.name)
+            self._run_task_outline(path.name, run_started=True)
         except (TypeError, ValueError) as exc:
             self._publish_event(
                 OperatorEvent(
@@ -428,6 +432,43 @@ class OperatorNode(Node):
         stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
         target = target_dir / f"{path.stem}.{stamp}{path.suffix}"
         return Path(shutil.move(str(path), str(target)))
+
+    def _new_run_id(self) -> str:
+        return datetime.now().strftime("run-%Y%m%d-%H%M%S-%f")
+
+    def _install_live_run_id(self, run_id: str) -> str:
+        contract_line = dict(self.operator.task_contract.contract_line)
+        source_session_id = str(contract_line.get("session_id", ""))
+        if source_session_id != run_id:
+            contract_line["session_id"] = run_id
+            self.operator.set_task_contract(
+                OperatorTaskContract.from_inputs(
+                    contract_line=contract_line,
+                    task_outline=self.operator.task_contract.method_plan,
+                )
+            )
+        return source_session_id
+
+    def _begin_operator_run(
+        self, *, action: str, source: str | None = None
+    ) -> dict[str, Any]:
+        self._run_id = self._new_run_id()
+        source_session_id = self._install_live_run_id(self._run_id)
+        payload: dict[str, Any] = {
+            "type": "run_start",
+            "run_id": self._run_id,
+            "session_id": self._run_id,
+            "source_session_id": source_session_id,
+            "run_start_wall_s": time.time(),
+            "run_index": self.operator.run_index,
+            "action": action,
+        }
+        if source is not None:
+            payload["source"] = source
+        self._run_start_pub.publish(
+            String(data=json.dumps(payload, separators=(",", ":"), sort_keys=True))
+        )
+        return payload
 
     def _reject_task_file(self, path: Path, exc: Exception) -> None:
         try:
@@ -464,25 +505,11 @@ class OperatorNode(Node):
             )
         )
 
-    def _run_task_outline(self, source_name: str) -> None:
+    def _run_task_outline(self, source_name: str, *, run_started: bool = False) -> None:
         if self._task_outline_run is not None:
             raise ValueError("task outline already running")
-        self._run_start_pub.publish(
-            String(
-                data=json.dumps(
-                    {
-                        "type": "run_start",
-                        "run_id": self._run_id,
-                        "run_start_wall_s": time.time(),
-                        "run_index": self.operator.run_index,
-                        "action": "task_file",
-                        "source": source_name,
-                    },
-                    separators=(",", ":"),
-                    sort_keys=True,
-                )
-            )
-        )
+        if not run_started:
+            self._begin_operator_run(action="task_file", source=source_name)
         self._task_outline_run = TaskOutlineRun(
             source_name=source_name,
             method_plan=tuple(self.operator.task_contract.method_plan),
@@ -1021,21 +1048,7 @@ class OperatorNode(Node):
         try:
             payload = json.loads(msg.data)
             action = str(payload.get("action", ""))
-            self._run_start_pub.publish(
-                String(
-                    data=json.dumps(
-                        {
-                            "type": "run_start",
-                            "run_id": self._run_id,
-                            "run_start_wall_s": time.time(),
-                            "run_index": self.operator.run_index,
-                            "action": action,
-                        },
-                        separators=(",", ":"),
-                        sort_keys=True,
-                    )
-                )
-            )
+            self._begin_operator_run(action=action)
             result = self._dispatch_command(payload)
             if isinstance(result, OperatorResult):
                 self._publish_contract_result(action, result)

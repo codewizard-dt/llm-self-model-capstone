@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any
 
 from contracts import ContractLine, PartsCatalog, SelfModel, validate_config
-from vexy_ros.evidence_export import contract_jsonl_from_bundle
 
 BLOCKED_F10_GAP = "[BLOCKED: awaiting F10 gap analyzer residual summary]"
 BLOCKED_NO_CONTRACT_EVIDENCE = "[BLOCKED: no ContractLine evidence for this task]"
@@ -31,6 +30,8 @@ def read_contract_lines_jsonl(path: Path) -> list[ContractLine]:
 
 
 def contract_lines_from_ros_bundle(path: Path) -> list[ContractLine]:
+    from vexy_ros.evidence_export import contract_jsonl_from_bundle
+
     bundle = json.loads(path.read_text())
     jsonl = contract_jsonl_from_bundle(bundle)
     return [ContractLine.model_validate_json(jsonl)]

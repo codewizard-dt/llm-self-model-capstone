@@ -1,0 +1,23 @@
+[project]
+name = "vexy-ros"
+version = "1.0.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "contracts",
+    "numpy>=2.2,<3",
+    "opencv-python-headless>=4.12,<5",
+    "pydantic>=2.12,<3",
+    "pyserial>=3.5,<4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.14",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+contracts = { path = "../../contracts", editable = true }

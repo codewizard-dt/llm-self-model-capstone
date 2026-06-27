@@ -18,7 +18,6 @@ FORBIDDEN_MODULE_PREFIXES = (
     "serial",
 )
 FORBIDDEN_ROBOT_PATH_PARTS = (
-    ("robot", "pi-runtime"),
     ("robot", "ros2-runtime"),
 )
 

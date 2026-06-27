@@ -1,16 +1,12 @@
-# Vexy Pi-to-V5 Protocol
+# Vexy ROS Bridge Protocol
 
-Transport: newline-delimited UTF-8 JSON.
+Transport: newline-delimited UTF-8 JSON over the V5 Brain user serial port.
 
-Initial physical transport: V5 Brain Micro-USB console/user serial port.
+The active Pi-side implementation is
+[`bridge_protocol.py`](../src/vexy_ros/bridge_protocol.py). The Brain-side
+implementation is `robot/v5-brain/pros_bridge/src/main.cpp`.
 
-This command/ack protocol is transport evidence, not the downstream
-self-modeling handoff. F8, F9, F10, F11, F12, and `make demo` consume
-`contracts.ContractLine` JSONL; fixture-backed MVP runs read it from
-`telemetry-fixtures/<run-id>/contract.jsonl`, while later hardware runs export
-the same shape from MCAP-backed ROS 2 captures.
-
-Every packet includes:
+Every Pi-to-Brain packet includes:
 
 - `v`: protocol version, currently `1`
 - `seq`: integer sequence number
@@ -47,8 +43,8 @@ Brain routine:
 Routine slots are fixed routines inside the running `pros_bridge` program, not
 separate VEXos upload slots:
 
-| Slot | Routine | What it does |
-|------|---------|--------------|
+| Slot | Routine | What It Does |
+|---|---|---|
 | 2 | `spin_720` | bounded 720 degree in-place spin |
 | 3 | `arm_full_cycle` | arm to bounded top target, pause, back to rest |
 | 4 | `one_foot_forward_back` | one foot forward, pause, one foot back |
@@ -65,7 +61,7 @@ Heartbeat:
 {"v":1,"ack":2,"type":"ack","state":"ok","recv_ms":1781880000050,"battery_mv":12300,"heading_deg":12.3,"fault":null}
 ```
 
-Errors:
+Rejected command:
 
 ```json
 {"v":1,"ack":2,"type":"ack","state":"rejected","recv_ms":1781880000050,"fault":"ttl_expired"}
@@ -76,8 +72,10 @@ Errors:
 - Brain rejects malformed JSON.
 - Brain rejects unknown commands.
 - Brain rejects routine slots outside `2`, `3`, and `4`.
-- Brain rejects new drive/turn/routine commands with `fault:"busy"` while a routine is active.
+- Brain rejects new drive/turn/routine commands with `fault:"busy"` while a
+  routine is active.
 - Brain clamps all velocity values.
-- Brain stops if no valid heartbeat or command arrives within the watchdog interval.
+- Brain stops if no valid heartbeat or command arrives within the watchdog
+  interval.
 - Brain stops when command TTL expires.
 - Pi treats missing ack as a fault and sends `stop` on reconnect.

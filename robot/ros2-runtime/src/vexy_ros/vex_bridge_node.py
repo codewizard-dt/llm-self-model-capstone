@@ -14,7 +14,7 @@ The node also publishes a heartbeat every HEARTBEAT_INTERVAL_S if no command
 arrives, keeping the Brain's watchdog alive and preventing it from issuing a
 motor stop.
 
-Wire protocol is identical to the Bookworm bridge (vexy_system2):
+Wire protocol:
   - Protocol version 1
   - Newline-delimited compact JSON (no spaces)
   - Commands: stop | drive | turn | heartbeat | set_goal

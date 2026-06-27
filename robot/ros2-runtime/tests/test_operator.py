@@ -1005,8 +1005,11 @@ class OperatorNodeTests(unittest.TestCase):
         self.assertEqual(cmd_packet["cmd"], "drive")
         self.assertEqual(cmd_packet["reason"], "move_to_tag_1")
         result_payload = json.loads(node._result_pub.messages[-1].data)
+        run_start = json.loads(node._run_start_pub.messages[-1].data)
         self.assertEqual(result_payload["schema_version"], "1.0")
         self.assertEqual(result_payload["outcome"]["method"], "move_to_tag")
+        self.assertEqual(result_payload["run_id"], run_start["run_id"])
+        self.assertEqual(result_payload["session_id"], run_start["run_id"])
 
     def test_node_runs_align_to_tag_through_operator_sink(self) -> None:
         install_ros_stubs()
@@ -1253,9 +1256,12 @@ class OperatorNodeTests(unittest.TestCase):
             self.assertFalse((inbox / "task.json").exists())
             self.assertEqual(len(list(archive.glob("task.*.json"))), 1)
             self.assertEqual(list(rejected.glob("*.json")), [])
+            run_start = json.loads(node._run_start_pub.messages[-1].data)
             self.assertEqual(
-                node.operator.task_contract.contract_line["session_id"], "from-file"
+                node.operator.task_contract.contract_line["session_id"],
+                run_start["run_id"],
             )
+            self.assertEqual(run_start["source_session_id"], "from-file")
             cmd_packet = json.loads(node._sink.pub.messages[-1].data)
             self.assertEqual(cmd_packet["cmd"], "grab")
 
@@ -1624,19 +1630,24 @@ class OperatorRunCaptureTests(unittest.TestCase):
             processes = start_operator_run_capture(out_dir, label="test-name")
             label = (out_dir / "test.txt").read_text()
 
-        self.assertEqual(len(processes), 2)
+        self.assertEqual(len(processes), 3)
         self.assertEqual(label, "test-name\n")
         writer_cmd = popen.call_args_list[0].args[0]
-        bag_cmd = popen.call_args_list[1].args[0]
+        image_cmd = popen.call_args_list[1].args[0]
+        bag_cmd = popen.call_args_list[2].args[0]
         self.assertEqual(
             writer_cmd[:4],
             ["ros2", "run", "vexy_ros", "vexy_telemetry_writer_node"],
         )
+        self.assertEqual(
+            image_cmd[:4],
+            ["ros2", "run", "vexy_ros", "vexy_image_writer_node"],
+        )
+        self.assertIn("--out-dir", image_cmd)
         self.assertEqual(bag_cmd[:3], ["ros2", "bag", "record"])
         self.assertIn("/operator/events", STRING_TELEMETRY_TOPICS)
         self.assertIn("/operator/command_log", STRING_TELEMETRY_TOPICS)
         self.assertIn("/camera/image_rect", BAG_TOPICS)
-        self.assertIn("/camera/image_rect", bag_cmd)
         self.assertIn("/vision/object_detections", bag_cmd)
 
 

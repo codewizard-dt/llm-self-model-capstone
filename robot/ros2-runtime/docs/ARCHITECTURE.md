@@ -4,11 +4,13 @@
 
 The robot is a VEX V5 Clawbot augmented with a Raspberry Pi 5 AI coprocessor. The Pi runs a ROS 2 Jazzy stack (`vexy_ros`) that handles computer vision, session recording, and export of evidence for the LLM self-model feedback loop. The V5 Brain retains exclusive authority over actuators via a deterministic PROS C++/FreeRTOS program.
 
-## Migration Rationale — pi-runtime → ros2-runtime
+## Migration Rationale
 
-The original `robot/pi-runtime` was written in Python against Bookworm/picamera2 with a custom asyncio serial bridge. It was replaced because three capabilities were needed that the Bookworm stack could not cleanly provide:
+The original Bookworm/picamera2 runtime used a custom asyncio serial bridge. It
+was replaced because three capabilities were needed that the Bookworm stack
+could not cleanly provide:
 
-| Capability | pi-runtime (Bookworm) | ros2-runtime (Ubuntu 24.04 + Jazzy) |
+| Capability | Bookworm Runtime | ros2-runtime (Ubuntu 24.04 + Jazzy) |
 |---|---|---|
 | Session recording for LLM | Manual JSONL writes | `ros2 bag record -a` — single command captures everything |
 | AprilTag localization | Hand-rolled, no calibration model | `apriltag_ros` consumes `/camera/camera_info` natively |
