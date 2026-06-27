@@ -850,6 +850,12 @@ class OperatorNode(Node):
                 if duration is None
                 else self.operator.pickup_ball(duration_ms=int(duration))
             )
+        if action == "arm":
+            self.operator.require_allowed_method(action)
+            target = payload.get("target_deg")
+            if target is None:
+                raise ValueError("arm requires target_deg")
+            return self.operator.arm(target_deg=float(target))
         if action in {"grab", "lift", "release"}:
             self.operator.require_allowed_method(action)
             duration = payload.get("duration_ms")

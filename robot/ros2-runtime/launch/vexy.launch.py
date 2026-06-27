@@ -63,7 +63,7 @@ DEFAULT_OPERATOR_TASK_CONTRACT = (
 DEFAULT_OPERATOR_TASK_OUTLINE = (
     '[["locate_nearest_apriltag",[]],["orient_to_tag",[0]],'
     '["move_to_tag",[0],{"target_distance_m":0.45}],'
-    '["pickup_ball",[]],["grab",[]],["lift",[]],["release",[]]]'
+    '["pickup_ball",[]],["arm",[]],["grab",[]],["lift",[]],["release",[]]]'
 )
 
 

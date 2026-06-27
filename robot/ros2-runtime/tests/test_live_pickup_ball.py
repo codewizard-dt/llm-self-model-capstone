@@ -1,10 +1,10 @@
-"""Live integration test — full ball delivery scenario.
+"""Live integration test — focused tag-1 ball pickup cycle.
 
 Copy to the Pi, source the ROS workspace, then run:
-    python3 test_live_deliver.py
+    python3 test_live_pickup_ball.py
 
 Starts vexy-ros-stack.service if not already running.
-Requires Brain slot 8 running and AprilTags physically visible to the camera.
+Requires Brain program slot 8 running and AprilTag 1 physically visible.
 Exits 0 on success, 1 on failure or timeout.
 """
 
@@ -26,11 +26,14 @@ except ModuleNotFoundError as exc:
     raise unittest.SkipTest("ROS 2 Python packages are not installed") from exc
 
 STACK_SERVICE = "vexy-ros-stack.service"
+TAG_1 = 1
+ARM_UP_DEG = 300.0
+ARM_DOWN_DEG = 0.0
 
 
 def default_telemetry_dir() -> Path:
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    return Path(f"/home/vexy/telemetry/live-deliver-{stamp}")
+    return Path(f"/home/vexy/telemetry/live-pickup-{stamp}")
 
 
 def ensure_stack_running() -> bool:
@@ -49,7 +52,7 @@ def ensure_stack_running() -> bool:
     return True
 
 
-FAIL_REASONS = {"disabled", "grab_failed", "unmapped_tag"}
+FAIL_REASONS = {"disabled", "grab_failed", "grab_not_confirmed", "unmapped_tag"}
 TELEMETRY_TOPICS = (
     "/operator/run_start",
     "/operator/events",
@@ -58,20 +61,20 @@ TELEMETRY_TOPICS = (
     "/vex/telemetry",
 )
 
-# (action, payload_extras, timeout_s, is_nav)
+# (action, payload_extras, timeout_s, repeat_until_success, post_wait_s)
 STEPS = [
-    ("locate_nearest_apriltag", {}, 20.0, True),
-    ("move_to_tag", {"tag_index": 1}, 50.0, True),
-    ("pickup_ball", {"duration_ms": 700}, 35.0, True),
-    ("move_to_tag", {"tag_index": 0}, 50.0, True),
-    ("lift", {}, 3.0, False),
-    ("release", {"duration_ms": 650}, 3.0, False),
+    ("locate_nearest_apriltag", {}, 20.0, True, 0.0),
+    ("move_to_tag", {"tag_index": TAG_1}, 50.0, True, 0.0),
+    ("pickup_ball", {"duration_ms": 700}, 35.0, True, 0.0),
+    ("arm", {"target_deg": ARM_UP_DEG}, 5.0, False, 4.0),
+    ("arm", {"target_deg": ARM_DOWN_DEG}, 5.0, False, 4.0),
+    ("release", {"duration_ms": 650}, 3.0, False, 1.0),
 ]
 
 
-class DeliverTestNode(Node):
+class PickupBallTestNode(Node):
     def __init__(self) -> None:
-        super().__init__("operator_test_deliver")
+        super().__init__("operator_test_pickup_ball")
         self._cmd_pub = self.create_publisher(String, "/operator/command", 10)
         self._last_result: dict | None = None
         self._telemetry_count = 0
@@ -100,50 +103,80 @@ class DeliverTestNode(Node):
             String(data=json.dumps({"action": action, **extras}, separators=(",", ":")))
         )
 
+    def _wait_for_result(self, action: str, timeout_s: float) -> dict | None:
+        deadline = time.monotonic() + timeout_s
+        while time.monotonic() < deadline:
+            rclpy.spin_once(self, timeout_sec=0.02)
+            result = self._last_result
+            if result is None:
+                continue
+            outcome = result.get("outcome", {})
+            if outcome.get("method") != action:
+                self._last_result = None
+                continue
+            self._last_result = None
+            return result
+        return None
+
+    def _run_repeated_step(self, action: str, extras: dict, timeout_s: float) -> bool:
+        deadline = time.monotonic() + timeout_s
+        last_sent = 0.0
+        while time.monotonic() < deadline:
+            rclpy.spin_once(self, timeout_sec=0.02)
+            now = time.monotonic()
+            if now - last_sent >= 0.05:
+                self._send(action, extras)
+                last_sent = now
+            result = self._last_result
+            if result is None:
+                continue
+            outcome = result.get("outcome", {})
+            if outcome.get("method") != action:
+                self._last_result = None
+                continue
+            self._last_result = None
+            if outcome.get("success"):
+                print(f"  OK  {outcome.get('reason')}")
+                return True
+            reason = outcome.get("reason", "")
+            if reason in FAIL_REASONS:
+                print(f"  FAIL  {reason}")
+                return False
+        print(f"  TIMEOUT after {timeout_s}s")
+        return False
+
+    def _run_single_step(
+        self, action: str, extras: dict, timeout_s: float, post_wait_s: float
+    ) -> bool:
+        self._last_result = None
+        self._send(action, extras)
+        result = self._wait_for_result(action, timeout_s)
+        if result is None:
+            print(f"  TIMEOUT after {timeout_s}s")
+            return False
+        outcome = result.get("outcome", {})
+        if not outcome.get("success"):
+            print(f"  FAIL  {outcome.get('reason')}")
+            return False
+        print(f"  OK  {outcome.get('reason')}")
+        deadline = time.monotonic() + post_wait_s
+        while time.monotonic() < deadline:
+            rclpy.spin_once(self, timeout_sec=0.02)
+        return True
+
     def run(self) -> bool:
-        print(
-            "=== deliver test: locate → approach ball → grab → approach bin → lift → release ==="
-        )
-        for action, extras, timeout_s, is_nav in STEPS:
+        print("=== pickup test: tag 1 → pickup → arm up/down → release ===")
+        for action, extras, timeout_s, repeat_until_success, post_wait_s in STEPS:
             extras_str = f"  extras={extras}" if extras else ""
             print(f"[{action}]{extras_str}")
             self._last_result = None
-            if is_nav:
-                deadline = time.monotonic() + timeout_s
-                succeeded = False
-                last_sent = 0.0
-                while time.monotonic() < deadline:
-                    rclpy.spin_once(self, timeout_sec=0.02)
-                    now = time.monotonic()
-                    if now - last_sent >= 0.05:
-                        self._send(action, extras)
-                        last_sent = now
-                    result = self._last_result
-                    if result is None:
-                        continue
-                    outcome = result.get("outcome", {})
-                    if outcome.get("method") != action:
-                        self._last_result = None
-                        continue
-                    self._last_result = None
-                    if outcome.get("success"):
-                        print(f"  OK  {outcome.get('reason')}")
-                        succeeded = True
-                        break
-                    reason = outcome.get("reason", "")
-                    if reason in FAIL_REASONS:
-                        print(f"  FAIL  {reason}")
-                        return False
-                if not succeeded:
-                    print(f"  TIMEOUT after {timeout_s}s")
-                    return False
+            if repeat_until_success:
+                ok = self._run_repeated_step(action, extras, timeout_s)
             else:
-                self._send(action, extras)
-                deadline = time.monotonic() + 3.0
-                while time.monotonic() < deadline:
-                    rclpy.spin_once(self, timeout_sec=0.02)
-                print("  CMD sent")
-        print("=== deliver test PASSED ===")
+                ok = self._run_single_step(action, extras, timeout_s, post_wait_s)
+            if not ok:
+                return False
+        print("=== pickup test PASSED ===")
         return True
 
     @property
@@ -155,7 +188,7 @@ def start_telemetry_capture(
     telemetry_dir: Path, *, bag_record: bool
 ) -> list[subprocess.Popen]:
     telemetry_dir.mkdir(parents=True, exist_ok=True)
-    (telemetry_dir / "test.txt").write_text("test_live_deliver.py\n")
+    (telemetry_dir / "test.txt").write_text("test_live_pickup_ball.py\n")
     processes = [
         subprocess.Popen(
             [
@@ -232,7 +265,7 @@ def main(argv: list[str] | None = None) -> None:
         )
         time.sleep(max(0.0, args.capture_settle_s))
     rclpy.init()
-    node = DeliverTestNode()
+    node = PickupBallTestNode()
     try:
         ok = node.run()
         print(f"=== telemetry samples seen by test node: {node.telemetry_count} ===")

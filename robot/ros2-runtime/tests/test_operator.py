@@ -233,6 +233,27 @@ class OperatorCoreTests(unittest.TestCase):
         self.assertAlmostEqual(result.target_pose.y_m, expected_target.y_m)
         self.assertAlmostEqual(result.target_pose.yaw_rad, expected_target.yaw_rad)
 
+    def test_target_distance_for_tag_uses_camera_visible_role_standoffs(self) -> None:
+        sink = PacketCommandSink()
+        operator = Operator(
+            sink,
+            april_tag_map={
+                0: TagAnchor(0, Pose2D(0.8, 0.0, math.pi / 2), "bin"),
+                1: TagAnchor(1, Pose2D(1.2, 0.4, math.pi), "ball_staging"),
+                2: TagAnchor(2, Pose2D(0.0, 1.0, -math.pi / 2), "home"),
+                3: TagAnchor(3, Pose2D(0.0, 0.0, 0.0), "unknown"),
+            },
+            camera_in_robot=Pose2D(0.0, 0.0, 0.0),
+            task_contract=TASK_CONTRACT,
+            task_outline=(("locate_nearest_apriltag", ()),),
+            clock=lambda: 10.0,
+        )
+
+        self.assertAlmostEqual(operator.target_distance_for_tag(0), 0.20)
+        self.assertAlmostEqual(operator.target_distance_for_tag(1), 0.381)
+        self.assertAlmostEqual(operator.target_distance_for_tag(2), 0.45)
+        self.assertAlmostEqual(operator.target_distance_for_tag(3), 0.45)
+
     def test_move_to_tag_raises_arm_once_at_32_inches(self) -> None:
         sink = PacketCommandSink()
         operator = make_operator(sink, clock=lambda: 10.0)
@@ -400,7 +421,8 @@ class OperatorCoreTests(unittest.TestCase):
         self.assertFalse(result.success)
         self.assertEqual(result.reason, "moving_to_ball")
         self.assertEqual(sink.packets[-1]["cmd"], "drive")
-        self.assertEqual(sink.packets[-1]["reason"], "move_ball_into_claw")
+        self.assertEqual(sink.packets[-1]["reason"], "push_ball_to_wall")
+        self.assertGreater(sink.packets[-1]["vx"], 0.0)
 
         now = 11.0
         operator.update_vision(
@@ -419,10 +441,18 @@ class OperatorCoreTests(unittest.TestCase):
         )
         result = operator.pickup_ball(duration_ms=700)
         self.assertFalse(result.success)
+        self.assertEqual(result.reason, "moving_to_ball")
+        self.assertEqual(sink.packets[-1]["cmd"], "drive")
+        self.assertEqual(sink.packets[-1]["reason"], "push_ball_to_wall")
+
+        now = 14.3
+        result = operator.pickup_ball(duration_ms=700)
+        self.assertFalse(result.success)
         self.assertEqual(result.reason, "closing_claw")
         self.assertEqual(sink.packets[-1]["cmd"], "grab")
+        self.assertEqual(sink.packets[-1]["reason"], "close_claw_after_wall_contact")
 
-        now = 12.2
+        now = 15.4
         operator.update_vision(VisionSnapshot(stamp_s=now, objects=()))
         operator.update_telemetry(
             TelemetrySnapshot(
@@ -443,7 +473,9 @@ class OperatorCoreTests(unittest.TestCase):
         self.assertTrue(result.success)
         self.assertEqual(result.reason, "ball_grabbed")
 
-    def test_pickup_ball_retries_when_closed_claw_does_not_have_object(self) -> None:
+    def test_pickup_ball_fails_closed_when_closed_claw_does_not_have_object(
+        self,
+    ) -> None:
         now = 10.0
 
         def clock() -> float:
@@ -469,9 +501,15 @@ class OperatorCoreTests(unittest.TestCase):
             )
         )
         operator.pickup_ball(duration_ms=700)
-        self.assertEqual(sink.packets[-1]["cmd"], "grab")
+        self.assertEqual(sink.packets[-1]["cmd"], "drive")
+        self.assertEqual(sink.packets[-1]["reason"], "push_ball_to_wall")
 
-        now = 12.0
+        now = 14.3
+        operator.pickup_ball(duration_ms=700)
+        self.assertEqual(sink.packets[-1]["cmd"], "grab")
+        self.assertEqual(sink.packets[-1]["reason"], "close_claw_after_wall_contact")
+
+        now = 15.4
         operator.update_telemetry(
             TelemetrySnapshot(
                 stamp_s=now,
@@ -493,8 +531,81 @@ class OperatorCoreTests(unittest.TestCase):
 
         result = operator.pickup_ball(duration_ms=700)
         self.assertFalse(result.success)
-        self.assertEqual(result.reason, "opening_claw")
-        self.assertEqual(sink.packets[-1]["cmd"], "release")
+        self.assertEqual(result.reason, "grab_failed")
+        self.assertEqual(sink.packets[-1]["cmd"], "grab")
+
+    def test_pickup_ball_latches_low_grip_current_during_close(self) -> None:
+        now = 10.0
+
+        def clock() -> float:
+            return now
+
+        events: list[OperatorEvent] = []
+        sink = PacketCommandSink()
+        operator = make_operator(sink, clock=clock, event_sink=events.append)
+
+        operator.pickup_ball(duration_ms=700)
+        now = 10.8
+        operator.update_vision(
+            VisionSnapshot(
+                stamp_s=now,
+                objects=(
+                    ObjectObservation(
+                        "yellow_ball",
+                        "yellow_ball",
+                        now,
+                        forward_m=0.05,
+                        left_m=0.02,
+                    ),
+                ),
+            )
+        )
+        operator.pickup_ball(duration_ms=700)
+
+        now = 14.3
+        operator.pickup_ball(duration_ms=700)
+        self.assertEqual(sink.packets[-1]["cmd"], "grab")
+
+        operator.update_telemetry(
+            TelemetrySnapshot(
+                stamp_s=now + 0.35,
+                motor_samples=(
+                    MotorSample(
+                        device="effector_motor",
+                        subsystem="manipulator",
+                        sample_ms=100,
+                        position_deg=237.0,
+                        velocity_rpm=-91.7,
+                        current_amp=0.507,
+                    ),
+                ),
+            )
+        )
+
+        now = 15.4
+        operator.update_telemetry(
+            TelemetrySnapshot(
+                stamp_s=now,
+                motor_samples=(
+                    MotorSample(
+                        device="effector_motor",
+                        subsystem="manipulator",
+                        sample_ms=100,
+                        position_deg=-23.0,
+                        velocity_rpm=0.0,
+                        current_amp=0.0,
+                    ),
+                ),
+            )
+        )
+        result = operator.pickup_ball(duration_ms=700)
+
+        self.assertTrue(result.success)
+        self.assertTrue(result.has_object)
+        self.assertEqual(result.reason, "ball_grabbed")
+        self.assertEqual(events[-1].name, "grabbed")
+        self.assertTrue(events[-1].detail["grip_confirmed"])
+        self.assertEqual(sink.packets[-1]["cmd"], "grab")
 
     def test_pickup_ball_without_visual_lock_drives_forward_then_closes(self) -> None:
         now = 10.0
@@ -511,15 +622,17 @@ class OperatorCoreTests(unittest.TestCase):
         self.assertFalse(result.success)
         self.assertEqual(result.reason, "moving_to_ball")
         self.assertEqual(sink.packets[-1]["cmd"], "drive")
-        self.assertEqual(sink.packets[-1]["reason"], "intake_ball_without_visual_lock")
+        self.assertEqual(
+            sink.packets[-1]["reason"], "push_ball_to_wall_without_visual_lock"
+        )
         self.assertGreater(sink.packets[-1]["vx"], 0.0)
 
-        now = 12.3
+        now = 14.3
         result = operator.pickup_ball(duration_ms=700)
         self.assertFalse(result.success)
         self.assertEqual(result.reason, "closing_claw")
         self.assertEqual(sink.packets[-1]["cmd"], "grab")
-        self.assertEqual(sink.packets[-1]["reason"], "close_claw_after_ball_intake")
+        self.assertEqual(sink.packets[-1]["reason"], "close_claw_after_wall_contact")
 
     def test_pickup_ball_fails_after_empty_close_attempts(self) -> None:
         now = 10.0
@@ -530,46 +643,47 @@ class OperatorCoreTests(unittest.TestCase):
         sink = PacketCommandSink()
         operator = make_operator(sink, clock=clock)
 
-        for attempt in range(operator.config.pickup_max_attempts):
-            result = operator.pickup_ball(duration_ms=700)
-            self.assertEqual(result.reason, "opening_claw")
-            now += 0.8
-            operator.update_vision(
-                VisionSnapshot(
-                    stamp_s=now,
-                    objects=(
-                        ObjectObservation(
-                            "yellow_ball",
-                            "yellow_ball",
-                            now,
-                            forward_m=0.10,
-                            left_m=0.02,
-                        ),
+        result = operator.pickup_ball(duration_ms=700)
+        self.assertEqual(result.reason, "opening_claw")
+        now += 0.8
+        operator.update_vision(
+            VisionSnapshot(
+                stamp_s=now,
+                objects=(
+                    ObjectObservation(
+                        "yellow_ball",
+                        "yellow_ball",
+                        now,
+                        forward_m=0.10,
+                        left_m=0.02,
                     ),
-                )
+                ),
             )
-            result = operator.pickup_ball(duration_ms=700)
-            self.assertEqual(result.reason, "closing_claw")
-            now += 1.1
-            operator.update_telemetry(
-                TelemetrySnapshot(
-                    stamp_s=now,
-                    motor_samples=(
-                        MotorSample(
-                            device="effector_motor",
-                            subsystem="manipulator",
-                            sample_ms=100,
-                            position_deg=500.0,
-                            velocity_rpm=0.0,
-                            current_amp=0.0,
-                        ),
+        )
+        result = operator.pickup_ball(duration_ms=700)
+        self.assertEqual(result.reason, "moving_to_ball")
+        now += 3.5
+        result = operator.pickup_ball(duration_ms=700)
+        self.assertEqual(result.reason, "closing_claw")
+        now += 1.1
+        operator.update_telemetry(
+            TelemetrySnapshot(
+                stamp_s=now,
+                motor_samples=(
+                    MotorSample(
+                        device="effector_motor",
+                        subsystem="manipulator",
+                        sample_ms=100,
+                        position_deg=500.0,
+                        velocity_rpm=0.0,
+                        current_amp=0.0,
                     ),
-                )
+                ),
             )
-            result = operator.pickup_ball(duration_ms=700)
-            self.assertFalse(result.success)
-            self.assertEqual(result.reason, "grab_not_confirmed")
-            now += 0.1
+        )
+        result = operator.pickup_ball(duration_ms=700)
+        self.assertFalse(result.success)
+        self.assertEqual(result.reason, "grab_not_confirmed")
 
         result = operator.pickup_ball(duration_ms=700)
         self.assertFalse(result.success)
@@ -879,6 +993,32 @@ class OperatorNodeTests(unittest.TestCase):
         cmd_packet = json.loads(node._sink.pub.messages[-1].data)
         self.assertEqual(cmd_packet["cmd"], "routine")
         self.assertEqual(cmd_packet["slot"], 3)
+
+    def test_node_accepts_arm_target_command(self) -> None:
+        install_ros_stubs()
+        node_module = importlib.import_module("vexy_ros.operator.node")
+        Node.parameter_defaults = {
+            "task_outline_json": json.dumps(
+                [
+                    ["locate_nearest_apriltag", []],
+                    ["pickup_ball", []],
+                    ["arm", []],
+                    ["release", []],
+                ]
+            )
+        }
+        node = node_module.OperatorNode()
+
+        node._on_command(
+            String(data=json.dumps({"action": "arm", "target_deg": 300.0}))
+        )
+
+        cmd_packet = json.loads(node._sink.pub.messages[-1].data)
+        self.assertEqual(cmd_packet["cmd"], "arm")
+        self.assertEqual(cmd_packet["target_deg"], 300.0)
+        result_payload = json.loads(node._result_pub.messages[-1].data)
+        self.assertEqual(result_payload["outcome"]["method"], "arm")
+        self.assertTrue(result_payload["outcome"]["success"])
 
     def test_node_consumes_task_file_and_archives_it(self) -> None:
         install_ros_stubs()

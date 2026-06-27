@@ -33,7 +33,10 @@ constexpr int DRIVE_CURRENT_LIMIT_MA = 1500;
 constexpr int DRIVE_VOLTAGE_LIMIT_MV = 6000;
 // Negative manipulator velocity closes the claw on the current robot build.
 constexpr int GRAB_RPM = -100;
-constexpr int LIFT_RPM = 100;
+constexpr int GRAB_HOLD_RPM = -15;
+// The current robot has no separate claw lift motor. Keep "lift" as a grip-hold
+// command so legacy deliver flows do not open the claw before the release step.
+constexpr int LIFT_RPM = GRAB_HOLD_RPM;
 // Positive manipulator velocity opens the claw.
 constexpr int RELEASE_RPM = 100;
 constexpr int DEFAULT_RELEASE_MS = 650;
@@ -247,15 +250,16 @@ void stop_arm(const char* reason) {
 	arm_motor().brake();
 }
 
-void stop_all(const char* reason) {
-	stop_drive(reason);
-	stop_arm(reason);
-}
-
 void stop_release() {
 	if (!release_port_ok()) return;
 	release_motor().move_velocity(0);
 	release_motor().brake();
+}
+
+void stop_all(const char* reason) {
+	stop_drive(reason);
+	stop_arm(reason);
+	stop_release();
 }
 
 void set_drive(double vx_mps, double omega_rad_s, int ttl_ms) {
@@ -282,13 +286,23 @@ void release_ball(int duration_ms) {
 	stop_release();
 }
 
-void run_claw_action(const char* reason, int rpm, int duration_ms, int default_duration_ms) {
+void hold_grab() {
+	if (!release_port_ok()) return;
+	release_motor().move_velocity(GRAB_HOLD_RPM);
+}
+
+void run_claw_action(const char* reason, int rpm, int duration_ms, int default_duration_ms,
+                     bool hold_after) {
 	if (duration_ms < 1) duration_ms = default_duration_ms;
 	if (duration_ms > MAX_CLAW_MS) duration_ms = MAX_CLAW_MS;
 	stop_drive(reason);
 	release_motor().move_velocity(rpm);
 	pros::delay(duration_ms);
-	stop_release();
+	if (hold_after) {
+		hold_grab();
+	} else {
+		stop_release();
+	}
 }
 
 std::string motor_sample_json(const char* device, const char* subsystem, pros::Motor& motor,
@@ -702,7 +716,7 @@ void handle_line(const std::string& line) {
 		const int rpm = is_lift ? LIFT_RPM : GRAB_RPM;
 		int duration_ms = extract_int_field(line, "duration_ms", default_duration_ms);
 		run_claw_action(is_lift ? "lift command" : "grab command", rpm, duration_ms,
-		                default_duration_ms);
+		                default_duration_ms, true);
 		emit_ack(seq, "ok");
 		return;
 	}
