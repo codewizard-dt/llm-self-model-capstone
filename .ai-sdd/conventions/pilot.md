@@ -3,7 +3,7 @@
 > **New vertical (added 2026-06-21).** This is the **online control loop**: an LLM running on the
 > Raspberry Pi that reads live telemetry + vision and issues control-grammar commands to perform an
 > **open-ended task in real time**, looping until the task completes, is interrupted, or hits a limit.
-> It is distinct from `operator` (the offline, generational self-model loop). Grounded in the
+> It is distinct from `self_model_generator` (the offline, generational self-model loop). Grounded in the
 > maintainer's stage-c brief + REPO `robot/pi-runtime/docs/BRAIN_INTERFACE.md` (Mode A real-time) +
 > WIKI [[vex-coprocessor-pattern]] (LLM inference on the coprocessor). **The name `pilot` is a
 > proposal — confirm or rename.**
@@ -19,7 +19,7 @@ read live telemetry (Brain→Pi) + vision (camera) → LLM interprets state vs t
    until: task complete | operator interrupt | iteration/time/safety limit
 ```
 
-The LLM's decisions are informed by the **offline analysis** the `operator` loop produces (the
+The LLM's decisions are informed by the **offline analysis** the `self_model_generator` loop produces (the
 self-model / gap model) — i.e. the offline loop tightens the model; the online loop uses it to act.
 
 ## Discovery Record

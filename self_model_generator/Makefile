@@ -10,6 +10,7 @@ test:
 
 validate:
 	$(UV) python -m self_model_generator.validate
+	$(UV) python -c "from self_model_generator.fixture_loader import main; raise SystemExit(main())"
 
 lint:
 	$(UV) ruff check src/ tests/

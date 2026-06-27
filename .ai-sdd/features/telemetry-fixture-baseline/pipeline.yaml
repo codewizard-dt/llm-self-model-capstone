@@ -5,7 +5,7 @@ spec:
   semantics: enabler
   nodes:
     - { id: fixture-and-validation, kind: pipeline, pipeline: ../.., stack: contracts }
-    - { id: downstream-loader-smoke, kind: pipeline, pipeline: ../.., stack: operator }
+    - { id: downstream-loader-smoke, kind: pipeline, pipeline: ../.., stack: self_model_generator }
     - { id: docs-scope-alignment, kind: pipeline, pipeline: ../.., stack: coprocessor }
   edges:
     - { from: fixture-and-validation, to: downstream-loader-smoke }

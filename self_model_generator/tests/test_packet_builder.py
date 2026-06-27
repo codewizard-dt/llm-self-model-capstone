@@ -9,8 +9,8 @@ from self_model_generator.packet_builder import (
     BLOCKED_HARDWARE_PROOF,
     BLOCKED_NO_CONTRACT_EVIDENCE,
     FIXTURE_BACKED_GAP,
-    build_operator_packet,
     build_packet_from_files,
+    build_self_model_packet,
     load_parts_catalog,
     read_contract_lines_jsonl,
 )
@@ -31,7 +31,7 @@ def test_packet_from_contract_fixture_marks_f10_and_hardware_blockers() -> None:
     )
 
     assert "## Track 1 - M1 + ROS Proof Intake" in packet
-    assert "## Track 2 - Operator LLM Packet" in packet
+    assert "## Track 2 - Self-Model Generator Packet" in packet
     assert BLOCKED_F10_GAP in packet
     assert BLOCKED_HARDWARE_PROOF in packet
     assert "task `grab`" in packet
@@ -57,7 +57,7 @@ def test_missing_contract_evidence_uses_exact_blocked_label() -> None:
     model = SelfModel.model_validate_json(SELF_MODEL.read_text())
     catalog = load_parts_catalog(PARTS)
 
-    packet = build_operator_packet(
+    packet = build_self_model_packet(
         self_model=model,
         parts_catalog=catalog,
         contract_lines=[],
@@ -89,13 +89,13 @@ def test_fixture_gap_summary_is_visibly_labeled(tmp_path: Path) -> None:
     assert '"force_error_N": -3.4' in packet
 
 
-def test_catalog_violations_are_exposed_without_operator_schema() -> None:
+def test_catalog_violations_are_exposed_without_local_schema() -> None:
     payload = json.loads(SELF_MODEL.read_text())
     payload["config"]["motor_allocation"] = "2drive+1flywheel"
     model = SelfModel.model_validate(payload)
     catalog = load_parts_catalog(PARTS)
 
-    packet = build_operator_packet(
+    packet = build_self_model_packet(
         self_model=model,
         parts_catalog=catalog,
         contract_lines=read_contract_lines_jsonl(SESSION),

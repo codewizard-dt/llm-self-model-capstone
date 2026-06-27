@@ -57,7 +57,7 @@ def test_fixture_loader_import_and_load_do_not_pull_hardware_modules() -> None:
     modules_before = _forbidden_loaded_modules()
     robot_paths_before = _forbidden_robot_runtime_modules()
 
-    fixture_loader = importlib.import_module("self_model_operator.fixture_loader")
+    fixture_loader = importlib.import_module("self_model_generator.fixture_loader")
     lines = fixture_loader.load_fixture_contract_lines(repo_root=REPO_ROOT)
 
     assert lines
@@ -66,7 +66,7 @@ def test_fixture_loader_import_and_load_do_not_pull_hardware_modules() -> None:
 
 
 def test_fixture_loader_validates_contract_lines() -> None:
-    fixture_loader = importlib.import_module("self_model_operator.fixture_loader")
+    fixture_loader = importlib.import_module("self_model_generator.fixture_loader")
 
     path = fixture_loader.fixture_evidence_path(repo_root=REPO_ROOT)
     lines = fixture_loader.load_fixture_contract_lines(repo_root=REPO_ROOT)
@@ -76,7 +76,7 @@ def test_fixture_loader_validates_contract_lines() -> None:
 
 
 def test_loaded_evidence_exposes_downstream_fields_without_reshaping() -> None:
-    fixture_loader = importlib.import_module("self_model_operator.fixture_loader")
+    fixture_loader = importlib.import_module("self_model_generator.fixture_loader")
 
     line = fixture_loader.load_fixture_contract_lines(repo_root=REPO_ROOT)[0]
 
@@ -89,7 +89,7 @@ def test_loaded_evidence_exposes_downstream_fields_without_reshaping() -> None:
 
 
 def test_loaded_fixture_contains_finite_numeric_gap_residual() -> None:
-    fixture_loader = importlib.import_module("self_model_operator.fixture_loader")
+    fixture_loader = importlib.import_module("self_model_generator.fixture_loader")
 
     lines = fixture_loader.load_fixture_contract_lines(repo_root=REPO_ROOT)
     gap_values = [value for line in lines for value in line.gap.values()]

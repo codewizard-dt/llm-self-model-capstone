@@ -22,11 +22,13 @@ the concrete F8/F9 implementation slices. It does not implement the Generator or
 Critic panel yet. It freezes the architecture vocabulary the team should use
 when those slices are created.
 
-The core rule is simple: `operator/` orchestrates LLM work, but `contracts/`
-owns the durable shapes. The Generator and Critics consume `ContractLine`,
-`SelfModel`, `PartsCatalog`, `validate_config`, and shared vocabulary from
-`contracts`; they do not create a second telemetry schema, self-model schema, or
-parts vocabulary.
+The core rule is simple: `self_model_generator/` orchestrates offline LLM work,
+but `contracts/` owns the durable shapes. The Generator and Critics consume
+`ContractLine`, `SelfModel`, `PartsCatalog`, `validate_config`, and shared
+vocabulary from `contracts`; they do not create a second telemetry schema,
+self-model schema, or parts vocabulary. A repo-root `operator/` directory is not
+used for this loop; `operator` is reserved for live robot-control code under
+`robot/ros2-runtime/`.
 
 ## Current Repo Grounding
 
@@ -38,8 +40,8 @@ As of 2026-06-24, the architecture can assume:
 | `contracts.SelfModel` | Merged in F2 / PR #13 | Generator output is a candidate `SelfModel`; Critics inspect that same object. |
 | `contracts.vocabulary` | Merged in F2 / PR #13 | `SelfModel.config` values come from shared enums, not prompt-invented strings. |
 | `contracts.PartsCatalog` / `validate_config` | Merged in F3 / PR #16 | Generator packets can include finite buildability constraints; CoM/geometry Critics can cite catalog verdicts instead of inventing rules. |
-| `TelemetrySource` / `VisionSource` | Merged in F4 / PR #14 | Runtime sources can be replay, synthetic, serial, or camera without changing operator logic. |
-| ROS 2 align-to-tag evidence path | Merged software PR #15 | MCAP/raw ROS proof should be exported into `ContractLine` before the operator loop consumes it. |
+| `TelemetrySource` / `VisionSource` | Merged in F4 / PR #14 | Runtime sources can be replay, synthetic, serial, or camera without changing generator logic. |
+| ROS 2 align-to-tag evidence path | Merged software PR #15 | MCAP/raw ROS proof should be exported into `ContractLine` before the self-model generator loop consumes it. |
 
 F3 parts-catalog grammar has landed. F10 gap analyzer remains the dependency
 for full F8 Generator implementation, so residual-summary sections must stay
@@ -53,7 +55,7 @@ flowchart TD
   Contracts["contracts package<br/>ContractLine + SelfModel + PartsCatalog + vocabulary"]
   Sources["Replay/Synthetic/Serial/Camera sources<br/>via TelemetrySource + VisionSource"]
   Gap["F10 gap analyzer<br/>signed residual summary"]
-  Packet["Operator packet builder<br/>source refs + constraints + blocked sections"]
+  Packet["Self-model packet builder<br/>source refs + constraints + blocked sections"]
   Generator["F8 Generator<br/>candidate SelfModel"]
   Phys["Physics critic"]
   Torque["Torque critic"]
@@ -83,7 +85,7 @@ evidence, the Generator proposes "what the robot thinks it is now," three
 Critics try to catch bad assumptions, and a human approves the next build or
 sends it back for revision.
 
-## Operator Roles
+## Self-Model Generator Roles
 
 | Role | Feature | Responsibility | Must not do |
 |---|---|---|---|
@@ -108,7 +110,7 @@ learning belongs in versioned repo artifacts, not hidden critic memory.
 | Task evidence | `ContractLine` JSONL | Yes | Use `task`, `predicted`, `gap`, `outcome`, `vision`, and `motor_samples`. |
 | Gap summary | F10 gap analyzer | Blocked until F10 | Fixture summaries are allowed if labeled fixture-backed. |
 | Parts vocabulary | `contracts.vocabulary`, `contracts.PartsCatalog`, `contracts.validate_config`, `contracts/parts_catalog.json` | Yes | F3 provides finite axes, buildable combination rules, and catalog verdicts. |
-| Human constraints | Operator packet markdown | Yes | Demo task, available hardware, time, and safety limits. |
+| Human constraints | Self-model packet markdown | Yes | Demo task, available hardware, time, and safety limits. |
 | Hidden oracle parameters | Never | No | Information separation is part of the thesis. |
 
 ### Outputs
@@ -208,7 +210,7 @@ not in the fast control loop.
 | Is external runtime acceptable? | Yes for offline F8/F9. | Keep prompts and outputs saved for replay. |
 | Latency tolerance | Seconds to minutes per generation is acceptable. | Online control belongs to `pilot`, not this doc. |
 | Heaviest prompt contents | Current self-model, parts constraints, contract evidence, and gap summary. | Packet builder should trim to task-relevant evidence. |
-| Caching | Approved self-models, prompt packets, critic reviews, and generated candidates can be cached. | Store under a future operator run directory. |
+| Caching | Approved self-models, prompt packets, critic reviews, and generated candidates can be cached. | Store under a future self_model_generator run directory. |
 
 ## Conversion To F8/F9 Slices
 
@@ -216,7 +218,7 @@ After this doc is accepted, split implementation into small AI-SDD slices:
 
 | Slice | Feature | Deliverable |
 |---|---|---|
-| `operator-packet-builder` | F8 support | Builds a markdown/JSON packet from `SelfModel`, `ContractLine` JSONL, F3 catalog constraints, human constraints, and blocked-state notes. |
+| `self-model-packet-builder` | F8 support | Builds a markdown/JSON packet from `SelfModel`, `ContractLine` JSONL, F3 catalog constraints, human constraints, and blocked-state notes. |
 | `generator-prompt-and-fixtures` | F8 | Prompt skeleton plus fixture proving Gen 0 and Gen N+1 candidate output validates against `contracts.SelfModel`. |
 | `generator-gap-revision` | F8 | Uses a fixture F10 residual summary to revise `predictive`, `gap_model`, and keyed `reasoning`. |
 | `critic-prompt-panel` | F9 | Three stateless critic prompt templates: physics, torque, CoM/geometry. |
@@ -234,7 +236,7 @@ visible repo data.
   vocabulary.
 - Critic panel has exactly three lanes: physics, torque, CoM/geometry.
 - Missing F10 data is labeled blocked.
-- No schema is duplicated under `operator/`.
+- No schema is duplicated under `self_model_generator/`, and no repo-root `operator/` vertical is created.
 - Hidden oracle parameters are explicitly forbidden.
 - Resource assessment separates offline LLM work from on-Pi control.
 - The F8/F9 slice list is small enough for AI-SDD planning.

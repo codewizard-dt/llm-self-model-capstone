@@ -61,8 +61,11 @@ Most of the current runnable code lives under `robot/`.
 - `robot/v5-brain/v5-test/src/main.cpp` - working PROS C++ arm telemetry test.
 - `robot/v5-brain/BRINGUP.md` - detailed VEX Brain setup and debugging notes.
 
-Some directories described in `AGENTS.md`, such as `contracts/`, `operator/`,
-and `pilot/`, are planned verticals and may not exist yet in the current tree.
+Some directories described in `AGENTS.md`, such as `contracts/`,
+`self_model_generator/`, and `pilot/`, are planned verticals and may not exist
+yet in the current tree. A repo-root `operator/` directory is intentionally not
+a vertical name; `operator` is reserved for the live robot-control surface under
+`robot/ros2-runtime/`.
 
 ## Run The Local Smoke Test
 

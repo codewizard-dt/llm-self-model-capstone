@@ -69,7 +69,7 @@ def build_packet_from_files(
         gap_summary = read_gap_summary(gap_summary_path)
         source_refs["gap_summary"] = str(gap_summary_path)
 
-    return build_operator_packet(
+    return build_self_model_packet(
         self_model=load_self_model(self_model_path),
         parts_catalog=load_parts_catalog(parts_catalog_path),
         contract_lines=contract_lines,
@@ -79,7 +79,7 @@ def build_packet_from_files(
     )
 
 
-def build_operator_packet(
+def build_self_model_packet(
     *,
     self_model: SelfModel,
     parts_catalog: PartsCatalog,
@@ -90,7 +90,7 @@ def build_operator_packet(
 ) -> str:
     verdict = validate_config(self_model.config)
     sections = [
-        "# Operator Packet",
+        "# Self-Model Generator Packet",
         "",
         "## Track 1 - M1 + ROS Proof Intake",
         "",
@@ -100,10 +100,10 @@ def build_operator_packet(
         f"`{source_refs.get('ros_export_routine', 'not provided for this packet')}`.",
         f"- Hardware proof status: {_hardware_proof_status(contract_lines)}",
         "",
-        "## Track 2 - Operator LLM Packet",
+        "## Track 2 - Self-Model Generator Packet",
         "",
         "This packet is the visible evidence boundary for the offline F8/F9 LLM loop.",
-        "It must not include hidden oracle parameters or define operator-local schemas.",
+        "It must not include hidden oracle parameters or define self_model_generator-local schemas.",
         "",
         "### Source References",
         "",

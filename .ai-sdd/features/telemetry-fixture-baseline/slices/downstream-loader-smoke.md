@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Feature | telemetry-fixture-baseline |
-| Stack | operator |
+| Stack | self_model_generator |
 | Depends on | fixture-and-validation |
 
 ## What this slice delivers

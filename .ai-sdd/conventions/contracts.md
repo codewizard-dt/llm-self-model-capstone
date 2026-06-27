@@ -36,7 +36,7 @@ oracle). Remaining contracts sub-feature owners **TBD** (slices inherit the vert
 
 - **No schema is defined outside `contracts`.** Every other vertical *imports* the frozen schemas; none redefines them. *(Evidence: Components — Boundary rule.)*
 - **The loop depends only on the adapter interfaces** `TelemetrySource` and `VisionSource` defined here — never on a concrete provider (`Serial`/`Camera`/`Replay`/`Synthetic`). Swapping an implementation is a config flag, not a contract change. *(Evidence: ADR-01; Integration Boundaries & Swap Paths.)*
-- **Oracle information separation.** `SyntheticTelemetrySource` is a parametric hidden-ground-truth oracle (ADR-17); its true parameters are **hidden from the Generator**. The oracle config is never readable by the operator's Generator. *(Evidence: Oracle grounding & information separation; ADR-17.)*
+- **Oracle information separation.** `SyntheticTelemetrySource` is a parametric hidden-ground-truth oracle (ADR-17); its true parameters are **hidden from the Generator**. The oracle config is never readable by the `self_model_generator` Generator. *(Evidence: Oracle grounding & information separation; ADR-17.)*
 
 ## Frozen contracts owned here
 
@@ -53,7 +53,7 @@ arm command vocabulary and the telemetry-vs-ack multiplex strategy are open (BRA
 
 ## Two loops (this project has two)
 
-1. **Offline self-model loop** (the spec's MVP): the `operator` Generator revises a readable
+1. **Offline self-model loop** (the spec's MVP): the `self_model_generator` Generator revises a readable
    *self-model/design* across generations; gap residuals collapse over Replay/Synthetic data.
 2. **Online control loop** (first-class expansion): the [`pilot`](pilot.md) harness runs an online
    LLM on the Pi that reads live telemetry + vision and issues **control-grammar** commands to perform

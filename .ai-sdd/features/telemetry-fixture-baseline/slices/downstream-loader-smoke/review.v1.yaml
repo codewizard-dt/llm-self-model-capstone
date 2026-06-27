@@ -2,7 +2,7 @@ items:
   - id: ACC-LOADER-CONTRACTLINE
     verdict: pass
     notes: >-
-      operator/src/self_model_operator/fixture_loader.py reads
+      self_model_generator/src/self_model_generator/fixture_loader.py reads
       telemetry-fixtures/grab-align-baseline/contract.jsonl by default, skips only blank lines,
       requires at least one record, and validates each non-empty JSONL record with
       contracts.ContractLine.model_validate_json. The operator smoke test asserts the resolved
@@ -13,7 +13,7 @@ items:
       test_loaded_evidence_exposes_downstream_fields_without_reshaping loads a ContractLine and
       asserts the existing task, predicted, gap, outcome, motor_samples, and optional vision
       attributes directly on that model. The loader returns ContractLine instances and does not
-      introduce an operator-local evidence schema or reshaped DTO.
+      introduce a self_model_generator-local evidence schema or reshaped DTO.
   - id: ACC-FINITE-GAP
     verdict: pass
     notes: >-
@@ -30,13 +30,13 @@ items:
   - id: ACC-REUSABLE-SURFACE
     verdict: pass
     notes: >-
-      The reusable self_model_operator.fixture_loader module exposes fixture_evidence_path,
-      load_contract_jsonl, and load_fixture_contract_lines, and self_model_operator.__init__ reexports
-      the loader helpers for upcoming operator work. The behavior is not embedded solely in tests.
+      The reusable self_model_generator.fixture_loader module exposes fixture_evidence_path,
+      load_contract_jsonl, and load_fixture_contract_lines, and self_model_generator.__init__ reexports
+      the loader helpers for upcoming self_model_generator work. The behavior is not embedded solely in tests.
   - id: ACC-FROZEN-SCHEMAS-UNCHANGED
     verdict: pass
     notes: >-
-      git status shows changes only to the root Makefile and new operator files; contracts,
+      git status shows changes only to the root Makefile and self_model_generator files; contracts,
       .ai-sdd/schemas, and telemetry-fixtures are unchanged. Validation relies on the existing
       runtime contracts.ContractLine model, with no schema defined or changed outside contracts.
 verdict: approve

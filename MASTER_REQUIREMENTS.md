@@ -27,7 +27,7 @@
 - **Phase 1 · Contract** — Required: working generational loop + June 29 live demo + readable self-model audit trail. Fails-even-if-code-is-good: no *gap-tightening* shown; demo with no recorded fallback. Avoid: autonomous-assembly scope creep; LiPo safety mishandling.
 - **Phase 2 · Thesis** — Demonstrate a fully closed multi-modal loop; memorable moment = self-knowledge improving in prose + live gap collapse.
 - **Phase 3 · Product** — User: robotics/ML engineer; JTBD: self-revising model without hand-tuning; smallest proof: one grab primitive improving across rounds.
-- **Phase 4 · System shape** — Verticals: contracts · operator · coprocessor · brain. Freeze first: the three contracts (Constraints → Frozen Contracts).
+- **Phase 4 · System shape** — Verticals: contracts · self_model_generator · coprocessor · brain. Freeze first: the three contracts (Constraints → Frozen Contracts).
 - **Phase 5 · Integration** — High-risk: live VEX+Pi+camera, on-device YOLO, live Claude in demo. Mockable behind one adapter: telemetry + vision sources. Swap path documented in Constraints.
 - **Phase 6 · MVP cut** — Software loop on frozen contracts; V1 motor+vision over recorded/synthetic; V1.5 live hardware; V2 Gen-3. Fallback: recorded JSONL replay if live robot fails mid-demo.
 - **Phase 7 · Verification** — Test gap math, revision-consumes-residuals, critic catches a planted torque error. Reviewer runs `make demo`. Proof: video, gap-JSON screenshots, self-model diffs.
@@ -37,7 +37,7 @@
 
 ## Goal
 
-By the demo, the system closes the generational self-model loop **in software** across the offline-loop verticals (`contracts`, `operator`, `coprocessor`, `brain`) — `brain` emits the telemetry contract, `coprocessor` merges telemetry + vision into `session_*.jsonl` through swap-in adapters, `operator` runs the Generator + Critic panel + gap analysis to revise the self-model, and `contracts` holds the frozen schemas every vertical imports — demonstrating **monotonically tightening gap residuals across ≥2 generations (Gen 0 → Gen 2)** for the grab primitive, with Gen 0/1 recorded and Gen 2 run live; the same architecture **expands to the full physical loop by replacing an adapter implementation only**, with no contract change.
+By the demo, the system closes the generational self-model loop **in software** across the offline-loop verticals (`contracts`, `self_model_generator`, `coprocessor`, `brain`) — `brain` emits the telemetry contract, `coprocessor` merges telemetry + vision into `session_*.jsonl` through swap-in adapters, `self_model_generator` runs the Generator + Critic panel + gap analysis to revise the self-model, and `contracts` holds the frozen schemas every vertical imports — demonstrating **monotonically tightening gap residuals across >=2 generations (Gen 0 → Gen 2)** for the grab primitive, with Gen 0/1 recorded and Gen 2 run live; the same architecture **expands to the full physical loop by replacing an adapter implementation only**, with no contract change.
 
 **Scope cut**
 - **MVP (V1) — required:** frozen contracts with validating models + fixtures; Generator authoring Gen 0 and revising Gen 1/Gen 2 from gap residuals; 3-critic panel; telemetry pipeline on a `TelemetrySource` adapter (Replay + Synthetic implemented); vision pipeline (YOLO11n + AprilTag) behind a `VisionSource` adapter merged into the JSONL `vision` block; gap analyzer + `make demo` deterministic replay; markdown/terminal presenter.
@@ -57,8 +57,8 @@ By the demo, the system closes the generational self-model loop **in software** 
 
 - `contracts` — Python 3.12 · uv · ruff · pydantic v2 · **reactivex** · dev-machine · the cross-vertical source of truth + adapter interfaces + the **control grammar** + the `Synthetic` oracle and `Replay` sources.
   - root: `contracts/` · ignore_folders: `.venv`, `__pycache__`, `dist`, `.pytest_cache`, `captures` · 
-- `operator` — Python 3.12 · uv · ruff · Claude Code skills (Generator + Critic) · dev-machine · the **offline self-model loop** (authoring/critique/replay/presentation).
-  - root: `operator/` · ignore_folders: `.venv`, `__pycache__`, `.claude`, `out`, `.pytest_cache` · Owner: **TBD**
+- `self_model_generator` — Python 3.12 · uv · ruff · Claude Code skills (Generator + Critic) · dev-machine · the **offline self-model loop** (authoring/critique/replay/presentation).
+  - root: `self_model_generator/` · package: `self_model_generator` · project: `self-model-generator` · ignore_folders: `.venv`, `__pycache__`, `.claude`, `out`, `.pytest_cache` · Owner: **TBD**
 - `pilot` — Python 3.11 · uv · ruff · Raspberry Pi 5 · the **online control loop**: an on-Pi LLM that reads live telemetry + vision and issues fixed control-grammar commands in real time. *(name provisional; ADR-19)*
   - root: `pilot/` · ignore_folders: `.venv`, `__pycache__`, `captures` · Owner: **TBD**
 - `coprocessor` — Python 3.12 · uv · ruff · Raspberry Pi 5 · Ubuntu 24.04 + ROS 2 Jazzy · `camera_ros` + measured `CameraInfo` + `image_proc` + `apriltag_ros` + `scene_map_node` + V5 serial bridge + MCAP capture + contract JSONL export. Hardware validation on the Pi confirmed `python3` 3.12.3 and `rclpy` installed under `/opt/ros/jazzy/lib/python3.12/site-packages`; `robot/pi-runtime/` is retained as a legacy/fallback runtime.
@@ -85,11 +85,11 @@ By the demo, the system closes the generational self-model loop **in software** 
 - **Baseline capture** `(coprocessor)` — owns the one-off real grab/pull capture run that grounds the oracle; delivers recorded JSONL to Erick. *(TBD)*
 - **Brain telemetry firmware** `(brain)` — owns the PROS C++ program (`robot/v5-brain/`) that reads the motor API and emits contract JSON lines on a 20 ms tick; motor wiring, port assignments, bumper config. *(TBD)*
 - **Brain command bridge** `(brain)` — owns the bidirectional PROS C++ path: receive clamped control-grammar commands, ack, watchdog-stop, and fixed bounded routine slots (`2` 720 spin, `3` arm up/down, `4` one-foot forward/back). *(TBD)*
-- **Generator** `(operator)` — owns the Claude Code workflow/prompts that author and revise the self-model from gap residuals. *(TBD)*
-- **Critic panel** `(operator)` — owns three stateless pre-build critics (physics validity · torque budget · CoM/geometry) returning pass/flag + rationale. *(TBD)*
-- **Gap analyzer** `(operator)` — owns residual computation and the deterministic replay harness. *(TBD)*
-- **Markdown presenter** `(operator)` — owns gap tables, self-model diffs, and the `reasoning` audit-trail render. *(TBD)*
-- **Demo replay** `(operator)` — owns `make demo`, the end-to-end deterministic Gen 0 → Gen 2 reproduction. *(TBD)*
+- **Generator** `(self_model_generator)` — owns the Claude Code workflow/prompts that author and revise the self-model from gap residuals. *(TBD)*
+- **Critic panel** `(self_model_generator)` — owns three stateless pre-build critics (physics validity · torque budget · CoM/geometry) returning pass/flag + rationale. *(TBD)*
+- **Gap analyzer** `(self_model_generator)` — owns residual computation and the deterministic replay harness. *(TBD)*
+- **Markdown presenter** `(self_model_generator)` — owns gap tables, self-model diffs, and the `reasoning` audit-trail render. *(TBD)*
+- **Demo replay** `(self_model_generator)` — owns `make demo`, the end-to-end deterministic Gen 0 → Gen 2 reproduction. *(TBD)*
 - **Online-control harness** `(pilot)` — owns the on-Pi real-time loop: read live telemetry + vision → LLM picks a control-grammar command → send → ack → repeat, bounded + interruptible (ADR-19). *(TBD)*
 ### Telemetry capture & merge (data flow)
 
@@ -122,7 +122,7 @@ flowchart TD
   USB --> ROSVEX
   CAM --> CAMROS
 
-  EXPORT -->|"operator reads gap blocks"| GEN["operator — Generator → revised self-model"]
+  EXPORT -->|"self_model_generator reads gap blocks"| GEN["self_model_generator — Generator → revised self-model"]
 ```
 
 The exported record is exactly the Task Telemetry Contract (Constraints -> Frozen Contracts): Brain telemetry supplies motor/ack evidence, and the vision stack supplies the `vision` block (`object_bbox`, `apriltag_pose`, `bbox_iou` as available). On hardware the adapters resolve through ROS live topics and MCAP replay; for the MVP and the reviewer's `make demo` they resolve to `Replay` / `Synthetic` so the downstream self-model loop is unchanged.
@@ -142,11 +142,11 @@ The exported record is exactly the Task Telemetry Contract (Constraints -> Froze
 | 5 | `F19` control-grammar — freeze the `control-command` vocabulary + command/ack (frozen at m1) | contracts | F1 | ✅ | 215eight |
 | 6 | `F14` synthetic-oracle — hidden-ground-truth `SyntheticTelemetrySource` | contracts | F1, F4 | ✅ | Erick |
 | 7 | `F15` replay-source — `Replay` telemetry/vision readers over recorded sessions | contracts | F1, F4 | ✅ | TBD |
-| 8 | `F10` gap-analyzer — compute signed residuals from contract lines | operator | F1 | ✅ | TBD |
-| 9 | `F9` critic-panel — 3 stateless pre-build critics, pass/flag + rationale | operator | F2 | ✅ | TBD |
-| 10 | `F8` generator — author Gen 0; revise Gen N+1 from gap residuals | operator | F2, F3, F10 | ✅ | TBD |
-| 11 | `F11` markdown-presenter — gap tables + self-model diff + reasoning | operator | F2, F10 | ✅ | TBD |
-| 12 | `F12` demo-replay — `make demo` deterministic Gen 0 → Gen 2 | operator | F8, F9, F10, F11, F14, F15 | ✅ | TBD |
+| 8 | `F10` gap-analyzer — compute signed residuals from contract lines | self_model_generator | F1 | ✅ | TBD |
+| 9 | `F9` critic-panel — 3 stateless pre-build critics, pass/flag + rationale | self_model_generator | F2 | ✅ | TBD |
+| 10 | `F8` generator — author Gen 0; revise Gen N+1 from gap residuals | self_model_generator | F2, F3, F10 | ✅ | TBD |
+| 11 | `F11` markdown-presenter — gap tables + self-model diff + reasoning | self_model_generator | F2, F10 | ✅ | TBD |
+| 12 | `F12` demo-replay — `make demo` deterministic Gen 0 → Gen 2 | self_model_generator | F8, F9, F10, F11, F14, F15 | ✅ | TBD |
 | 13 | `F5` vision-pipeline — PiCam2 rectification + AprilTag scene map + YOLO11n/color indications + no-motion task plans → vision block | coprocessor | F4 | ✅ | TBD |
 | 14 | `F6` evidence-export — MCAP/raw ROS evidence + telemetry/vision → contract JSONL | coprocessor | F4, F5 | ✅ | TBD |
 | 15 | `F7` brain-telemetry-firmware — PROS C++ emits the contract on a 20 ms tick | brain | F1 | ✅ (V1.5 live) | TBD |
@@ -187,7 +187,7 @@ flowchart TD
     F15["F15 replay-source · TBD"]
     F18["F18 oracle-baseline-request · TBD"]
   end
-  subgraph operator["operator — offline self-model loop"]
+  subgraph self_model_generator["self_model_generator — offline self-model loop"]
     F10["F10 gap-analyzer · TBD"]
     F9["F9 critic-panel · TBD"]
     F8["F8 generator · TBD"]
@@ -273,7 +273,7 @@ The online control loop (`F19` → `F20` → `F21` → `m6`) extends the chain p
 
 **Critical-path risk.** The brain telemetry firmware (`F7`) and the vision pipeline (`F5`) both feed the hardware capture on the critical path. If one owner ends up holding both, split them so the two path items run in parallel rather than serially (tracked in Open questions O4).
 
-**Phasing.** Freeze the contracts + grammar (`m1`); build the synthetic oracle + replay and the offline operator loop to close `m2`; bring up calibrated vision + scene-map export for `m3`; capture a real MCAP/JSONL baseline and re-ground the oracle for `m4`; rehearse the demo for `m5`. The online control loop (`m6`) follows once the command path is proven on hardware.
+**Phasing.** Freeze the contracts + grammar (`m1`); build the synthetic oracle + replay and the offline self-model generator loop to close `m2`; bring up calibrated vision + scene-map export for `m3`; capture a real MCAP/JSONL baseline and re-ground the oracle for `m4`; rehearse the demo for `m5`. The online control loop (`m6`) follows once the command path is proven on hardware.
 
 ---
 
@@ -339,7 +339,10 @@ Closed decisions use definitive language — no "if needed / or / prefer / may b
 >
 > - **Vertical roots.** `coprocessor` → `robot/ros2-runtime/` for the active Ubuntu/Jazzy
 >   deployment; `robot/pi-runtime/` remains the legacy/fallback surface. `brain` → `robot/v5-brain/`
->   (DEC-0001 deployable surface); `contracts/`, `operator/`, `pilot/` are repo-root dirs.
+>   (DEC-0001 deployable surface); `contracts/`, `self_model_generator/`, `pilot/` are repo-root dirs.
+>   The name `operator` is reserved for the live robot-control operator under
+>   `robot/ros2-runtime/src/vexy_ros/operator`; do not create a repo-root `operator/` vertical for
+>   offline self-modeling.
 > - **ADR-19 (new) — online real-time control loop is first-class.** Beyond the offline generational
 >   self-model loop, the project includes a second loop: an online LLM on the Pi (`pilot` vertical)
 >   reads live telemetry + vision and issues **fixed control-grammar** commands to perform an
@@ -355,7 +358,7 @@ Closed decisions use definitive language — no "if needed / or / prefer / may b
 | ADR-02 | Vision | **In MVP, source-abstracted** | Honors the multi-modal claim; recorded/synthetic frames keep it off the hardware critical path | Defer vision; AprilTag-only |
 | ADR-03 | Reviewer reproduction | **Claude Code interactive + scripted `make demo` replay** | Reviewer reproduces gap analysis over recorded JSONL without robot or subscription | Claude-Code-only (not reproducible); scripted API harness (reopens ADR-08) |
 | ADR-04 | Presentation | **Markdown/terminal renderer** | Zero UI build cost; carries the narrative through diffs + tables | Web dashboard; raw-JSON-only |
-| ADR-05 | Language | **Python on `contracts`/`operator`/`coprocessor`/`pilot`; PROS C++ on `brain`** | One Python toolchain for the dev/Pi verticals; the Brain needs C++ for real-time + bidirectional serial (MicroPython too slow for tight loops; serial-receive on the Brain unconfirmed) | Python on the Brain |
+| ADR-05 | Language | **Python on `contracts`/`self_model_generator`/`coprocessor`/`pilot`; PROS C++ on `brain`** | One Python toolchain for the dev/Pi verticals; the Brain needs C++ for real-time + bidirectional serial (MicroPython too slow for tight loops; serial-receive on the Brain unconfirmed) | Python on the Brain |
 | ADR-06 | Contract validation | **pydantic v2 models, JSON-Schema export** | Single definition validates and documents the contract | Hand-rolled validation |
 | ADR-07 | Critic count | **3 critics: physics · torque · CoM/geometry** | Matches the failure modes a pre-build review must catch | Single critic; >3 |
 | ADR-08 | LLM runtime | Claude Code subscription *(inherited, PLAN §7)* | Reads files directly; no key/billing/latency infra | Scripted API |

@@ -7,6 +7,6 @@ spec:
   task: { skill: plan-feature }
   model: deep-reasoning
   reasoning: high
-  # The slice node supplies `stack` (one of: contracts | operator | coprocessor | brain); the skill
+  # The slice node supplies `stack` (one of: contracts | self_model_generator | coprocessor | brain | pilot); the skill
   # reads .ai-sdd/conventions/<stack>.md. Checks compiled from feature-plan.schema.yaml.
   checks: [feature-plan.structure]
