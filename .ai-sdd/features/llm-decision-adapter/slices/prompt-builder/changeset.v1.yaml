@@ -1,0 +1,12 @@
+summary: >
+  Added the ROS-free pilot decision prompt builder with JSON-compatible payload construction,
+  deterministic rendering, registry-sourced allowed skill summaries, focused prompt tests, and
+  additive package exports.
+satisfies:
+  - PB-001
+  - PB-002
+  - PB-003
+  - PB-004
+  - PB-005
+  - PB-006
+  - PB-007

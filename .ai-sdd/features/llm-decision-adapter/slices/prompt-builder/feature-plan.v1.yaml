@@ -1,0 +1,137 @@
+summary: >
+  Add the ROS-free prompt construction layer for the pilot LLM decision adapter. The slice builds
+  deterministic JSON-compatible prompt payloads and stable rendered prompt text from
+  contracts.PilotObservation, recent history, safety constraints, and pilot.skills registry
+  summaries, without model calls, output parsing, safety validation, or skill execution.
+scope:
+  in:
+    - Create pilot.decision as the prompt-builder module for the llm-decision-adapter feature.
+    - Accept contracts.PilotObservation as the observation source; preserve contract-owned field
+      names in the prompt payload for replay and inspection.
+    - Include objective, current phase, observation snapshot, assertions, last skill/result, recent
+      history, allowed skills, safety constraints, and output schema sections in every payload and
+      rendered prompt.
+    - Source allowed skill metadata from pilot.skills.list_skill_summaries or the equivalent public
+      registry-summary helper.
+    - Ensure prompt payloads contain only JSON-compatible values and render with deterministic key
+      ordering for byte-for-byte repeatability.
+    - Keep the module pure Python, provider-agnostic, and importable without ROS packages or model
+      provider SDKs.
+    - Add focused pilot tests for required sections, serializability, determinism, registry-summary
+      use, and no-ROS/provider import behavior.
+  out:
+    - Calling a real or mock LLM provider.
+    - Parsing, extracting, retrying, or validating LLM response JSON.
+    - Creating executable PilotDecision objects from model output.
+    - Executing skills, checking skill preconditions, enforcing safety policy, or publishing ROS
+      commands.
+    - Computing assertions, mutating observations, writing run logs, replay-loop orchestration, or
+      changing contract schemas.
+acceptance:
+  - id: PB-001
+    description: >
+      pilot.decision exposes prompt-building helpers that accept a contracts.PilotObservation,
+      recent history text, safety constraints, and allowed skill summaries, and return both a
+      JSON-compatible payload and a stable rendered prompt string.
+  - id: PB-002
+    description: >
+      Tests verify the prompt payload and rendered prompt include all required sections: objective,
+      current phase, observation snapshot, assertions, last skill/result, recent history, allowed
+      skills, safety constraints, and output schema.
+  - id: PB-003
+    description: >
+      Tests verify the prompt payload is JSON-serializable without dataclasses, enums, tuples,
+      classes, object repr strings, ROS objects, or provider SDK objects.
+  - id: PB-004
+    description: >
+      Tests verify repeated payload construction and prompt rendering for the same inputs are
+      byte-for-byte deterministic, including stable key ordering and stable ordering of observation
+      lists already normalized by the observation contract/helpers.
+  - id: PB-005
+    description: >
+      Tests verify allowed skills in the prompt come from the pilot.skills registry summary API
+      rather than duplicated prompt-builder metadata.
+  - id: PB-006
+    description: >
+      Tests verify pilot.decision imports and runs without ROS packages, hardware dependencies,
+      network calls, API keys, or LLM provider SDK imports.
+  - id: PB-007
+    description: >
+      Public exports from pilot.__init__ are additive only if added, and existing observation and
+      skills public APIs remain backwards compatible.
+decisions:
+  - id: PB-D001
+    status: closed
+    decision: >
+      Implement this slice in pilot/src/pilot/decision.py, with optional additive exports from
+      pilot/src/pilot/__init__.py.
+    rationale: >
+      LLM Decision Adapter requirements decision LDA-001 closes the module location as
+      pilot.decision, separate from observation and skills. MASTER_REQUIREMENTS Tech stacks and
+      Components define pilot/ as the online-control vertical root.
+  - id: PB-D002
+    status: closed
+    decision: >
+      Build prompt inputs from contracts.PilotObservation and imported contract-owned schemas; do
+      not define schemas or duplicate contract models in pilot.
+    rationale: >
+      MASTER_REQUIREMENTS Components and Constraints state that schemas are owned by contracts and
+      no schema is defined outside contracts. The pilot convention repeats the boundary rule:
+      import frozen schemas from contracts.
+  - id: PB-D003
+    status: closed
+    decision: >
+      Treat prompt construction as deterministic data shaping: produce a JSON-compatible mapping
+      and render it with stable ordering, preserving contract field names closely.
+    rationale: >
+      LLM Decision Adapter requirements decision LDA-003 requires deterministic JSON-compatible
+      dictionaries and stable text/JSON rendering for repeatability and replay. PILOT_MASTER_REQUIREMENTS
+      Prompt Contract requires the prompt to be short, structured, and repeatable.
+  - id: PB-D004
+    status: closed
+    decision: >
+      Populate the allowed-skills section exclusively from pilot.skills registry summaries, not from
+      hard-coded prompt metadata.
+    rationale: >
+      The feature requirements require using pilot.skills registry summaries as the allowed skill
+      list. PILOT_MASTER_REQUIREMENTS Skill Model requires the LLM to choose only from the closed
+      skill registry.
+  - id: PB-D005
+    status: closed
+    decision: >
+      Include an output-schema section that describes the expected decision JSON shape for the LLM,
+      but do not parse, validate, retry, or convert model output in this slice.
+    rationale: >
+      PILOT_MASTER_REQUIREMENTS Prompt Contract requires an output schema section, while the
+      prompt-builder slice explicitly excludes response parsing, retry behavior, executable decision
+      creation, and safety validation.
+  - id: PB-D006
+    status: closed
+    decision: >
+      Keep pilot.decision provider-agnostic and ROS-free, with no network, API-key, hardware, or
+      provider SDK dependency.
+    rationale: >
+      LLM Decision Adapter constraints require pure Python, provider-agnostic behavior and no API
+      keys, provider SDKs, network calls, ROS imports, or hardware dependencies. ADR-19 makes pilot
+      first-class but leaves runtime/key/network posture out of scope for this slice.
+  - id: PB-D007
+    status: closed
+    decision: >
+      Verification for this slice uses pilot-local test/lint gates plus root-level test, validate,
+      and lint gates; make demo is not a per-slice gate.
+    rationale: >
+      The prompt-builder slice acceptance lists pilot and root gates. The plan-feature skill
+      requires uv sync, make test, make validate, and make lint at minimum, and explicitly says make
+      demo is an m2 milestone concern, not a per-slice gate.
+files:
+  - pilot/src/pilot/decision.py
+  - pilot/src/pilot/__init__.py
+  - pilot/tests/test_decision_prompt.py
+tests:
+  - make -C pilot sync
+  - make -C pilot test
+  - make -C pilot lint
+  - make sync
+  - make test
+  - make validate
+  - make lint

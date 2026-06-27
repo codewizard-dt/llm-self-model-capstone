@@ -14,6 +14,12 @@ from pilot.observation import (
     visible_object_sort_key,
     visible_tag_sort_key,
 )
+from pilot.decision import (
+    PROMPT_SECTION_ORDER,
+    build_decision_prompt,
+    build_prompt_payload,
+    render_prompt,
+)
 from pilot.skills import (
     BoundReference,
     MovementEnvelope,
@@ -29,6 +35,7 @@ __all__ = [
     "BoundReference",
     "MovementEnvelope",
     "ObservationCache",
+    "PROMPT_SECTION_ORDER",
     "SkillDefault",
     "SkillDefinition",
     "SkillInput",
@@ -36,7 +43,10 @@ __all__ = [
     "assertion_sort_key",
     "failure_sort_key",
     "get_skill_definition",
+    "build_decision_prompt",
+    "build_prompt_payload",
     "list_skill_definitions",
+    "render_prompt",
     "sorted_assertions",
     "sorted_failures",
     "sorted_visible_objects",
