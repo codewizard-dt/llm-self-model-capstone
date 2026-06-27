@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import shutil
 import signal
 import subprocess
 from pathlib import Path
@@ -10,6 +12,10 @@ STRING_TELEMETRY_TOPICS = (
     "/operator/command_log",
     "/operator/results",
     "/operator/status",
+    "/align_to_tag/feedback",
+    "/align_to_tag/result",
+    "/survey/feedback",
+    "/survey/result",
     "/vex/telemetry",
     "/vision/scene_map",
     "/vision/object_detections",
@@ -21,6 +27,7 @@ BAG_TOPICS = (
     "/apriltag/detections",
     "/tf",
 )
+MAX_LOCAL_RUNS = 10
 
 
 def telemetry_bag_record_cmd(out_dir: Path | str) -> list[str]:
@@ -36,12 +43,31 @@ def telemetry_bag_record_cmd(out_dir: Path | str) -> list[str]:
     ]
 
 
+def prune_local_runs(parent_dir: Path, *, keep: int = MAX_LOCAL_RUNS) -> None:
+    parent_dir.mkdir(parents=True, exist_ok=True)
+    run_dirs = [
+        path
+        for path in parent_dir.iterdir()
+        if path.is_dir() and not path.name.startswith(".pruning-")
+    ]
+    run_dirs.sort(key=lambda path: path.stat().st_mtime, reverse=True)
+    for old_run in run_dirs[keep:]:
+        prune_target = parent_dir / f".pruning-{old_run.name}"
+        try:
+            old_run.rename(prune_target)
+        except OSError:
+            prune_target = old_run
+        shutil.rmtree(prune_target, ignore_errors=True)
+
+
 def start_operator_run_capture(
     out_dir: Path,
     *,
     run_id: str | None = None,
     label: str | None = None,
 ) -> list[subprocess.Popen]:
+    if out_dir.parent.name == "telemetry":
+        prune_local_runs(out_dir.parent, keep=MAX_LOCAL_RUNS - 1)
     out_dir.mkdir(parents=True, exist_ok=True)
     if label is not None:
         (out_dir / "test.txt").write_text(label + "\n")
@@ -60,6 +86,7 @@ def start_operator_run_capture(
             ],
             stdout=(out_dir / "telemetry-writer.log").open("w"),
             stderr=subprocess.STDOUT,
+            start_new_session=True,
         ),
         subprocess.Popen(
             [
@@ -74,11 +101,13 @@ def start_operator_run_capture(
             ],
             stdout=(out_dir / "image-writer.log").open("w"),
             stderr=subprocess.STDOUT,
+            start_new_session=True,
         ),
         subprocess.Popen(
             telemetry_bag_record_cmd(out_dir / "bag"),
             stdout=(out_dir / "bag-record.log").open("w"),
             stderr=subprocess.STDOUT,
+            start_new_session=True,
         ),
     ]
 
@@ -86,19 +115,28 @@ def start_operator_run_capture(
 def stop_process(process: subprocess.Popen) -> None:
     if process.poll() is not None:
         return
-    process.send_signal(signal.SIGINT)
+    try:
+        os.killpg(process.pid, signal.SIGINT)
+    except (ProcessLookupError, PermissionError):
+        process.send_signal(signal.SIGINT)
     try:
         process.wait(timeout=8)
         return
     except subprocess.TimeoutExpired:
         pass
-    process.terminate()
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except (ProcessLookupError, PermissionError):
+        process.terminate()
     try:
         process.wait(timeout=3)
         return
     except subprocess.TimeoutExpired:
         pass
-    process.kill()
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError):
+        process.kill()
     process.wait(timeout=3)
 
 
