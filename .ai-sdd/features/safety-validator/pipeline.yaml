@@ -1,0 +1,12 @@
+apiVersion: ai-sdd/v1
+kind: Pipeline
+metadata: { name: safety-validator, version: 1 }
+spec:
+  semantics: enabler
+  nodes:
+    - { id: validator-api-and-policy, kind: pipeline, pipeline: ../.., stack: pilot }
+    - { id: skill-safety-rules, kind: pipeline, pipeline: ../.., stack: pilot }
+    - { id: validator-tests-and-exports, kind: pipeline, pipeline: ../.., stack: pilot }
+  edges:
+    - { from: validator-api-and-policy, to: skill-safety-rules }
+    - { from: skill-safety-rules, to: validator-tests-and-exports }
