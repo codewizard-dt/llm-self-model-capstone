@@ -23,6 +23,19 @@ BAG_TOPICS = (
 )
 
 
+def telemetry_bag_record_cmd(out_dir: Path | str) -> list[str]:
+    return [
+        "ros2",
+        "bag",
+        "record",
+        "-s",
+        "mcap",
+        "-o",
+        str(out_dir),
+        *BAG_TOPICS,
+    ]
+
+
 def start_operator_run_capture(
     out_dir: Path,
     *,
@@ -63,16 +76,7 @@ def start_operator_run_capture(
             stderr=subprocess.STDOUT,
         ),
         subprocess.Popen(
-            [
-                "ros2",
-                "bag",
-                "record",
-                "-s",
-                "mcap",
-                "-o",
-                str(out_dir / "bag"),
-                *BAG_TOPICS,
-            ],
+            telemetry_bag_record_cmd(out_dir / "bag"),
             stdout=(out_dir / "bag-record.log").open("w"),
             stderr=subprocess.STDOUT,
         ),

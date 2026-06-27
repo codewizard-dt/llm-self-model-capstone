@@ -6,10 +6,10 @@ import sys
 
 
 HERE = pathlib.Path(__file__).resolve().parent
-ROOT = HERE.parent.parent
+ROOT = HERE.parent
 REPO_ROOT = HERE.parents[2]
 FIXTURES = HERE.parent / "fixtures"
-ROS_RUNTIME_SRC = ROOT / "robot" / "ros2-runtime" / "src"
+ROS_RUNTIME_SRC = ROOT / "src"
 
 sys.path.insert(0, str(ROS_RUNTIME_SRC))
 sys.path.insert(0, str(REPO_ROOT / "contracts" / "src"))

@@ -7,7 +7,15 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from .operator_run_capture import start_operator_run_capture, stop_operator_run_capture
+from .operator_run_capture import (
+    BAG_TOPICS,
+    start_operator_run_capture,
+    stop_operator_run_capture,
+    telemetry_bag_record_cmd as _telemetry_bag_record_cmd,
+)
+
+TELEMETRY_TOPICS = BAG_TOPICS
+telemetry_bag_record_cmd = _telemetry_bag_record_cmd
 
 
 def default_proof_dir() -> Path:
@@ -72,6 +80,7 @@ def main(argv: list[str] | None = None) -> int:
 
     print(proof_dir)
     return return_code
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

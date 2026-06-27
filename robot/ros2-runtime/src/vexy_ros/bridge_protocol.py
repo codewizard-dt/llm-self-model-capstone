@@ -37,7 +37,9 @@ def now_ms() -> int:
 
 
 def encode_packet(packet: Mapping[str, Any]) -> bytes:
-    return (json.dumps(packet, separators=(",", ":"), sort_keys=True) + "\n").encode("utf-8")
+    return (json.dumps(packet, separators=(",", ":"), sort_keys=True) + "\n").encode(
+        "utf-8"
+    )
 
 
 def clamp(value: float, lo: float, hi: float) -> float:
@@ -48,7 +50,9 @@ def normalize_outbound(packet: Mapping[str, Any]) -> dict[str, Any]:
     normalized = dict(packet)
 
     if normalized.get("v") != PROTOCOL_VERSION:
-        raise BridgeProtocolError(f"unsupported protocol version: {normalized.get('v')}")
+        raise BridgeProtocolError(
+            f"unsupported protocol version: {normalized.get('v')}"
+        )
     if not isinstance(normalized.get("seq"), int):
         raise BridgeProtocolError("seq must be an integer")
 
@@ -70,9 +74,15 @@ def normalize_outbound(packet: Mapping[str, Any]) -> dict[str, Any]:
         raise BridgeProtocolError(f"unsupported cmd: {cmd!r}")
 
     if cmd == "drive":
-        normalized["vx"] = clamp(float(normalized.get("vx", 0.0)), -MAX_LINEAR, MAX_LINEAR)
-        normalized["vy"] = clamp(float(normalized.get("vy", 0.0)), -MAX_LINEAR, MAX_LINEAR)
-        normalized["omega"] = clamp(float(normalized.get("omega", 0.0)), -MAX_OMEGA, MAX_OMEGA)
+        normalized["vx"] = clamp(
+            float(normalized.get("vx", 0.0)), -MAX_LINEAR, MAX_LINEAR
+        )
+        normalized["vy"] = clamp(
+            float(normalized.get("vy", 0.0)), -MAX_LINEAR, MAX_LINEAR
+        )
+        normalized["omega"] = clamp(
+            float(normalized.get("omega", 0.0)), -MAX_OMEGA, MAX_OMEGA
+        )
     elif cmd == "turn":
         normalized["omega"] = clamp(
             float(normalized.get("omega", 0.0)), -MAX_OMEGA, MAX_OMEGA
@@ -85,7 +95,9 @@ def normalize_outbound(packet: Mapping[str, Any]) -> dict[str, Any]:
         if slot not in ROUTINE_SLOTS:
             raise BridgeProtocolError("routine slot must be one of 2, 3, or 4")
         normalized["slot"] = slot
-        normalized["omega"] = clamp(float(normalized.get("omega", 0.0)), -MAX_OMEGA, MAX_OMEGA)
+        normalized["omega"] = clamp(
+            float(normalized.get("omega", 0.0)), -MAX_OMEGA, MAX_OMEGA
+        )
     elif cmd == "arm":
         try:
             target_deg = float(normalized.get("target_deg"))

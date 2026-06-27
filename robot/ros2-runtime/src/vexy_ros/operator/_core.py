@@ -859,11 +859,40 @@ class Operator:
         distance_error_m = math.hypot(dx, dy)
         bearing_rad = math.atan2(dy, dx)
         yaw_error_rad = normalize_angle(bearing_rad - pose.yaw_rad)
+        final_yaw_error_rad = normalize_angle(target_pose.yaw_rad - pose.yaw_rad)
 
-        if (
-            distance_error_m <= self.config.distance_tolerance_m
-            and abs(yaw_error_rad) <= self.config.yaw_tolerance_rad
-        ):
+        if distance_error_m <= self.config.distance_tolerance_m:
+            if abs(final_yaw_error_rad) > self.config.yaw_tolerance_rad:
+                command = PrimitiveCommand(
+                    "turn",
+                    omega=clamp(
+                        self.config.turn_kp * final_yaw_error_rad,
+                        -self.config.max_omega,
+                        self.config.max_omega,
+                    ),
+                    ttl_ms=self.config.drive_ttl_ms,
+                    reason=f"align_at_predicted_tag_{tag_index}",
+                )
+                self._send(command)
+                self._emit(
+                    "apriltag_predicted_final_orient",
+                    {
+                        "tag_index": tag_index,
+                        "yaw_error_rad": final_yaw_error_rad,
+                        "target_pose": target_pose.to_json(),
+                        "source": self.localization_source,
+                    },
+                )
+                return OperatorResult(
+                    False,
+                    "turning_to_predicted_tag",
+                    command=command,
+                    target_distance_m=target_distance_m,
+                    target_pose=target_pose,
+                    map_pose=self.map_pose,
+                    localization_source=self.localization_source,
+                    drive_health=drive_health,
+                )
             command = PrimitiveCommand(
                 "stop",
                 ttl_ms=self.config.stop_ttl_ms,

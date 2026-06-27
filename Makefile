@@ -11,18 +11,22 @@ m1-judge:
 sync:
 	$(MAKE) -C contracts sync
 	$(MAKE) -C self_model_generator sync
+	$(MAKE) -C robot/ros2-runtime sync
 
 validate:
 	$(MAKE) -C contracts validate
 	$(MAKE) -C self_model_generator validate
+	$(MAKE) -C robot/ros2-runtime validate
 
 test:
 	$(MAKE) -C contracts test
 	$(MAKE) -C self_model_generator test
+	$(MAKE) -C robot/ros2-runtime test
 
 lint:
 	$(MAKE) -C contracts lint
 	$(MAKE) -C self_model_generator lint
+	$(MAKE) -C robot/ros2-runtime lint
 
 schema:
 	$(MAKE) -C contracts schema
@@ -54,6 +58,5 @@ rebuild-pi:
 	systemctl --user status vexy-ros-stack.service
 
 # Stubs — filled in by later features
-# coprocessor: $(MAKE) -C robot/ros2-runtime sync / validate / test / lint
 # brain:       $(MAKE) -C robot/v5-brain     sync / validate / test / lint
 # pilot:       $(MAKE) -C pilot              sync / validate / test / lint

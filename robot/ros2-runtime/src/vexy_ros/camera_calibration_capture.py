@@ -130,9 +130,7 @@ class CheckerboardCalibrator(Node):  # type: ignore[misc,valid-type]
         self.image_points.append(refined)
         self.object_points.append(checkerboard_object_points(args=self.args, np=np))
         sample_count = len(self.image_points)
-        self.get_logger().info(
-            f"  *** CAPTURED {sample_count}/{self.args.samples} ***"
-        )
+        self.get_logger().info(f"  *** CAPTURED {sample_count}/{self.args.samples} ***")
         if self.preview_dir is not None:
             preview = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
             cv2.drawChessboardCorners(preview, pattern_size, refined, found)

@@ -450,6 +450,35 @@ class OperatorCoreTests(unittest.TestCase):
         self.assertGreater(sink.packets[-1]["vx"], 0.0)
         self.assertEqual(sink.packets[-1]["omega"], 0.0)
 
+    def test_move_to_tag_turns_at_predicted_pose_before_arrival(
+        self,
+    ) -> None:
+        sink = PacketCommandSink()
+        operator = Operator(
+            sink,
+            april_tag_map={1: TagAnchor(1, Pose2D(1.0, 0.0, math.pi / 2.0))},
+            camera_in_robot=Pose2D(0.0, 0.0, 0.0),
+            task_contract=TASK_CONTRACT,
+            task_outline=(("move_to_tag", (1,), {"target_distance_m": 0.45}),),
+            clock=lambda: 10.0,
+        )
+        operator.map_pose = operator.target_pose_for_tag(1, 0.45)
+        operator.map_pose = Pose2D(
+            operator.map_pose.x_m,
+            operator.map_pose.y_m,
+            0.0,
+        )
+        operator.localization_source = "dead_reckoning"
+        operator.last_pose_update_s = 10.0
+        operator.update_vision(VisionSnapshot(stamp_s=10.0, tags={}))
+
+        result = operator.move_to_tag(1, target_distance_m=0.45)
+
+        self.assertFalse(result.success)
+        self.assertEqual(result.reason, "turning_to_predicted_tag")
+        self.assertEqual(sink.packets[-1]["cmd"], "turn")
+        self.assertEqual(sink.packets[-1]["reason"], "align_at_predicted_tag_1")
+
     def test_orient_wrapper_sends_turn_then_stop(self) -> None:
         sink = PacketCommandSink()
         operator = make_operator(sink, clock=lambda: 10.0)
@@ -1100,6 +1129,62 @@ class OperatorNodeTests(unittest.TestCase):
         self.assertIn(cmd_packet["cmd"], {"drive", "turn"})
         self.assertIn(cmd_packet["reason"], {"approach_tag", "center_tag"})
         self.assertTrue(node._align_feedback_pub.messages)
+
+    def test_node_align_to_tag_accepts_requested_mapped_tag_and_rejects_unmapped_tag(
+        self,
+    ) -> None:
+        install_ros_stubs()
+        Node.parameter_defaults = {
+            "tag_anchors_json": json.dumps(
+                {
+                    "0": {"x_m": 0.0, "y_m": 0.0, "yaw_rad": 0.0},
+                    "2": {"x_m": 2.0, "y_m": 0.0, "yaw_rad": 0.0},
+                }
+            )
+        }
+        node_module = importlib.import_module("vexy_ros.operator.node")
+        node = node_module.OperatorNode()
+        node._on_ack(String(data=json.dumps({"ack": 1, "state": "ok"})))
+        stamp_s = time.monotonic()
+        node._latest_align_tag = node_module.AlignTagObservation(
+            tag_id=2,
+            stamp_s=stamp_s,
+            yaw_error_rad=0.2,
+            lateral_error_m=0.05,
+            distance_m=0.9,
+        )
+
+        node._on_command(
+            String(
+                data=json.dumps(
+                    {
+                        "action": "align_to_tag",
+                        "tag_id": 2,
+                        "target_distance_m": 0.45,
+                    }
+                )
+            )
+        )
+        node._tick_controllers()
+        accepted = json.loads(node._status_pub.messages[-1].data)
+        self.assertTrue(accepted["success"])
+        self.assertEqual(accepted["reason"], "align_started")
+        self.assertTrue(node._align_feedback_pub.messages)
+
+        node._on_command(
+            String(
+                data=json.dumps(
+                    {
+                        "action": "align_to_tag",
+                        "tag_id": 1,
+                        "target_distance_m": 0.45,
+                    }
+                )
+            )
+        )
+        rejected = json.loads(node._event_pub.messages[-1].data)
+        self.assertEqual(rejected["name"], "command_rejected")
+        self.assertIn("AprilTag index 1 is not available", rejected["detail"]["error"])
 
     def test_node_runs_survey_scan_through_operator_sink(self) -> None:
         install_ros_stubs()

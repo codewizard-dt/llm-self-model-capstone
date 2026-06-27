@@ -6,7 +6,7 @@ package_name = "vexy_ros"
 
 setup(
     name=package_name,
-    version="1.0.0",
+    version="1.2.0",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     data_files=[
@@ -19,12 +19,14 @@ setup(
             glob("config/maps/*.json"),
         ),
     ],
-    install_requires=["setuptools", "pydantic>=2"],
     zip_safe=True,
+    install_requires=[
+        "setuptools",
+        "pydantic>=2.12,<3",
+    ],
     maintainer="David Taylor",
     maintainer_email="dt@davidtaylor.codes",
     description="ROS 2 Jazzy runtime for VEX V5 + Raspberry Pi 5 coprocessor",
-    license="Apache-2.0",
     entry_points={
         "console_scripts": [
             "vex_bridge_node = vexy_ros.vex_bridge_node:main",

@@ -1,10 +1,10 @@
 """Live integration test — align scenario.
 
 Copy to the Pi, source the ROS workspace, then run:
-    python3 test_live_align.py
+    python3 test_live_align.py 0
 
 Starts vexy-ros-stack.service if not already running.
-Requires Brain slot 8 running and AprilTags physically visible to the camera.
+Requires Brain slot 8 running and the requested AprilTag physically visible to the camera.
 Exits 0 on success, 1 on failure or timeout.
 """
 
@@ -54,11 +54,12 @@ def ensure_stack_running() -> bool:
 
 FAIL_REASONS = {"stuck", "spinout", "disabled", "unmapped_tag", "command_rejected"}
 
-# (action, payload_extras, timeout_s)  — all steps are nav steps
-STEPS = [
-    ("locate_nearest_apriltag", {}, 20.0),
-    ("move_to_tag", {"tag_index": 0, "target_distance_m": 0.4064}, 20.0),
-]
+
+def build_steps(tag_id: int) -> list[tuple[str, dict, float]]:
+    return [
+        ("locate_nearest_apriltag", {}, 20.0),
+        ("align_to_tag", {"tag_id": tag_id, "target_distance_m": 0.4064}, 20.0),
+    ]
 
 
 class AlignTestNode(Node):
@@ -66,6 +67,7 @@ class AlignTestNode(Node):
         super().__init__("operator_test_align")
         self._cmd_pub = self.create_publisher(String, "/operator/command", 10)
         self._last_result: dict | None = None
+        self._last_rejection: dict | None = None
         self.create_subscription(String, "/operator/results", self._on_result, 10)
         self.create_subscription(String, "/operator/events", self._on_event, 10)
 
@@ -79,6 +81,8 @@ class AlignTestNode(Node):
         try:
             payload = json.loads(msg.data)
             print(f"  event: {payload.get('name')}  {payload.get('detail')}")
+            if payload.get("name") == "command_rejected":
+                self._last_rejection = payload
         except json.JSONDecodeError:
             pass
 
@@ -123,14 +127,15 @@ class AlignTestNode(Node):
         print(f"  OK  {outcome.get('reason')}")
         return True
 
-    def run(self) -> bool:
-        print("=== align test: locate → approach ===")
+    def run(self, tag_id: int) -> bool:
+        print(f"=== align test: locate → align to AprilTag {tag_id} ===")
         if not self._reset_operator():
             return False
-        for action, extras, timeout_s in STEPS:
+        for action, extras, timeout_s in build_steps(tag_id):
             extras_str = f"  extras={extras}" if extras else ""
             print(f"[{action}]{extras_str}")
             self._last_result = None
+            self._last_rejection = None
             deadline = time.monotonic() + timeout_s
             succeeded = False
             last_sent = 0.0
@@ -140,6 +145,10 @@ class AlignTestNode(Node):
                 if now - last_sent >= 0.05:
                     self._send(action, extras)
                     last_sent = now
+                if self._last_rejection is not None:
+                    detail = self._last_rejection.get("detail", {})
+                    print(f"  FAIL  command_rejected: {detail.get('error')}")
+                    return False
                 result = self._last_result
                 if result is None:
                     continue
@@ -165,6 +174,13 @@ class AlignTestNode(Node):
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "tag_id",
+        type=int,
+        nargs="?",
+        default=0,
+        help="AprilTag ID to align to. The operator rejects IDs missing from the loaded map.",
+    )
     parser.add_argument("--telemetry-dir", type=Path, default=None)
     parser.add_argument("--no-telemetry-capture", action="store_true")
     parser.add_argument("--capture-settle-s", type=float, default=1.0)
@@ -188,7 +204,7 @@ def main(argv: list[str] | None = None) -> None:
     rclpy.init()
     node = AlignTestNode()
     try:
-        ok = node.run()
+        ok = node.run(args.tag_id)
         sys.exit(0 if ok else 1)
     finally:
         node.destroy_node()

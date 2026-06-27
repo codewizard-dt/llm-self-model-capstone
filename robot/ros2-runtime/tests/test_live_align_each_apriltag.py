@@ -55,15 +55,20 @@ def ensure_stack_running() -> bool:
 
 FAIL_REASONS = {"disabled", "unmapped_tag"}
 
-# (action, payload_extras, timeout_s)  — all steps are nav steps
+# (action, payload_extras, timeout_s)  — all steps are nav steps.
+# Each standoff approach is followed by a same-tag orient step so the robot
+# corrects heading before the next leg starts.
 STEPS = [
     ("locate_nearest_apriltag", {}, 20.0),
     ("orient_to_tag", {"tag_index": 0}, 15.0),
     ("move_to_tag", {"tag_index": 0, "target_distance_m": TARGET_DISTANCE_M}, 30.0),
+    ("orient_to_tag", {"tag_index": 0}, 15.0),
     ("orient_to_tag", {"tag_index": 1}, 15.0),
     ("move_to_tag", {"tag_index": 1, "target_distance_m": TARGET_DISTANCE_M}, 30.0),
+    ("orient_to_tag", {"tag_index": 1}, 15.0),
     ("orient_to_tag", {"tag_index": 2}, 15.0),
     ("move_to_tag", {"tag_index": 2, "target_distance_m": TARGET_DISTANCE_M}, 30.0),
+    ("orient_to_tag", {"tag_index": 2}, 15.0),
 ]
 
 
@@ -162,7 +167,9 @@ class AlignEachTagTestNode(Node):
                     tag_index = extras.get("tag_index")
                     if action == "move_to_tag" and tag_index is not None:
                         gap = result.get("gap", {})
-                        target_m = float(outcome.get("target_distance_m") or TARGET_DISTANCE_M)
+                        target_m = float(
+                            outcome.get("target_distance_m") or TARGET_DISTANCE_M
+                        )
                         dist = target_m + float(gap.get("distance_error_m", 0.0))
                         arrival_distances[tag_index] = dist
                         error_m = dist - TARGET_DISTANCE_M

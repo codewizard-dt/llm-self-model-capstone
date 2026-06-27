@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Push robot/ros2-runtime to the RPi, honouring .gitignore exclusions.
+# Push robot/ros2-runtime to the RPi.
+# Dev/build artifacts are excluded explicitly (see MASTER_REQUIREMENTS coprocessor
+# ignore_folders) plus repo-root .gitignore for anything else.
 #
 # Usage:
 #   ./scripts/sync_pi_runtime.sh
@@ -30,9 +32,27 @@ fi
 
 echo "Syncing ${LOCAL_DIR} -> ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_DIR}"
 
+RSYNC_EXCLUDES=(
+  --exclude='.git/'
+  # coprocessor vertical (robot/ros2-runtime) — MASTER_REQUIREMENTS ignore_folders
+  --exclude='.venv/'
+  --exclude='__pycache__/'
+  --exclude='build/'
+  --exclude='install/'
+  --exclude='log/'
+  --exclude='models/'
+  --exclude='captures/'
+  --exclude='proof/'
+  # local dev / test caches (present on laptop, rebuilt on Pi)
+  --exclude='.ruff_cache/'
+  --exclude='.pytest_cache/'
+  --exclude='*.egg-info/'
+  --exclude='*.py[cod]'
+)
+
 SSHPASS="$REMOTE_PW" sshpass -e rsync -avz --progress \
-    --filter=':- .gitignore' \
-    --exclude='.git/' \
+    --filter=":- ${REPO_ROOT}/.gitignore" \
+    "${RSYNC_EXCLUDES[@]}" \
     -e "ssh -o StrictHostKeyChecking=no" \
     "$LOCAL_DIR" \
     "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_DIR}"

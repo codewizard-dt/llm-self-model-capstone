@@ -1229,6 +1229,11 @@ class OperatorNode(Node):
             tag_stale_s=float(payload.get("tag_stale_s", 0.5)),
             ack_stale_s=float(payload.get("ack_stale_s", 0.8)),
         )
+        if goal.tag_id not in self.operator.available_april_tag_ids:
+            raise ValueError(
+                f"AprilTag index {goal.tag_id} is not available in loaded map; "
+                f"available ids: {list(self.operator.available_april_tag_ids)}"
+            )
         decision = self._align_controller.start(
             goal,
             now_s=time.monotonic(),
