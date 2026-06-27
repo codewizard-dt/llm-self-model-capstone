@@ -1,0 +1,12 @@
+apiVersion: ai-sdd/v1
+kind: Pipeline
+metadata: { name: llm-decision-adapter, version: 1 }
+spec:
+  semantics: enabler
+  nodes:
+    - { id: prompt-builder, kind: pipeline, pipeline: ../.., stack: pilot }
+    - { id: decision-parser-validation, kind: pipeline, pipeline: ../.., stack: pilot }
+    - { id: retrying-adapter-api, kind: pipeline, pipeline: ../.., stack: pilot }
+  edges:
+    - { from: prompt-builder, to: decision-parser-validation }
+    - { from: decision-parser-validation, to: retrying-adapter-api }
