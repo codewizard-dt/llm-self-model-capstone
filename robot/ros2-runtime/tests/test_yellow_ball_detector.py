@@ -69,6 +69,18 @@ class YellowBallDetectorTests(unittest.TestCase):
         self.assertLessEqual(y2, 185.0)
 
     @unittest.skipIf(cv2 is None, "opencv-python is not installed")
+    def test_rejects_low_saturation_elongated_wall_patch(self) -> None:
+        import numpy as np
+
+        frame = np.zeros((240, 320, 3), dtype=np.uint8)
+        patch_color = self._bgr_from_hsv(24, 45, 170)
+        cv2.ellipse(frame, (145, 95), (20, 54), 5, 0, 360, patch_color, -1)
+
+        detections = detect_yellow_balls(frame, hsv_lower=(20, 25, 80))
+        self.assertEqual(len(detections), 1)
+        self.assertEqual(detect_yellow_balls(frame), [])
+
+    @unittest.skipIf(cv2 is None, "opencv-python is not installed")
     def test_hsv_range_can_be_overridden_for_warmer_yellow_targets(self) -> None:
         import numpy as np
 

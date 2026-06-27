@@ -30,11 +30,11 @@ class YellowBallDetectorNode(Node):
         self.declare_parameter("detections_topic", "/vision/object_detections")
         self.declare_parameter("max_hz", 8.0)
         self.declare_parameter("min_area_px", 200.0)
-        self.declare_parameter("min_circularity", 0.25)
+        self.declare_parameter("min_circularity", 0.55)
         self.declare_parameter("max_detections", 1)
         self.declare_parameter("h_min", 20)
-        self.declare_parameter("s_min", 25)
-        self.declare_parameter("v_min", 80)
+        self.declare_parameter("s_min", 80)
+        self.declare_parameter("v_min", 100)
         self.declare_parameter("h_max", 45)
         self.declare_parameter("s_max", 255)
         self.declare_parameter("v_max", 255)
@@ -110,9 +110,9 @@ def detect_yellow_balls(
     *,
     label: str = "yellow_ball",
     min_area_px: float = 200.0,
-    min_circularity: float = 0.25,
+    min_circularity: float = 0.55,
     max_detections: int = 1,
-    hsv_lower: tuple[int, int, int] = (20, 25, 80),
+    hsv_lower: tuple[int, int, int] = (20, 80, 100),
     hsv_upper: tuple[int, int, int] = (45, 255, 255),
     stamp_s: float | None = None,
 ) -> list[Detection]:

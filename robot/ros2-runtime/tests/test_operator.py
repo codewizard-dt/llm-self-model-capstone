@@ -565,7 +565,7 @@ class OperatorCoreTests(unittest.TestCase):
         self.assertEqual(result.reason, "moving_to_ball")
         self.assertEqual(sink.packets[-1]["cmd"], "drive")
         self.assertEqual(sink.packets[-1]["reason"], "push_ball_to_wall")
-        self.assertEqual(sink.packets[-1]["omega"], 0.0)
+        self.assertGreater(sink.packets[-1]["omega"], 0.0)
         self.assertGreater(sink.packets[-1]["vx"], 0.0)
 
         now = 11.0
@@ -578,7 +578,7 @@ class OperatorCoreTests(unittest.TestCase):
                         "yellow_ball",
                         now,
                         forward_m=0.10,
-                        left_m=0.02,
+                        left_m=-0.08,
                     ),
                 ),
             )
@@ -600,7 +600,7 @@ class OperatorCoreTests(unittest.TestCase):
                         "yellow_ball",
                         now,
                         forward_m=0.01,
-                        left_m=0.02,
+                        left_m=-0.08,
                     ),
                 ),
             )
@@ -654,7 +654,7 @@ class OperatorCoreTests(unittest.TestCase):
                         "yellow_ball",
                         now,
                         forward_m=0.10,
-                        left_m=0.02,
+                        left_m=-0.08,
                     ),
                 ),
             )
@@ -714,7 +714,7 @@ class OperatorCoreTests(unittest.TestCase):
                         "yellow_ball",
                         now,
                         forward_m=0.05,
-                        left_m=0.02,
+                        left_m=-0.08,
                     ),
                 ),
             )
@@ -766,7 +766,7 @@ class OperatorCoreTests(unittest.TestCase):
         self.assertTrue(events[-1].detail["grip_confirmed"])
         self.assertEqual(sink.packets[-1]["cmd"], "grab")
 
-    def test_pickup_ball_without_visual_lock_drives_forward_then_closes(self) -> None:
+    def test_pickup_ball_without_visual_lock_drives_forward_then_fails(self) -> None:
         now = 10.0
 
         def clock() -> float:
@@ -789,9 +789,9 @@ class OperatorCoreTests(unittest.TestCase):
         now = 14.3
         result = operator.pickup_ball(duration_ms=700)
         self.assertFalse(result.success)
-        self.assertEqual(result.reason, "closing_claw")
-        self.assertEqual(sink.packets[-1]["cmd"], "grab")
-        self.assertEqual(sink.packets[-1]["reason"], "close_claw_after_wall_contact")
+        self.assertEqual(result.reason, "grab_not_confirmed")
+        self.assertEqual(sink.packets[-1]["cmd"], "stop")
+        self.assertEqual(sink.packets[-1]["reason"], "ball_capture_zone_missing")
 
     def test_pickup_ball_fails_after_empty_close_attempts(self) -> None:
         now = 10.0
@@ -814,7 +814,7 @@ class OperatorCoreTests(unittest.TestCase):
                         "yellow_ball",
                         now,
                         forward_m=0.10,
-                        left_m=0.02,
+                        left_m=-0.08,
                     ),
                 ),
             )
