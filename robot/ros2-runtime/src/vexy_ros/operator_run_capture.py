@@ -17,8 +17,6 @@ STRING_TELEMETRY_TOPICS = (
 
 BAG_TOPICS = (
     *STRING_TELEMETRY_TOPICS,
-    "/camera/image_rect",
-    "/camera/camera_info",
     "/apriltag/detections",
     "/tf",
 )
@@ -47,6 +45,20 @@ def start_operator_run_capture(
                 run_id,
             ],
             stdout=(out_dir / "telemetry-writer.log").open("w"),
+            stderr=subprocess.STDOUT,
+        ),
+        subprocess.Popen(
+            [
+                "ros2",
+                "run",
+                "vexy_ros",
+                "vexy_image_writer_node",
+                "--out-dir",
+                str(out_dir),
+                "--fps",
+                "2",
+            ],
+            stdout=(out_dir / "image-writer.log").open("w"),
             stderr=subprocess.STDOUT,
         ),
         subprocess.Popen(

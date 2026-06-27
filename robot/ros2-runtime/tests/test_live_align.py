@@ -104,6 +104,12 @@ class AlignTestNode(Node):
 
     def _reset_operator(self) -> bool:
         print("[reset_operator]")
+        deadline = time.monotonic() + 5.0
+        while self._cmd_pub.get_subscription_count() == 0:
+            if time.monotonic() >= deadline:
+                print("  TIMEOUT waiting for operator subscriber")
+                return False
+            rclpy.spin_once(self, timeout_sec=0.05)
         self._last_result = None
         self._send("reset_operator", {})
         result = self._wait_for_result("reset_operator", 3.0)

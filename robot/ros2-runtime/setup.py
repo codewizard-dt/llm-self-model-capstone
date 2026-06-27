@@ -6,7 +6,7 @@ package_name = "vexy_ros"
 
 setup(
     name=package_name,
-    version="0.6.0",
+    version="0.7.0",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     data_files=[
@@ -43,6 +43,7 @@ setup(
             "vexy_run_calibrated_tag_proof = vexy_ros.proof_runner:main",
             "vexy_extract_telemetry = vexy_ros.telemetry_extract:main",
             "vexy_telemetry_writer_node = vexy_ros.telemetry_writer_node:main",
+            "vexy_image_writer_node = vexy_ros.image_writer_node:main",
             "vexy_scene_observation_proof = vexy_ros.observation_proof:main",
             "vexy_calibrate_camera = vexy_ros.camera_calibration_capture:main",
         ],
