@@ -10,13 +10,9 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
 
-TELEMETRY_TOPICS = (
-    "/operator/run_start",
-    "/operator/events",
-    "/operator/results",
-    "/operator/status",
-    "/vex/telemetry",
-)
+from .operator_run_capture import STRING_TELEMETRY_TOPICS
+
+TELEMETRY_TOPICS = STRING_TELEMETRY_TOPICS
 
 
 def _topic_to_filename(topic: str) -> str:
@@ -29,6 +25,7 @@ class TelemetryWriterNode(Node):
         self._out_dir = out_dir
         self._out_dir.mkdir(parents=True, exist_ok=True)
         self._run_id = run_id if run_id is not None else out_dir.name
+        self._active_run_id = self._run_id
         self._files: dict[str, object] = {}
         for topic in TELEMETRY_TOPICS:
             self.create_subscription(String, topic, self._make_callback(topic), 10)
@@ -41,12 +38,17 @@ class TelemetryWriterNode(Node):
             except json.JSONDecodeError:
                 payload = {"_raw": msg.data}
             payload["_wall_s"] = time.time()
-            payload.setdefault("run_id", self._run_id)
+            if topic == "/operator/run_start" and isinstance(
+                payload.get("run_id"), str
+            ):
+                self._active_run_id = payload["run_id"]
+            payload.setdefault("run_id", self._active_run_id)
             fname = _topic_to_filename(topic)
             if fname not in self._files:
                 self._files[fname] = (self._out_dir / fname).open("a")
             self._files[fname].write(json.dumps(payload, separators=(",", ":")) + "\n")
             self._files[fname].flush()
+
         return _cb
 
     def close_files(self) -> None:
@@ -59,10 +61,17 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
         description="Subscribe to operator topics and write each message as a JSON line."
     )
-    parser.add_argument("--out-dir", type=Path, required=True,
-                        help="Directory to write JSONL files into")
-    parser.add_argument("--run-id", default=None,
-                        help="Run identifier injected into every telemetry record (defaults to out-dir basename)")
+    parser.add_argument(
+        "--out-dir",
+        type=Path,
+        required=True,
+        help="Directory to write JSONL files into",
+    )
+    parser.add_argument(
+        "--run-id",
+        default=None,
+        help="Run identifier injected into every telemetry record (defaults to out-dir basename)",
+    )
     args, ros_args = parser.parse_known_args(argv)
 
     rclpy.init(args=ros_args)

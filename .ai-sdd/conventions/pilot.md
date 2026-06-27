@@ -4,12 +4,12 @@
 > Raspberry Pi that reads live telemetry + vision and issues control-grammar commands to perform an
 > **open-ended task in real time**, looping until the task completes, is interrupted, or hits a limit.
 > It is distinct from `self_model_generator` (the offline, generational self-model loop). Grounded in the
-> maintainer's stage-c brief + REPO `robot/pi-runtime/docs/BRAIN_INTERFACE.md` (Mode A real-time) +
+> maintainer's stage-c brief + REPO `robot/ros2-runtime/docs/BRAIN_INTERFACE.md` (Mode A real-time) +
 > WIKI [[vex-coprocessor-pattern]] (LLM inference on the coprocessor). **The name `pilot` is a
 > proposal — confirm or rename.**
 
 **Vertical.** `pilot` — the real-time autonomy harness. Root: `pilot/` (greenfield; deployed onto the
-Pi host, `robot/pi-runtime`). Owner: **TBD** (per O1; slices inherit the vertical lead once assigned, ADR-0027).
+Pi host alongside `robot/ros2-runtime`). Owner: **TBD** (per O1; slices inherit the vertical lead once assigned, ADR-0027).
 
 ## The loop
 
@@ -45,8 +45,8 @@ self-model / gap model) — i.e. the offline loop tightens the model; the online
 - **No schema defined here** — import from `contracts`.
 - **Bounded + interruptible.** Always run under iteration/time limits with a human kill switch; never
   an unbounded autonomous loop. *(Maintainer brief; BRAIN_INTERFACE §3.5.)*
-- **Reuse, don't redefine, the command path.** Build on the `coprocessor` serial/command plumbing
-  (`robot/pi-runtime`), not a parallel transport.
+- **Reuse, don't redefine, the command path.** Build on the `coprocessor` ROS serial/command plumbing
+  (`robot/ros2-runtime`), not a parallel transport.
 
 ## Open decisions (flagged — resolve before building)
 

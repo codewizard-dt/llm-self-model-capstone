@@ -3,7 +3,7 @@
 This directory holds the code that actually runs near the physical robot.
 
 ```text
-pi-runtime/   Raspberry Pi System 2 runtime.
+ros2-runtime/ Raspberry Pi ROS 2 coprocessor runtime.
 v5-brain/     VEX V5 Brain starter code and notes.
 ```
 

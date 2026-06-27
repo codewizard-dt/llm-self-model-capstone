@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import json
 import re
 import sys
 import unittest
@@ -8,6 +9,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
 
 
 class LaunchContractTests(unittest.TestCase):
@@ -57,6 +59,27 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn('executable="vexy_operator_node"', launch_text)
         self.assertNotIn('executable="align_to_tag_node"', launch_text)
         self.assertNotIn('executable="survey_scan_node"', launch_text)
+
+    def test_default_operator_task_outline_is_executable(self) -> None:
+        from vexy_ros.operator._core import parse_operator_method_plan
+
+        launch_tree = ast.parse((ROOT / "launch" / "vexy.launch.py").read_text())
+        assignment = next(
+            node
+            for node in launch_tree.body
+            if isinstance(node, ast.Assign)
+            and any(
+                isinstance(target, ast.Name)
+                and target.id == "DEFAULT_OPERATOR_TASK_OUTLINE"
+                for target in node.targets
+            )
+        )
+        outline_json = "".join(ast.literal_eval(assignment.value))
+        plan = parse_operator_method_plan(json.loads(outline_json))
+        arm_step = next(step for step in plan if step[0] == "arm")
+
+        self.assertEqual(arm_step[1], ())
+        self.assertEqual(dict(arm_step[2]), {"target_deg": 20.0})
 
     def test_apriltag_config_names_the_expected_first_proof_tag(self) -> None:
         config_text = (ROOT / "config" / "apriltag_36h11.yaml").read_text()

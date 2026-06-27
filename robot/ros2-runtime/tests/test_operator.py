@@ -8,6 +8,7 @@ import tempfile
 import time
 import types
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 from typing import Any
 
@@ -22,10 +23,16 @@ from vexy_ros.operator._core import (  # noqa: E402
     OperatorEvent,
     OperatorResult,
     PacketCommandSink,
+    PrimitiveCommand,
     TagObservation,
     TelemetrySnapshot,
     VisionSnapshot,
     telemetry_snapshot_from_mapping,
+)
+from vexy_ros.operator_run_capture import (  # noqa: E402
+    BAG_TOPICS,
+    STRING_TELEMETRY_TOPICS,
+    start_operator_run_capture,
 )
 from vexy_ros.vision_map import Pose2D, TagAnchor  # noqa: E402
 
@@ -80,6 +87,55 @@ class OperatorCoreTests(unittest.TestCase):
             self.assertFalse(hasattr(operator, f"move_to_tag_{tag_id}"))
         self.assertTrue(callable(operator.orient_to_tag))
         self.assertTrue(callable(operator.move_to_tag))
+
+    def test_reset_state_clears_runtime_state(self) -> None:
+        sink = PacketCommandSink()
+        events: list[OperatorEvent] = []
+        operator = make_operator(sink, clock=lambda: 10.0, event_sink=events.append)
+        operator.update_vision(
+            VisionSnapshot(
+                stamp_s=10.0,
+                tags={1: TagObservation(1, 10.0, forward_m=0.8, left_m=0.0)},
+            )
+        )
+        operator.update_telemetry(
+            TelemetrySnapshot(
+                stamp_s=10.0,
+                motor_samples=(
+                    MotorSample(
+                        "claw",
+                        "manipulator",
+                        100,
+                        current_amp=2.0,
+                        velocity_rpm=1.0,
+                    ),
+                ),
+            )
+        )
+        operator.pickup_phase = "done"
+        operator.pickup_phase_start_s = 10.0
+        operator.pickup_visual_capture_confirmed = True
+        operator.pickup_grip_confirmed = True
+        operator.pickup_attempts = 2
+        operator.arm_raise_sent_for_tags.add(1)
+        operator.last_command = PrimitiveCommand("drive", vx=0.1)
+
+        operator.reset_state()
+
+        self.assertEqual(operator.vision.stamp_s, 0.0)
+        self.assertEqual(operator.vision.tags, {})
+        self.assertIsNone(operator.telemetry)
+        self.assertIsNone(operator.map_pose)
+        self.assertEqual(operator.localization_source, "unknown")
+        self.assertIsNone(operator.last_pose_update_s)
+        self.assertIsNone(operator.last_command)
+        self.assertEqual(operator.pickup_phase, "idle")
+        self.assertIsNone(operator.pickup_phase_start_s)
+        self.assertFalse(operator.pickup_visual_capture_confirmed)
+        self.assertFalse(operator.pickup_grip_confirmed)
+        self.assertEqual(operator.pickup_attempts, 0)
+        self.assertEqual(operator.arm_raise_sent_for_tags, set())
+        self.assertEqual(events[-1].name, "operator_state_reset")
 
     def test_operator_requires_apriltag_map_and_task_contract(self) -> None:
         sink = PacketCommandSink()
@@ -233,6 +289,27 @@ class OperatorCoreTests(unittest.TestCase):
         self.assertAlmostEqual(result.target_pose.y_m, expected_target.y_m)
         self.assertAlmostEqual(result.target_pose.yaw_rad, expected_target.yaw_rad)
 
+    def test_target_distance_for_tag_uses_camera_visible_role_standoffs(self) -> None:
+        sink = PacketCommandSink()
+        operator = Operator(
+            sink,
+            april_tag_map={
+                0: TagAnchor(0, Pose2D(0.8, 0.0, math.pi / 2), "bin"),
+                1: TagAnchor(1, Pose2D(1.2, 0.4, math.pi), "ball_staging"),
+                2: TagAnchor(2, Pose2D(0.0, 1.0, -math.pi / 2), "home"),
+                3: TagAnchor(3, Pose2D(0.0, 0.0, 0.0), "unknown"),
+            },
+            camera_in_robot=Pose2D(0.0, 0.0, 0.0),
+            task_contract=TASK_CONTRACT,
+            task_outline=(("locate_nearest_apriltag", ()),),
+            clock=lambda: 10.0,
+        )
+
+        self.assertAlmostEqual(operator.target_distance_for_tag(0), 0.20)
+        self.assertAlmostEqual(operator.target_distance_for_tag(1), 0.381)
+        self.assertAlmostEqual(operator.target_distance_for_tag(2), 0.45)
+        self.assertAlmostEqual(operator.target_distance_for_tag(3), 0.45)
+
     def test_move_to_tag_raises_arm_once_at_32_inches(self) -> None:
         sink = PacketCommandSink()
         operator = make_operator(sink, clock=lambda: 10.0)
@@ -314,6 +391,93 @@ class OperatorCoreTests(unittest.TestCase):
         self.assertEqual(operator.localization_source, "dead_reckoning")
         self.assertIsNotNone(pose)
         self.assertGreater(pose.x_m, 1.0)
+
+    def test_move_to_tag_orients_to_predicted_pose_when_target_is_not_visible(
+        self,
+    ) -> None:
+        sink = PacketCommandSink()
+        operator = Operator(
+            sink,
+            april_tag_map={
+                0: TagAnchor(0, Pose2D(1.0, 0.0, 0.0)),
+                1: TagAnchor(1, Pose2D(1.0, 1.0, 0.0)),
+            },
+            camera_in_robot=Pose2D(0.0, 0.0, 0.0),
+            task_contract=TASK_CONTRACT,
+            task_outline=(("move_to_tag", (1,), {"target_distance_m": 0.45}),),
+            clock=lambda: 10.0,
+        )
+        operator.update_vision(
+            VisionSnapshot(
+                stamp_s=10.0,
+                tags={0: TagObservation(0, 9.9, forward_m=1.0, left_m=0.0)},
+            )
+        )
+        operator.update_vision(VisionSnapshot(stamp_s=10.0, tags={}))
+
+        result = operator.move_to_tag(1, target_distance_m=0.45)
+
+        self.assertFalse(result.success)
+        self.assertEqual(result.reason, "turning_to_predicted_tag")
+        self.assertEqual(sink.packets[-1]["cmd"], "turn")
+        self.assertEqual(sink.packets[-1]["reason"], "orient_to_predicted_tag_1")
+        self.assertIsNone(result.tag)
+        self.assertIsNotNone(result.target_pose)
+
+    def test_move_to_tag_drives_to_predicted_pose_when_heading_is_aligned(
+        self,
+    ) -> None:
+        sink = PacketCommandSink()
+        operator = Operator(
+            sink,
+            april_tag_map={1: TagAnchor(1, Pose2D(1.0, 0.0, 0.0))},
+            camera_in_robot=Pose2D(0.0, 0.0, 0.0),
+            task_contract=TASK_CONTRACT,
+            task_outline=(("move_to_tag", (1,), {"target_distance_m": 0.45}),),
+            clock=lambda: 10.0,
+        )
+        operator.map_pose = Pose2D(0.0, 0.0, 0.0)
+        operator.localization_source = "dead_reckoning"
+        operator.last_pose_update_s = 10.0
+        operator.update_vision(VisionSnapshot(stamp_s=10.0, tags={}))
+
+        result = operator.move_to_tag(1, target_distance_m=0.45)
+
+        self.assertFalse(result.success)
+        self.assertEqual(result.reason, "moving_to_predicted_tag")
+        self.assertEqual(sink.packets[-1]["cmd"], "drive")
+        self.assertEqual(sink.packets[-1]["reason"], "move_to_predicted_tag_1")
+        self.assertGreater(sink.packets[-1]["vx"], 0.0)
+        self.assertEqual(sink.packets[-1]["omega"], 0.0)
+
+    def test_move_to_tag_turns_at_predicted_pose_before_arrival(
+        self,
+    ) -> None:
+        sink = PacketCommandSink()
+        operator = Operator(
+            sink,
+            april_tag_map={1: TagAnchor(1, Pose2D(1.0, 0.0, math.pi / 2.0))},
+            camera_in_robot=Pose2D(0.0, 0.0, 0.0),
+            task_contract=TASK_CONTRACT,
+            task_outline=(("move_to_tag", (1,), {"target_distance_m": 0.45}),),
+            clock=lambda: 10.0,
+        )
+        operator.map_pose = operator.target_pose_for_tag(1, 0.45)
+        operator.map_pose = Pose2D(
+            operator.map_pose.x_m,
+            operator.map_pose.y_m,
+            0.0,
+        )
+        operator.localization_source = "dead_reckoning"
+        operator.last_pose_update_s = 10.0
+        operator.update_vision(VisionSnapshot(stamp_s=10.0, tags={}))
+
+        result = operator.move_to_tag(1, target_distance_m=0.45)
+
+        self.assertFalse(result.success)
+        self.assertEqual(result.reason, "turning_to_predicted_tag")
+        self.assertEqual(sink.packets[-1]["cmd"], "turn")
+        self.assertEqual(sink.packets[-1]["reason"], "align_at_predicted_tag_1")
 
     def test_orient_wrapper_sends_turn_then_stop(self) -> None:
         sink = PacketCommandSink()
@@ -400,7 +564,9 @@ class OperatorCoreTests(unittest.TestCase):
         self.assertFalse(result.success)
         self.assertEqual(result.reason, "moving_to_ball")
         self.assertEqual(sink.packets[-1]["cmd"], "drive")
-        self.assertEqual(sink.packets[-1]["reason"], "move_ball_into_claw")
+        self.assertEqual(sink.packets[-1]["reason"], "push_ball_to_wall")
+        self.assertEqual(sink.packets[-1]["omega"], 0.0)
+        self.assertGreater(sink.packets[-1]["vx"], 0.0)
 
         now = 11.0
         operator.update_vision(
@@ -419,10 +585,33 @@ class OperatorCoreTests(unittest.TestCase):
         )
         result = operator.pickup_ball(duration_ms=700)
         self.assertFalse(result.success)
+        self.assertEqual(result.reason, "moving_to_ball")
+        self.assertEqual(sink.packets[-1]["cmd"], "drive")
+        self.assertEqual(sink.packets[-1]["reason"], "push_ball_to_wall")
+        self.assertEqual(sink.packets[-1]["omega"], 0.0)
+
+        now = 11.4
+        operator.update_vision(
+            VisionSnapshot(
+                stamp_s=now,
+                objects=(
+                    ObjectObservation(
+                        "yellow_ball",
+                        "yellow_ball",
+                        now,
+                        forward_m=0.01,
+                        left_m=0.02,
+                    ),
+                ),
+            )
+        )
+        result = operator.pickup_ball(duration_ms=700)
+        self.assertFalse(result.success)
         self.assertEqual(result.reason, "closing_claw")
         self.assertEqual(sink.packets[-1]["cmd"], "grab")
+        self.assertEqual(sink.packets[-1]["reason"], "close_claw_after_wall_contact")
 
-        now = 12.2
+        now = 15.4
         operator.update_vision(VisionSnapshot(stamp_s=now, objects=()))
         operator.update_telemetry(
             TelemetrySnapshot(
@@ -443,7 +632,9 @@ class OperatorCoreTests(unittest.TestCase):
         self.assertTrue(result.success)
         self.assertEqual(result.reason, "ball_grabbed")
 
-    def test_pickup_ball_retries_when_closed_claw_does_not_have_object(self) -> None:
+    def test_pickup_ball_fails_closed_when_closed_claw_does_not_have_object(
+        self,
+    ) -> None:
         now = 10.0
 
         def clock() -> float:
@@ -469,9 +660,15 @@ class OperatorCoreTests(unittest.TestCase):
             )
         )
         operator.pickup_ball(duration_ms=700)
-        self.assertEqual(sink.packets[-1]["cmd"], "grab")
+        self.assertEqual(sink.packets[-1]["cmd"], "drive")
+        self.assertEqual(sink.packets[-1]["reason"], "push_ball_to_wall")
 
-        now = 12.0
+        now = 14.3
+        operator.pickup_ball(duration_ms=700)
+        self.assertEqual(sink.packets[-1]["cmd"], "grab")
+        self.assertEqual(sink.packets[-1]["reason"], "close_claw_after_wall_contact")
+
+        now = 15.4
         operator.update_telemetry(
             TelemetrySnapshot(
                 stamp_s=now,
@@ -493,8 +690,81 @@ class OperatorCoreTests(unittest.TestCase):
 
         result = operator.pickup_ball(duration_ms=700)
         self.assertFalse(result.success)
-        self.assertEqual(result.reason, "opening_claw")
-        self.assertEqual(sink.packets[-1]["cmd"], "release")
+        self.assertEqual(result.reason, "grab_failed")
+        self.assertEqual(sink.packets[-1]["cmd"], "grab")
+
+    def test_pickup_ball_latches_low_grip_current_during_close(self) -> None:
+        now = 10.0
+
+        def clock() -> float:
+            return now
+
+        events: list[OperatorEvent] = []
+        sink = PacketCommandSink()
+        operator = make_operator(sink, clock=clock, event_sink=events.append)
+
+        operator.pickup_ball(duration_ms=700)
+        now = 10.8
+        operator.update_vision(
+            VisionSnapshot(
+                stamp_s=now,
+                objects=(
+                    ObjectObservation(
+                        "yellow_ball",
+                        "yellow_ball",
+                        now,
+                        forward_m=0.05,
+                        left_m=0.02,
+                    ),
+                ),
+            )
+        )
+        operator.pickup_ball(duration_ms=700)
+
+        now = 14.3
+        operator.pickup_ball(duration_ms=700)
+        self.assertEqual(sink.packets[-1]["cmd"], "grab")
+
+        operator.update_telemetry(
+            TelemetrySnapshot(
+                stamp_s=now + 0.35,
+                motor_samples=(
+                    MotorSample(
+                        device="effector_motor",
+                        subsystem="manipulator",
+                        sample_ms=100,
+                        position_deg=237.0,
+                        velocity_rpm=-91.7,
+                        current_amp=0.507,
+                    ),
+                ),
+            )
+        )
+
+        now = 15.4
+        operator.update_telemetry(
+            TelemetrySnapshot(
+                stamp_s=now,
+                motor_samples=(
+                    MotorSample(
+                        device="effector_motor",
+                        subsystem="manipulator",
+                        sample_ms=100,
+                        position_deg=-23.0,
+                        velocity_rpm=0.0,
+                        current_amp=0.0,
+                    ),
+                ),
+            )
+        )
+        result = operator.pickup_ball(duration_ms=700)
+
+        self.assertTrue(result.success)
+        self.assertTrue(result.has_object)
+        self.assertEqual(result.reason, "ball_grabbed")
+        self.assertEqual(events[-1].name, "grabbed")
+        self.assertTrue(events[-1].detail["grip_confirmed"])
+        self.assertEqual(sink.packets[-1]["cmd"], "grab")
 
     def test_pickup_ball_without_visual_lock_drives_forward_then_closes(self) -> None:
         now = 10.0
@@ -511,15 +781,17 @@ class OperatorCoreTests(unittest.TestCase):
         self.assertFalse(result.success)
         self.assertEqual(result.reason, "moving_to_ball")
         self.assertEqual(sink.packets[-1]["cmd"], "drive")
-        self.assertEqual(sink.packets[-1]["reason"], "intake_ball_without_visual_lock")
+        self.assertEqual(
+            sink.packets[-1]["reason"], "push_ball_to_wall_without_visual_lock"
+        )
         self.assertGreater(sink.packets[-1]["vx"], 0.0)
 
-        now = 12.3
+        now = 14.3
         result = operator.pickup_ball(duration_ms=700)
         self.assertFalse(result.success)
         self.assertEqual(result.reason, "closing_claw")
         self.assertEqual(sink.packets[-1]["cmd"], "grab")
-        self.assertEqual(sink.packets[-1]["reason"], "close_claw_after_ball_intake")
+        self.assertEqual(sink.packets[-1]["reason"], "close_claw_after_wall_contact")
 
     def test_pickup_ball_fails_after_empty_close_attempts(self) -> None:
         now = 10.0
@@ -530,46 +802,47 @@ class OperatorCoreTests(unittest.TestCase):
         sink = PacketCommandSink()
         operator = make_operator(sink, clock=clock)
 
-        for attempt in range(operator.config.pickup_max_attempts):
-            result = operator.pickup_ball(duration_ms=700)
-            self.assertEqual(result.reason, "opening_claw")
-            now += 0.8
-            operator.update_vision(
-                VisionSnapshot(
-                    stamp_s=now,
-                    objects=(
-                        ObjectObservation(
-                            "yellow_ball",
-                            "yellow_ball",
-                            now,
-                            forward_m=0.10,
-                            left_m=0.02,
-                        ),
+        result = operator.pickup_ball(duration_ms=700)
+        self.assertEqual(result.reason, "opening_claw")
+        now += 0.8
+        operator.update_vision(
+            VisionSnapshot(
+                stamp_s=now,
+                objects=(
+                    ObjectObservation(
+                        "yellow_ball",
+                        "yellow_ball",
+                        now,
+                        forward_m=0.10,
+                        left_m=0.02,
                     ),
-                )
+                ),
             )
-            result = operator.pickup_ball(duration_ms=700)
-            self.assertEqual(result.reason, "closing_claw")
-            now += 1.1
-            operator.update_telemetry(
-                TelemetrySnapshot(
-                    stamp_s=now,
-                    motor_samples=(
-                        MotorSample(
-                            device="effector_motor",
-                            subsystem="manipulator",
-                            sample_ms=100,
-                            position_deg=500.0,
-                            velocity_rpm=0.0,
-                            current_amp=0.0,
-                        ),
+        )
+        result = operator.pickup_ball(duration_ms=700)
+        self.assertEqual(result.reason, "moving_to_ball")
+        now += 3.5
+        result = operator.pickup_ball(duration_ms=700)
+        self.assertEqual(result.reason, "closing_claw")
+        now += 1.1
+        operator.update_telemetry(
+            TelemetrySnapshot(
+                stamp_s=now,
+                motor_samples=(
+                    MotorSample(
+                        device="effector_motor",
+                        subsystem="manipulator",
+                        sample_ms=100,
+                        position_deg=500.0,
+                        velocity_rpm=0.0,
+                        current_amp=0.0,
                     ),
-                )
+                ),
             )
-            result = operator.pickup_ball(duration_ms=700)
-            self.assertFalse(result.success)
-            self.assertEqual(result.reason, "grab_not_confirmed")
-            now += 0.1
+        )
+        result = operator.pickup_ball(duration_ms=700)
+        self.assertFalse(result.success)
+        self.assertEqual(result.reason, "grab_not_confirmed")
 
         result = operator.pickup_ball(duration_ms=700)
         self.assertFalse(result.success)
@@ -661,6 +934,23 @@ class OperatorCoreTests(unittest.TestCase):
 class String:
     def __init__(self, data: str = "") -> None:
         self.data = data
+
+
+class Image:
+    def __init__(
+        self,
+        *,
+        width: int = 1,
+        height: int = 1,
+        encoding: str = "bgr8",
+        data: bytes = b"\x00\x00\x00",
+        header: Any | None = None,
+    ) -> None:
+        self.width = width
+        self.height = height
+        self.encoding = encoding
+        self.data = data
+        self.header = header
 
 
 class Publisher:
@@ -756,12 +1046,18 @@ def install_ros_stubs() -> None:
     tf2_msgs_msg = types.ModuleType("tf2_msgs.msg")
     tf2_msgs_msg.TFMessage = object
 
+    sensor_msgs = types.ModuleType("sensor_msgs")
+    sensor_msgs_msg = types.ModuleType("sensor_msgs.msg")
+    sensor_msgs_msg.Image = Image
+
     sys.modules["rclpy"] = rclpy
     sys.modules["rclpy.node"] = rclpy_node
     sys.modules["std_msgs"] = std_msgs
     sys.modules["std_msgs.msg"] = std_msgs_msg
     sys.modules["tf2_msgs"] = tf2_msgs
     sys.modules["tf2_msgs.msg"] = tf2_msgs_msg
+    sys.modules["sensor_msgs"] = sensor_msgs
+    sys.modules["sensor_msgs.msg"] = sensor_msgs_msg
 
 
 class OperatorNodeTests(unittest.TestCase):
@@ -796,8 +1092,11 @@ class OperatorNodeTests(unittest.TestCase):
         self.assertEqual(cmd_packet["cmd"], "drive")
         self.assertEqual(cmd_packet["reason"], "move_to_tag_1")
         result_payload = json.loads(node._result_pub.messages[-1].data)
+        run_start = json.loads(node._run_start_pub.messages[-1].data)
         self.assertEqual(result_payload["schema_version"], "1.0")
         self.assertEqual(result_payload["outcome"]["method"], "move_to_tag")
+        self.assertEqual(result_payload["run_id"], run_start["run_id"])
+        self.assertEqual(result_payload["session_id"], run_start["run_id"])
 
     def test_node_runs_align_to_tag_through_operator_sink(self) -> None:
         install_ros_stubs()
@@ -830,6 +1129,62 @@ class OperatorNodeTests(unittest.TestCase):
         self.assertIn(cmd_packet["cmd"], {"drive", "turn"})
         self.assertIn(cmd_packet["reason"], {"approach_tag", "center_tag"})
         self.assertTrue(node._align_feedback_pub.messages)
+
+    def test_node_align_to_tag_accepts_requested_mapped_tag_and_rejects_unmapped_tag(
+        self,
+    ) -> None:
+        install_ros_stubs()
+        Node.parameter_defaults = {
+            "tag_anchors_json": json.dumps(
+                {
+                    "0": {"x_m": 0.0, "y_m": 0.0, "yaw_rad": 0.0},
+                    "2": {"x_m": 2.0, "y_m": 0.0, "yaw_rad": 0.0},
+                }
+            )
+        }
+        node_module = importlib.import_module("vexy_ros.operator.node")
+        node = node_module.OperatorNode()
+        node._on_ack(String(data=json.dumps({"ack": 1, "state": "ok"})))
+        stamp_s = time.monotonic()
+        node._latest_align_tag = node_module.AlignTagObservation(
+            tag_id=2,
+            stamp_s=stamp_s,
+            yaw_error_rad=0.2,
+            lateral_error_m=0.05,
+            distance_m=0.9,
+        )
+
+        node._on_command(
+            String(
+                data=json.dumps(
+                    {
+                        "action": "align_to_tag",
+                        "tag_id": 2,
+                        "target_distance_m": 0.45,
+                    }
+                )
+            )
+        )
+        node._tick_controllers()
+        accepted = json.loads(node._status_pub.messages[-1].data)
+        self.assertTrue(accepted["success"])
+        self.assertEqual(accepted["reason"], "align_started")
+        self.assertTrue(node._align_feedback_pub.messages)
+
+        node._on_command(
+            String(
+                data=json.dumps(
+                    {
+                        "action": "align_to_tag",
+                        "tag_id": 1,
+                        "target_distance_m": 0.45,
+                    }
+                )
+            )
+        )
+        rejected = json.loads(node._event_pub.messages[-1].data)
+        self.assertEqual(rejected["name"], "command_rejected")
+        self.assertIn("AprilTag index 1 is not available", rejected["detail"]["error"])
 
     def test_node_runs_survey_scan_through_operator_sink(self) -> None:
         install_ros_stubs()
@@ -879,6 +1234,100 @@ class OperatorNodeTests(unittest.TestCase):
         cmd_packet = json.loads(node._sink.pub.messages[-1].data)
         self.assertEqual(cmd_packet["cmd"], "routine")
         self.assertEqual(cmd_packet["slot"], 3)
+
+    def test_node_accepts_arm_target_command(self) -> None:
+        install_ros_stubs()
+        node_module = importlib.import_module("vexy_ros.operator.node")
+        Node.parameter_defaults = {
+            "task_outline_json": json.dumps(
+                [
+                    ["locate_nearest_apriltag", []],
+                    ["pickup_ball", []],
+                    ["arm", []],
+                    ["release", []],
+                ]
+            )
+        }
+        node = node_module.OperatorNode()
+
+        node._on_command(
+            String(data=json.dumps({"action": "arm", "target_deg": 300.0}))
+        )
+
+        cmd_packet = json.loads(node._sink.pub.messages[-1].data)
+        self.assertEqual(cmd_packet["cmd"], "arm")
+        self.assertEqual(cmd_packet["target_deg"], 300.0)
+        result_payload = json.loads(node._result_pub.messages[-1].data)
+        self.assertEqual(result_payload["outcome"]["method"], "arm")
+        self.assertTrue(result_payload["outcome"]["success"])
+
+    def test_node_resets_operator_state_and_command_lifecycle(self) -> None:
+        install_ros_stubs()
+        node_module = importlib.import_module("vexy_ros.operator.node")
+        node = node_module.OperatorNode()
+        node.operator.pickup_phase = "done"
+        node.operator.pickup_grip_confirmed = True
+        node.operator.arm_raise_sent_for_tags.add(1)
+        node._command_lifecycle[123] = node_module.CommandLifecycle(
+            seq=123,
+            packet={"seq": 123, "cmd": "arm", "ttl_ms": 4000},
+            sent_monotonic_s=1.0,
+            sent_wall_s=1.0,
+            expected_end_monotonic_s=5.0,
+            expected_end_wall_s=5.0,
+        )
+
+        node._on_command(String(data=json.dumps({"action": "reset_operator"})))
+
+        self.assertEqual(node.operator.pickup_phase, "idle")
+        self.assertFalse(node.operator.pickup_grip_confirmed)
+        self.assertEqual(node.operator.arm_raise_sent_for_tags, set())
+        self.assertEqual(node._command_lifecycle, {})
+        result_payload = json.loads(node._result_pub.messages[-1].data)
+        self.assertEqual(result_payload["outcome"]["method"], "reset_operator")
+        self.assertTrue(result_payload["outcome"]["success"])
+        command_logs = [
+            json.loads(message.data) for message in node._command_log_pub.messages
+        ]
+        self.assertEqual(command_logs[-1]["event"], "reset")
+
+    def test_node_logs_command_sent_and_ttl_elapsed(self) -> None:
+        install_ros_stubs()
+        node_module = importlib.import_module("vexy_ros.operator.node")
+        node = node_module.OperatorNode()
+        stamp_s = time.monotonic()
+        node.operator.update_vision(
+            VisionSnapshot(
+                stamp_s=stamp_s,
+                tags={1: TagObservation(1, stamp_s, forward_m=0.9, left_m=0.0)},
+            )
+        )
+
+        node._on_command(
+            String(
+                data=json.dumps(
+                    {
+                        "action": "move_to_tag",
+                        "tag_index": 1,
+                        "target_distance_m": 0.45,
+                    }
+                )
+            )
+        )
+        sent_logs = [
+            json.loads(message.data) for message in node._command_log_pub.messages
+        ]
+        self.assertEqual(sent_logs[-1]["event"], "sent")
+        self.assertEqual(sent_logs[-1]["packet"]["cmd"], "drive")
+
+        for lifecycle in node._command_lifecycle.values():
+            object.__setattr__(lifecycle, "expected_end_monotonic_s", 0.0)
+        node._tick_command_lifecycle()
+
+        ttl_logs = [
+            json.loads(message.data) for message in node._command_log_pub.messages
+        ]
+        self.assertEqual(ttl_logs[-1]["event"], "ttl_elapsed")
 
     def test_node_consumes_task_file_and_archives_it(self) -> None:
         install_ros_stubs()
@@ -950,11 +1399,93 @@ class OperatorNodeTests(unittest.TestCase):
             self.assertFalse((inbox / "task.json").exists())
             self.assertEqual(len(list(archive.glob("task.*.json"))), 1)
             self.assertEqual(list(rejected.glob("*.json")), [])
+            run_start = json.loads(node._run_start_pub.messages[-1].data)
             self.assertEqual(
-                node.operator.task_contract.contract_line["session_id"], "from-file"
+                node.operator.task_contract.contract_line["session_id"],
+                run_start["run_id"],
             )
+            self.assertEqual(run_start["source_session_id"], "from-file")
             cmd_packet = json.loads(node._sink.pub.messages[-1].data)
             self.assertEqual(cmd_packet["cmd"], "grab")
+
+    def test_task_outline_publishes_visual_snapshot_at_step_completion(self) -> None:
+        install_ros_stubs()
+        node_module = importlib.import_module("vexy_ros.operator.node")
+        Node.parameter_defaults = {
+            "task_outline_json": json.dumps([["locate_nearest_apriltag", []]]),
+        }
+        node = node_module.OperatorNode()
+        node._on_image(
+            Image(
+                width=2,
+                height=1,
+                encoding="bgr8",
+                data=bytes([0, 0, 255, 0, 255, 0]),
+            )
+        )
+        node.operator.locate_nearest_apriltag = lambda: OperatorResult(
+            True, "nearest_apriltag_located"
+        )
+
+        node._run_task_outline("unit-outline.json")
+        node._tick_task_outline()
+
+        events = [json.loads(message.data) for message in node._event_pub.messages]
+        snapshots = [event for event in events if event["name"] == "visual_snapshot"]
+        self.assertTrue(snapshots)
+        snapshot = snapshots[-1]
+        self.assertEqual(snapshot["detail"]["trigger"], "step_completed")
+        self.assertEqual(snapshot["detail"]["step_index"], 0)
+        self.assertTrue(snapshot["detail"]["snapshot_available"])
+        image = snapshot["detail"]["image"]
+        self.assertIn(image["format"], {"jpeg;base64", "ppm;base64"})
+        self.assertGreater(len(image["data_b64"]), 0)
+
+    def test_task_outline_publishes_periodic_visual_snapshot(self) -> None:
+        install_ros_stubs()
+        node_module = importlib.import_module("vexy_ros.operator.node")
+        with tempfile.TemporaryDirectory() as tmp:
+            inbox = Path(tmp) / "inbox"
+            archive = Path(tmp) / "archive"
+            rejected = Path(tmp) / "rejected"
+            Node.parameter_defaults = {
+                "task_inbox_dir": str(inbox),
+                "task_archive_dir": str(archive),
+                "task_rejected_dir": str(rejected),
+                "task_timed_primitive_settle_s": 10.0,
+                "visual_snapshot_period_s": 1.0,
+            }
+            inbox.mkdir()
+            fixture = ROOT / "fixtures" / "task_deliver_ball.json"
+            (inbox / "task_deliver_ball.json").write_text(fixture.read_text())
+            node = node_module.OperatorNode()
+            node._on_image(
+                Image(
+                    width=1,
+                    height=1,
+                    encoding="bgr8",
+                    data=bytes([10, 20, 30]),
+                )
+            )
+
+            node._poll_task_inbox()
+            node._tick_task_outline()
+            assert node._task_outline_run is not None
+            node._task_outline_run.last_visual_snapshot_s = time.monotonic() - 1.1
+            before_count = len(node._event_pub.messages)
+
+            node._tick_task_outline()
+
+            events = [
+                json.loads(message.data)
+                for message in node._event_pub.messages[before_count:]
+            ]
+            snapshots = [
+                event for event in events if event["name"] == "visual_snapshot"
+            ]
+            self.assertEqual(len(snapshots), 1)
+            self.assertEqual(snapshots[0]["detail"]["trigger"], "periodic")
+            self.assertEqual(snapshots[0]["detail"]["step_index"], 0)
 
     def test_task_outline_waits_for_timed_primitive_deadline_without_resend(
         self,
@@ -1230,6 +1761,38 @@ class OperatorNodeTests(unittest.TestCase):
 
         event = json.loads(node._event_pub.messages[-1].data)
         self.assertEqual(event["name"], "command_rejected")
+
+
+class OperatorRunCaptureTests(unittest.TestCase):
+    def test_capture_starts_json_writer_and_bag_with_visual_topics(self) -> None:
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            patch("vexy_ros.operator_run_capture.subprocess.Popen") as popen,
+        ):
+            out_dir = Path(tmp)
+
+            processes = start_operator_run_capture(out_dir, label="test-name")
+            label = (out_dir / "test.txt").read_text()
+
+        self.assertEqual(len(processes), 3)
+        self.assertEqual(label, "test-name\n")
+        writer_cmd = popen.call_args_list[0].args[0]
+        image_cmd = popen.call_args_list[1].args[0]
+        bag_cmd = popen.call_args_list[2].args[0]
+        self.assertEqual(
+            writer_cmd[:4],
+            ["ros2", "run", "vexy_ros", "vexy_telemetry_writer_node"],
+        )
+        self.assertEqual(
+            image_cmd[:4],
+            ["ros2", "run", "vexy_ros", "vexy_image_writer_node"],
+        )
+        self.assertIn("--out-dir", image_cmd)
+        self.assertEqual(bag_cmd[:3], ["ros2", "bag", "record"])
+        self.assertIn("/operator/events", STRING_TELEMETRY_TOPICS)
+        self.assertIn("/operator/command_log", STRING_TELEMETRY_TOPICS)
+        self.assertIn("/camera/image_rect", BAG_TOPICS)
+        self.assertIn("/vision/object_detections", bag_cmd)
 
 
 if __name__ == "__main__":

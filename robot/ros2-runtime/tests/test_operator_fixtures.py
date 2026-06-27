@@ -6,10 +6,10 @@ import sys
 
 
 HERE = pathlib.Path(__file__).resolve().parent
-ROOT = HERE.parent.parent
+ROOT = HERE.parent
 REPO_ROOT = HERE.parents[2]
 FIXTURES = HERE.parent / "fixtures"
-ROS_RUNTIME_SRC = ROOT / "robot" / "ros2-runtime" / "src"
+ROS_RUNTIME_SRC = ROOT / "src"
 
 sys.path.insert(0, str(ROS_RUNTIME_SRC))
 sys.path.insert(0, str(REPO_ROOT / "contracts" / "src"))
@@ -22,7 +22,9 @@ from vexy_ros.operator._core import (  # noqa: E402
 
 
 def test_align_each_apriltag_once_contract_is_valid() -> None:
-    contract = json.loads((FIXTURES / "contract_align_each_apriltag_once.json").read_text())
+    contract = json.loads(
+        (FIXTURES / "contract_align_each_apriltag_once.json").read_text()
+    )
 
     validate_contract_line_shape(contract)
 
@@ -32,7 +34,9 @@ def test_align_each_apriltag_once_contract_is_valid() -> None:
 
 
 def test_align_each_apriltag_once_outline_visits_each_tag_with_12_in_standoff() -> None:
-    outline = json.loads((FIXTURES / "outline_align_each_apriltag_once.json").read_text())
+    outline = json.loads(
+        (FIXTURES / "outline_align_each_apriltag_once.json").read_text()
+    )
 
     plan = parse_operator_method_plan(outline)
 
@@ -45,7 +49,9 @@ def test_align_each_apriltag_once_outline_visits_each_tag_with_12_in_standoff() 
         "orient_to_tag",
         "move_to_tag",
     ]
-    assert [(call[0], call[1][0]) for call in plan if call[0] != "locate_nearest_apriltag"] == [
+    assert [
+        (call[0], call[1][0]) for call in plan if call[0] != "locate_nearest_apriltag"
+    ] == [
         ("orient_to_tag", 0),
         ("move_to_tag", 0),
         ("orient_to_tag", 1),
@@ -53,7 +59,9 @@ def test_align_each_apriltag_once_outline_visits_each_tag_with_12_in_standoff() 
         ("orient_to_tag", 2),
         ("move_to_tag", 2),
     ]
-    assert [call[2]["target_distance_m"] for call in plan if call[0] == "move_to_tag"] == [
+    assert [
+        call[2]["target_distance_m"] for call in plan if call[0] == "move_to_tag"
+    ] == [
         0.3048,
         0.3048,
         0.3048,

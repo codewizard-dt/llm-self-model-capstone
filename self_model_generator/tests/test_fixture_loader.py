@@ -17,10 +17,7 @@ FORBIDDEN_MODULE_PREFIXES = (
     "picamera2",
     "serial",
 )
-FORBIDDEN_ROBOT_PATH_PARTS = (
-    ("robot", "pi-runtime"),
-    ("robot", "ros2-runtime"),
-)
+FORBIDDEN_ROBOT_PATH_PARTS = (("robot", "ros2-runtime"),)
 
 
 def _forbidden_loaded_modules() -> set[str]:

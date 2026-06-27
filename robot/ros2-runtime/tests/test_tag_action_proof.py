@@ -97,7 +97,6 @@ class FakeProofNode:
         return self.post_tag
 
 
-
 class TagActionProofTests(unittest.TestCase):
     def test_send_publishes_bounded_json_command_and_tracks_it(self) -> None:
         node = tag_action_proof.TagActionProof()
@@ -140,7 +139,9 @@ class TagActionProofTests(unittest.TestCase):
                 self.assertEqual(published["reason"], f"{cmd}_unit_test")
 
     def test_tf_tag_observation_uses_camera_offset(self) -> None:
-        node = tag_action_proof.TagActionProof(camera_in_robot=vision_map.Pose2D(0.0, -0.08, 0.0))
+        node = tag_action_proof.TagActionProof(
+            camera_in_robot=vision_map.Pose2D(0.0, -0.08, 0.0)
+        )
         msg = types.SimpleNamespace(
             transforms=[
                 types.SimpleNamespace(
@@ -224,7 +225,9 @@ class TagActionProofTests(unittest.TestCase):
         self.assertEqual(summary["last_ack"], {"state": "ok", "ack": 12})
         self.assertEqual(summary["last_telemetry"], {"motion_enabled": True})
         self.assertEqual(summary["commands_sent"], 9)
-        self.assertEqual(summary["last_command"], {"cmd": "stop", "reason": "scan_complete"})
+        self.assertEqual(
+            summary["last_command"], {"cmd": "stop", "reason": "scan_complete"}
+        )
         self.assertEqual(
             node.stop_reasons,
             ["reacquire_complete", "approach_complete", "scan_complete"],

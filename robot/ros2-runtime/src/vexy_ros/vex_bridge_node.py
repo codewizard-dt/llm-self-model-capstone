@@ -14,7 +14,7 @@ The node also publishes a heartbeat every HEARTBEAT_INTERVAL_S if no command
 arrives, keeping the Brain's watchdog alive and preventing it from issuing a
 motor stop.
 
-Wire protocol is identical to the Bookworm bridge (vexy_system2):
+Wire protocol:
   - Protocol version 1
   - Newline-delimited compact JSON (no spaces)
   - Commands: stop | drive | turn | heartbeat | set_goal
@@ -23,6 +23,8 @@ Wire protocol is identical to the Bookworm bridge (vexy_system2):
 
 import json
 import glob
+import shlex
+import subprocess
 import threading
 import time
 
@@ -40,6 +42,8 @@ from .bridge_protocol import (
 )
 
 HEARTBEAT_INTERVAL_S = 0.15  # send heartbeat if idle > this many seconds
+DEFAULT_BRAIN_PROGRAM_SLOT = 8
+DEFAULT_BRAIN_PROGRAM_START_COMMAND = "pros v5 run {slot}"
 
 
 class VexBridgeNode(Node):
@@ -51,11 +55,16 @@ class VexBridgeNode(Node):
         self.declare_parameter("serial_timeout", 0.1)
         self.declare_parameter("ack_timeout_s", 0.4)
         self.declare_parameter("telemetry_stale_s", 2.0)
+        self.declare_parameter("brain_program_slot", DEFAULT_BRAIN_PROGRAM_SLOT)
+        self.declare_parameter(
+            "brain_program_start_command", DEFAULT_BRAIN_PROGRAM_START_COMMAND
+        )
+        self.declare_parameter("brain_program_start_timeout_s", 8.0)
+        self.declare_parameter("brain_program_start_settle_s", 2.0)
 
         configured_port = (
             self.get_parameter("serial_port").get_parameter_value().string_value
         )
-        port = self._resolve_serial_port(configured_port)
         baud = self.get_parameter("baud_rate").get_parameter_value().integer_value
         timeout = (
             self.get_parameter("serial_timeout").get_parameter_value().double_value
@@ -65,6 +74,24 @@ class VexBridgeNode(Node):
         )
         telemetry_stale_s = (
             self.get_parameter("telemetry_stale_s").get_parameter_value().double_value
+        )
+        brain_program_slot = (
+            self.get_parameter("brain_program_slot").get_parameter_value().integer_value
+        )
+        brain_program_start_command = (
+            self.get_parameter("brain_program_start_command")
+            .get_parameter_value()
+            .string_value
+        )
+        brain_program_start_timeout_s = (
+            self.get_parameter("brain_program_start_timeout_s")
+            .get_parameter_value()
+            .double_value
+        )
+        brain_program_start_settle_s = (
+            self.get_parameter("brain_program_start_settle_s")
+            .get_parameter_value()
+            .double_value
         )
 
         self._seq = 0
@@ -89,6 +116,13 @@ class VexBridgeNode(Node):
         )
         self._health_timer = self.create_timer(0.1, self._check_bridge_health)
 
+        self._start_brain_program_slot(
+            slot=brain_program_slot,
+            command_template=brain_program_start_command,
+            timeout_s=brain_program_start_timeout_s,
+            settle_s=brain_program_start_settle_s,
+        )
+        port = self._resolve_serial_port(configured_port)
         try:
             self._serial = serial.Serial(
                 port=port, baudrate=baud, timeout=timeout, write_timeout=timeout
@@ -111,6 +145,87 @@ class VexBridgeNode(Node):
                     "serial_unavailable", f"cannot open {port}: {exc}", port=port
                 )
             )
+
+    def _start_brain_program_slot(
+        self,
+        *,
+        slot: int,
+        command_template: str,
+        timeout_s: float,
+        settle_s: float,
+    ) -> None:
+        command_template = command_template.strip()
+        if not command_template:
+            self._publish_status(
+                bridge_status(
+                    "brain_program_autostart_disabled",
+                    f"V5 Brain program slot {slot} autostart is disabled",
+                    state="warn",
+                    slot=slot,
+                )
+            )
+            return
+
+        command = command_template.format(slot=slot)
+        argv = shlex.split(command)
+        if not argv:
+            return
+
+        try:
+            completed = subprocess.run(
+                argv,
+                capture_output=True,
+                text=True,
+                timeout=max(0.1, timeout_s),
+                check=False,
+            )
+        except FileNotFoundError as exc:
+            self._publish_status(
+                bridge_status(
+                    "brain_program_start_unavailable",
+                    f"cannot start V5 Brain program slot {slot}: {exc}",
+                    slot=slot,
+                    command=command,
+                )
+            )
+            return
+        except subprocess.TimeoutExpired:
+            self._publish_status(
+                bridge_status(
+                    "brain_program_start_timeout",
+                    f"timed out starting V5 Brain program slot {slot}",
+                    slot=slot,
+                    command=command,
+                    timeout_s=timeout_s,
+                )
+            )
+            return
+
+        if completed.returncode != 0:
+            stderr = (completed.stderr or completed.stdout or "").strip()
+            self._publish_status(
+                bridge_status(
+                    "brain_program_start_failed",
+                    f"failed to start V5 Brain program slot {slot}",
+                    slot=slot,
+                    command=command,
+                    returncode=completed.returncode,
+                    stderr=stderr[-400:],
+                )
+            )
+            return
+
+        self._publish_status(
+            bridge_status(
+                "brain_program_start_requested",
+                f"requested V5 Brain program slot {slot}",
+                state="ok",
+                slot=slot,
+                command=command,
+            )
+        )
+        if settle_s > 0.0:
+            time.sleep(settle_s)
 
     def _resolve_serial_port(self, configured_port: str) -> str:
         if configured_port and configured_port.lower() != "auto":

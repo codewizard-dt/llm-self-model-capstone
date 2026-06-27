@@ -30,7 +30,7 @@ If you are new here, start with this page, then drill into the linked docs.
 |-- wiki/                       Structured knowledge base and work lifecycle docs.
 |-- telemetry-fixtures/         Fixture-backed ContractLine JSONL evidence for MVP self-modeling.
 |-- robot/
-|   |-- pi-runtime/             Raspberry Pi runtime: bridge, camera, dashboard, demo.
+|   |-- ros2-runtime/           Raspberry Pi ROS 2 runtime: vision, V5 bridge, capture/export.
 |   |-- v5-brain/               VEX V5 Brain PROS C++ code and bring-up notes.
 |-- build-history/              Hardware build photos and screenshots.
 ```
@@ -52,12 +52,10 @@ hardware-capture and replay/audit requirement.
 
 Most of the current runnable code lives under `robot/`.
 
-- `robot/pi-runtime/src/vexy_system2/bridge.py` - TCP bridge to a simulated or
-  serial-connected V5 Brain.
-- `robot/pi-runtime/src/vexy_system2/dashboard.py` - local operator dashboard.
-- `robot/pi-runtime/src/vexy_system2/planner_demo.py` - small simulated planner
-  that sends heartbeat, drive, and stop commands.
-- `robot/pi-runtime/scripts/smoke_test.sh` - fastest local health check.
+- `robot/ros2-runtime/src/vexy_ros/vex_bridge_node.py` - ROS 2 V5 serial bridge.
+- `robot/ros2-runtime/src/vexy_ros/operator/node.py` - live robot-control operator.
+- `robot/ros2-runtime/src/vexy_ros/evidence_export.py` - ContractLine JSONL export.
+- `robot/ros2-runtime/scripts/setup_pi.sh` - Pi bootstrap for the ROS 2 stack.
 - `robot/v5-brain/v5-test/src/main.cpp` - working PROS C++ arm telemetry test.
 - `robot/v5-brain/BRINGUP.md` - detailed VEX Brain setup and debugging notes.
 
@@ -72,16 +70,11 @@ a vertical name; `operator` is reserved for the live robot-control surface under
 From the repo root:
 
 ```bash
-robot/pi-runtime/scripts/smoke_test.sh
+cd robot/ros2-runtime
+uv sync
+PYTHONPATH=src:../../contracts/src uv run pytest tests/test_operator.py tests/test_evidence_export.py -q
 ```
-
-Expected ending:
-
-```text
-smoke test ok
-```
-
-This test uses the simulated bridge. It does not require the physical robot.
+This does not require the physical robot or a running ROS daemon.
 
 ## Contribution Workflow
 
@@ -97,7 +90,7 @@ Make the smallest useful change, then run the relevant check. For Pi runtime
 changes, start with:
 
 ```bash
-robot/pi-runtime/scripts/smoke_test.sh
+cd robot/ros2-runtime && PYTHONPATH=src:../../contracts/src uv run pytest tests/test_operator.py tests/test_evidence_export.py -q
 ```
 
 Before opening a pull request, make sure your PR explains:

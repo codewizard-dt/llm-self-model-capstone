@@ -4,7 +4,7 @@
 > hit (CLI-on-Python-3.13, the hot/cold→monolith saga, COBS, the two serial ports,
 > `pros::screen` vs `pros::lcd`) and the verified working state — see
 > [BRINGUP.md](BRINGUP.md). For the Pi↔Brain interface, see
-> [../pi-runtime/docs/BRAIN_INTERFACE.md](../pi-runtime/docs/BRAIN_INTERFACE.md).
+> [../ros2-runtime/docs/BRAIN_INTERFACE.md](../ros2-runtime/docs/BRAIN_INTERFACE.md).
 
 ## Prerequisites
 

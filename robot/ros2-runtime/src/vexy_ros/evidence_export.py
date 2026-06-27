@@ -26,6 +26,8 @@ MOTOR_METHODS = {
     "efficiency_pct": "efficiency",
     "temperature_c": "temperature",
 }
+OPERATOR_RESULTS_JSONL = "operator_results.jsonl"
+TRANSPORT_FIELDS = {"_wall_s"}
 
 
 def contract_payload_from_bundle(bundle: Mapping[str, Any]) -> dict[str, Any]:
@@ -76,6 +78,39 @@ def contract_jsonl_from_bundle(
     if validate:
         validate_contract_line(line)
     return line + "\n"
+
+
+def contract_payload_from_operator_result(result: Mapping[str, Any]) -> dict[str, Any]:
+    payload = {
+        key: value for key, value in result.items() if key not in TRANSPORT_FIELDS
+    }
+    run_id = payload.get("run_id")
+    if isinstance(run_id, str) and run_id.strip():
+        payload["session_id"] = run_id
+    return payload
+
+
+def contract_jsonl_from_operator_results(
+    results_path: Path,
+    *,
+    run_id: str | None = None,
+    validate: bool = True,
+) -> str:
+    lines: list[str] = []
+    for raw_line in results_path.read_text().splitlines():
+        if not raw_line.strip():
+            continue
+        payload = contract_payload_from_operator_result(json.loads(raw_line))
+        if run_id is not None and payload.get("session_id") != run_id:
+            continue
+        line = json.dumps(payload, separators=(",", ":"), sort_keys=True)
+        if validate:
+            validate_contract_line(line)
+        lines.append(line)
+    if not lines:
+        selector = f" for run_id={run_id!r}" if run_id is not None else ""
+        raise ValueError(f"no operator results found in {results_path}{selector}")
+    return "\n".join(lines) + "\n"
 
 
 def bundle_from_tag_action_summary(
@@ -300,25 +335,43 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("bundle", type=Path, nargs="?")
     parser.add_argument("--proof-dir", type=Path)
+    parser.add_argument("--capture-dir", type=Path)
+    parser.add_argument("--operator-results", type=Path)
+    parser.add_argument("--run-id")
     parser.add_argument("--bundle-out", type=Path)
     parser.add_argument("--out", type=Path)
     parser.add_argument("--no-validate", action="store_true")
     args = parser.parse_args(argv)
 
     try:
-        if args.proof_dir is not None:
+        if args.capture_dir is not None or args.operator_results is not None:
+            results_path = args.operator_results
+            if results_path is None:
+                results_path = args.capture_dir / OPERATOR_RESULTS_JSONL
+            if args.out is None:
+                out_dir = args.capture_dir or results_path.parent
+                args.out = out_dir / "contract.jsonl"
+            line = contract_jsonl_from_operator_results(
+                results_path,
+                run_id=args.run_id,
+                validate=not args.no_validate,
+            )
+        elif args.proof_dir is not None:
             bundle = bundle_from_proof_dir(args.proof_dir)
             bundle_out = args.bundle_out or args.proof_dir / "tag_action_bundle.json"
             bundle_out.parent.mkdir(parents=True, exist_ok=True)
             bundle_out.write_text(json.dumps(bundle, indent=2, sort_keys=True) + "\n")
             if args.out is None:
                 args.out = args.proof_dir / "contract" / f"{bundle['session_id']}.jsonl"
+            line = contract_jsonl_from_bundle(bundle, validate=not args.no_validate)
         elif args.bundle is not None:
             bundle = json.loads(args.bundle.read_text())
+            line = contract_jsonl_from_bundle(bundle, validate=not args.no_validate)
         else:
-            parser.error("provide a bundle path or --proof-dir")
-
-        line = contract_jsonl_from_bundle(bundle, validate=not args.no_validate)
+            parser.error(
+                "provide a bundle path, --proof-dir, --capture-dir, "
+                "or --operator-results"
+            )
     except Exception as exc:
         print(f"export failed: {exc}", file=sys.stderr)
         return 1

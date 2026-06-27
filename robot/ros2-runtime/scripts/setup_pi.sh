@@ -32,8 +32,8 @@ SUBSYSTEM=="tty", ATTRS{idVendor}=="2888", ATTRS{idProduct}=="0501", GROUP="dial
 RULE
 sudo udevadm control --reload-rules
 
-echo "=== [2/6] Installing colcon-meson and contracts ==="
-pip install colcon-meson --break-system-packages
+echo "=== [2/6] Installing colcon-meson, pydantic, and contracts ==="
+pip install --break-system-packages "colcon-meson" "pydantic>=2,<3"
 REPO_SETUP_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 pip install --break-system-packages -e "$REPO_SETUP_ROOT/contracts/"
 

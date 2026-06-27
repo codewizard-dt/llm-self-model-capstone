@@ -48,7 +48,7 @@ Contracts`, frozen at milestone `m1-contracts-frozen`. Their ai-sdd-layer freeze
 A **fourth contract — the control grammar** — is owned here too (added for the online-control loop;
 see the [`pilot`](pilot.md) vertical). `.ai-sdd/schemas/control-command.schema.yaml` defines the
 **fixed command vocabulary + command/ack envelope** the online LLM uses to drive the robot, grounded
-in `robot/pi-runtime/docs/PROTOCOL.md` + `BRAIN_INTERFACE.md`. It is **draft, not yet frozen**: the
+in `robot/ros2-runtime/docs/PROTOCOL.md` + `BRAIN_INTERFACE.md`. It is **draft, not yet frozen**: the
 arm command vocabulary and the telemetry-vs-ack multiplex strategy are open (BRAIN_INTERFACE §3.3/§5).
 
 ## Two loops (this project has two)

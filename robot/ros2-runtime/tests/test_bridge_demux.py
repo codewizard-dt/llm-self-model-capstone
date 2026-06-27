@@ -45,7 +45,9 @@ class BridgeDemuxTests(unittest.TestCase):
 
     def test_missing_ack_fault_does_not_block_later_telemetry(self) -> None:
         demux = BrainStreamDemux(ack_timeout_s=0.2, telemetry_stale_s=0)
-        demux.register_sent({"v": 1, "seq": 8, "type": "heartbeat", "ttl_ms": 200}, now_s=1.0)
+        demux.register_sent(
+            {"v": 1, "seq": 8, "type": "heartbeat", "ttl_ms": 200}, now_s=1.0
+        )
 
         timeout_events = demux.check_timeouts(now_s=1.25)
         telemetry_events = demux.consume_line(
@@ -59,7 +61,9 @@ class BridgeDemuxTests(unittest.TestCase):
         self.assertEqual([item.kind for item in telemetry_events], ["telemetry"])
 
     def test_bad_json_reports_status(self) -> None:
-        events = BrainStreamDemux(telemetry_stale_s=0).consume_line("{not json}\n", now_s=1.0)
+        events = BrainStreamDemux(telemetry_stale_s=0).consume_line(
+            "{not json}\n", now_s=1.0
+        )
 
         self.assertEqual(events[0].kind, "status")
         self.assertEqual(events[0].payload["reason"], "bad_json")
@@ -115,6 +119,7 @@ class BridgeDemuxTests(unittest.TestCase):
                     "slot": 5,
                 }
             )
+
     def test_claw_command_duration_stays_bounded(self) -> None:
         for cmd in ("grab", "lift", "release"):
             with self.subTest(cmd=cmd):

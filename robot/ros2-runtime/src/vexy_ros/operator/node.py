@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 import math
 import shutil
@@ -39,6 +40,7 @@ from ._core import (
     MIN_TAG_ID,
     TIMED_PRIMITIVE_METHOD_NAMES,
     CommandSink,
+    DriveHealth,
     ObjectObservation,
     Operator,
     OperatorEvent,
@@ -59,12 +61,25 @@ IN_PROGRESS_REASONS = {
     "tag_not_visible",
     "turning_to_tag",
     "turning_to_map_tag",
+    "turning_to_predicted_tag",
     "moving_to_tag",
+    "moving_to_predicted_tag",
     "raising_arm_for_tag",
     "opening_claw",
     "moving_to_ball",
     "closing_claw",
     "grab_not_confirmed",
+}
+BRAIN_READY_REQUIRED_ACTIONS = {
+    "move_to_tag",
+    "pickup_ball",
+    "arm",
+    "grab",
+    "lift",
+    "release",
+    "align_to_tag",
+    "survey_scan",
+    "run_routine",
 }
 
 
@@ -86,6 +101,28 @@ class TaskOutlineRun:
     step_index: int
     step_started_s: float
     pending_timed_primitive: TimedPrimitiveStep | None = None
+    last_visual_snapshot_s: float | None = None
+
+
+@dataclass(frozen=True)
+class VisualSnapshot:
+    stamp_s: float
+    width: int
+    height: int
+    encoding: str
+    format: str
+    data_b64: str
+    frame_id: str | None = None
+
+
+@dataclass(frozen=True)
+class CommandLifecycle:
+    seq: int
+    packet: dict[str, Any]
+    sent_monotonic_s: float
+    sent_wall_s: float
+    expected_end_monotonic_s: float
+    expected_end_wall_s: float
 
 
 class RosCommandSink(CommandSink):
@@ -98,6 +135,8 @@ class RosCommandSink(CommandSink):
         self.seq += 1
         packet = packet_from_primitive(command, seq=self.seq)
         self.pub.publish(String(data=json.dumps(packet, separators=(",", ":"))))
+        if hasattr(self.node, "record_command_sent"):
+            self.node.record_command_sent(packet)
         return self.seq
 
     def send_packet(self, packet: Mapping[str, Any]) -> int:
@@ -107,6 +146,8 @@ class RosCommandSink(CommandSink):
         outbound["sent_ms"] = now_ms()
         normalized = normalize_outbound(outbound)
         self.pub.publish(String(data=json.dumps(normalized, separators=(",", ":"))))
+        if hasattr(self.node, "record_command_sent"):
+            self.node.record_command_sent(normalized)
         return self.seq
 
 
@@ -124,11 +165,17 @@ class OperatorNode(Node):
         self.declare_parameter("task_poll_period_s", 1.0)
         self.declare_parameter("task_step_timeout_s", 30.0)
         self.declare_parameter("task_timed_primitive_settle_s", 0.05)
+        self.declare_parameter("brain_program_slot", 8)
+        self.declare_parameter("require_brain_program_ready", False)
         self.declare_parameter("command_topic", "/operator/command")
         self.declare_parameter("event_topic", "/operator/events")
         self.declare_parameter("result_topic", "/operator/results")
         self.declare_parameter("status_topic", "/operator/status")
         self.declare_parameter("run_start_topic", "/operator/run_start")
+        self.declare_parameter("command_log_topic", "/operator/command_log")
+        self.declare_parameter("visual_snapshot_enabled", True)
+        self.declare_parameter("visual_snapshot_image_topic", "/camera/image_rect")
+        self.declare_parameter("visual_snapshot_period_s", 1.0)
 
         camera_raw = (
             self.get_parameter("camera_in_robot_json")
@@ -143,6 +190,8 @@ class OperatorNode(Node):
         self._latest_align_tag: AlignTagObservation | None = None
         self._objects: tuple[ObjectObservation, ...] = ()
         self._last_scene_map: Mapping[str, Any] | None = None
+        self._last_visual_snapshot: VisualSnapshot | None = None
+        self._last_visual_snapshot_error: str | None = None
         self._last_telemetry: TelemetrySnapshot | None = None
         self._bridge = BridgeHealth(stamp_s=None)
         self._survey_telemetry = SurveyTelemetry(stamp_s=None)
@@ -151,7 +200,7 @@ class OperatorNode(Node):
         self._survey_controller = SurveyScanController()
         self._align_cancel_requested = False
         self._survey_cancel_requested = False
-        self._run_id = datetime.now().strftime("run-%Y%m%d-%H%M%S")
+        self._run_id = "operator-idle"
         self._task_inbox_dir = self._parameter_path("task_inbox_dir")
         archive_dir = self._parameter_path("task_archive_dir")
         rejected_dir = self._parameter_path("task_rejected_dir")
@@ -167,7 +216,22 @@ class OperatorNode(Node):
         self._task_timed_primitive_settle_s = max(
             0.0, self._parameter_float("task_timed_primitive_settle_s")
         )
+        brain_slot_value = self.get_parameter(
+            "brain_program_slot"
+        ).get_parameter_value()
+        self._brain_program_slot = int(
+            getattr(brain_slot_value, "integer_value", 0)
+            or getattr(brain_slot_value, "string_value", "8")
+        )
+        self._require_brain_program_ready = self._parameter_bool(
+            "require_brain_program_ready"
+        )
+        self._visual_snapshot_enabled = self._parameter_bool("visual_snapshot_enabled")
+        self._visual_snapshot_period_s = max(
+            0.1, self._parameter_float("visual_snapshot_period_s")
+        )
         self._ack_states: dict[int, str] = {}
+        self._command_lifecycle: dict[int, CommandLifecycle] = {}
         self._event_pub = self.create_publisher(
             String,
             self.get_parameter("event_topic").get_parameter_value().string_value,
@@ -196,6 +260,11 @@ class OperatorNode(Node):
         self._run_start_pub = self.create_publisher(
             String,
             self.get_parameter("run_start_topic").get_parameter_value().string_value,
+            10,
+        )
+        self._command_log_pub = self.create_publisher(
+            String,
+            self.get_parameter("command_log_topic").get_parameter_value().string_value,
             10,
         )
         self._sink = RosCommandSink(self)
@@ -227,8 +296,26 @@ class OperatorNode(Node):
             self._on_command,
             10,
         )
+        if self._visual_snapshot_enabled:
+            try:
+                from sensor_msgs.msg import Image
+            except ModuleNotFoundError:
+                self._visual_snapshot_enabled = False
+                self.get_logger().warn(
+                    "visual snapshots disabled: sensor_msgs is unavailable"
+                )
+            else:
+                self.create_subscription(
+                    Image,
+                    self.get_parameter("visual_snapshot_image_topic")
+                    .get_parameter_value()
+                    .string_value,
+                    self._on_image,
+                    2,
+                )
         self.create_timer(0.1, self._tick_controllers)
         self.create_timer(0.1, self._tick_task_outline)
+        self.create_timer(0.1, self._tick_command_lifecycle)
         self.create_timer(0.25, self._publish_status)
         self.create_timer(
             max(0.1, self._parameter_float("task_poll_period_s")),
@@ -282,6 +369,15 @@ class OperatorNode(Node):
             return float(value.double_value)
         return float(value.string_value)
 
+    def _parameter_bool(self, name: str) -> bool:
+        value = self.get_parameter(name).get_parameter_value()
+        if hasattr(value, "bool_value"):
+            return bool(value.bool_value)
+        raw = value.string_value
+        if isinstance(raw, bool):
+            return raw
+        return str(raw).strip().lower() in {"1", "true", "yes", "on"}
+
     def _poll_task_inbox(self) -> None:
         if self._task_file_active:
             return
@@ -326,6 +422,7 @@ class OperatorNode(Node):
 
         try:
             self.operator.set_task_contract(operator_task)
+            run_payload = self._begin_operator_run(action="task_file", source=path.name)
             self._publish_event(
                 OperatorEvent(
                     name="task_file_accepted",
@@ -333,12 +430,13 @@ class OperatorNode(Node):
                     detail={
                         "source": str(path),
                         "archive": str(archived_path),
-                        "session_id": operator_task.contract_line.get("session_id"),
+                        "session_id": run_payload["session_id"],
+                        "source_session_id": run_payload["source_session_id"],
                         "task": operator_task.contract_line.get("task"),
                     },
                 )
             )
-            self._run_task_outline(path.name)
+            self._run_task_outline(path.name, run_started=True)
         except (TypeError, ValueError) as exc:
             self._publish_event(
                 OperatorEvent(
@@ -358,6 +456,43 @@ class OperatorNode(Node):
         stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
         target = target_dir / f"{path.stem}.{stamp}{path.suffix}"
         return Path(shutil.move(str(path), str(target)))
+
+    def _new_run_id(self) -> str:
+        return datetime.now().strftime("run-%Y%m%d-%H%M%S-%f")
+
+    def _install_live_run_id(self, run_id: str) -> str:
+        contract_line = dict(self.operator.task_contract.contract_line)
+        source_session_id = str(contract_line.get("session_id", ""))
+        if source_session_id != run_id:
+            contract_line["session_id"] = run_id
+            self.operator.set_task_contract(
+                OperatorTaskContract.from_inputs(
+                    contract_line=contract_line,
+                    task_outline=self.operator.task_contract.method_plan,
+                )
+            )
+        return source_session_id
+
+    def _begin_operator_run(
+        self, *, action: str, source: str | None = None
+    ) -> dict[str, Any]:
+        self._run_id = self._new_run_id()
+        source_session_id = self._install_live_run_id(self._run_id)
+        payload: dict[str, Any] = {
+            "type": "run_start",
+            "run_id": self._run_id,
+            "session_id": self._run_id,
+            "source_session_id": source_session_id,
+            "run_start_wall_s": time.time(),
+            "run_index": self.operator.run_index,
+            "action": action,
+        }
+        if source is not None:
+            payload["source"] = source
+        self._run_start_pub.publish(
+            String(data=json.dumps(payload, separators=(",", ":"), sort_keys=True))
+        )
+        return payload
 
     def _reject_task_file(self, path: Path, exc: Exception) -> None:
         try:
@@ -394,25 +529,11 @@ class OperatorNode(Node):
             )
         )
 
-    def _run_task_outline(self, source_name: str) -> None:
+    def _run_task_outline(self, source_name: str, *, run_started: bool = False) -> None:
         if self._task_outline_run is not None:
             raise ValueError("task outline already running")
-        self._run_start_pub.publish(
-            String(
-                data=json.dumps(
-                    {
-                        "type": "run_start",
-                        "run_id": self._run_id,
-                        "run_start_wall_s": time.time(),
-                        "run_index": self.operator.run_index,
-                        "action": "task_file",
-                        "source": source_name,
-                    },
-                    separators=(",", ":"),
-                    sort_keys=True,
-                )
-            )
-        )
+        if not run_started:
+            self._begin_operator_run(action="task_file", source=source_name)
         self._task_outline_run = TaskOutlineRun(
             source_name=source_name,
             method_plan=tuple(self.operator.task_contract.method_plan),
@@ -429,6 +550,7 @@ class OperatorNode(Node):
             return
 
         method_name, args, kwargs = run.method_plan[run.step_index]
+        self._maybe_publish_visual_snapshot(run)
         elapsed_s = time.monotonic() - run.step_started_s
         if elapsed_s > self._task_step_timeout_s:
             self._finish_task_outline_run(
@@ -594,9 +716,11 @@ class OperatorNode(Node):
         self._advance_task_outline_step(run)
 
     def _advance_task_outline_step(self, run: TaskOutlineRun) -> None:
+        self._publish_visual_snapshot(run, trigger="step_completed")
         run.pending_timed_primitive = None
         run.step_index += 1
         run.step_started_s = time.monotonic()
+        run.last_visual_snapshot_s = None
         if run.step_index >= len(run.method_plan):
             self._finish_task_outline_run(
                 "task_file_completed", {"source": run.source_name}
@@ -614,6 +738,168 @@ class OperatorNode(Node):
         )
         self._task_outline_run = None
         self._task_file_active = False
+
+    def _on_image(self, msg: Any) -> None:
+        if not self._visual_snapshot_enabled:
+            return
+        try:
+            self._last_visual_snapshot = self._encode_visual_snapshot(msg)
+            self._last_visual_snapshot_error = None
+        except (ImportError, ValueError) as exc:
+            self._last_visual_snapshot_error = str(exc)
+
+    def _encode_visual_snapshot(self, msg: Any) -> VisualSnapshot:
+        try:
+            from ..yolo_ncnn_node import image_to_bgr_array
+
+            frame = image_to_bgr_array(msg)
+        except ModuleNotFoundError:
+            return self._encode_raw_visual_snapshot(msg)
+        frame = self._resize_visual_snapshot_frame(frame)
+        data_b64, image_format = self._encode_visual_snapshot_frame(frame)
+        header = getattr(msg, "header", None)
+        frame_id = getattr(header, "frame_id", None) if header is not None else None
+        return VisualSnapshot(
+            stamp_s=self._image_stamp_s(header),
+            width=int(frame.shape[1]),
+            height=int(frame.shape[0]),
+            encoding=str(getattr(msg, "encoding", "")),
+            format=image_format,
+            data_b64=data_b64,
+            frame_id=str(frame_id) if frame_id else None,
+        )
+
+    def _encode_raw_visual_snapshot(self, msg: Any) -> VisualSnapshot:
+        width = int(getattr(msg, "width", 0))
+        height = int(getattr(msg, "height", 0))
+        encoding = str(getattr(msg, "encoding", ""))
+        data = bytes(getattr(msg, "data", b""))
+        channels_by_encoding = {"bgr8": 3, "rgb8": 3, "mono8": 1}
+        channels = channels_by_encoding.get(encoding)
+        if channels is None:
+            raise ValueError(f"unsupported image encoding {encoding!r}")
+        expected = width * height * channels
+        if width <= 0 or height <= 0 or len(data) < expected:
+            raise ValueError(
+                f"image buffer too small: expected at least {expected}, got {len(data)}"
+            )
+        step = max(1, math.ceil(max(width, height) / 320.0))
+        out_width = len(range(0, width, step))
+        out_height = len(range(0, height, step))
+        rgb = bytearray()
+        for y in range(0, height, step):
+            row = y * width * channels
+            for x in range(0, width, step):
+                offset = row + x * channels
+                if encoding == "bgr8":
+                    blue, green, red = data[offset : offset + 3]
+                    rgb.extend((red, green, blue))
+                elif encoding == "rgb8":
+                    rgb.extend(data[offset : offset + 3])
+                else:
+                    value = data[offset]
+                    rgb.extend((value, value, value))
+        header = f"P6\n{out_width} {out_height}\n255\n".encode("ascii")
+        image_data = header + bytes(rgb)
+        msg_header = getattr(msg, "header", None)
+        frame_id = (
+            getattr(msg_header, "frame_id", None) if msg_header is not None else None
+        )
+        return VisualSnapshot(
+            stamp_s=self._image_stamp_s(msg_header),
+            width=out_width,
+            height=out_height,
+            encoding=encoding,
+            format="ppm;base64",
+            data_b64=base64.b64encode(image_data).decode("ascii"),
+            frame_id=str(frame_id) if frame_id else None,
+        )
+
+    def _resize_visual_snapshot_frame(self, frame: Any) -> Any:
+        source_height = int(frame.shape[0])
+        source_width = int(frame.shape[1])
+        max_edge = 320
+        scale = min(1.0, max_edge / float(max(source_width, source_height)))
+        if scale >= 1.0:
+            return frame
+        try:
+            import cv2
+        except ModuleNotFoundError:
+            step = max(1, math.ceil(1.0 / scale))
+            return frame[::step, ::step]
+        return cv2.resize(
+            frame,
+            (
+                max(1, int(source_width * scale)),
+                max(1, int(source_height * scale)),
+            ),
+            interpolation=cv2.INTER_AREA,
+        )
+
+    def _encode_visual_snapshot_frame(self, frame: Any) -> tuple[str, str]:
+        try:
+            import cv2
+        except ModuleNotFoundError:
+            rgb = frame[:, :, ::-1]
+            header = f"P6\n{int(rgb.shape[1])} {int(rgb.shape[0])}\n255\n".encode(
+                "ascii"
+            )
+            encoded = header + rgb.tobytes()
+            return base64.b64encode(encoded).decode("ascii"), "ppm;base64"
+        ok, encoded = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 60])
+        if not ok:
+            raise ValueError("failed to encode visual snapshot")
+        return base64.b64encode(encoded.tobytes()).decode("ascii"), "jpeg;base64"
+
+    def _image_stamp_s(self, header: Any) -> float:
+        stamp = getattr(header, "stamp", None) if header is not None else None
+        sec = getattr(stamp, "sec", None)
+        nanosec = getattr(stamp, "nanosec", None)
+        if sec is None or nanosec is None:
+            return time.monotonic()
+        return float(sec) + float(nanosec) / 1_000_000_000.0
+
+    def _visual_snapshot_detail(
+        self, run: TaskOutlineRun, *, trigger: str
+    ) -> dict[str, Any]:
+        detail: dict[str, Any] = {
+            "source": run.source_name,
+            "step_index": run.step_index,
+            "trigger": trigger,
+        }
+        if 0 <= run.step_index < len(run.method_plan):
+            detail["method"] = str(run.method_plan[run.step_index][0])
+        if self._last_visual_snapshot is None:
+            detail["snapshot_available"] = False
+            if self._last_visual_snapshot_error is not None:
+                detail["snapshot_error"] = self._last_visual_snapshot_error
+            return detail
+        detail["snapshot_available"] = True
+        detail["image"] = asdict(self._last_visual_snapshot)
+        return detail
+
+    def _publish_visual_snapshot(
+        self, run: TaskOutlineRun, *, trigger: str, now_s: float | None = None
+    ) -> None:
+        if not self._visual_snapshot_enabled:
+            return
+        stamp_s = time.monotonic() if now_s is None else now_s
+        self._publish_event(
+            OperatorEvent(
+                name="visual_snapshot",
+                stamp_s=stamp_s,
+                detail=self._visual_snapshot_detail(run, trigger=trigger),
+            )
+        )
+        run.last_visual_snapshot_s = stamp_s
+
+    def _maybe_publish_visual_snapshot(self, run: TaskOutlineRun) -> None:
+        if not self._visual_snapshot_enabled:
+            return
+        now_s = time.monotonic()
+        last_s = run.last_visual_snapshot_s
+        if last_s is None or now_s - last_s >= self._visual_snapshot_period_s:
+            self._publish_visual_snapshot(run, trigger="periodic", now_s=now_s)
 
     def _on_tf(self, msg: TFMessage) -> None:
         stamp_s = time.monotonic()
@@ -736,6 +1022,12 @@ class OperatorNode(Node):
         ack_seq = ack.get("ack")
         if isinstance(ack_seq, int):
             self._ack_states[ack_seq] = str(ack.get("state", "ack"))
+            self._publish_command_log(
+                "acked",
+                seq=ack_seq,
+                state=str(ack.get("state", "ack")),
+                fault=ack.get("fault") if isinstance(ack.get("fault"), str) else None,
+            )
         self._bridge = BridgeHealth(
             stamp_s=time.monotonic(),
             last_ack_seq=ack_seq if isinstance(ack_seq, int) else None,
@@ -780,21 +1072,7 @@ class OperatorNode(Node):
         try:
             payload = json.loads(msg.data)
             action = str(payload.get("action", ""))
-            self._run_start_pub.publish(
-                String(
-                    data=json.dumps(
-                        {
-                            "type": "run_start",
-                            "run_id": self._run_id,
-                            "run_start_wall_s": time.time(),
-                            "run_index": self.operator.run_index,
-                            "action": action,
-                        },
-                        separators=(",", ":"),
-                        sort_keys=True,
-                    )
-                )
-            )
+            self._begin_operator_run(action=action)
             result = self._dispatch_command(payload)
             if isinstance(result, OperatorResult):
                 self._publish_contract_result(action, result)
@@ -804,6 +1082,22 @@ class OperatorNode(Node):
                     name="command_rejected",
                     stamp_s=time.monotonic(),
                     detail={"error": str(exc), "raw": msg.data},
+                )
+            )
+            return
+        except Exception as exc:
+            self.get_logger().error(
+                f"_on_command unhandled {type(exc).__name__}: {exc}"
+            )
+            self._publish_event(
+                OperatorEvent(
+                    name="command_error",
+                    stamp_s=time.monotonic(),
+                    detail={
+                        "error": str(exc),
+                        "type": type(exc).__name__,
+                        "raw": msg.data,
+                    },
                 )
             )
             return
@@ -825,6 +1119,17 @@ class OperatorNode(Node):
     def _dispatch_command(self, payload: Mapping[str, Any]) -> Any:
         action = str(payload.get("action", ""))
         tag_index = _tag_index_from_payload(payload)
+        if action == "reset_operator":
+            self.operator.reset_state()
+            self._ack_states.clear()
+            self._command_lifecycle.clear()
+            self._align_cancel_requested = True
+            self._survey_cancel_requested = True
+            self._publish_command_log("reset")
+            return OperatorResult(True, "operator_state_reset")
+        not_ready = self._brain_program_not_ready_result(action)
+        if not_ready is not None:
+            return not_ready
         if action == "locate_nearest_apriltag":
             self.operator.require_allowed_method(action)
             return self.operator.locate_nearest_apriltag()
@@ -850,6 +1155,12 @@ class OperatorNode(Node):
                 if duration is None
                 else self.operator.pickup_ball(duration_ms=int(duration))
             )
+        if action == "arm":
+            self.operator.require_allowed_method(action)
+            target = payload.get("target_deg")
+            if target is None:
+                raise ValueError("arm requires target_deg")
+            return self.operator.arm(target_deg=float(target))
         if action in {"grab", "lift", "release"}:
             self.operator.require_allowed_method(action)
             duration = payload.get("duration_ms")
@@ -869,6 +1180,38 @@ class OperatorNode(Node):
             return self._run_routine(payload)
         raise ValueError(f"unsupported operator action: {action}")
 
+    def _brain_program_not_ready_result(self, action: str) -> OperatorResult | None:
+        if not self._require_brain_program_ready:
+            return None
+        if action not in BRAIN_READY_REQUIRED_ACTIONS:
+            return None
+        if self._last_telemetry is not None or self._bridge.last_ack_seq is not None:
+            return None
+
+        reason = f"brain_program_slot_{self._brain_program_slot}_not_ready"
+        self._publish_event(
+            OperatorEvent(
+                name="brain_program_not_ready",
+                stamp_s=time.monotonic(),
+                detail={
+                    "action": action,
+                    "slot": self._brain_program_slot,
+                    "bridge_status": self._bridge.status,
+                    "bridge_fault": self._bridge.fault,
+                    "telemetry_seen": False,
+                    "next": f"start V5 Brain program slot {self._brain_program_slot}",
+                },
+            )
+        )
+        return OperatorResult(
+            False,
+            "disabled",
+            map_pose=self.operator.current_pose(),
+            localization_source=self.operator.localization_source,
+            drive_health=DriveHealth("disabled", reason),
+            has_object=self.operator.has_object(),
+        )
+
     def _start_align_to_tag(self, payload: Mapping[str, Any]) -> Any:
         goal = AlignToTagGoal(
             tag_id=int(payload.get("tag_id", payload.get("tag_index", 0))),
@@ -886,6 +1229,11 @@ class OperatorNode(Node):
             tag_stale_s=float(payload.get("tag_stale_s", 0.5)),
             ack_stale_s=float(payload.get("ack_stale_s", 0.8)),
         )
+        if goal.tag_id not in self.operator.available_april_tag_ids:
+            raise ValueError(
+                f"AprilTag index {goal.tag_id} is not available in loaded map; "
+                f"available ids: {list(self.operator.available_april_tag_ids)}"
+            )
         decision = self._align_controller.start(
             goal,
             now_s=time.monotonic(),
@@ -973,6 +1321,69 @@ class OperatorNode(Node):
     def _send_vex_command(self, command: VexCommand) -> None:
         self._sink.send_packet(_packet_from_vex_command(command))
 
+    def record_command_sent(self, packet: Mapping[str, Any]) -> None:
+        seq = packet.get("seq")
+        if not isinstance(seq, int):
+            return
+        ttl_ms = int(packet.get("ttl_ms", 0))
+        sent_monotonic_s = time.monotonic()
+        sent_wall_s = time.time()
+        expected_end_monotonic_s = sent_monotonic_s + max(0, ttl_ms) / 1000.0
+        expected_end_wall_s = sent_wall_s + max(0, ttl_ms) / 1000.0
+        lifecycle = CommandLifecycle(
+            seq=seq,
+            packet=dict(packet),
+            sent_monotonic_s=sent_monotonic_s,
+            sent_wall_s=sent_wall_s,
+            expected_end_monotonic_s=expected_end_monotonic_s,
+            expected_end_wall_s=expected_end_wall_s,
+        )
+        self._command_lifecycle[seq] = lifecycle
+        self._publish_command_log(
+            "sent",
+            seq=seq,
+            packet=dict(packet),
+            sent_wall_s=sent_wall_s,
+            sent_monotonic_s=sent_monotonic_s,
+            ttl_ms=ttl_ms,
+            expected_end_wall_s=expected_end_wall_s,
+            expected_end_monotonic_s=expected_end_monotonic_s,
+        )
+
+    def _tick_command_lifecycle(self) -> None:
+        now_s = time.monotonic()
+        for seq, lifecycle in list(self._command_lifecycle.items()):
+            if now_s < lifecycle.expected_end_monotonic_s:
+                continue
+            self._command_lifecycle.pop(seq, None)
+            self._publish_command_log(
+                "ttl_elapsed",
+                seq=seq,
+                packet=dict(lifecycle.packet),
+                sent_wall_s=lifecycle.sent_wall_s,
+                sent_monotonic_s=lifecycle.sent_monotonic_s,
+                expected_end_wall_s=lifecycle.expected_end_wall_s,
+                expected_end_monotonic_s=lifecycle.expected_end_monotonic_s,
+                elapsed_ms=int((now_s - lifecycle.sent_monotonic_s) * 1000),
+            )
+
+    def _publish_command_log(
+        self, event: str, *, seq: int | None = None, **detail: Any
+    ) -> None:
+        payload: dict[str, Any] = {
+            "type": "operator_command_log",
+            "run_id": self._run_id,
+            "event": event,
+            "stamp_s": time.monotonic(),
+            "wall_s": time.time(),
+        }
+        if seq is not None:
+            payload["seq"] = seq
+        payload.update(detail)
+        self._command_log_pub.publish(
+            String(data=json.dumps(payload, separators=(",", ":"), sort_keys=True))
+        )
+
     def _refresh_vision(self, *, stamp_s: float) -> None:
         self.operator.update_vision(
             VisionSnapshot(
@@ -1016,6 +1427,12 @@ class OperatorNode(Node):
             "known_tags": sorted(self._tags),
             "object_categories": sorted({obj.category for obj in self._objects}),
             "telemetry_seen": telemetry is not None,
+            "brain_program_slot": self._brain_program_slot,
+            "brain_program_required": self._require_brain_program_ready,
+            "brain_program_ready": telemetry is not None
+            or self._bridge.last_ack_seq is not None,
+            "bridge_status": self._bridge.status,
+            "bridge_fault": self._bridge.fault,
             "localization_source": self.operator.localization_source,
             "map_pose": None if pose is None else pose.to_json(),
             "has_object": self.operator.has_object(),

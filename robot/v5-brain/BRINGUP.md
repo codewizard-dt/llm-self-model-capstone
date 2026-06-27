@@ -4,7 +4,7 @@ This is the **detailed reference** for how we got PROS programs and the PROS CLI
 on this specific V5 Brain, including every non-obvious gotcha we hit and how we proved
 the fix. For the terse step-by-step setup, see [TOOLCHAIN.md](TOOLCHAIN.md). For the
 Pi↔Brain serial interface (telemetry + commands), see
-[../pi-runtime/docs/BRAIN_INTERFACE.md](../pi-runtime/docs/BRAIN_INTERFACE.md).
+[../ros2-runtime/docs/BRAIN_INTERFACE.md](../ros2-runtime/docs/BRAIN_INTERFACE.md).
 
 > **TL;DR of the hard-won lessons**
 > 1. Build **monolith** (`USE_PACKAGE:=0`) — the PROS hot/cold split is silently broken on this Brain.
@@ -277,13 +277,13 @@ monolith (`USE_PACKAGE:=0`) for this Brain. The current routine slots are:
 | 4 | one foot forward/back |
 
 These are routine IDs inside the running bridge program, not separate VEXos
-program upload slots. The interface and Pi-side fallback notes are documented in
-[../pi-runtime/docs/BRAIN_INTERFACE.md](../pi-runtime/docs/BRAIN_INTERFACE.md).
+program upload slots. The interface and Pi-side bridge notes are documented in
+[../ros2-runtime/docs/BRAIN_INTERFACE.md](../ros2-runtime/docs/BRAIN_INTERFACE.md).
 
 ---
 
 ## See also
 - [TOOLCHAIN.md](TOOLCHAIN.md) — terse setup steps
-- [../pi-runtime/docs/BRAIN_INTERFACE.md](../pi-runtime/docs/BRAIN_INTERFACE.md) — Pi↔Brain interface (telemetry + commands)
+- [../ros2-runtime/docs/BRAIN_INTERFACE.md](../ros2-runtime/docs/BRAIN_INTERFACE.md) — Pi↔Brain interface (telemetry + commands)
 - wiki: `knowledge/concepts/pros-dependency-compatibility.md`, `knowledge/entities/tools/pros.md`
 - research: `raw/research/v5-serial-connectivity/index-2.md` (the monolith diagnosis)

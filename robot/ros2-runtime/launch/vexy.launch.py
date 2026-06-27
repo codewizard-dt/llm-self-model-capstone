@@ -68,7 +68,8 @@ DEFAULT_OPERATOR_TASK_CONTRACT = (
 DEFAULT_OPERATOR_TASK_OUTLINE = (
     '[["locate_nearest_apriltag",[]],["orient_to_tag",[0]],'
     '["move_to_tag",[0],{"target_distance_m":0.45}],'
-    '["pickup_ball",[]],["grab",[]],["lift",[]],["release",[]]]'
+    '["pickup_ball",[]],["arm",[],{"target_deg":20.0}],'
+    '["grab",[]],["lift",[]],["release",[]]]'
 )
 
 
@@ -343,6 +344,10 @@ def _launch_nodes(context, *args, **kwargs):
                     "camera_in_robot_json": camera_in_robot_json,
                     "task_contract_json": DEFAULT_OPERATOR_TASK_CONTRACT,
                     "task_outline_json": DEFAULT_OPERATOR_TASK_OUTLINE,
+                    "brain_program_slot": LaunchConfiguration("brain_program_slot"),
+                    "require_brain_program_ready": LaunchConfiguration(
+                        "require_brain_program_ready"
+                    ),
                 }
             ],
         ),
@@ -357,6 +362,16 @@ def _launch_nodes(context, *args, **kwargs):
                 {
                     "serial_port": LaunchConfiguration("serial_port"),
                     "baud_rate": LaunchConfiguration("baud_rate"),
+                    "brain_program_slot": LaunchConfiguration("brain_program_slot"),
+                    "brain_program_start_command": LaunchConfiguration(
+                        "brain_program_start_command"
+                    ),
+                    "brain_program_start_timeout_s": LaunchConfiguration(
+                        "brain_program_start_timeout_s"
+                    ),
+                    "brain_program_start_settle_s": LaunchConfiguration(
+                        "brain_program_start_settle_s"
+                    ),
                 }
             ],
         ),
@@ -410,6 +425,14 @@ def generate_launch_description():
             # ----------------------------------------------------------
             DeclareLaunchArgument("serial_port", default_value="auto"),
             DeclareLaunchArgument("baud_rate", default_value="115200"),
+            DeclareLaunchArgument("brain_program_slot", default_value="8"),
+            DeclareLaunchArgument("require_brain_program_ready", default_value="true"),
+            DeclareLaunchArgument(
+                "brain_program_start_command",
+                default_value="pros v5 run {slot}",
+            ),
+            DeclareLaunchArgument("brain_program_start_timeout_s", default_value="8.0"),
+            DeclareLaunchArgument("brain_program_start_settle_s", default_value="2.0"),
             DeclareLaunchArgument("camera_width", default_value="640"),
             DeclareLaunchArgument("camera_height", default_value="360"),
             DeclareLaunchArgument("camera_fps", default_value="5"),
