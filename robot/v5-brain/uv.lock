@@ -603,7 +603,7 @@ wheels = [
 
 [[package]]
 name = "v5-brain"
-version = "0.2.2"
+version = "0.6.1"
 source = { editable = "." }
 dependencies = [
     { name = "pros-cli" },

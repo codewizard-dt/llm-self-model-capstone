@@ -2,16 +2,19 @@ from __future__ import annotations
 
 import json
 import math
+import shutil
 import time
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Any, Mapping
 from pathlib import Path
+from typing import Any, Mapping
 
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
 from tf2_msgs.msg import TFMessage
+from contracts.task_envelope import TaskEnvelope
+from pydantic import ValidationError
 
 from ..align_to_tag import (
     AlignToTagController,
@@ -34,18 +37,55 @@ from ..vision_map import (
 from ._core import (
     MAX_TAG_ID,
     MIN_TAG_ID,
+    TIMED_PRIMITIVE_METHOD_NAMES,
     CommandSink,
     ObjectObservation,
     Operator,
     OperatorEvent,
     OperatorResult,
+    OperatorTaskContract,
     PrimitiveCommand,
     TagObservation,
     TelemetrySnapshot,
     VisionSnapshot,
     packet_from_primitive,
     telemetry_snapshot_from_mapping,
+    timed_primitive_default_duration_ms,
 )
+
+
+IN_PROGRESS_REASONS = {
+    "no_fresh_apriltag",
+    "tag_not_visible",
+    "turning_to_tag",
+    "turning_to_map_tag",
+    "moving_to_tag",
+    "raising_arm_for_tag",
+    "opening_claw",
+    "moving_to_ball",
+    "closing_claw",
+    "grab_not_confirmed",
+}
+
+
+@dataclass
+class TimedPrimitiveStep:
+    method_name: str
+    duration_ms: int
+    started_s: float
+    deadline_s: float
+    seq: int | None
+    result: OperatorResult
+    ack_state: str | None = None
+
+
+@dataclass
+class TaskOutlineRun:
+    source_name: str
+    method_plan: tuple[Any, ...]
+    step_index: int
+    step_started_s: float
+    pending_timed_primitive: TimedPrimitiveStep | None = None
 
 
 class RosCommandSink(CommandSink):
@@ -78,6 +118,12 @@ class OperatorNode(Node):
         self.declare_parameter("tag_anchors_json", "")
         self.declare_parameter("task_contract_json", "")
         self.declare_parameter("task_outline_json", "")
+        self.declare_parameter("task_inbox_dir", "/vexy/tasks/inbox")
+        self.declare_parameter("task_archive_dir", "")
+        self.declare_parameter("task_rejected_dir", "")
+        self.declare_parameter("task_poll_period_s", 1.0)
+        self.declare_parameter("task_step_timeout_s", 30.0)
+        self.declare_parameter("task_timed_primitive_settle_s", 0.05)
         self.declare_parameter("command_topic", "/operator/command")
         self.declare_parameter("event_topic", "/operator/events")
         self.declare_parameter("result_topic", "/operator/results")
@@ -106,6 +152,22 @@ class OperatorNode(Node):
         self._align_cancel_requested = False
         self._survey_cancel_requested = False
         self._run_id = datetime.now().strftime("run-%Y%m%d-%H%M%S")
+        self._task_inbox_dir = self._parameter_path("task_inbox_dir")
+        archive_dir = self._parameter_path("task_archive_dir")
+        rejected_dir = self._parameter_path("task_rejected_dir")
+        self._task_archive_dir = archive_dir or self._task_inbox_dir.parent / "archive"
+        self._task_rejected_dir = (
+            rejected_dir or self._task_inbox_dir.parent / "rejected"
+        )
+        self._task_file_active = False
+        self._task_outline_run: TaskOutlineRun | None = None
+        self._task_step_timeout_s = max(
+            0.1, self._parameter_float("task_step_timeout_s")
+        )
+        self._task_timed_primitive_settle_s = max(
+            0.0, self._parameter_float("task_timed_primitive_settle_s")
+        )
+        self._ack_states: dict[int, str] = {}
         self._event_pub = self.create_publisher(
             String,
             self.get_parameter("event_topic").get_parameter_value().string_value,
@@ -166,7 +228,12 @@ class OperatorNode(Node):
             10,
         )
         self.create_timer(0.1, self._tick_controllers)
+        self.create_timer(0.1, self._tick_task_outline)
         self.create_timer(0.25, self._publish_status)
+        self.create_timer(
+            max(0.1, self._parameter_float("task_poll_period_s")),
+            self._poll_task_inbox,
+        )
 
     def _load_april_tag_map(self) -> Mapping[int, Any]:
         workspace_map_path = (
@@ -189,7 +256,7 @@ class OperatorNode(Node):
             self.get_parameter("task_contract_json").get_parameter_value().string_value
         )
         if not task_contract_json:
-            raise ValueError("vexy_operator requires task_contract_json")
+            return _idle_task_contract()
         payload = json.loads(task_contract_json)
         if not isinstance(payload, Mapping):
             raise ValueError("task_contract_json must decode to a JSON object")
@@ -200,8 +267,353 @@ class OperatorNode(Node):
             self.get_parameter("task_outline_json").get_parameter_value().string_value
         )
         if not task_outline_json:
-            raise ValueError("vexy_operator requires task_outline_json")
+            return _idle_task_outline()
         return json.loads(task_outline_json)
+
+    def _parameter_path(self, name: str) -> Path | None:
+        raw = self.get_parameter(name).get_parameter_value().string_value
+        if not raw:
+            return None
+        return Path(raw).expanduser()
+
+    def _parameter_float(self, name: str) -> float:
+        value = self.get_parameter(name).get_parameter_value()
+        if hasattr(value, "double_value"):
+            return float(value.double_value)
+        return float(value.string_value)
+
+    def _poll_task_inbox(self) -> None:
+        if self._task_file_active:
+            return
+        try:
+            self._task_inbox_dir.mkdir(parents=True, exist_ok=True)
+            self._task_archive_dir.mkdir(parents=True, exist_ok=True)
+            self._task_rejected_dir.mkdir(parents=True, exist_ok=True)
+            task_files = sorted(
+                path for path in self._task_inbox_dir.glob("*.json") if path.is_file()
+            )
+        except OSError as exc:
+            self._publish_event(
+                OperatorEvent(
+                    name="task_inbox_error",
+                    stamp_s=time.monotonic(),
+                    detail={"error": str(exc), "path": str(self._task_inbox_dir)},
+                )
+            )
+            return
+        if task_files:
+            self._consume_task_file(task_files[0])
+
+    def _consume_task_file(self, path: Path) -> None:
+        self._task_file_active = True
+        try:
+            envelope = TaskEnvelope.model_validate(json.loads(path.read_text()))
+            operator_task = OperatorTaskContract.from_inputs(
+                contract_line=envelope.contract.model_dump(mode="json"),
+                task_outline=envelope.outline.root,
+            )
+            archived_path = self._move_task_file(path, self._task_archive_dir)
+        except (
+            OSError,
+            TypeError,
+            ValueError,
+            json.JSONDecodeError,
+            ValidationError,
+        ) as exc:
+            self._reject_task_file(path, exc)
+            self._task_file_active = False
+            return
+
+        try:
+            self.operator.set_task_contract(operator_task)
+            self._publish_event(
+                OperatorEvent(
+                    name="task_file_accepted",
+                    stamp_s=time.monotonic(),
+                    detail={
+                        "source": str(path),
+                        "archive": str(archived_path),
+                        "session_id": operator_task.contract_line.get("session_id"),
+                        "task": operator_task.contract_line.get("task"),
+                    },
+                )
+            )
+            self._run_task_outline(path.name)
+        except (TypeError, ValueError) as exc:
+            self._publish_event(
+                OperatorEvent(
+                    name="task_file_execution_failed",
+                    stamp_s=time.monotonic(),
+                    detail={
+                        "source": str(path),
+                        "archive": str(archived_path),
+                        "error": str(exc),
+                    },
+                )
+            )
+            self._task_file_active = False
+
+    def _move_task_file(self, path: Path, target_dir: Path) -> Path:
+        target_dir.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+        target = target_dir / f"{path.stem}.{stamp}{path.suffix}"
+        return Path(shutil.move(str(path), str(target)))
+
+    def _reject_task_file(self, path: Path, exc: Exception) -> None:
+        try:
+            rejected_path = self._move_task_file(path, self._task_rejected_dir)
+            error_path = rejected_path.with_suffix(rejected_path.suffix + ".error.json")
+            error_path.write_text(
+                json.dumps(
+                    {
+                        "source": str(path),
+                        "rejected": str(rejected_path),
+                        "error": str(exc),
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+                + "\n"
+            )
+            detail = {
+                "source": str(path),
+                "rejected": str(rejected_path),
+                "error": str(exc),
+            }
+        except OSError as move_exc:
+            detail = {
+                "source": str(path),
+                "error": str(exc),
+                "move_error": str(move_exc),
+            }
+        self._publish_event(
+            OperatorEvent(
+                name="task_file_rejected",
+                stamp_s=time.monotonic(),
+                detail=detail,
+            )
+        )
+
+    def _run_task_outline(self, source_name: str) -> None:
+        if self._task_outline_run is not None:
+            raise ValueError("task outline already running")
+        self._run_start_pub.publish(
+            String(
+                data=json.dumps(
+                    {
+                        "type": "run_start",
+                        "run_id": self._run_id,
+                        "run_start_wall_s": time.time(),
+                        "run_index": self.operator.run_index,
+                        "action": "task_file",
+                        "source": source_name,
+                    },
+                    separators=(",", ":"),
+                    sort_keys=True,
+                )
+            )
+        )
+        self._task_outline_run = TaskOutlineRun(
+            source_name=source_name,
+            method_plan=tuple(self.operator.task_contract.method_plan),
+            step_index=0,
+            step_started_s=time.monotonic(),
+        )
+
+    def _tick_task_outline(self) -> None:
+        run = self._task_outline_run
+        if run is None:
+            return
+        if run.step_index >= len(run.method_plan):
+            self._finish_task_outline_run("task_file_completed", {})
+            return
+
+        method_name, args, kwargs = run.method_plan[run.step_index]
+        elapsed_s = time.monotonic() - run.step_started_s
+        if elapsed_s > self._task_step_timeout_s:
+            self._finish_task_outline_run(
+                "task_file_execution_failed",
+                {
+                    "source": run.source_name,
+                    "method": method_name,
+                    "step_index": run.step_index,
+                    "reason": "step_timeout",
+                    "timeout_s": self._task_step_timeout_s,
+                },
+            )
+            return
+
+        if method_name in TIMED_PRIMITIVE_METHOD_NAMES:
+            self._tick_timed_primitive_step(run, method_name, args, kwargs)
+            return
+
+        try:
+            self.operator.require_allowed_method(method_name)
+            method = getattr(self.operator, method_name)
+            result = method(*args, **dict(kwargs))
+        except (TypeError, ValueError) as exc:
+            self._finish_task_outline_run(
+                "task_file_execution_failed",
+                {
+                    "source": run.source_name,
+                    "method": method_name,
+                    "step_index": run.step_index,
+                    "error": str(exc),
+                },
+            )
+            return
+
+        if not isinstance(result, OperatorResult):
+            self._advance_task_outline_step(run)
+            return
+
+        if result.success:
+            self._publish_contract_result(method_name, result)
+            self._advance_task_outline_step(run)
+            return
+
+        if result.reason in IN_PROGRESS_REASONS:
+            return
+
+        self._publish_contract_result(method_name, result)
+        self._finish_task_outline_run(
+            "task_file_execution_failed",
+            {
+                "source": run.source_name,
+                "method": method_name,
+                "step_index": run.step_index,
+                "reason": result.reason,
+            },
+        )
+
+    def _tick_timed_primitive_step(
+        self,
+        run: TaskOutlineRun,
+        method_name: str,
+        args: tuple[Any, ...],
+        kwargs: Mapping[str, Any],
+    ) -> None:
+        pending = run.pending_timed_primitive
+        if pending is None:
+            try:
+                self.operator.require_allowed_method(method_name)
+                method = getattr(self.operator, method_name)
+                result = method(*args, **dict(kwargs))
+            except (TypeError, ValueError) as exc:
+                self._finish_task_outline_run(
+                    "task_file_execution_failed",
+                    {
+                        "source": run.source_name,
+                        "method": method_name,
+                        "step_index": run.step_index,
+                        "error": str(exc),
+                    },
+                )
+                return
+
+            if not isinstance(result, OperatorResult):
+                self._advance_task_outline_step(run)
+                return
+            if not result.success:
+                if result.reason in IN_PROGRESS_REASONS:
+                    return
+                self._publish_contract_result(method_name, result)
+                self._finish_task_outline_run(
+                    "task_file_execution_failed",
+                    {
+                        "source": run.source_name,
+                        "method": method_name,
+                        "step_index": run.step_index,
+                        "reason": result.reason,
+                    },
+                )
+                return
+
+            now_s = time.monotonic()
+            duration_ms = _timed_primitive_duration_ms(method_name, kwargs, result)
+            run.pending_timed_primitive = TimedPrimitiveStep(
+                method_name=method_name,
+                duration_ms=duration_ms,
+                started_s=now_s,
+                deadline_s=now_s
+                + (duration_ms / 1000.0)
+                + self._task_timed_primitive_settle_s,
+                seq=self._sink.seq if result.command is not None else None,
+                result=result,
+            )
+            return
+
+        if pending.method_name != method_name:
+            self._finish_task_outline_run(
+                "task_file_execution_failed",
+                {
+                    "source": run.source_name,
+                    "method": method_name,
+                    "step_index": run.step_index,
+                    "reason": "pending_timed_primitive_mismatch",
+                    "pending_method": pending.method_name,
+                },
+            )
+            return
+
+        if pending.seq is not None and pending.seq in self._ack_states:
+            pending.ack_state = self._ack_states[pending.seq]
+            if pending.ack_state in {"rejected", "fault"}:
+                self._publish_contract_result(method_name, pending.result)
+                self._finish_task_outline_run(
+                    "task_file_execution_failed",
+                    {
+                        "source": run.source_name,
+                        "method": method_name,
+                        "step_index": run.step_index,
+                        "reason": f"command_{pending.ack_state}",
+                        "seq": pending.seq,
+                    },
+                )
+                return
+
+        if self._bridge.fault:
+            self._publish_contract_result(method_name, pending.result)
+            self._finish_task_outline_run(
+                "task_file_execution_failed",
+                {
+                    "source": run.source_name,
+                    "method": method_name,
+                    "step_index": run.step_index,
+                    "reason": "bridge_fault",
+                    "fault": self._bridge.fault,
+                },
+            )
+            return
+
+        if time.monotonic() < pending.deadline_s:
+            return
+
+        run.pending_timed_primitive = None
+        self._publish_contract_result(method_name, pending.result)
+        self._advance_task_outline_step(run)
+
+    def _advance_task_outline_step(self, run: TaskOutlineRun) -> None:
+        run.pending_timed_primitive = None
+        run.step_index += 1
+        run.step_started_s = time.monotonic()
+        if run.step_index >= len(run.method_plan):
+            self._finish_task_outline_run(
+                "task_file_completed", {"source": run.source_name}
+            )
+
+    def _finish_task_outline_run(
+        self, event_name: str, detail: Mapping[str, Any]
+    ) -> None:
+        self._publish_event(
+            OperatorEvent(
+                name=event_name,
+                stamp_s=time.monotonic(),
+                detail=detail,
+            )
+        )
+        self._task_outline_run = None
+        self._task_file_active = False
 
     def _on_tf(self, msg: TFMessage) -> None:
         stamp_s = time.monotonic()
@@ -322,6 +734,8 @@ class OperatorNode(Node):
         except json.JSONDecodeError:
             return
         ack_seq = ack.get("ack")
+        if isinstance(ack_seq, int):
+            self._ack_states[ack_seq] = str(ack.get("state", "ack"))
         self._bridge = BridgeHealth(
             stamp_s=time.monotonic(),
             last_ack_seq=ack_seq if isinstance(ack_seq, int) else None,
@@ -613,6 +1027,33 @@ class OperatorNode(Node):
 
 def _optional_float(value: Any) -> float | None:
     return None if value is None else float(value)
+
+
+def _timed_primitive_duration_ms(
+    method_name: str, kwargs: Mapping[str, Any], result: OperatorResult
+) -> int:
+    if "duration_ms" in kwargs:
+        return int(kwargs["duration_ms"])
+    if result.command is not None and result.command.duration_ms is not None:
+        return int(result.command.duration_ms)
+    return timed_primitive_default_duration_ms(method_name)
+
+
+def _idle_task_contract() -> Mapping[str, Any]:
+    return {
+        "schema_version": "1.0",
+        "session_id": "operator-idle",
+        "generation": 0,
+        "round": 0,
+        "task": "idle",
+        "motor_samples": [{"device": "left_drive"}],
+        "predicted": {"success": True},
+        "gap": {"distance_error_m": 0.0},
+    }
+
+
+def _idle_task_outline() -> list[list[Any]]:
+    return [["locate_nearest_apriltag", []]]
 
 
 def _tag_index_from_payload(payload: Mapping[str, Any]) -> int | None:

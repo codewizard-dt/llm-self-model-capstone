@@ -72,15 +72,19 @@ bash robot/ros2-runtime/scripts/setup_pi.sh
 
 Then launch the full stack:
 
-```bash
-source ~/ros2_ws/install/setup.bash
+```zsh
+source /opt/ros/jazzy/setup.zsh
+source ~/ros2_ws/install/setup.zsh
 ros2 launch vexy_ros vexy.launch.py
 ```
 
+Use `setup.bash` instead of `setup.zsh` when running the same commands from bash.
+
 ### Option B — one-liner verify after setup
 
-```bash
-source ~/ros2_ws/install/setup.bash
+```zsh
+source /opt/ros/jazzy/setup.zsh
+source ~/ros2_ws/install/setup.zsh
 ros2 topic hz /camera/image_raw   # should show ~15 Hz (default) or ~30 Hz (configured)
 ros2 topic hz /camera/image_rect  # rectified stream after calibration load
 ros2 topic echo /apriltag/detections --once  # with tag36h11 id 0 visible
@@ -179,9 +183,9 @@ ln -s /path/to/capstone/robot/ros2-runtime vexy_ros
 
 ### 4. Run rosdep
 
-```bash
+```zsh
 cd ~/ros2_ws
-source /opt/ros/jazzy/setup.bash
+source /opt/ros/jazzy/setup.zsh
 
 sudo rosdep init   # skip if already done
 rosdep update --include-eol-distros -q
@@ -201,8 +205,8 @@ Build time on Pi 5: ~8–12 min (libcamera dominates).
 
 ### 6. Source and verify
 
-```bash
-source ~/ros2_ws/install/setup.bash
+```zsh
+source ~/ros2_ws/install/setup.zsh
 
 # Smoke-test camera
 ros2 run camera_ros camera_node &
@@ -305,7 +309,10 @@ routine while another routine is active (`fault:"busy"`) and cancels any active
 routine on `stop`, watchdog loss, or estop.
 
 Ack records are command acknowledgements; use `/vex/telemetry` for streaming
-health and motor-sample proof.
+health and motor-sample proof. Task-file outlines add a stricter sequencing
+layer inside `vexy_operator`: `grab`, `lift`, and `release` send once, remain
+the active outline step through their duration plus settle time, and only then
+allow the next outline step to run.
 
 **Bridge status** (`/vex/bridge_status`):
 ```json

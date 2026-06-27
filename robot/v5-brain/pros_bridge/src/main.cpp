@@ -31,11 +31,11 @@ constexpr int MAX_DRIVE_RPM = 45;
 constexpr int MAX_TURN_RPM = 35;
 constexpr int DRIVE_CURRENT_LIMIT_MA = 1500;
 constexpr int DRIVE_VOLTAGE_LIMIT_MV = 6000;
-// Positive manipulator velocity closes the claw on the current robot build.
-constexpr int GRAB_RPM = 100;
+// Negative manipulator velocity closes the claw on the current robot build.
+constexpr int GRAB_RPM = -100;
 constexpr int LIFT_RPM = 100;
-// Negative manipulator velocity opens the claw.
-constexpr int RELEASE_RPM = -100;
+// Positive manipulator velocity opens the claw.
+constexpr int RELEASE_RPM = 100;
 constexpr int DEFAULT_RELEASE_MS = 650;
 constexpr int DEFAULT_GRAB_MS = 700;
 constexpr int DEFAULT_LIFT_MS = 900;

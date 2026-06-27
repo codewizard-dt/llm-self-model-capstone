@@ -32,8 +32,10 @@ SUBSYSTEM=="tty", ATTRS{idVendor}=="2888", ATTRS{idProduct}=="0501", GROUP="dial
 RULE
 sudo udevadm control --reload-rules
 
-echo "=== [2/6] Installing colcon-meson ==="
+echo "=== [2/6] Installing colcon-meson and contracts ==="
 pip install colcon-meson --break-system-packages
+REPO_SETUP_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+pip install --break-system-packages -e "$REPO_SETUP_ROOT/contracts/"
 
 echo "=== [3/6] Creating ROS 2 workspace ==="
 mkdir -p "$WS/src"
@@ -97,7 +99,8 @@ source "$WS/install/setup.bash"
 
 echo ""
 echo "Build complete! To verify the camera:"
-echo "  source ~/ros2_ws/install/setup.bash"
+echo "  source ~/ros2_ws/install/setup.zsh   # zsh"
+echo "  source ~/ros2_ws/install/setup.bash  # bash"
 echo "  ros2 run camera_ros camera_node &"
 echo "  ros2 topic hz /camera/image_raw"
 echo ""

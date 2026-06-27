@@ -3,8 +3,8 @@
 Run on the Raspberry Pi with the V5 Brain program already running in slot 8:
 
     cd /home/vexy/llm-self-model-capstone
-    source /opt/ros/jazzy/setup.bash
-    source /home/vexy/ros2_ws/install/setup.bash
+    source /opt/ros/jazzy/setup.zsh
+    source /home/vexy/ros2_ws/install/setup.zsh
     python3 operator/tests/test_static_claw_ball_calibration.py
 
 The harness keeps the drivetrain stopped. It only sends stop/release/grab

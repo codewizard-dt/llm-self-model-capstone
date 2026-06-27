@@ -82,9 +82,7 @@ class LaunchContractTests(unittest.TestCase):
     def test_operator_is_only_runtime_vex_cmd_publisher(self) -> None:
         launch_text = (ROOT / "launch" / "vexy.launch.py").read_text()
         setup_text = (ROOT / "setup.py").read_text()
-        launched_executables = set(
-            re.findall(r'executable="([^"]+)"', launch_text)
-        )
+        launched_executables = set(re.findall(r'executable="([^"]+)"', launch_text))
         entrypoints = dict(
             re.findall(r'"([^"]+) = vexy_ros\.([^":]+):main"', setup_text)
         )
@@ -127,6 +125,7 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn("tf2_msgs", depends | exec_depends)
         self.assertIn("python3-numpy", exec_depends)
         self.assertIn("python3-opencv", exec_depends)
+        self.assertIn("python3-pydantic", exec_depends)
         self.assertIn('glob("config/*.yaml")', setup_text)
         self.assertIn('glob("config/maps/*.json")', setup_text)
         self.assertIn("align_to_tag_node = vexy_ros.align_to_tag_node:main", setup_text)

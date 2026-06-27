@@ -28,7 +28,8 @@
 ssh vexy@vexy.local
 
 # Source
-source ~/ros2_ws/install/setup.bash
+source /opt/ros/jazzy/setup.zsh
+source ~/ros2_ws/install/setup.zsh
 
 # Ensure managed stack is active
 systemctl --user restart vexy-ros-stack.service
@@ -52,7 +53,7 @@ ros2 launch vexy_ros vexy.launch.py  # foxglove_bridge starts automatically
 ros2 bag record -a -o ~/bags/session_$(date +%Y%m%d_%H%M%S)
 
 # Rebuild vexy_ros only
-cd ~/ros2_ws && colcon build --packages-select vexy_ros && source install/setup.bash
+cd ~/ros2_ws && colcon build --packages-select vexy_ros && source install/setup.zsh
 
 # Logs
 tail -f ~/.ros/log/latest/vex_bridge-1-stdout.log

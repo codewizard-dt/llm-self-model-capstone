@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
-from reactivex import Observable
+try:
+    from reactivex import Observable
+except ModuleNotFoundError:
+    Observable = Any
 
 from contracts.contract_line import ContractLine, VisionBlock
 

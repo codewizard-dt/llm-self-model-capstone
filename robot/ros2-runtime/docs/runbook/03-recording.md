@@ -47,8 +47,9 @@ scp -r vexy@vexy.local:~/bags/session_20260623_143012 .
 Use this when the Brain is running Slot 7 `Driver Telemetry` and a human is
 driving with the V5 controller. Start the annotation helper in one terminal:
 
-```bash
-source ~/ros2_ws/install/setup.bash
+```zsh
+source /opt/ros/jazzy/setup.zsh
+source ~/ros2_ws/install/setup.zsh
 ```
 
 Record calibration evidence in another terminal:

@@ -15,16 +15,27 @@ ssh vexy@<IP_ADDRESS>
 
 ### Source the workspace (required in every new shell)
 
-ROS 2 Jazzy base is sourced in `~/.bashrc`; the overlay must be sourced manually unless you add it there too:
+ROS 2 Jazzy base and the workspace overlay must be sourced in each new shell. On the Pi, zsh is the
+default shell:
+
+```zsh
+source /opt/ros/jazzy/setup.zsh
+source ~/ros2_ws/install/setup.zsh
+```
+
+For bash, use the matching bash setup files:
 
 ```bash
+source /opt/ros/jazzy/setup.bash
 source ~/ros2_ws/install/setup.bash
 ```
 
-To add it permanently:
+For non-interactive zsh commands over SSH, put the same zsh environment in `~/.zshenv`:
 
-```bash
-echo 'source ~/ros2_ws/install/setup.bash' >> ~/.bashrc
+```zsh
+[ -d "$HOME/.local/bin" ] && case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) export PATH="$HOME/.local/bin:$PATH" ;; esac
+[ -f /opt/ros/jazzy/setup.zsh ] && source /opt/ros/jazzy/setup.zsh
+[ -f "$HOME/ros2_ws/install/setup.zsh" ] && source "$HOME/ros2_ws/install/setup.zsh"
 ```
 
 ### Start the full stack

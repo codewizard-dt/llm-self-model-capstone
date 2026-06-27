@@ -11,7 +11,7 @@
 | Ubuntu OS | Yes | |
 | ROS 2 Jazzy base install | Yes | In `/opt/ros/jazzy/` |
 | `~/ros2_ws` build artifacts | Yes | In `~/ros2_ws/install/` |
-| `source` in `~/.bashrc` | Yes | If added permanently |
+| `source` in `~/.zshenv`/`~/.zshrc` | Yes | If added permanently; `.zshenv` also covers non-interactive SSH commands |
 | User systemd services | Yes | `vexy-ros-stack.service` and `vexy-ros-bridge.service` |
 | Running ROS nodes | Yes, if services are enabled | Verify after every reboot |
 | Foxglove bridge | Yes, if `vexy-ros-stack.service` is active | Runs from the stack launch file |
@@ -22,8 +22,9 @@
 # 1. SSH in
 ssh vexy@vexy.local
 
-# 2. Source workspace (if not in .bashrc already)
-source ~/ros2_ws/install/setup.bash
+# 2. Source ROS and workspace in zsh
+source /opt/ros/jazzy/setup.zsh
+source ~/ros2_ws/install/setup.zsh
 
 # 3. Verify device nodes are present
 ls /dev/ttyACM*     # VEX V5 Brain
@@ -115,7 +116,7 @@ colcon build \
   --event-handlers console_direct+
 
 # Re-source the overlay
-source ~/ros2_ws/install/setup.bash
+source ~/ros2_ws/install/setup.zsh
 ```
 
 Expected time: 10–25 minutes for libcamera + camera_ros (C++). `vexy_ros` (Python) builds in seconds.
@@ -125,7 +126,7 @@ Expected time: 10–25 minutes for libcamera + camera_ros (C++). `vexy_ros` (Pyt
 ```bash
 cd ~/ros2_ws
 colcon build --packages-select vexy_ros --event-handlers console_direct+
-source ~/ros2_ws/install/setup.bash
+source ~/ros2_ws/install/setup.zsh
 ```
 
 ### Incremental rebuild after libcamera changes
@@ -136,7 +137,7 @@ colcon build \
   --packages-select libcamera camera_ros \
   --cmake-args -DCMAKE_BUILD_TYPE=Release \
   --event-handlers console_direct+
-source ~/ros2_ws/install/setup.bash
+source ~/ros2_ws/install/setup.zsh
 ```
 
 ### Verify build succeeded

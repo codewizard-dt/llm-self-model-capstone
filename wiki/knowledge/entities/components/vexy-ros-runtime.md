@@ -15,6 +15,7 @@ sources:
   - ../../sources/vision-stack-audit.md
   - ../../sources/ros2-camera-calibration-vexy.md
   - ../../../raw/research/driver-telemetry-labeling/index.md
+  - ../../sources/operator-command-sequencing.md
 tags: [component, ros2, jazzy, raspberry-pi, vex-v5, vision, serial, runtime, operator]
 ---
 
@@ -29,6 +30,7 @@ uses::[[vex-coprocessor-pattern]]
 uses::[[robot-workspace-map]]
 uses::[[apriltag-workspace-layout]]
 feeds::[[task-telemetry-contract]]
+relates_to::[[operator-command-sequencing]]
 relates_to::[[foxglove-studio]]
 relates_to::[[vex-v5]]
 
@@ -105,7 +107,7 @@ ExecStart=/bin/bash -lc 'source /opt/ros/jazzy/setup.bash && source /home/vexy/r
 | Task | Command |
 |---|---|
 | Restart managed stack | `systemctl --user restart vexy-ros-stack.service` |
-| Manual start | `source ~/ros2_ws/install/setup.bash && ros2 launch vexy_ros vexy.launch.py` |
+| Manual start | `source /opt/ros/jazzy/setup.zsh && source ~/ros2_ws/install/setup.zsh && ros2 launch vexy_ros vexy.launch.py` |
 | Camera health check | `ros2 topic hz /camera/image_raw` |
 
 derived_from::[[camera-stack-startup]]
@@ -400,6 +402,8 @@ ROS 2 node class extending `rclpy.node.Node` (node name: `"vexy_operator"`).
 ### Task Outline Contract
 
 `OperatorTaskContract` parses the `task_outline_json` parameter into a `method_plan`. Ad-hoc SSH commands arriving on `/operator/command` are only accepted if their action appears in the loaded task outline — this enforces that the operator cannot be driven outside the authorized task scope. An empty method plan is rejected at startup.
+
+derived_from::[[operator-command-sequencing]] clarifies the runtime sequencing contract for task files: the operator keeps exactly one active outline step, polls it on a ROS timer, and advances only after terminal success. Completion-aware methods such as `move_to_tag` and `pickup_ball` are polled until their domain success state. Timed primitives (`grab`, `lift`, `release`) run through runner-owned step state: send once, record command sequence and deadline, wait for duration plus settle time, and abort on bridge fault, rejected/fault ack, or timeout.
 
 ### Operator Docs
 

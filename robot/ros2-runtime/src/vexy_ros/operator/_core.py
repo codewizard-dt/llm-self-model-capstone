@@ -42,6 +42,7 @@ OPERATOR_METHOD_NAMES = {
     "lift",
     "release",
 }
+TIMED_PRIMITIVE_METHOD_NAMES = {"grab", "lift", "release"}
 MOTOR_CONTRACT_FIELDS = (
     "position_deg",
     "velocity_rpm",
@@ -51,6 +52,18 @@ MOTOR_CONTRACT_FIELDS = (
     "efficiency_pct",
     "temperature_c",
 )
+
+
+def timed_primitive_default_duration_ms(method_name: str) -> int:
+    if method_name == "grab":
+        return DEFAULT_GRAB_MS
+    if method_name == "lift":
+        return DEFAULT_LIFT_MS
+    if method_name == "release":
+        return DEFAULT_RELEASE_MS
+    raise ValueError(f"unsupported timed primitive method: {method_name}")
+
+
 MOTOR_CONTRACT_METHODS = {
     "position_deg": "position",
     "velocity_rpm": "velocity",
@@ -258,8 +271,8 @@ class OperatorConfig:
     lateral_tolerance_m: float = 0.04
     distance_tolerance_m: float = 0.05
     target_distance_m: float = 0.45
-    bin_standoff_m: float = 0.4064
-    ball_staging_standoff_m: float = 0.45
+    bin_standoff_m: float = 0.2
+    ball_staging_standoff_m: float = 0.05
     home_standoff_m: float = 0.45
     arm_raise_trigger_distance_m: float = 0.8128
     arm_raise_target_deg: float = 20.0
@@ -359,6 +372,20 @@ class Operator:
                 "available_tag_ids": list(self.available_april_tag_ids),
                 "tag_count": len(self.available_april_tag_ids),
                 "camera_in_robot": self.camera_in_robot.to_json(),
+            },
+        )
+
+    def set_task_contract(self, task_contract: OperatorTaskContract) -> None:
+        self.task_contract = task_contract
+        self.allowed_operator_methods = tuple(
+            dict.fromkeys(call[0] for call in self.task_contract.method_plan)
+        )
+        self._emit(
+            "task_contract_loaded",
+            {
+                "session_id": self.task_contract.contract_line.get("session_id"),
+                "task": self.task_contract.contract_line.get("task"),
+                "operator_methods": list(self.allowed_operator_methods),
             },
         )
 

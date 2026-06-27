@@ -16,6 +16,7 @@ from pydantic import TypeAdapter
 from contracts.contract_line import ContractLine, ScoreContractLine
 from contracts.control_command import AckLine, ControlLine
 from contracts.self_model import SelfModel
+from contracts.task_envelope import TaskEnvelope, TaskOutline
 
 SCHEMAS = {
     "contract_line.json": ContractLine,
@@ -23,6 +24,8 @@ SCHEMAS = {
     "score_contract.json": ScoreContractLine,
     "control_command.json": ControlLine,
     "ack_line.json": AckLine,
+    "task_outline.json": TaskOutline,
+    "task_envelope.json": TaskEnvelope,
 }
 
 
