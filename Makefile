@@ -1,6 +1,7 @@
 # Delegate to per-vertical Makefiles. Add a vertical's target once its Makefile exists.
 .PHONY: sync validate test lint schema schema-check catalog catalog-check m1 m1-judge send-task rebuild-pi sync-pi
 PI_REPO ?= ~/llm-self-model-capstone
+PI_ROS_WS ?= ~/ros2_ws
 
 # m1 contracts-frozen milestone gate (delegates into contracts/).
 m1:
@@ -55,7 +56,7 @@ rebuild-pi:
 	pip uninstall --break-system-packages -y vexy-ros || true
 	pip install --break-system-packages "pydantic>=2,<3"
 	pip install --break-system-packages -e contracts/
-	bash -c "cd $(PI_REPO) && source /opt/ros/jazzy/setup.bash && colcon build --base-paths robot/ros2-runtime --packages-select vexy_ros --cmake-args -DCMAKE_BUILD_TYPE=Release --event-handlers console_direct+"
+	bash -c "cd $(PI_REPO) && source /opt/ros/jazzy/setup.bash && colcon build --base-paths robot/ros2-runtime --build-base $(PI_ROS_WS)/build --install-base $(PI_ROS_WS)/install --log-base $(PI_ROS_WS)/log --packages-select vexy_ros --cmake-args -DCMAKE_BUILD_TYPE=Release --event-handlers console_direct+"
 	systemctl --user restart vexy-ros-stack.service
 	systemctl --user status vexy-ros-stack.service
 
