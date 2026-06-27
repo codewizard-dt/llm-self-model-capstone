@@ -1,4 +1,4 @@
-"""Tests for the `contracts.validate` entrypoint — F3 third dispatch + F19 fourth.
+"""Tests for the `contracts.validate` entrypoint.
 
 The F1 (`session_*.jsonl → ContractLine`) and F2 (`self_model_*.json → SelfModel`)
 dispatches are exercised end-to-end by `make validate` over the committed fixtures; the
@@ -7,9 +7,10 @@ additive F3 dispatch is covered here for the `parts_catalog.json` round-trip aga
 fixture → non-zero exit case. The additive F19 fourth dispatch is covered here for
 the three committed control-command fixtures, the exhaustive `FaultCode` coverage, the
 stale-vs-rejected distinction (D6/D17), and the F1-glob-narrowing invariant (D15) —
-including type-routing on a deliberately-bad cmd line and cross-dispatch isolation.
-The committed fixtures stay clean — every mutation case is constructed in a temp
-fixtures dir.
+including type-routing on a deliberately-bad cmd line and cross-dispatch isolation. The
+pilot fixture dispatches are covered here for committed model/adapter round-trips, trace
+event coverage, and temp-root rejection paths for invalid pilot JSON/JSONL. The committed
+fixtures stay clean — every mutation case is constructed in a temp fixtures dir.
 """
 
 from __future__ import annotations
@@ -26,6 +27,11 @@ from contracts import (
     ControlLine,
     FaultCode,
     PartsCatalog,
+    PilotAssertion,
+    PilotDecision,
+    PilotObservation,
+    PilotSkillCommand,
+    PilotTraceRecord,
     SelfModel,
     validate_config,
 )
@@ -42,10 +48,17 @@ TELEMETRY_FIXTURE_DIR = REPO_ROOT / "telemetry-fixtures" / "grab-align-baseline"
 GRAB_FIXTURE = FIXTURES_DIR / "control_command_grab_cycle.jsonl"
 FLYWHEEL_FIXTURE = FIXTURES_DIR / "control_command_flywheel_cycle.jsonl"
 REJECTIONS_FIXTURE = FIXTURES_DIR / "control_command_rejections.jsonl"
+PILOT_OBSERVATION_FIXTURE = FIXTURES_DIR / "pilot_observation_example.json"
+PILOT_SKILL_COMMAND_FIXTURE = FIXTURES_DIR / "pilot_skill_command_examples.jsonl"
+PILOT_ASSERTION_FIXTURE = FIXTURES_DIR / "pilot_assertion_examples.jsonl"
+PILOT_DECISION_FIXTURE = FIXTURES_DIR / "pilot_decision_examples.jsonl"
+PILOT_TRACE_FIXTURE = FIXTURES_DIR / "pilot_trace_example.jsonl"
 TELEMETRY_CONTRACT_FIXTURE = TELEMETRY_FIXTURE_DIR / "contract.jsonl"
 TELEMETRY_MANIFEST_FIXTURE = TELEMETRY_FIXTURE_DIR / "manifest.json"
 
 _control_line_adapter: TypeAdapter[ControlLine] = TypeAdapter(ControlLine)
+_pilot_skill_command_adapter: TypeAdapter[PilotSkillCommand] = TypeAdapter(PilotSkillCommand)
+_pilot_trace_record_adapter: TypeAdapter[PilotTraceRecord] = TypeAdapter(PilotTraceRecord)
 
 
 def _iter_jsonl(path: Path) -> list[dict]:
@@ -97,6 +110,82 @@ def test_committed_telemetry_fixture_lines_validate_as_contract_lines():
     assert lines, "expected telemetry fixture contract.jsonl to contain evidence lines"
     for line in lines:
         ContractLine.model_validate_json(line)
+
+
+# --- pilot fixtures: committed examples validate ----------------------------
+
+
+def test_committed_pilot_fixture_families_validate_against_models_and_adapters():
+    observation = PilotObservation.model_validate_json(PILOT_OBSERVATION_FIXTURE.read_text())
+    assert observation.bridge.last_heartbeat_age_ms == 38
+    assert observation.bridge.estop is False
+    assert observation.last_command is not None
+    assert observation.last_result is not None
+    assert observation.current_assertions
+
+    commands = [
+        _pilot_skill_command_adapter.validate_json(raw)
+        for raw in PILOT_SKILL_COMMAND_FIXTURE.read_text().splitlines()
+        if raw.strip()
+    ]
+    assert [command.skill for command in commands] == [
+        "survey_scene",
+        "approach_target",
+        "center_object_in_gripper",
+        "arm_to_angle",
+        "claw_close",
+        "stop",
+    ]
+
+    assertions = [
+        PilotAssertion.model_validate_json(raw)
+        for raw in PILOT_ASSERTION_FIXTURE.read_text().splitlines()
+        if raw.strip()
+    ]
+    assert {assertion.assertion_id for assertion in assertions} >= {
+        "assert-bridge-fresh",
+        "assert-cube-visible",
+        "assert-gripper-empty",
+    }
+    assert any(
+        evidence.source == "telemetry"
+        for assertion in assertions
+        for evidence in assertion.evidence
+    )
+    assert any(
+        evidence.source == "vision" for assertion in assertions for evidence in assertion.evidence
+    )
+    assert any(
+        evidence.source == "bridge" for assertion in assertions for evidence in assertion.evidence
+    )
+
+    decisions = [
+        PilotDecision.model_validate_json(raw)
+        for raw in PILOT_DECISION_FIXTURE.read_text().splitlines()
+        if raw.strip()
+    ]
+    assert [decision.action for decision in decisions] == ["continue", "retry", "stop_success"]
+    assert decisions[0].command is not None
+    assert decisions[1].retry_of_command_id == "cmd-approach-cube-red-1-a"
+    assert decisions[2].stop_reason == "task complete"
+
+
+def test_committed_pilot_trace_fixture_covers_all_event_variants():
+    records = [
+        _pilot_trace_record_adapter.validate_json(raw)
+        for raw in PILOT_TRACE_FIXTURE.read_text().splitlines()
+        if raw.strip()
+    ]
+    assert [record.event for record in records] == [
+        "observation",
+        "decision",
+        "command",
+        "result",
+        "assertion",
+        "stop",
+    ]
+    assert {record.session_id for record in records} == {"pilot-replay-001"}
+    assert [record.seq for record in records] == [1, 2, 3, 4, 5, 6]
 
 
 # --- unbuildable fixture is rejected with a readable reason ------------------
@@ -336,6 +425,118 @@ def test_validate_main_rejects_unknown_cmd(tmp_path, monkeypatch, capsys):
     # The error mentions the inner cmd discriminator's closed vocabulary —
     # NOT a ContractLine validation error.
     assert "ContractLine" not in err
+
+
+def test_validate_main_rejects_unknown_pilot_decision_action(tmp_path, monkeypatch, capsys):
+    fixtures = _stand_up_temp_root(tmp_path)
+    bad = {
+        "v": 1,
+        "decision_id": "dec-bad-action",
+        "decided_ms": 1,
+        "action": "teleport",
+        "rationale": "invalid decision action",
+        "confidence": 0.5,
+    }
+    (fixtures / "pilot_decision_examples.jsonl").write_text(json.dumps(bad) + "\n")
+
+    monkeypatch.setattr(
+        "contracts.validate.Path",
+        _PathStub(tmp_path / "src" / "contracts" / "validate.py"),
+    )
+
+    assert main() == 1
+    err = capsys.readouterr().err
+    assert "pilot_decision_examples.jsonl:1:" in err
+    assert "action" in err
+
+
+def test_validate_main_rejects_unknown_pilot_skill_name(tmp_path, monkeypatch, capsys):
+    fixtures = _stand_up_temp_root(tmp_path)
+    bad = {
+        "v": 1,
+        "command_id": "cmd-unknown-skill",
+        "issued_ms": 1,
+        "skill": "fly_to_moon",
+        "params": {},
+    }
+    (fixtures / "pilot_skill_command_examples.jsonl").write_text(json.dumps(bad) + "\n")
+
+    monkeypatch.setattr(
+        "contracts.validate.Path",
+        _PathStub(tmp_path / "src" / "contracts" / "validate.py"),
+    )
+
+    assert main() == 1
+    err = capsys.readouterr().err
+    assert "pilot_skill_command_examples.jsonl:1:" in err
+    assert "fly_to_moon" in err
+
+
+def test_validate_main_rejects_oversized_pilot_numeric_envelope(tmp_path, monkeypatch, capsys):
+    fixtures = _stand_up_temp_root(tmp_path)
+    bad = {
+        "v": 1,
+        "command_id": "cmd-too-fast",
+        "issued_ms": 1,
+        "skill": "approach_target",
+        "params": {
+            "target_id": "cube-red-1",
+            "standoff_m": 0.18,
+            "max_speed_mps": 99.0,
+            "timeout_ms": 8000,
+        },
+    }
+    (fixtures / "pilot_skill_command_examples.jsonl").write_text(json.dumps(bad) + "\n")
+
+    monkeypatch.setattr(
+        "contracts.validate.Path",
+        _PathStub(tmp_path / "src" / "contracts" / "validate.py"),
+    )
+
+    assert main() == 1
+    err = capsys.readouterr().err
+    assert "pilot_skill_command_examples.jsonl:1:" in err
+    assert "max_speed_mps" in err
+
+
+def test_validate_main_rejects_malformed_pilot_hardware_health(tmp_path, monkeypatch, capsys):
+    fixtures = _stand_up_temp_root(tmp_path)
+    bad = json.loads(PILOT_OBSERVATION_FIXTURE.read_text())
+    bad["bridge"]["state"] = "stale"
+    bad["bridge"]["last_heartbeat_age_ms"] = -1
+    (fixtures / "pilot_observation_example.json").write_text(json.dumps(bad))
+
+    monkeypatch.setattr(
+        "contracts.validate.Path",
+        _PathStub(tmp_path / "src" / "contracts" / "validate.py"),
+    )
+
+    assert main() == 1
+    err = capsys.readouterr().err
+    assert "pilot_observation_example.json:" in err
+    assert "last_heartbeat_age_ms" in err
+
+
+def test_validate_main_rejects_malformed_pilot_trace_record(tmp_path, monkeypatch, capsys):
+    fixtures = _stand_up_temp_root(tmp_path)
+    bad = {
+        "v": 1,
+        "session_id": "pilot-replay-bad",
+        "seq": 1,
+        "monotonic_ms": 1,
+        "event": "noop",
+    }
+    (fixtures / "pilot_trace_example.jsonl").write_text(json.dumps(bad) + "\n")
+
+    monkeypatch.setattr(
+        "contracts.validate.Path",
+        _PathStub(tmp_path / "src" / "contracts" / "validate.py"),
+    )
+
+    assert main() == 1
+    err = capsys.readouterr().err
+    assert "pilot_trace_example.jsonl:1:" in err
+    assert "noop" in err
 
 
 def test_glob_narrowed_protects_session_dispatch(tmp_path, monkeypatch, capsys):

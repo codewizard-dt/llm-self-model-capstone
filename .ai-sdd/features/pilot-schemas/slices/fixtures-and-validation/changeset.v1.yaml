@@ -1,0 +1,65 @@
+apiVersion: ai-sdd/v1
+kind: Changeset
+metadata:
+  feature: pilot-schemas
+  slice: fixtures-and-validation
+  stack: contracts
+
+summary: >-
+  Added canonical pilot fixture families for observations, skill commands, assertions,
+  decisions, and appendable trace records. Wired those fixtures into contracts.validate
+  using the existing pilot pydantic models and TypeAdapter dispatch for discriminated
+  unions, and expanded validation tests for committed fixture acceptance plus invalid
+  pilot mutations in temporary fixture roots.
+
+satisfies:
+  - ACC-PILOT-FIXTURE-FAMILIES
+  - ACC-FIXTURE-CONTEXT-COVERAGE
+  - ACC-TRACE-EVENT-COVERAGE
+  - ACC-VALIDATION-DISPATCH
+  - ACC-COMMITTED-FIXTURES-ACCEPTED
+  - ACC-INVALID-MUTATIONS-REJECTED
+  - ACC-EXISTING-DISPATCH-PRESERVED
+  - ACC-DETERMINISTIC-SMALL-FIXTURES
+  - ACC-REGRESSION-GATES
+
+files:
+  modified:
+    - contracts/src/contracts/validate.py
+    - contracts/tests/test_validate.py
+    - .ai-sdd/artifacts/changeset.v1.yaml
+  created:
+    - contracts/fixtures/pilot_observation_example.json
+    - contracts/fixtures/pilot_skill_command_examples.jsonl
+    - contracts/fixtures/pilot_assertion_examples.jsonl
+    - contracts/fixtures/pilot_decision_examples.jsonl
+    - contracts/fixtures/pilot_trace_example.jsonl
+  deleted: []
+
+gates:
+  uv_sync:
+    exit_code: 2
+    note: >-
+      Failed at the repository root because no pyproject.toml exists in the root or
+      its parents; this repo currently uses per-vertical uv projects.
+  contracts_uv_sync:
+    exit_code: 0
+    note: "Passed stack-local sync: cd contracts && uv sync."
+  make_test:
+    exit_code: 0
+    note: >-
+      Passed repo-level tests: contracts 197 passed, self_model_generator 26 passed,
+      robot/ros2-runtime 154 passed and 1 skipped.
+  make_validate:
+    exit_code: 0
+    note: >-
+      Passed repo-level validation for contracts fixtures, self-model generator
+      fixtures, and robot operator fixtures.
+  make_lint:
+    exit_code: 0
+    note: >-
+      Passed repo-level ruff check and ruff format --check after formatting
+      contracts/tests/test_validate.py.
+  contracts_validate_test:
+    exit_code: 0
+    note: "Passed focused test command: cd contracts && uv run pytest tests/test_validate.py."

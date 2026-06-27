@@ -28,6 +28,13 @@ repo-level ``telemetry-fixtures/`` root:
   ``TypeAdapter(ControlLine).validate_python`` (which sub-routes ``type ∈ {cmd,
   heartbeat}`` and, for ``cmd`` lines, sub-discriminates by the inner ``cmd`` verb).
   A failure is reported as ``name:lineno: error`` on stderr.
+* pilot fixtures → the contract-owned pilot models: ``pilot_observation_example.json``
+  is whole-file JSON, ``pilot_assertion_examples.jsonl`` and
+  ``pilot_decision_examples.jsonl`` are per-line model validations, and
+  ``pilot_skill_command_examples.jsonl`` plus ``pilot_trace_example.jsonl`` validate
+  through pydantic ``TypeAdapter`` dispatch for their discriminated unions. Failures
+  follow the same ``name:lineno: error`` or ``name: error`` shape as the older
+  fixture families.
 
 Any failure on any dispatch exits 1; otherwise an OK line is printed and the
 process exits 0. An empty or absent fixtures dir still exits 0.
@@ -39,13 +46,27 @@ from pathlib import Path
 
 from pydantic import TypeAdapter
 
-from contracts import AckLine, ContractLine, ControlLine, PartsCatalog, SelfModel, validate_config
+from contracts import (
+    AckLine,
+    ContractLine,
+    ControlLine,
+    PartsCatalog,
+    PilotAssertion,
+    PilotDecision,
+    PilotObservation,
+    PilotSkillCommand,
+    PilotTraceRecord,
+    SelfModel,
+    validate_config,
+)
 
 # Build the ControlLine TypeAdapter once at import time (D16). ControlLine is a
 # discriminated-union *type alias* (Annotated[Union[...], Discriminator(...)]),
 # not a BaseModel subclass — so `.model_validate` is unavailable and a TypeAdapter
 # is the canonical pydantic-v2 entry point.
 _control_line_adapter: TypeAdapter[ControlLine] = TypeAdapter(ControlLine)
+_pilot_skill_command_adapter: TypeAdapter[PilotSkillCommand] = TypeAdapter(PilotSkillCommand)
+_pilot_trace_record_adapter: TypeAdapter[PilotTraceRecord] = TypeAdapter(PilotTraceRecord)
 
 
 def main() -> int:
@@ -126,6 +147,34 @@ def main() -> int:
                     AckLine.model_validate(obj)
                 else:
                     _control_line_adapter.validate_python(obj)
+            except Exception as exc:  # noqa: BLE001 — collect every line's failure
+                errors.append(f"{path.name}:{lineno}: {exc}")
+
+    pilot_observation = fixtures_dir / "pilot_observation_example.json"
+    if pilot_observation.is_file():
+        try:
+            PilotObservation.model_validate_json(pilot_observation.read_text())
+        except Exception as exc:  # noqa: BLE001 — collect the fixture failure
+            errors.append(f"{pilot_observation.name}: {exc}")
+
+    pilot_line_fixtures = (
+        (fixtures_dir / "pilot_skill_command_examples.jsonl", _pilot_skill_command_adapter),
+        (fixtures_dir / "pilot_assertion_examples.jsonl", PilotAssertion),
+        (fixtures_dir / "pilot_decision_examples.jsonl", PilotDecision),
+        (fixtures_dir / "pilot_trace_example.jsonl", _pilot_trace_record_adapter),
+    )
+    for path, validator in pilot_line_fixtures:
+        if not path.is_file():
+            continue
+        for lineno, raw in enumerate(path.read_text().splitlines(), 1):
+            line = raw.strip()
+            if not line:
+                continue
+            try:
+                if isinstance(validator, TypeAdapter):
+                    validator.validate_json(line)
+                else:
+                    validator.model_validate_json(line)
             except Exception as exc:  # noqa: BLE001 — collect every line's failure
                 errors.append(f"{path.name}:{lineno}: {exc}")
 

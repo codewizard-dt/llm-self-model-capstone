@@ -1,0 +1,6 @@
+{"v":1,"command_id":"cmd-survey-start","issued_ms":120010,"skill":"survey_scene","params":{"yaw_span_deg":120.0,"timeout_ms":4500}}
+{"v":1,"command_id":"cmd-approach-cube-red-1-b","issued_ms":120250,"skill":"approach_target","params":{"target_id":"cube-red-1","standoff_m":0.18,"max_speed_mps":0.25,"timeout_ms":8000}}
+{"v":1,"command_id":"cmd-center-cube-red-1","issued_ms":121000,"skill":"center_object_in_gripper","params":{"object_id":"cube-red-1","image_tolerance_px":14,"timeout_ms":5000}}
+{"v":1,"command_id":"cmd-arm-low-grab","issued_ms":121600,"skill":"arm_to_angle","params":{"deg":18.0,"vel_rpm":120.0}}
+{"v":1,"command_id":"cmd-claw-close-cube-red-1","issued_ms":122050,"skill":"claw_close","params":{"grip_force_n":35.0}}
+{"v":1,"command_id":"cmd-stop-success","issued_ms":130000,"skill":"stop","params":{"reason":"task_complete"}}
