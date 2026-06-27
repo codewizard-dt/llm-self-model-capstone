@@ -18,7 +18,7 @@ def _save_frame(msg: Any, out_dir: Path, wall_ms: int) -> str:
     encoding = str(msg.encoding)
     data = bytes(msg.data)
 
-    channels_by_encoding = {"bgr8": 3, "rgb8": 3, "mono8": 1}
+    channels_by_encoding = {"bgr8": 3, "rgb8": 3, "mono8": 1, "bgra8": 4, "rgba8": 4}
     channels = channels_by_encoding.get(encoding)
     if channels is None:
         raise ValueError(f"unsupported image encoding {encoding!r}")
@@ -28,7 +28,7 @@ def _save_frame(msg: Any, out_dir: Path, wall_ms: int) -> str:
         import numpy as np
 
         arr = np.frombuffer(data, dtype=np.uint8).reshape((height, width, channels))
-        if encoding == "rgb8":
+        if encoding in ("rgb8", "rgba8"):
             arr = arr[:, :, ::-1]
         ok, buf = cv2.imencode(".jpg", arr, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
         if not ok:
@@ -39,7 +39,7 @@ def _save_frame(msg: Any, out_dir: Path, wall_ms: int) -> str:
     except (ImportError, ModuleNotFoundError):
         pass
 
-    # PPM fallback (no cv2)
+    # PPM fallback (no cv2) — strip alpha for 4-channel encodings
     if encoding == "bgr8":
         rgb = bytearray()
         for i in range(0, len(data), 3):
@@ -47,6 +47,16 @@ def _save_frame(msg: Any, out_dir: Path, wall_ms: int) -> str:
         rgb_bytes = bytes(rgb)
     elif encoding == "rgb8":
         rgb_bytes = data
+    elif encoding == "bgra8":
+        rgb = bytearray()
+        for i in range(0, len(data), 4):
+            rgb.extend([data[i + 2], data[i + 1], data[i]])
+        rgb_bytes = bytes(rgb)
+    elif encoding == "rgba8":
+        rgb = bytearray()
+        for i in range(0, len(data), 4):
+            rgb.extend([data[i], data[i + 1], data[i + 2]])
+        rgb_bytes = bytes(rgb)
     else:
         rgb_bytes = bytes(b for b in data for _ in range(3))
     header = f"P6\n{width} {height}\n255\n".encode("ascii")
