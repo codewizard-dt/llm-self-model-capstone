@@ -58,7 +58,7 @@ rebuild-pi:
 	pip install --break-system-packages -e contracts/
 	bash -c "cd $(PI_REPO) && source /opt/ros/jazzy/setup.bash && colcon --log-base $(PI_ROS_WS)/log build --base-paths robot/ros2-runtime --build-base $(PI_ROS_WS)/build --install-base $(PI_ROS_WS)/install --packages-select vexy_ros --cmake-args -DCMAKE_BUILD_TYPE=Release --event-handlers console_direct+"
 	systemctl --user restart vexy-ros-stack.service
-	systemctl --user status vexy-ros-stack.service
+	systemctl --user --no-pager --plain status vexy-ros-stack.service
 
 # Stubs — filled in by later features
 # brain:       $(MAKE) -C robot/v5-brain     sync / validate / test / lint
