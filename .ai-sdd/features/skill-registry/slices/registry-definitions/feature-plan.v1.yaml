@@ -1,0 +1,241 @@
+summary: >-
+  Implement the ROS-free pilot skill registry for the closed MVP
+  `contracts.PilotSkillName` vocabulary, with immutable skill metadata, strict
+  list/get APIs, additive package exports, and core completeness tests.
+
+scope:
+  in:
+    - >-
+      Add `pilot/src/pilot/skills.py` with immutable dataclasses for static skill
+      registry metadata and a private registry keyed by `contracts.PilotSkillName`.
+    - >-
+      Cover every MVP skill exactly once: `stop`, `survey_scene`, `face_target`,
+      `approach_target`, `center_object_in_gripper`, `arm_to_angle`, `claw_open`,
+      `claw_close`, `verify_grasp`, `go_to_destination`, and `verify_drop`.
+    - >-
+      Include per-skill inputs/defaults, preconditions, max duration, max movement
+      envelope, symbolic command path, expected result source, success assertion,
+      failure reasons, and recovery hints.
+    - >-
+      Reuse contract-owned skill names, command parameter models, and bound constants
+      from `contracts`; do not create pilot-local schema-bearing duplicates.
+    - >-
+      Provide deterministic `list_skill_definitions()` and strict
+      `get_skill_definition()` APIs that return immutable definitions and raise a
+      clear exception for unknown lookups.
+    - >-
+      Add only the registry-related exports needed for this slice to
+      `pilot/src/pilot/__init__.py`.
+    - >-
+      Add `pilot/tests/test_skills.py` covering exact enum coverage, deterministic
+      ordering, strict lookup behavior, complete metadata, bounded metadata, and no
+      ROS dependency.
+  out:
+    - >-
+      Runtime skill execution, ROS publishing/subscription, concrete ROS messages,
+      command transport, ack waiting, or hardware motion.
+    - >-
+      Runtime safety validation, numeric clamping/enforcement, stale-state rejection,
+      stop policy enforcement, or executable precondition predicates.
+    - >-
+      LLM prompt construction, prompt summary helpers, extra prompt/export summary
+      coverage, recipes, run logging, replay-loop orchestration, or decision parsing.
+    - >-
+      Adding skills outside the closed `contracts.PilotSkillName` vocabulary or
+      changing any `contracts` schemas, generated schemas, fixtures, or examples.
+    - >-
+      Editing source files outside `pilot/src/pilot/skills.py`,
+      `pilot/src/pilot/__init__.py`, and `pilot/tests/test_skills.py`, or editing
+      any `.ai-sdd/features/` source files.
+    - >-
+      Adding `make demo` as a per-slice gate; it remains an m2 milestone concern.
+
+acceptance:
+  - id: ACC-REGISTRY-IMMUTABLE-API
+    description: >-
+      `pilot.skills` defines immutable dataclasses for registry metadata and exposes
+      deterministic `list_skill_definitions()` plus strict `get_skill_definition()`
+      APIs without side effects.
+  - id: ACC-EXACT-SKILL-COVERAGE
+    description: >-
+      Tests prove every `contracts.PilotSkillName` enum value has exactly one
+      registry definition, no extra keys exist, and definitions are keyed by the enum
+      rather than free-form strings.
+  - id: ACC-DETERMINISTIC-ORDERING
+    description: >-
+      Tests prove repeated calls to `list_skill_definitions()` return definitions in
+      stable `PilotSkillName` enum order suitable for later prompt construction.
+  - id: ACC-STRICT-LOOKUP
+    description: >-
+      Tests prove `get_skill_definition()` returns the matching immutable definition
+      for known enum or string values and raises a clear `KeyError` or `ValueError`
+      for unknown skill names.
+  - id: ACC-COMPLETE-METADATA
+    description: >-
+      Tests prove every definition includes non-empty inputs/defaults,
+      preconditions, max duration, max movement envelope, command path, expected
+      result source, success assertion id/name, failure reasons, and recovery hints.
+  - id: ACC-CONTRACT-BOUNDS-REUSED
+    description: >-
+      Registry definitions reference contract-owned `PilotSkillName`, command
+      parameter models, and movement/parameter bound constants rather than defining
+      pilot-local schema models or conflicting numeric bounds.
+  - id: ACC-SYMBOLIC-ROS-FREE-PATHS
+    description: >-
+      Command paths and result sources are symbolic strings only, and tests exercise
+      `pilot.skills` without importing `rclpy`, ROS message packages, ROS topic
+      classes, or concrete provider implementations.
+  - id: ACC-PACKAGE-EXPORTS
+    description: >-
+      `pilot.__init__` additively exports only the registry dataclasses and list/get
+      APIs needed by this slice while preserving existing observation exports.
+  - id: ACC-SCOPE-LIMITED-FILES
+    description: >-
+      Implementation changes are limited to `pilot/src/pilot/skills.py`,
+      `pilot/src/pilot/__init__.py`, and `pilot/tests/test_skills.py`; no source
+      contracts, ROS wiring, feature files, prompt helpers, or runtime-loop files are
+      edited.
+  - id: ACC-REGRESSION-GATES
+    description: >-
+      The implementer runs focused pilot checks and required repo gates: `make sync`,
+      `make -C pilot test`, `make -C pilot lint`, `make test`, `make validate`, and
+      `make lint`.
+
+decisions:
+  - id: DEC-REGISTRY-IN-PILOT-SKILLS
+    status: closed
+    decision: >-
+      Implement the static registry in `pilot/src/pilot/skills.py` as the first
+      reusable action-surface module for the online pilot loop.
+    rationale: >-
+      The slice explicitly delivers a ROS-free skill registry module under the
+      `pilot` vertical, and ADR-19 makes the pilot online control loop a first-class
+      stack that issues bounded control-grammar commands.
+    grounds: >-
+      registry-definitions slice Files to create / change; MASTER_REQUIREMENTS.md
+      Tech stacks `pilot`, Components `Online-control harness`, and ADR-19;
+      `.ai-sdd/conventions/pilot.md` Vertical and Boundary rules.
+  - id: DEC-IMMUTABLE-DATACLASSES-NOT-SCHEMAS
+    status: closed
+    decision: >-
+      Represent definitions with frozen/slotted dataclasses and tuple-valued
+      metadata, not pydantic models or new JSON schemas.
+    rationale: >-
+      The registry is static implementation metadata for prompt/validator/executor
+      use, while `contracts` owns all schema-bearing command and observation shapes.
+    grounds: >-
+      skill-registry requirements Proposed Decision SR-001; MASTER_REQUIREMENTS.md
+      Components boundary rule and ADR-06; `.ai-sdd/conventions/pilot.md` Boundary
+      rules; `.ai-sdd/schemas/task-telemetry.schema.yaml`,
+      `.ai-sdd/schemas/self-model.schema.yaml`, and
+      `.ai-sdd/schemas/parts-catalog.schema.yaml`.
+  - id: DEC-KEY-BY-PILOT-SKILL-NAME
+    status: closed
+    decision: >-
+      Key the registry by `contracts.PilotSkillName` and require exact enum
+      coverage in tests.
+    rationale: >-
+      The LLM may choose only the closed MVP skill vocabulary owned by contracts;
+      enum-keyed coverage prevents drift between the registry and the command
+      contract.
+    grounds: >-
+      skill-registry requirements Goal, In Scope, and Proposed Decision SR-002;
+      MASTER_REQUIREMENTS.md Components `Control grammar` and ADR-19; contracts
+      `PilotSkillName` closed MVP vocabulary.
+  - id: DEC-CONTRACT_BOUNDS_AND_MODELS
+    status: closed
+    decision: >-
+      Import contract-owned command parameter models and bound constants for metadata
+      references instead of duplicating parameter schemas or inventing independent
+      numeric limits in `pilot`.
+    rationale: >-
+      The command grammar and bounds are the shared control surface frozen under
+      `contracts`; pilot registry metadata must describe that surface without
+      becoming a second source of truth.
+    grounds: >-
+      skill-registry requirements In Scope and Constraints;
+      MASTER_REQUIREMENTS.md Components `Control grammar`, ADR-06, and ADR-19;
+      contracts `pilot.py` and `control_command.py`.
+  - id: DEC-SYMBOLIC_COMMAND_AND_RESULT_ROUTES
+    status: closed
+    decision: >-
+      Store command paths and expected result sources as compact symbolic route
+      strings, not ROS topic classes or message types.
+    rationale: >-
+      Later executor slices can map symbolic routes onto concrete ROS or bridge
+      plumbing while this registry remains importable in unit tests, replay, and
+      prompt-generation contexts.
+    grounds: >-
+      skill-registry requirements Proposed Decision SR-003;
+      `.ai-sdd/conventions/pilot.md` Boundary rules; MASTER_REQUIREMENTS.md
+      ADR-01, ADR-19, and ADR-20.
+  - id: DEC_METADATA_IS_DESCRIPTIVE_ONLY
+    status: closed
+    decision: >-
+      Treat preconditions, success assertions, failure reasons, recovery hints, max
+      duration, and movement envelope as descriptive static metadata; do not execute
+      preconditions or enforce safety in this slice.
+    rationale: >-
+      Safety validation and command execution are downstream features; this slice
+      only supplies the complete bounded catalog they will consume.
+    grounds: >-
+      registry-definitions slice Requirements and Out Of Scope; skill-registry
+      requirements Proposed Decisions SR-004 and SR-005;
+      `.ai-sdd/conventions/pilot.md` Boundary rules.
+  - id: DEC-DETERMINISTIC_LIST_THEN_STRICT_LOOKUP
+    status: closed
+    decision: >-
+      `list_skill_definitions()` returns definitions in `PilotSkillName` declaration
+      order, and `get_skill_definition()` performs exact lookup with a clear unknown
+      error.
+    rationale: >-
+      Stable ordering gives downstream prompts/tests deterministic input, while
+      strict lookup keeps unknown or misspelled skills from silently entering the
+      control loop.
+    grounds: >-
+      registry-definitions slice Requirements and Acceptance; skill-registry
+      requirements Acceptance; MASTER_REQUIREMENTS.md ADR-19.
+  - id: DEC-EXPORT_ONLY_REGISTRY_SURFACE
+    status: closed
+    decision: >-
+      Add package exports for only the registry definitions and list/get APIs needed
+      by this slice, preserving all existing observation exports and deferring prompt
+      summary helper coverage to the next slice.
+    rationale: >-
+      The rendered instruction limits this slice to immutable registry definitions,
+      additive exports, and core completeness tests; extra summary helpers belong to
+      the second slice.
+    grounds: >-
+      rendered worker instruction; registry-definitions slice Files to create /
+      change and Out Of Scope; skill-registry slices
+      `registry-tests-and-exports.md`.
+  - id: DEC-GATE-SET
+    status: closed
+    decision: >-
+      The implementer must run the repository sync gate `make sync`, `make -C pilot test`,
+      `make -C pilot lint`, root `make test`, root `make validate`, and root
+      `make lint`; `make demo` is excluded.
+    rationale: >-
+      The worker skill requires dependency sync coverage and repository baseline
+      gates, the slice acceptance requires focused pilot checks, the repo root has
+      no `pyproject.toml` so root `uv sync` is not runnable, and the root `make sync`
+      target is the maintained gate that delegates per-vertical `uv sync`.
+      The master plan reserves `make demo` for the m2 milestone rather than a
+      per-slice gate.
+    grounds: >-
+      plan-feature SKILL.md tests requirement; AGENTS.md Build / verify;
+      registry-definitions slice Acceptance; MASTER_REQUIREMENTS.md Tech stacks
+      and Milestones m2; root Makefile sync target.
+
+files:
+  - pilot/src/pilot/skills.py
+  - pilot/src/pilot/__init__.py
+  - pilot/tests/test_skills.py
+
+tests:
+  - make sync
+  - make -C pilot test
+  - make -C pilot lint
+  - make test
+  - make validate
+  - make lint
