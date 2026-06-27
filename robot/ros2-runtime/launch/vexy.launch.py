@@ -87,6 +87,9 @@ def _launch_nodes(context, *args, **kwargs):
     telemetry_dir = "/home/vexy/telemetry/run-" + datetime.now().strftime(
         "%Y%m%d-%H%M%S"
     )
+    operator_raw_session_path = LaunchConfiguration("raw_session_path").perform(context)
+    if not operator_raw_session_path:
+        operator_raw_session_path = telemetry_dir + "/operator_results.jsonl"
     width = _as_int(context, "camera_width")
     height = _as_int(context, "camera_height")
     fps = _as_int(context, "camera_fps")
@@ -343,6 +346,7 @@ def _launch_nodes(context, *args, **kwargs):
                     "camera_in_robot_json": camera_in_robot_json,
                     "task_contract_json": DEFAULT_OPERATOR_TASK_CONTRACT,
                     "task_outline_json": DEFAULT_OPERATOR_TASK_OUTLINE,
+                    "raw_session_path": operator_raw_session_path,
                 }
             ],
         ),
@@ -503,6 +507,7 @@ def generate_launch_description():
             DeclareLaunchArgument("object_overlay_enabled", default_value="true"),
             DeclareLaunchArgument("telemetry_writer_enabled", default_value="true"),
             DeclareLaunchArgument("bag_record_enabled", default_value="true"),
+            DeclareLaunchArgument("raw_session_path", default_value=""),
             DeclareLaunchArgument(
                 "object_overlay_max_detection_age_s", default_value="0.5"
             ),

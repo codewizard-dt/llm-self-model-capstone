@@ -31,7 +31,7 @@ relates_to::[[llm-authored-self-model]]
 2. **ROS operator is feature-complete** for ball-delivery: all six task methods implemented, dead-reckoning localization, stuck/spinout detection, and live `ContractLine`-compatible result emission per method run.
 3. **Both packet-builder input paths work**: JSONL direct and ROS-bundle via `contract_jsonl_from_bundle`, with bundle path stamping `source_refs["ros_export_routine"]` for traceability.
 4. **F10 gap analyzer has a first slice**: gap sections use `BLOCKED_F10_GAP` when no summary is supplied, or fixture/live/replay provenance labels when summary source metadata matches the packet evidence.
-5. **F8 Generator and F9 Critics are not yet implemented**: architecture doc defines their contracts but lists them as future slices; packet builder is the completed prerequisite.
+5. **F8/F9 have a deterministic first slice**: `self_model_generator.loop_closure` emits a candidate `SelfModel`, runs physics/torque/CoM critic checks, and exports an approved next `TaskEnvelope`; external LLM prompt adapters remain future work.
 6. **Task outline drives allowed methods**: `OperatorTaskContract` parses `task_outline_json` into a `method_plan`; ad-hoc SSH commands are only accepted if their action appears in the loaded outline.
 7. **No second schemas**: both the robot-control operator and self-model generator import from `contracts/` — no local telemetry, self-model, or parts definitions.
 

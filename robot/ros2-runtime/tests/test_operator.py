@@ -58,15 +58,18 @@ def make_operator(
     *,
     clock: Any = time.monotonic,
     event_sink: Any = None,
+    task_contract: dict[str, Any] | None = None,
+    raw_session_path: str | None = None,
 ) -> Operator:
     return Operator(
         sink,
         april_tag_map=APRIL_TAG_MAP,
         camera_in_robot=Pose2D(0.0, -0.08, 0.0),
-        task_contract=TASK_CONTRACT,
+        task_contract=task_contract or TASK_CONTRACT,
         task_outline=TASK_OUTLINE,
         clock=clock,
         event_sink=event_sink,
+        raw_session_path=raw_session_path,
     )
 
 
@@ -657,6 +660,41 @@ class OperatorCoreTests(unittest.TestCase):
         self.assertIn("object_detected", payload["vision"])
         self.assertEqual(payload["outcome"]["method"], "move_to_tag")
 
+    def test_contract_result_uses_fresh_gap_not_prior_contract_gap(self) -> None:
+        stale_contract = {
+            **TASK_CONTRACT,
+            "predicted": {"success": True},
+            "gap": {"stale_prior_gap": 99.0, "distance_error_m": 99.0},
+        }
+        sink = PacketCommandSink()
+        operator = make_operator(sink, task_contract=stale_contract, clock=lambda: 10.0)
+
+        payload = operator.contract_result(
+            method_name="locate_nearest_apriltag",
+            result=OperatorResult(success=False, reason="no_fresh_apriltag"),
+        )
+
+        self.assertNotIn("stale_prior_gap", payload["gap"])
+        self.assertEqual(payload["gap"]["success_error"], -1.0)
+
+    def test_contract_result_preserves_raw_session_path_for_hardware_proof(self) -> None:
+        sink = PacketCommandSink()
+        operator = make_operator(
+            sink,
+            clock=lambda: 10.0,
+            raw_session_path="telemetry/run-42/operator_results.jsonl",
+        )
+
+        payload = operator.contract_result(
+            method_name="locate_nearest_apriltag",
+            result=OperatorResult(success=False, reason="no_fresh_apriltag"),
+        )
+
+        self.assertEqual(
+            payload["source"]["raw_session_path"],
+            "telemetry/run-42/operator_results.jsonl",
+        )
+
 
 class String:
     def __init__(self, data: str = "") -> None:
@@ -798,6 +836,24 @@ class OperatorNodeTests(unittest.TestCase):
         result_payload = json.loads(node._result_pub.messages[-1].data)
         self.assertEqual(result_payload["schema_version"], "1.0")
         self.assertEqual(result_payload["outcome"]["method"], "move_to_tag")
+
+    def test_node_passes_raw_session_path_to_operator_results(self) -> None:
+        Node.parameter_defaults = {
+            "raw_session_path": "telemetry/run-42/operator_results.jsonl",
+        }
+        install_ros_stubs()
+        node_module = importlib.import_module("vexy_ros.operator.node")
+        node = node_module.OperatorNode()
+
+        payload = node.operator.contract_result(
+            method_name="locate_nearest_apriltag",
+            result=OperatorResult(success=False, reason="no_fresh_apriltag"),
+        )
+
+        self.assertEqual(
+            payload["source"]["raw_session_path"],
+            "telemetry/run-42/operator_results.jsonl",
+        )
 
     def test_node_runs_align_to_tag_through_operator_sink(self) -> None:
         install_ros_stubs()

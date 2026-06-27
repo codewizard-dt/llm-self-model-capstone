@@ -55,6 +55,8 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn("object_dimensions_json", launch_text)
         self.assertIn("task_plan_node", launch_text)
         self.assertIn('executable="vexy_operator_node"', launch_text)
+        self.assertIn('"raw_session_path": operator_raw_session_path', launch_text)
+        self.assertIn('telemetry_dir + "/operator_results.jsonl"', launch_text)
         self.assertNotIn('executable="align_to_tag_node"', launch_text)
         self.assertNotIn('executable="survey_scan_node"', launch_text)
 

@@ -57,7 +57,7 @@ def analyze_contract_lines(
 ) -> dict[str, Any]:
     provenance = _normalize_provenance(provenance)
     ordered_lines = _ordered_lines(lines)
-    _validate_single_run_scope(ordered_lines, expected_run_id, expected_session_id)
+    _validate_single_run_scope(ordered_lines, expected_run_id, expected_session_id, provenance)
     diagnoses = _diagnose(ordered_lines)
     residuals = _residual_summary(ordered_lines)
     return {
@@ -384,12 +384,16 @@ def _validate_single_run_scope(
     lines: Sequence[ContractLine],
     expected_run_id: str | None,
     expected_session_id: str | None,
+    provenance: GapSummaryProvenance,
 ) -> None:
     if not lines:
         return
 
     run_ids = _run_ids(lines)
     session_ids = sorted({line.session_id for line in lines})
+    missing_run_count = sum(1 for line in lines if _line_run_id(line) is None)
+    if (expected_run_id is not None or provenance == PROVENANCE_LIVE) and missing_run_count:
+        raise ValueError(f"gap analysis has {missing_run_count} ContractLine row(s) missing run_id")
     if expected_run_id is not None:
         if not run_ids:
             raise ValueError("expected_run_id requires ContractLine run_id evidence")

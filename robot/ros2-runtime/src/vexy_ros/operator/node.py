@@ -129,6 +129,7 @@ class OperatorNode(Node):
         self.declare_parameter("result_topic", "/operator/results")
         self.declare_parameter("status_topic", "/operator/status")
         self.declare_parameter("run_start_topic", "/operator/run_start")
+        self.declare_parameter("raw_session_path", "")
 
         camera_raw = (
             self.get_parameter("camera_in_robot_json")
@@ -152,6 +153,9 @@ class OperatorNode(Node):
         self._align_cancel_requested = False
         self._survey_cancel_requested = False
         self._run_id = datetime.now().strftime("run-%Y%m%d-%H%M%S")
+        raw_session_path = (
+            self.get_parameter("raw_session_path").get_parameter_value().string_value
+        )
         self._task_inbox_dir = self._parameter_path("task_inbox_dir")
         archive_dir = self._parameter_path("task_archive_dir")
         rejected_dir = self._parameter_path("task_rejected_dir")
@@ -206,6 +210,7 @@ class OperatorNode(Node):
             task_contract=task_contract,
             task_outline=task_outline,
             event_sink=self._publish_event,
+            raw_session_path=raw_session_path or f"/operator/results/{self._run_id}",
         )
 
         self.create_subscription(TFMessage, "/tf", self._on_tf, 10)
