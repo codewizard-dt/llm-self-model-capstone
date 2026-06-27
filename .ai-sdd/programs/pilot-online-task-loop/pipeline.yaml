@@ -1,0 +1,65 @@
+apiVersion: ai-sdd/v1
+kind: Pipeline
+metadata: { name: pilot-online-task-loop, version: 1 }
+# MASTER graph for the Pilot Online Task Loop program.
+# Nodes are whole sub-features (kind: pipeline -> ../../features/<slug>) plus milestone gates.
+# Milestone manual/automated modes are recorded in requirements.md; until this repo has concrete
+# transform commands for the automated pilot gates, all milestone nodes use the shared milestone-gate
+# worker and validation-result.structure verdict convention.
+spec:
+  semantics: enabler
+  nodes:
+    # ===== Phase 1 - contracts and base pilot surfaces =====
+    - { id: pilot-schemas,        kind: pipeline, pipeline: ../../features/pilot-schemas,        stack: contracts, owner: [215eight] }
+    - { id: pm1-schemas-ready,    worker: milestone-gate, owner: [215eight] }
+    - { id: observation-builder,  kind: pipeline, pipeline: ../../features/observation-builder,  stack: pilot, owner: [215eight] }
+    - { id: skill-registry,       kind: pipeline, pipeline: ../../features/skill-registry,       stack: pilot, owner: [215eight] }
+    # ===== Phase 2 - loop judgment, safety, execution, assertions, and logging =====
+    - { id: llm-decision-adapter, kind: pipeline, pipeline: ../../features/llm-decision-adapter, stack: pilot, owner: [215eight] }
+    - { id: safety-validator,     kind: pipeline, pipeline: ../../features/safety-validator,     stack: pilot, owner: [David] }
+    - { id: ros-skill-executor,   kind: pipeline, pipeline: ../../features/ros-skill-executor,   stack: pilot, owner: [David] }
+    - { id: assertion-engine,     kind: pipeline, pipeline: ../../features/assertion-engine,     stack: pilot, owner: [David] }
+    - { id: run-logger,           kind: pipeline, pipeline: ../../features/run-logger,           stack: pilot, owner: [David] }
+    # ===== Phase 3 - observation/replay proof branches =====
+    - { id: pm3-live-observation, worker: milestone-gate, owner: [215eight] }
+    - { id: replay-mode,          kind: pipeline, pipeline: ../../features/replay-mode,          stack: pilot, owner: [David] }
+    - { id: pm2-replay-loop,      worker: milestone-gate, owner: [David] }
+    # ===== Phase 4 - supervised skill execution and baselines =====
+    - { id: pm4-one-skill-execution, worker: milestone-gate, owner: [David] }
+    - { id: skill-baseline-capture,  kind: pipeline, pipeline: ../../features/skill-baseline-capture,  stack: pilot, owner: [David] }
+    - { id: pm5-skill-baselines,     worker: milestone-gate, owner: [David] }
+    # ===== Phase 5 - delivery task and expansion proof =====
+    - { id: delivery-recipe,         kind: pipeline, pipeline: ../../features/delivery-recipe,         stack: pilot, owner: [David] }
+    - { id: pm6-delivery-loop-replay, worker: milestone-gate, owner: [David] }
+    - { id: supervised-hardware-run, kind: pipeline, pipeline: ../../features/supervised-hardware-run, stack: pilot, owner: [David] }
+    - { id: pm7-supervised-delivery-run, worker: milestone-gate, owner: [David] }
+    - { id: generalized-recipes,     kind: pipeline, pipeline: ../../features/generalized-recipes,     stack: pilot, owner: [David] }
+    - { id: pm8-expansion-proof,     worker: milestone-gate, owner: [David] }
+  edges:
+    - { from: pilot-schemas, to: pm1-schemas-ready }
+    - { from: pm1-schemas-ready, to: observation-builder }
+    - { from: pm1-schemas-ready, to: skill-registry }
+    - { from: observation-builder, to: llm-decision-adapter }
+    - { from: skill-registry, to: llm-decision-adapter }
+    - { from: skill-registry, to: safety-validator }
+    - { from: safety-validator, to: ros-skill-executor }
+    - { from: observation-builder, to: assertion-engine }
+    - { from: llm-decision-adapter, to: run-logger }
+    - { from: ros-skill-executor, to: run-logger }
+    - { from: assertion-engine, to: run-logger }
+    - { from: observation-builder, to: pm3-live-observation }
+    - { from: llm-decision-adapter, to: replay-mode }
+    - { from: assertion-engine, to: replay-mode }
+    - { from: run-logger, to: replay-mode }
+    - { from: replay-mode, to: pm2-replay-loop }
+    - { from: ros-skill-executor, to: pm4-one-skill-execution }
+    - { from: pm4-one-skill-execution, to: skill-baseline-capture }
+    - { from: assertion-engine, to: skill-baseline-capture }
+    - { from: run-logger, to: skill-baseline-capture }
+    - { from: skill-baseline-capture, to: pm5-skill-baselines }
+    - { from: pm5-skill-baselines, to: delivery-recipe }
+    - { from: delivery-recipe, to: pm6-delivery-loop-replay }
+    - { from: pm6-delivery-loop-replay, to: supervised-hardware-run }
+    - { from: supervised-hardware-run, to: pm7-supervised-delivery-run }
+    - { from: pm7-supervised-delivery-run, to: generalized-recipes }
+    - { from: generalized-recipes, to: pm8-expansion-proof }

@@ -167,19 +167,19 @@ flowchart TD
 
 | # | Task | Vertical | Deps | MVP | Owner |
 |---|------|----------|------|-----|-------|
-| 1 | `P1` pilot-schemas — skill command, observation, assertion, decision, trace schemas | contracts | — | yes | TBD |
-| 2 | `P2` observation-builder — compact snapshot from live ROS topic cache | pilot | P1 | yes | TBD |
-| 3 | `P3` skill-registry — reusable skills with preconditions, parameter limits, and result mapping | pilot | P1 | yes | TBD |
-| 4 | `P4` llm-decision-adapter — structured prompt, JSON response parsing, retry on invalid output | pilot | P1, P2, P3 | yes | TBD |
-| 5 | `P5` safety-validator — stale state checks, numeric clamps, max step/time limits, stop policy | pilot | P1, P3 | yes | TBD |
-| 6 | `P6` ros-skill-executor — publish validated skills and wait for terminal feedback/result | pilot | P3, P5 | yes | TBD |
-| 7 | `P7` assertion-engine — fused task assertions for visibility, pose, grasp, carry, drop | pilot | P2 | yes | TBD |
-| 8 | `P8` run-logger — JSONL trace for every loop iteration and command outcome | pilot | P2, P4, P6, P7 | yes | TBD |
-| 9 | `P9` replay-mode — run loop against recorded snapshots/results without moving hardware | pilot | P2, P4, P7, P8 | yes | TBD |
-| 10 | `P10` skill-baseline-capture — supervised proof runs for each small skill | pilot + coprocessor | P6, P7, P8 | yes | TBD |
-| 11 | `P11` delivery-recipe — ball A to destination B task plan over reusable skills | pilot | P3, P7, P10 | yes | TBD |
-| 12 | `P12` supervised-hardware-run — full loop with human interrupt and hard stop policy | pilot + coprocessor + brain | P5, P6, P8, P11 | yes | TBD |
-| 13 | `P13` generalized-recipes — add non-ball tasks using the same skill registry | pilot | P12 | stretch | TBD |
+| 1 | `P1` pilot-schemas — skill command, observation, assertion, decision, trace schemas | contracts | — | yes | 215eight |
+| 2 | `P2` observation-builder — compact snapshot from live ROS topic cache | pilot | P1 | yes | 215eight |
+| 3 | `P3` skill-registry — reusable skills with preconditions, parameter limits, and result mapping | pilot | P1 | yes | 215eight |
+| 4 | `P4` llm-decision-adapter — structured prompt, JSON response parsing, retry on invalid output | pilot | P1, P2, P3 | yes | 215eight |
+| 5 | `P5` safety-validator — stale state checks, numeric clamps, max step/time limits, stop policy | pilot | P1, P3 | yes | David |
+| 6 | `P6` ros-skill-executor — publish validated skills and wait for terminal feedback/result | pilot | P3, P5 | yes | David |
+| 7 | `P7` assertion-engine — fused task assertions for visibility, pose, grasp, carry, drop | pilot | P2 | yes | David |
+| 8 | `P8` run-logger — JSONL trace for every loop iteration and command outcome | pilot | P2, P4, P6, P7 | yes | David |
+| 9 | `P9` replay-mode — run loop against recorded snapshots/results without moving hardware | pilot | P2, P4, P7, P8 | yes | David |
+| 10 | `P10` skill-baseline-capture — supervised proof runs for each small skill | pilot + coprocessor | P6, P7, P8 | yes | David |
+| 11 | `P11` delivery-recipe — ball A to destination B task plan over reusable skills | pilot | P3, P7, P10 | yes | David |
+| 12 | `P12` supervised-hardware-run — full loop with human interrupt and hard stop policy | pilot + coprocessor + brain | P5, P6, P8, P11 | yes | David |
+| 13 | `P13` generalized-recipes — add non-ball tasks using the same skill registry | pilot | P12 | stretch | David |
 
 ---
 
@@ -347,21 +347,25 @@ Other valid decisions:
 
 ## Milestones
 
-1. **`pm1` schemas-ready** — Pilot schemas validate examples for observations, skills, decisions,
-   assertions, and run traces.
-2. **`pm2` replay-loop** — Pilot can run a full observe-decide-act trace in replay mode without ROS
-   hardware and stop for success/failure.
-3. **`pm3` live-observation** — Pilot builds live snapshots from ROS topics without commanding motion.
-4. **`pm4` one-skill-execution** — Pilot executes one validated skill, waits for terminal result, logs
-   outcome, and stops safely.
-5. **`pm5` skill-baselines** — Search, face, approach, center, grasp, verify, navigate, release, and
-   verify-drop each have supervised proof runs and baseline memory.
-6. **`pm6` delivery-loop-replay** — Full ball-delivery recipe succeeds in replay using recorded
-   observations and mocked decisions.
-7. **`pm7` supervised-delivery-run** — Full pilot loop attempts the physical delivery task with human
-   interrupt, hard limits, and complete trace logging.
-8. **`pm8` expansion-proof** — Add one new task recipe using the same skill registry without changing
-   the loop harness.
+1. **`pm1` schemas-ready** *(automated; owner: 215eight)* — Pilot schemas validate examples for
+   observations, skills, decisions, assertions, and run traces.
+2. **`pm2` replay-loop** *(automated; owner: David)* — Pilot can run a full observe-decide-act trace
+   in replay mode without ROS hardware and stop for success/failure.
+3. **`pm3` live-observation** *(manual; owner: 215eight)* — Pilot builds live snapshots from ROS
+   topics without commanding motion. Manual because it requires a live robot connection.
+4. **`pm4` one-skill-execution** *(manual; owner: David)* — Pilot executes one validated skill, waits
+   for terminal result, logs outcome, and stops safely. Manual because it commands the robot.
+5. **`pm5` skill-baselines** *(manual; owner: David)* — Search, face, approach, center, grasp, verify,
+   navigate, release, and verify-drop each have supervised proof runs and baseline memory. Manual
+   because these runs require robot setup and physical supervision.
+6. **`pm6` delivery-loop-replay** *(automated; owner: David)* — Full ball-delivery recipe succeeds in
+   replay using recorded observations and mocked decisions.
+7. **`pm7` supervised-delivery-run** *(manual; owner: David)* — Full pilot loop attempts the physical
+   delivery task with human interrupt, hard limits, and complete trace logging. Manual because it is a
+   live robot task run.
+8. **`pm8` expansion-proof** *(automated; owner: David)* — Add one new task recipe using the same
+   skill registry without changing the loop harness. Automated unless the selected expansion recipe is
+   explicitly promoted to a live hardware proof.
 
 ---
 
