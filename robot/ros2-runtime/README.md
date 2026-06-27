@@ -80,6 +80,10 @@ ros2 launch vexy_ros vexy.launch.py
 
 Use `setup.bash` instead of `setup.zsh` when running the same commands from bash.
 
+For the operational distinction between first-time setup, fast Pi rebuilds,
+`~/llm-self-model-capstone`, and `~/ros2_ws`, see
+[docs/runbook/08-pi-setup-and-rebuild.md](docs/runbook/08-pi-setup-and-rebuild.md).
+
 ### Option B — one-liner verify after setup
 
 ```zsh

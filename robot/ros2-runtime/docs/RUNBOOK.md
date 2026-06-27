@@ -2,7 +2,7 @@
 
 **System:** Raspberry Pi 5 · Ubuntu 24.04 LTS · ROS 2 Jazzy  
 **Hostname:** vexy.local · **SSH user:** vexy  
-**Workspace:** `~/ros2_ws` (libcamera fork + camera_ros + vexy_ros)  
+**Workspace:** repo checkout at `~/llm-self-model-capstone`; runtime overlay at `~/ros2_ws/install`  
 **Last updated:** 2026-06-26
 
 ---
@@ -18,6 +18,7 @@
 | 5 | Reboot Procedure & Workspace Rebuild | [runbook/05-reboot-and-workspace.md](runbook/05-reboot-and-workspace.md) |
 | 6 | Log Locations — ROS 2, colcon, systemd, dmesg | [runbook/06-logs.md](runbook/06-logs.md) |
 | 7 | PROS Brain Upload via SSH — build, push, upload | [runbook/07-pros-upload.md](runbook/07-pros-upload.md) |
+| 8 | Pi Setup And Rebuild Model — full setup vs fast rebuild | [runbook/08-pi-setup-and-rebuild.md](runbook/08-pi-setup-and-rebuild.md) |
 
 ---
 
@@ -65,8 +66,10 @@ ros2 bag record -a -o ~/bags/session_$(date +%Y%m%d_%H%M%S)
 # MVP fixture handoff
 # use telemetry-fixtures/<run-id>/contract.jsonl as ContractLine JSONL
 
-# Rebuild vexy_ros only
-cd ~/ros2_ws && colcon build --packages-select vexy_ros && source install/setup.zsh
+# Rebuild vexy_ros from repo source into the runtime overlay
+cd ~/llm-self-model-capstone
+git pull
+make rebuild-pi
 
 # Logs
 tail -f ~/.ros/log/latest/vex_bridge-1-stdout.log
