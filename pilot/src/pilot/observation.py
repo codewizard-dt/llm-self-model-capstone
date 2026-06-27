@@ -19,6 +19,13 @@ from contracts import (
     VisibleObject,
     VisibleTag,
 )
+from contracts import PilotObservation
+from contracts.pilot import (
+    MAX_ASSERTIONS,
+    MAX_RECENT_FAILURES,
+    MAX_VISIBLE_OBJECTS,
+    MAX_VISIBLE_TAGS,
+)
 
 Objective: TypeAlias = str | None
 
@@ -91,6 +98,40 @@ class ObservationCache:
             recent_failures=tuple(recent_failures),
             current_assertions=tuple(current_assertions),
         )
+
+
+def build_observation_snapshot(
+    cache: ObservationCache,
+    *,
+    observed_ms: int,
+) -> PilotObservation:
+    """Compact normalized cache state into a contract-valid pilot observation."""
+    if observed_ms < 0:
+        raise ValueError("observed_ms must be non-negative")
+    if cache.objective is None or not cache.objective.strip():
+        raise ValueError("ObservationCache.objective is required")
+
+    return PilotObservation.model_validate(
+        {
+            "observed_ms": observed_ms,
+            "task_phase": cache.task_phase,
+            "objective": cache.objective,
+            "robot_pose": cache.robot_pose,
+            "localization": cache.localization,
+            "visible_objects": list(
+                sorted_visible_objects(cache.visible_objects)[:MAX_VISIBLE_OBJECTS]
+            ),
+            "visible_tags": list(sorted_visible_tags(cache.visible_tags)[:MAX_VISIBLE_TAGS]),
+            "manipulator": cache.manipulator,
+            "bridge": cache.bridge,
+            "last_command": cache.last_command,
+            "last_result": cache.last_result,
+            "recent_failures": list(sorted_failures(cache.recent_failures)[:MAX_RECENT_FAILURES]),
+            "current_assertions": list(
+                sorted_assertions(cache.current_assertions)[:MAX_ASSERTIONS]
+            ),
+        }
+    )
 
 
 def _box_sort_key(box: ImageBox | None) -> tuple[int, int, int, int]:

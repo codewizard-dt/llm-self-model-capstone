@@ -1,0 +1,205 @@
+summary: >-
+  Implement the ROS-free observation snapshot builder that compacts the existing normalized
+  `pilot.observation.ObservationCache` into a contract-valid `contracts.PilotObservation` for
+  downstream pilot-loop decisions.
+
+scope:
+  in:
+    - >-
+      Add a public builder API in `pilot/src/pilot/observation.py` that accepts an
+      `ObservationCache` plus an explicit `observed_ms` timestamp and returns a
+      `contracts.PilotObservation`.
+    - >-
+      Preserve the cache's task objective, task phase, robot pose, localization state, visible
+      objects, visible tags, manipulator state, bridge health, last command/result, recent failures,
+      and current assertions in the emitted snapshot.
+    - >-
+      Sort visible objects, visible tags, recent failures, and current assertions with the existing
+      deterministic helper functions, then truncate them to the contract-owned list bounds before
+      constructing the snapshot.
+    - >-
+      Represent stale or missing optional evidence with the existing explicit unknown/stale values,
+      `None`, or empty lists, and validate the returned snapshot through
+      `PilotObservation.model_validate` or equivalent.
+    - >-
+      Add `pilot/tests/test_observation_builder.py` covering complete snapshots, missing/stale
+      optional evidence, deterministic ordering and truncation, and contract validation.
+  out:
+    - >-
+      ROS subscription nodes, live topic wiring, MCAP/replay readers, telemetry or vision provider
+      adapters, or dependence on ROS message classes.
+    - >-
+      Computing assertions from raw telemetry/vision evidence; this builder only carries
+      caller-supplied `PilotAssertion` records.
+    - >-
+      LLM prompting, LLM invocation, skill execution, safety validation, run logging, replay-loop
+      orchestration, command transport, or hardware motion.
+    - >-
+      Changing contract schemas, adding pilot-local schema duplicates, changing fixtures under
+      `contracts/`, or editing any `.ai-sdd/features/` source files.
+    - >-
+      Revisiting the already completed pilot scaffold, project files, root Makefile delegation, or
+      existing observation-cache tests except as required by import compatibility.
+    - >-
+      Adding `make demo` as a per-slice gate; it remains an m2 milestone concern.
+
+acceptance:
+  - id: ACC-SNAPSHOT-BUILDER-API
+    description: >-
+      `pilot.observation` exposes a ROS-free snapshot builder function or class that accepts
+      `ObservationCache` and explicit non-negative `observed_ms`, returning a
+      `contracts.PilotObservation`.
+  - id: ACC-COMPLETE-SNAPSHOT-MAPPING
+    description: >-
+      Tests cover a complete cache and prove the emitted snapshot preserves objective, phase, robot
+      pose, localization confidence/age, visible objects, visible tags, manipulator state, bridge
+      health, last command, last result, recent failures, and current assertions.
+  - id: ACC-CONTRACT-VALIDATION
+    description: >-
+      The builder validates snapshots through `PilotObservation.model_validate` or equivalent, and
+      tests prove the returned object is a valid `contracts.PilotObservation`.
+  - id: ACC-DETERMINISTIC-BOUNDED-LISTS
+    description: >-
+      Tests prove objects, tags, failures, and assertions are sorted deterministically before being
+      truncated to the contract bounds from `contracts.pilot`, including inputs longer than those
+      bounds.
+  - id: ACC-MISSING-STALE-OPTIONAL-EVIDENCE
+    description: >-
+      Tests cover stale or missing optional evidence and prove the builder does not crash or create
+      optimistic defaults; it carries explicit unknown/stale values, `None`, and empty lists into
+      the snapshot.
+  - id: ACC-OBJECTIVE-REQUIRED
+    description: >-
+      Because `PilotObservation.objective` is contract-required, the builder rejects a missing or
+      blank cache objective with a clear error instead of fabricating an objective.
+  - id: ACC-NO-ROS-DEPENDENCY
+    description: >-
+      Builder tests exercise `pilot.observation` without importing `rclpy`, ROS message packages,
+      ROS topic classes, or concrete provider implementations.
+  - id: ACC-SCOPE-LIMITED-FILES
+    description: >-
+      Implementation changes are limited to `pilot/src/pilot/observation.py` and
+      `pilot/tests/test_observation_builder.py`; no source contract schemas, ROS wiring, feature
+      files, or runtime-loop files are edited.
+  - id: ACC-REGRESSION-GATES
+    description: >-
+      The implementer runs focused pilot tests/lint plus the required repo gates: `uv sync`,
+      `make -C pilot test`, `make -C pilot lint`, `make test`, `make validate`, and `make lint`.
+
+decisions:
+  - id: DEC-BUILDER-IN-OBSERVATION-MODULE
+    status: closed
+    decision: >-
+      Implement the snapshot builder in `pilot/src/pilot/observation.py` on top of the existing
+      `ObservationCache` rather than creating another pilot module or source vertical.
+    rationale: >-
+      The previous scaffold slice established `pilot.observation` as the ROS-free normalized input
+      surface, and this slice's rendered instruction limits implementation to that file plus a new
+      builder test file.
+    grounds: >-
+      observation-snapshot-builder slice Files to create / change; completed
+      pilot-scaffold-and-cache feature plan; `.ai-sdd/conventions/pilot.md` Boundary rules.
+  - id: DEC-CONTRACTS-OWN-OUTPUT-SCHEMA
+    status: closed
+    decision: >-
+      Return `contracts.PilotObservation` and import any required bounds or component models from
+      `contracts`; do not define schema-bearing models in `pilot`.
+    rationale: >-
+      The repo boundary rule assigns all schemas to `contracts`, and the committed pilot contract
+      already defines the observation shape and list bounds.
+    grounds: >-
+      MASTER_REQUIREMENTS.md Components boundary rule and Frozen Contracts; `.ai-sdd/conventions/pilot.md`
+      Boundary rules; `.ai-sdd/schemas/task-telemetry.schema.yaml`,
+      `.ai-sdd/schemas/self-model.schema.yaml`, and `.ai-sdd/schemas/parts-catalog.schema.yaml`.
+  - id: DEC-EXPLICIT-OBSERVED-TIME
+    status: closed
+    decision: >-
+      Require callers to pass `observed_ms` explicitly to the builder, validate it as non-negative,
+      and copy it into the snapshot.
+    rationale: >-
+      `PilotObservation.observed_ms` is required by the contract, but `ObservationCache` represents
+      state inputs rather than time ownership; using a caller-provided timestamp keeps live and
+      replay inputs deterministic.
+    grounds: >-
+      contracts `PilotObservation` model; observation-builder requirements Goal and Constraints;
+      MASTER_REQUIREMENTS.md ADR-11 Storage and ADR-20 Adapter pipeline model.
+  - id: DEC-OBJECTIVE-NOT-FABRICATED
+    status: closed
+    decision: >-
+      Treat a missing or blank cache objective as invalid builder input and raise a clear exception
+      before constructing the contract snapshot.
+    rationale: >-
+      `PilotObservation.objective` is a required non-empty contract field, and fabricating a
+      placeholder objective would hide task-state loss from the downstream LLM loop.
+    grounds: >-
+      contracts `PilotObservation` model; observation-snapshot-builder Requirements; observation-builder
+      feature Constraints and Proposed Decision OB-005.
+  - id: DEC-SORT-THEN-TRUNCATE
+    status: closed
+    decision: >-
+      Sort visible objects, visible tags, recent failures, and current assertions using the
+      existing deterministic helpers, then slice each list to its contract-owned maximum length.
+    rationale: >-
+      Stable bounded snapshots are required for repeatable prompts and replay, and truncating after
+      sorting preserves the highest-priority deterministic subset.
+    grounds: >-
+      observation-builder requirements Constraints and Proposed Decision OB-004;
+      observation-snapshot-builder Requirements; contracts `MAX_VISIBLE_OBJECTS`,
+      `MAX_VISIBLE_TAGS`, `MAX_RECENT_FAILURES`, and `MAX_ASSERTIONS`.
+  - id: DEC-CARRY-ASSERTIONS-ONLY
+    status: closed
+    decision: >-
+      Copy caller-supplied current assertions into the snapshot after deterministic compaction; do
+      not compute assertions from raw telemetry, vision, or bridge fields in this slice.
+    rationale: >-
+      Assertion computation is explicitly out of scope for the slice, while the builder must still
+      preserve assertions supplied by upstream or replay inputs.
+    grounds: >-
+      observation-snapshot-builder Out Of Scope; observation-builder requirements Out Of Scope;
+      `.ai-sdd/conventions/pilot.md` Boundary rules.
+  - id: DEC-OPTIONAL-EVIDENCE-UNKNOWN
+    status: closed
+    decision: >-
+      Preserve stale or missing optional evidence as explicit unknown/stale contract component
+      values, `None`, or empty lists rather than substituting confident defaults.
+    rationale: >-
+      The online LLM loop and future assertion engine must see uncertainty and freshness loss
+      directly in the snapshot.
+    grounds: >-
+      observation-builder requirements Constraints and Proposed Decision OB-005;
+      MASTER_REQUIREMENTS.md ADR-19 Online control loop; completed pilot-scaffold-and-cache plan.
+  - id: DEC-ROS-FREE-REPLAY-FRIENDLY
+    status: closed
+    decision: >-
+      Keep the builder pure Python with no ROS imports, no concrete provider dependencies, and no
+      side effects beyond constructing and validating the snapshot.
+    rationale: >-
+      The same builder must work for live-cache and replay inputs, while ROS topic wiring and
+      provider adapters belong to later integration slices.
+    grounds: >-
+      `.ai-sdd/conventions/pilot.md` Boundary rules; MASTER_REQUIREMENTS.md ADR-01 and ADR-20;
+      observation-snapshot-builder Requirements and Out Of Scope.
+  - id: DEC-GATE-SET
+    status: closed
+    decision: >-
+      The implementer must run `uv sync`, focused `make -C pilot test` and `make -C pilot lint`,
+      then root `make test`, `make validate`, and `make lint`; `make demo` is excluded.
+    rationale: >-
+      The worker skill requires the repo-level baseline gates, the slice acceptance requires focused
+      pilot checks, and `make demo` is reserved for the m2 milestone rather than this per-slice gate.
+    grounds: >-
+      plan-feature SKILL.md tests requirement; AGENTS.md Build / verify;
+      observation-snapshot-builder Acceptance; MASTER_REQUIREMENTS.md Milestones m2 and
+      Verification & Reviewer Runbook.
+
+files:
+  - pilot/src/pilot/observation.py
+  - pilot/tests/test_observation_builder.py
+
+tests:
+  - uv sync
+  - make -C pilot test
+  - make -C pilot lint
+  - make test
+  - make validate
+  - make lint

@@ -1,0 +1,26 @@
+apiVersion: ai-sdd/v1
+kind: Changeset
+metadata:
+  feature: observation-builder
+  slice: observation-snapshot-builder
+  stack: pilot
+
+summary: >-
+  Added a ROS-free build_observation_snapshot API that compacts an ObservationCache
+  into a contract-valid PilotObservation using explicit observed_ms validation,
+  required objective validation, contract-owned list bounds, deterministic
+  sort-then-truncate behavior, and existing unknown/stale optional evidence. Added
+  focused builder tests for complete mapping, contract validation, missing/stale
+  evidence, deterministic bounded lists, required objective handling, non-negative
+  observed time, and import without ROS packages.
+
+satisfies:
+  - ACC-SNAPSHOT-BUILDER-API
+  - ACC-COMPLETE-SNAPSHOT-MAPPING
+  - ACC-CONTRACT-VALIDATION
+  - ACC-DETERMINISTIC-BOUNDED-LISTS
+  - ACC-MISSING-STALE-OPTIONAL-EVIDENCE
+  - ACC-OBJECTIVE-REQUIRED
+  - ACC-NO-ROS-DEPENDENCY
+  - ACC-SCOPE-LIMITED-FILES
+  - ACC-REGRESSION-GATES
