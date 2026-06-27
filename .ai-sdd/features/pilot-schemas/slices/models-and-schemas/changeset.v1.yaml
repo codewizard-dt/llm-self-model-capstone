@@ -1,0 +1,79 @@
+apiVersion: ai-sdd/v1
+kind: Changeset
+metadata:
+  feature: pilot-schemas
+  slice: models-and-schemas
+  stack: contracts
+
+summary: >-
+  Added the contract-owned pilot schema surface for the online control loop:
+  closed pilot skill names, typed bounded skill command variants, normalized
+  observation snapshots, assertion results, bounded pilot decisions, appendable
+  discriminated trace records, additive public exports, schema generator entries,
+  generated JSON Schema files, and focused contract tests for valid and rejected
+  pilot payloads.
+
+satisfies:
+  - ACC-PILOT-MODELS
+  - ACC-CLOSED-SKILLS
+  - ACC-TYPED-BOUNDED-COMMANDS
+  - ACC-OBSERVATION-SNAPSHOT
+  - ACC-ASSERTION-RESULTS
+  - ACC-BOUNDED-DECISIONS
+  - ACC-TRACE-UNION
+  - ACC-SCHEMA-EXPORTS
+  - ACC-PUBLIC-EXPORTS
+  - ACC-REGRESSION-GATES
+
+files:
+  modified:
+    - contracts/src/contracts/schema.py
+    - contracts/src/contracts/__init__.py
+    - .ai-sdd/artifacts/changeset.v1.yaml
+  created:
+    - contracts/src/contracts/pilot.py
+    - contracts/schemas/pilot_skill_command.json
+    - contracts/schemas/pilot_observation.json
+    - contracts/schemas/pilot_assertion.json
+    - contracts/schemas/pilot_decision.json
+    - contracts/schemas/pilot_trace_record.json
+    - contracts/tests/test_pilot_schemas.py
+  deleted: []
+
+gates:
+  make_sync:
+    exit_code: 0
+    note: "Passed per-vertical uv sync for contracts, self_model_generator, and robot/ros2-runtime."
+  uv_sync:
+    exit_code: 2
+    note: >-
+      Failed at the repo root because no pyproject.toml exists in the root or
+      its parents; this repo is currently wired with per-vertical uv projects.
+  make_test:
+    exit_code: 0
+    note: >-
+      Passed repo-level tests: contracts 190 passed, self_model_generator 26
+      passed, robot/ros2-runtime 154 passed and 1 skipped.
+  make_validate:
+    exit_code: 0
+    note: >-
+      Passed repo-level validation for contracts fixtures, self-model generator
+      fixtures, and robot operator fixtures.
+  make_lint:
+    exit_code: 0
+    note: >-
+      Passed after the pre-existing robot/ros2-runtime formatting drift in
+      src/vexy_ros/operator/_core.py and tests/test_operator.py was repaired in
+      a separate baseline commit outside this slice.
+  contracts_make_schema:
+    exit_code: 0
+  contracts_make_test:
+    exit_code: 0
+    note: "Passed 190 contracts tests, including 24 pilot schema tests."
+  contracts_make_lint:
+    exit_code: 0
+  changeset_structure:
+    exit_code: 0
+  changeset_diff_in_scope:
+    exit_code: 0
+    note: "ai-sdd scope reported 9 changed files, all within the declared manifest."

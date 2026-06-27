@@ -15,6 +15,13 @@ from pydantic import TypeAdapter
 
 from contracts.contract_line import ContractLine, ScoreContractLine
 from contracts.control_command import AckLine, ControlLine
+from contracts.pilot import (
+    PilotAssertion,
+    PilotDecision,
+    PilotObservation,
+    PilotSkillCommand,
+    PilotTraceRecord,
+)
 from contracts.self_model import SelfModel
 from contracts.task_envelope import TaskEnvelope, TaskOutline
 
@@ -26,6 +33,11 @@ SCHEMAS = {
     "ack_line.json": AckLine,
     "task_outline.json": TaskOutline,
     "task_envelope.json": TaskEnvelope,
+    "pilot_skill_command.json": PilotSkillCommand,
+    "pilot_observation.json": PilotObservation,
+    "pilot_assertion.json": PilotAssertion,
+    "pilot_decision.json": PilotDecision,
+    "pilot_trace_record.json": PilotTraceRecord,
 }
 
 

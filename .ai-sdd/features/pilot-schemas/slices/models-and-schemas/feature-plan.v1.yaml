@@ -1,0 +1,224 @@
+summary: >-
+  Add the contract-owned pilot schema surface for the online control loop: pydantic v2 runtime
+  models, JSON Schema export entries, additive public re-exports, and focused contract tests for
+  pilot skill commands, compact observations, assertion results, pilot decisions, and appendable
+  pilot trace records.
+
+scope:
+  in:
+    - >-
+      Define `contracts.pilot` models for the pilot loop boundary using the strict pydantic v2 style
+      already used by the `contracts` vertical.
+    - >-
+      Model the MVP pilot skill vocabulary as a closed enum and represent command parameters as
+      typed bounded variants instead of an untyped parameter dictionary.
+    - >-
+      Define compact observation snapshots with task phase/objective, robot pose, localization
+      confidence and age, visible objects/tags, manipulator state, bridge health, last command and
+      result, recent failures, and current assertions.
+    - >-
+      Define assertion results, bounded pilot decisions, and discriminated pilot trace records for
+      observation, decision, command, result, assertion, and stop events.
+    - >-
+      Add schema registry entries so `make schema` in `contracts/` emits the five pilot JSON Schema
+      files requested by the slice.
+    - >-
+      Add additive public exports from `contracts.__init__` for the pilot contract models and enums
+      that downstream code should import.
+    - >-
+      Add focused unit tests covering valid model instances and the rejection cases named by the
+      approved slice brief.
+  out:
+    - Fixture JSON, fixture JSONL, fixture validation dispatch, or repo-level validation wiring.
+    - Pilot runtime behavior, observation building, skill registry execution, safety validation,
+      replay runner, run logger behavior, ROS publication, or hardware commands.
+    - Changes to `pilot/`, `robot/ros2-runtime/`, `robot/v5-brain/`, `self_model_generator/`, or
+      any schema definition outside `contracts/`.
+    - Changes to the frozen task-telemetry, self-model, parts-catalog, or existing control-command
+      contract semantics.
+    - New dependency-management, linting, formatting, or secret-handling tools.
+    - >-
+      `make demo` remains an m2 milestone concern, not a per-slice gate.
+
+acceptance:
+  - id: ACC-PILOT-MODELS
+    description: >-
+      `contracts.pilot` defines pydantic v2 models for pilot skill commands, pilot observations,
+      pilot assertions, pilot decisions, and pilot trace records using strict contract-layer model
+      conventions.
+  - id: ACC-CLOSED-SKILLS
+    description: >-
+      `PilotSkillName` accepts exactly `stop`, `survey_scene`, `face_target`, `approach_target`,
+      `center_object_in_gripper`, `arm_to_angle`, `claw_open`, `claw_close`, `verify_grasp`,
+      `go_to_destination`, and `verify_drop`; unknown skill names are rejected.
+  - id: ACC-TYPED-BOUNDED-COMMANDS
+    description: >-
+      Skill commands are typed bounded variants with machine-checkable per-skill parameter
+      envelopes, and tests reject out-of-range command parameters.
+  - id: ACC-OBSERVATION-SNAPSHOT
+    description: >-
+      Pilot observations include task phase/objective, robot pose, localization confidence and age,
+      visible objects/tags, manipulator state, bridge health, last command/result, recent failures,
+      and current assertions without ROS message classes or topic-specific types.
+  - id: ACC-ASSERTION-RESULTS
+    description: >-
+      Pilot assertions encode state as `true`, `false`, or `unknown` with confidence, evidence
+      entries, timestamp or age metadata, and optional recovery hints.
+  - id: ACC-BOUNDED-DECISIONS
+    description: >-
+      Pilot decisions accept only `continue`, `retry`, `stop_success`, `stop_failure`, and
+      `request_human`; unknown decisions are rejected by tests.
+  - id: ACC-TRACE-UNION
+    description: >-
+      Pilot trace records are an append-friendly discriminated union for observation, decision,
+      command, result, assertion, and stop events, and invalid trace discriminators are rejected by
+      tests.
+  - id: ACC-SCHEMA-EXPORTS
+    description: >-
+      `cd contracts && make schema` emits non-empty `pilot_skill_command.json`,
+      `pilot_observation.json`, `pilot_assertion.json`, `pilot_decision.json`, and
+      `pilot_trace_record.json` files under `contracts/schemas/`.
+  - id: ACC-PUBLIC-EXPORTS
+    description: >-
+      Public pilot models and enums are re-exported additively from `contracts` without removing or
+      renaming existing public exports.
+  - id: ACC-REGRESSION-GATES
+    description: >-
+      Existing contract schemas and tests continue to pass, including validation and lint gates for
+      the `contracts` vertical and the repo-level ai-sdd required commands.
+
+decisions:
+  - id: DEC-PILOT-MODULE
+    status: closed
+    decision: >-
+      Put all pilot-facing runtime schema models for this slice in a dedicated `contracts.pilot`
+      module and expose them from `contracts.__init__` only additively.
+    rationale: >-
+      The pilot schema boundary belongs to `contracts`, and a dedicated module keeps the online
+      pilot contracts discoverable without mixing them into offline self-model modules.
+    grounds: >-
+      MASTER_REQUIREMENTS.md Tech stacks, Components, ADR-06, and ADR-19; pilot-schemas
+      requirements PS-001; models-and-schemas slice Files to create / change.
+  - id: DEC-CLOSED-SKILL-VOCABULARY
+    status: closed
+    decision: >-
+      `PilotSkillName` is a closed enum containing the eleven MVP skills named by the approved
+      slice brief.
+    rationale: >-
+      The online LLM issues bounded skills, not arbitrary raw motor commands or free-form skill
+      names.
+    grounds: >-
+      MASTER_REQUIREMENTS.md ADR-19 and Components Control grammar; pilot-schemas requirements
+      PS-002; models-and-schemas slice Requirements.
+  - id: DEC-TYPED-COMMAND_VARIANTS
+    status: closed
+    decision: >-
+      Pilot skill command parameters are represented as typed bounded command variants rather than
+      an untyped dictionary.
+    rationale: >-
+      Command bounds must be visible in the contract and enforceable before a pilot decision can
+      reach the robot execution path.
+    grounds: >-
+      MASTER_REQUIREMENTS.md ADR-06 and ADR-19; pilot-schemas requirements PS-003 and Constraints;
+      models-and-schemas slice Requirements.
+  - id: DEC-NORMALIZED-OBSERVATIONS
+    status: closed
+    decision: >-
+      Observation snapshots use normalized contract fields for freshness, health, pose, evidence,
+      command/result context, failures, and assertions, and do not expose ROS message classes or
+      topic-specific types.
+    rationale: >-
+      The same schemas must support replay mode, non-ROS tests, and the live ROS-backed path without
+      redefining schemas outside `contracts`.
+    grounds: >-
+      MASTER_REQUIREMENTS.md Components boundary rule, Integration Boundaries & Swap Paths, and
+      ADR-20; pilot-schemas requirements PS-006; models-and-schemas slice Requirements.
+  - id: DEC-ASSERTION-SHAPE
+    status: closed
+    decision: >-
+      Assertion results use the state set `true`, `false`, and `unknown`, include confidence and
+      evidence entries, carry timestamp or age metadata, and allow optional recovery hints.
+    rationale: >-
+      The pilot loop needs to preserve uncertainty from fused telemetry and vision evidence while
+      still giving downstream validation enough structure to decide whether to continue, retry, or
+      stop.
+    grounds: >-
+      pilot-schemas requirements PS-004 and Acceptance; models-and-schemas slice Requirements;
+      MASTER_REQUIREMENTS.md ADR-19.
+  - id: DEC-BOUNDED-PILOT-DECISIONS
+    status: closed
+    decision: >-
+      Pilot decisions are limited to `continue`, `retry`, `stop_success`, `stop_failure`, and
+      `request_human`.
+    rationale: >-
+      The LLM output remains advisory until parsed and validated as a bounded `PilotDecision`.
+    grounds: >-
+      pilot-schemas requirements Acceptance and Constraints; models-and-schemas slice Requirements;
+      MASTER_REQUIREMENTS.md ADR-19.
+  - id: DEC-TRACE-DISCRIMINATED-UNION
+    status: closed
+    decision: >-
+      `PilotTraceRecord` is a discriminated union for observation, decision, command, result,
+      assertion, and stop events.
+    rationale: >-
+      JSONL run logging must stay append-friendly and replayable without one oversized mutable loop
+      record.
+    grounds: >-
+      pilot-schemas requirements PS-005 and Constraints; models-and-schemas slice Requirements;
+      MASTER_REQUIREMENTS.md ADR-11 and ADR-19.
+  - id: DEC-SCHEMA-REGISTRY
+    status: closed
+    decision: >-
+      Add only the five pilot schema export entries requested by this slice to the existing
+      `contracts/src/contracts/schema.py` registry.
+    rationale: >-
+      `make schema` is the established contract schema generator, and this slice must not introduce
+      another schema definition or export mechanism.
+    grounds: >-
+      MASTER_REQUIREMENTS.md ADR-06 and Tech stacks; contracts convention Model / entity; models-
+      and-schemas slice Acceptance.
+  - id: DEC-FILE-BOUNDARY
+    status: closed
+    decision: >-
+      Implementation is limited to `contracts/src/contracts/pilot.py`,
+      `contracts/src/contracts/schema.py`, `contracts/src/contracts/__init__.py`, the five generated
+      pilot schema files under `contracts/schemas/`, and `contracts/tests/test_pilot_schemas.py`.
+    rationale: >-
+      The current slice is schema/API only; fixture files and validation dispatch are explicitly
+      assigned to the next slice.
+    grounds: >-
+      models-and-schemas slice What this slice delivers, Files to create / change, and Out Of
+      Scope; pilot-schemas requirements In Scope and Out Of Scope; plan-feature SKILL.md boundary
+      rules.
+  - id: DEC-GATE-SET
+    status: closed
+    decision: >-
+      The implementer must run `uv sync`, `make test`, `make validate`, and `make lint`, plus the
+      contracts-local `make schema`, `make test`, and `make lint` commands relevant to this slice.
+    rationale: >-
+      The worker skill requires the repo-level baseline gates; the slice additionally requires
+      schema emission and contracts-local test/lint proof, while `make demo` is not a per-slice gate.
+    grounds: >-
+      plan-feature SKILL.md tests requirement; MASTER_REQUIREMENTS.md Verification & Reviewer
+      Runbook and Milestone m2; .ai-sdd/conventions/contracts.md Discovery Record; models-and-
+      schemas slice Acceptance.
+
+files:
+  - contracts/src/contracts/pilot.py
+  - contracts/src/contracts/schema.py
+  - contracts/src/contracts/__init__.py
+  - contracts/schemas/pilot_skill_command.json
+  - contracts/schemas/pilot_observation.json
+  - contracts/schemas/pilot_assertion.json
+  - contracts/schemas/pilot_decision.json
+  - contracts/schemas/pilot_trace_record.json
+  - contracts/tests/test_pilot_schemas.py
+
+tests:
+  - uv sync
+  - make test
+  - make validate
+  - make lint
+  - cd contracts && make schema
+  - cd contracts && make test
+  - cd contracts && make lint

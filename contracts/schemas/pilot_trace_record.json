@@ -1,0 +1,2065 @@
+{
+  "$defs": {
+    "ApproachTargetParams": {
+      "additionalProperties": false,
+      "properties": {
+        "max_speed_mps": {
+          "default": 0.35,
+          "maximum": 0.35,
+          "minimum": 0.0,
+          "title": "Max Speed Mps",
+          "type": "number"
+        },
+        "standoff_m": {
+          "default": 0.2,
+          "maximum": 5.0,
+          "minimum": 0.0,
+          "title": "Standoff M",
+          "type": "number"
+        },
+        "target_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Target Id",
+          "type": "string"
+        },
+        "timeout_ms": {
+          "default": 10000,
+          "maximum": 30000,
+          "minimum": 1,
+          "title": "Timeout Ms",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "target_id"
+      ],
+      "title": "ApproachTargetParams",
+      "type": "object"
+    },
+    "ApproachTargetSkillCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Command Id",
+          "type": "string"
+        },
+        "issued_ms": {
+          "minimum": 0,
+          "title": "Issued Ms",
+          "type": "integer"
+        },
+        "params": {
+          "$ref": "#/$defs/ApproachTargetParams"
+        },
+        "skill": {
+          "const": "approach_target",
+          "default": "approach_target",
+          "title": "Skill",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "command_id",
+        "issued_ms",
+        "params"
+      ],
+      "title": "ApproachTargetSkillCommand",
+      "type": "object"
+    },
+    "ArmToAngleParams": {
+      "additionalProperties": false,
+      "properties": {
+        "deg": {
+          "maximum": 90.0,
+          "minimum": 0.0,
+          "title": "Deg",
+          "type": "number"
+        },
+        "vel_rpm": {
+          "anyOf": [
+            {
+              "maximum": 600.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vel Rpm"
+        }
+      },
+      "required": [
+        "deg"
+      ],
+      "title": "ArmToAngleParams",
+      "type": "object"
+    },
+    "ArmToAngleSkillCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Command Id",
+          "type": "string"
+        },
+        "issued_ms": {
+          "minimum": 0,
+          "title": "Issued Ms",
+          "type": "integer"
+        },
+        "params": {
+          "$ref": "#/$defs/ArmToAngleParams"
+        },
+        "skill": {
+          "const": "arm_to_angle",
+          "default": "arm_to_angle",
+          "title": "Skill",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "command_id",
+        "issued_ms",
+        "params"
+      ],
+      "title": "ArmToAngleSkillCommand",
+      "type": "object"
+    },
+    "AssertionEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "age_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Age Ms"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        },
+        "observed_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observed Ms"
+        },
+        "source": {
+          "enum": [
+            "telemetry",
+            "vision",
+            "bridge",
+            "planner",
+            "operator",
+            "replay"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "summary": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "summary"
+      ],
+      "title": "AssertionEvidence",
+      "type": "object"
+    },
+    "AssertionState": {
+      "enum": [
+        "true",
+        "false",
+        "unknown"
+      ],
+      "title": "AssertionState",
+      "type": "string"
+    },
+    "AssertionTraceRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "assertion": {
+          "$ref": "#/$defs/PilotAssertion"
+        },
+        "event": {
+          "const": "assertion",
+          "default": "assertion",
+          "title": "Event",
+          "type": "string"
+        },
+        "monotonic_ms": {
+          "minimum": 0,
+          "title": "Monotonic Ms",
+          "type": "integer"
+        },
+        "seq": {
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "session_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Session Id",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "session_id",
+        "seq",
+        "monotonic_ms",
+        "assertion"
+      ],
+      "title": "AssertionTraceRecord",
+      "type": "object"
+    },
+    "BridgeHealth": {
+      "additionalProperties": false,
+      "properties": {
+        "battery_pct": {
+          "anyOf": [
+            {
+              "maximum": 100.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Battery Pct"
+        },
+        "estop": {
+          "default": false,
+          "title": "Estop",
+          "type": "boolean"
+        },
+        "fault": {
+          "anyOf": [
+            {
+              "maxLength": 512,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fault"
+        },
+        "last_heartbeat_age_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Heartbeat Age Ms"
+        },
+        "state": {
+          "enum": [
+            "ok",
+            "degraded",
+            "fault",
+            "stale"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "title": "BridgeHealth",
+      "type": "object"
+    },
+    "CenterObjectInGripperParams": {
+      "additionalProperties": false,
+      "properties": {
+        "image_tolerance_px": {
+          "default": 16,
+          "maximum": 320,
+          "minimum": 0,
+          "title": "Image Tolerance Px",
+          "type": "integer"
+        },
+        "object_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Object Id",
+          "type": "string"
+        },
+        "timeout_ms": {
+          "default": 6000,
+          "maximum": 30000,
+          "minimum": 1,
+          "title": "Timeout Ms",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "object_id"
+      ],
+      "title": "CenterObjectInGripperParams",
+      "type": "object"
+    },
+    "CenterObjectInGripperSkillCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Command Id",
+          "type": "string"
+        },
+        "issued_ms": {
+          "minimum": 0,
+          "title": "Issued Ms",
+          "type": "integer"
+        },
+        "params": {
+          "$ref": "#/$defs/CenterObjectInGripperParams"
+        },
+        "skill": {
+          "const": "center_object_in_gripper",
+          "default": "center_object_in_gripper",
+          "title": "Skill",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "command_id",
+        "issued_ms",
+        "params"
+      ],
+      "title": "CenterObjectInGripperSkillCommand",
+      "type": "object"
+    },
+    "ClawCloseParams": {
+      "additionalProperties": false,
+      "properties": {
+        "grip_force_n": {
+          "anyOf": [
+            {
+              "maximum": 100.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Grip Force N"
+        }
+      },
+      "title": "ClawCloseParams",
+      "type": "object"
+    },
+    "ClawCloseSkillCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Command Id",
+          "type": "string"
+        },
+        "issued_ms": {
+          "minimum": 0,
+          "title": "Issued Ms",
+          "type": "integer"
+        },
+        "params": {
+          "$ref": "#/$defs/ClawCloseParams"
+        },
+        "skill": {
+          "const": "claw_close",
+          "default": "claw_close",
+          "title": "Skill",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "command_id",
+        "issued_ms"
+      ],
+      "title": "ClawCloseSkillCommand",
+      "type": "object"
+    },
+    "ClawOpenParams": {
+      "additionalProperties": false,
+      "properties": {
+        "opening_pct": {
+          "anyOf": [
+            {
+              "maximum": 100.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Opening Pct"
+        }
+      },
+      "title": "ClawOpenParams",
+      "type": "object"
+    },
+    "ClawOpenSkillCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Command Id",
+          "type": "string"
+        },
+        "issued_ms": {
+          "minimum": 0,
+          "title": "Issued Ms",
+          "type": "integer"
+        },
+        "params": {
+          "$ref": "#/$defs/ClawOpenParams"
+        },
+        "skill": {
+          "const": "claw_open",
+          "default": "claw_open",
+          "title": "Skill",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "command_id",
+        "issued_ms"
+      ],
+      "title": "ClawOpenSkillCommand",
+      "type": "object"
+    },
+    "CommandStatus": {
+      "enum": [
+        "queued",
+        "running",
+        "ok",
+        "rejected",
+        "failed",
+        "stale"
+      ],
+      "title": "CommandStatus",
+      "type": "string"
+    },
+    "CommandTraceRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "discriminator": {
+            "mapping": {
+              "approach_target": "#/$defs/ApproachTargetSkillCommand",
+              "arm_to_angle": "#/$defs/ArmToAngleSkillCommand",
+              "center_object_in_gripper": "#/$defs/CenterObjectInGripperSkillCommand",
+              "claw_close": "#/$defs/ClawCloseSkillCommand",
+              "claw_open": "#/$defs/ClawOpenSkillCommand",
+              "face_target": "#/$defs/FaceTargetSkillCommand",
+              "go_to_destination": "#/$defs/GoToDestinationSkillCommand",
+              "stop": "#/$defs/StopSkillCommand",
+              "survey_scene": "#/$defs/SurveySceneSkillCommand",
+              "verify_drop": "#/$defs/VerifyDropSkillCommand",
+              "verify_grasp": "#/$defs/VerifyGraspSkillCommand"
+            },
+            "propertyName": "skill"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/StopSkillCommand"
+            },
+            {
+              "$ref": "#/$defs/SurveySceneSkillCommand"
+            },
+            {
+              "$ref": "#/$defs/FaceTargetSkillCommand"
+            },
+            {
+              "$ref": "#/$defs/ApproachTargetSkillCommand"
+            },
+            {
+              "$ref": "#/$defs/CenterObjectInGripperSkillCommand"
+            },
+            {
+              "$ref": "#/$defs/ArmToAngleSkillCommand"
+            },
+            {
+              "$ref": "#/$defs/ClawOpenSkillCommand"
+            },
+            {
+              "$ref": "#/$defs/ClawCloseSkillCommand"
+            },
+            {
+              "$ref": "#/$defs/VerifyGraspSkillCommand"
+            },
+            {
+              "$ref": "#/$defs/GoToDestinationSkillCommand"
+            },
+            {
+              "$ref": "#/$defs/VerifyDropSkillCommand"
+            }
+          ],
+          "title": "Command"
+        },
+        "event": {
+          "const": "command",
+          "default": "command",
+          "title": "Event",
+          "type": "string"
+        },
+        "monotonic_ms": {
+          "minimum": 0,
+          "title": "Monotonic Ms",
+          "type": "integer"
+        },
+        "seq": {
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "session_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Session Id",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "session_id",
+        "seq",
+        "monotonic_ms",
+        "command"
+      ],
+      "title": "CommandTraceRecord",
+      "type": "object"
+    },
+    "DecisionTraceRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "$ref": "#/$defs/PilotDecision"
+        },
+        "event": {
+          "const": "decision",
+          "default": "decision",
+          "title": "Event",
+          "type": "string"
+        },
+        "monotonic_ms": {
+          "minimum": 0,
+          "title": "Monotonic Ms",
+          "type": "integer"
+        },
+        "seq": {
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "session_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Session Id",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "session_id",
+        "seq",
+        "monotonic_ms",
+        "decision"
+      ],
+      "title": "DecisionTraceRecord",
+      "type": "object"
+    },
+    "FaceTargetParams": {
+      "additionalProperties": false,
+      "properties": {
+        "max_turn_rad_s": {
+          "default": 0.6,
+          "maximum": 0.6,
+          "minimum": 0.0,
+          "title": "Max Turn Rad S",
+          "type": "number"
+        },
+        "target_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Target Id",
+          "type": "string"
+        },
+        "timeout_ms": {
+          "default": 4000,
+          "maximum": 30000,
+          "minimum": 1,
+          "title": "Timeout Ms",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "target_id"
+      ],
+      "title": "FaceTargetParams",
+      "type": "object"
+    },
+    "FaceTargetSkillCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Command Id",
+          "type": "string"
+        },
+        "issued_ms": {
+          "minimum": 0,
+          "title": "Issued Ms",
+          "type": "integer"
+        },
+        "params": {
+          "$ref": "#/$defs/FaceTargetParams"
+        },
+        "skill": {
+          "const": "face_target",
+          "default": "face_target",
+          "title": "Skill",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "command_id",
+        "issued_ms",
+        "params"
+      ],
+      "title": "FaceTargetSkillCommand",
+      "type": "object"
+    },
+    "GoToDestinationParams": {
+      "additionalProperties": false,
+      "properties": {
+        "destination_id": {
+          "anyOf": [
+            {
+              "maxLength": 80,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Destination Id"
+        },
+        "heading_rad": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Heading Rad"
+        },
+        "max_speed_mps": {
+          "default": 0.35,
+          "maximum": 0.35,
+          "minimum": 0.0,
+          "title": "Max Speed Mps",
+          "type": "number"
+        },
+        "position_tolerance_m": {
+          "default": 0.1,
+          "maximum": 2.0,
+          "minimum": 0.0,
+          "title": "Position Tolerance M",
+          "type": "number"
+        },
+        "timeout_ms": {
+          "default": 15000,
+          "maximum": 30000,
+          "minimum": 1,
+          "title": "Timeout Ms",
+          "type": "integer"
+        },
+        "x_m": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "X M"
+        },
+        "y_m": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Y M"
+        }
+      },
+      "title": "GoToDestinationParams",
+      "type": "object"
+    },
+    "GoToDestinationSkillCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Command Id",
+          "type": "string"
+        },
+        "issued_ms": {
+          "minimum": 0,
+          "title": "Issued Ms",
+          "type": "integer"
+        },
+        "params": {
+          "$ref": "#/$defs/GoToDestinationParams"
+        },
+        "skill": {
+          "const": "go_to_destination",
+          "default": "go_to_destination",
+          "title": "Skill",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "command_id",
+        "issued_ms",
+        "params"
+      ],
+      "title": "GoToDestinationSkillCommand",
+      "type": "object"
+    },
+    "ImageBox": {
+      "additionalProperties": false,
+      "properties": {
+        "height_px": {
+          "exclusiveMinimum": 0,
+          "title": "Height Px",
+          "type": "integer"
+        },
+        "width_px": {
+          "exclusiveMinimum": 0,
+          "title": "Width Px",
+          "type": "integer"
+        },
+        "x_px": {
+          "minimum": 0,
+          "title": "X Px",
+          "type": "integer"
+        },
+        "y_px": {
+          "minimum": 0,
+          "title": "Y Px",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "x_px",
+        "y_px",
+        "width_px",
+        "height_px"
+      ],
+      "title": "ImageBox",
+      "type": "object"
+    },
+    "LocalizationState": {
+      "additionalProperties": false,
+      "properties": {
+        "age_ms": {
+          "minimum": 0,
+          "title": "Age Ms",
+          "type": "integer"
+        },
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "pose": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Pose2D"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "confidence",
+        "age_ms"
+      ],
+      "title": "LocalizationState",
+      "type": "object"
+    },
+    "ManipulatorState": {
+      "additionalProperties": false,
+      "properties": {
+        "arm_deg": {
+          "anyOf": [
+            {
+              "maximum": 90.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Arm Deg"
+        },
+        "claw_state": {
+          "enum": [
+            "open",
+            "closed",
+            "holding",
+            "unknown"
+          ],
+          "title": "Claw State",
+          "type": "string"
+        },
+        "held_object_id": {
+          "anyOf": [
+            {
+              "maxLength": 80,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Held Object Id"
+        }
+      },
+      "required": [
+        "claw_state"
+      ],
+      "title": "ManipulatorState",
+      "type": "object"
+    },
+    "ObservationTraceRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "event": {
+          "const": "observation",
+          "default": "observation",
+          "title": "Event",
+          "type": "string"
+        },
+        "monotonic_ms": {
+          "minimum": 0,
+          "title": "Monotonic Ms",
+          "type": "integer"
+        },
+        "observation": {
+          "$ref": "#/$defs/PilotObservation"
+        },
+        "seq": {
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "session_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Session Id",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "session_id",
+        "seq",
+        "monotonic_ms",
+        "observation"
+      ],
+      "title": "ObservationTraceRecord",
+      "type": "object"
+    },
+    "PilotAssertion": {
+      "additionalProperties": false,
+      "properties": {
+        "age_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Age Ms"
+        },
+        "assertion_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Assertion Id",
+          "type": "string"
+        },
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/AssertionEvidence"
+          },
+          "maxItems": 12,
+          "title": "Evidence",
+          "type": "array"
+        },
+        "observed_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observed Ms"
+        },
+        "predicate": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Predicate",
+          "type": "string"
+        },
+        "recovery_hint": {
+          "anyOf": [
+            {
+              "maxLength": 512,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recovery Hint"
+        },
+        "state": {
+          "$ref": "#/$defs/AssertionState"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "assertion_id",
+        "predicate",
+        "state",
+        "confidence"
+      ],
+      "title": "PilotAssertion",
+      "type": "object"
+    },
+    "PilotDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/PilotDecisionAction"
+        },
+        "command": {
+          "anyOf": [
+            {
+              "discriminator": {
+                "mapping": {
+                  "approach_target": "#/$defs/ApproachTargetSkillCommand",
+                  "arm_to_angle": "#/$defs/ArmToAngleSkillCommand",
+                  "center_object_in_gripper": "#/$defs/CenterObjectInGripperSkillCommand",
+                  "claw_close": "#/$defs/ClawCloseSkillCommand",
+                  "claw_open": "#/$defs/ClawOpenSkillCommand",
+                  "face_target": "#/$defs/FaceTargetSkillCommand",
+                  "go_to_destination": "#/$defs/GoToDestinationSkillCommand",
+                  "stop": "#/$defs/StopSkillCommand",
+                  "survey_scene": "#/$defs/SurveySceneSkillCommand",
+                  "verify_drop": "#/$defs/VerifyDropSkillCommand",
+                  "verify_grasp": "#/$defs/VerifyGraspSkillCommand"
+                },
+                "propertyName": "skill"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/StopSkillCommand"
+                },
+                {
+                  "$ref": "#/$defs/SurveySceneSkillCommand"
+                },
+                {
+                  "$ref": "#/$defs/FaceTargetSkillCommand"
+                },
+                {
+                  "$ref": "#/$defs/ApproachTargetSkillCommand"
+                },
+                {
+                  "$ref": "#/$defs/CenterObjectInGripperSkillCommand"
+                },
+                {
+                  "$ref": "#/$defs/ArmToAngleSkillCommand"
+                },
+                {
+                  "$ref": "#/$defs/ClawOpenSkillCommand"
+                },
+                {
+                  "$ref": "#/$defs/ClawCloseSkillCommand"
+                },
+                {
+                  "$ref": "#/$defs/VerifyGraspSkillCommand"
+                },
+                {
+                  "$ref": "#/$defs/GoToDestinationSkillCommand"
+                },
+                {
+                  "$ref": "#/$defs/VerifyDropSkillCommand"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Command"
+        },
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "decided_ms": {
+          "minimum": 0,
+          "title": "Decided Ms",
+          "type": "integer"
+        },
+        "decision_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Decision Id",
+          "type": "string"
+        },
+        "rationale": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "retry_of_command_id": {
+          "anyOf": [
+            {
+              "maxLength": 80,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retry Of Command Id"
+        },
+        "stop_reason": {
+          "anyOf": [
+            {
+              "maxLength": 512,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stop Reason"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "decision_id",
+        "decided_ms",
+        "action",
+        "rationale",
+        "confidence"
+      ],
+      "title": "PilotDecision",
+      "type": "object"
+    },
+    "PilotDecisionAction": {
+      "enum": [
+        "continue",
+        "retry",
+        "stop_success",
+        "stop_failure",
+        "request_human"
+      ],
+      "title": "PilotDecisionAction",
+      "type": "string"
+    },
+    "PilotFailure": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "anyOf": [
+            {
+              "maxLength": 80,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Command Id"
+        },
+        "failed_ms": {
+          "minimum": 0,
+          "title": "Failed Ms",
+          "type": "integer"
+        },
+        "recovery_hint": {
+          "anyOf": [
+            {
+              "maxLength": 512,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recovery Hint"
+        },
+        "source": {
+          "enum": [
+            "command",
+            "assertion",
+            "bridge",
+            "localization",
+            "vision",
+            "policy"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "summary": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "failed_ms",
+        "source",
+        "summary"
+      ],
+      "title": "PilotFailure",
+      "type": "object"
+    },
+    "PilotObservation": {
+      "additionalProperties": false,
+      "properties": {
+        "bridge": {
+          "$ref": "#/$defs/BridgeHealth"
+        },
+        "current_assertions": {
+          "items": {
+            "$ref": "#/$defs/PilotAssertion"
+          },
+          "maxItems": 32,
+          "title": "Current Assertions",
+          "type": "array"
+        },
+        "last_command": {
+          "anyOf": [
+            {
+              "discriminator": {
+                "mapping": {
+                  "approach_target": "#/$defs/ApproachTargetSkillCommand",
+                  "arm_to_angle": "#/$defs/ArmToAngleSkillCommand",
+                  "center_object_in_gripper": "#/$defs/CenterObjectInGripperSkillCommand",
+                  "claw_close": "#/$defs/ClawCloseSkillCommand",
+                  "claw_open": "#/$defs/ClawOpenSkillCommand",
+                  "face_target": "#/$defs/FaceTargetSkillCommand",
+                  "go_to_destination": "#/$defs/GoToDestinationSkillCommand",
+                  "stop": "#/$defs/StopSkillCommand",
+                  "survey_scene": "#/$defs/SurveySceneSkillCommand",
+                  "verify_drop": "#/$defs/VerifyDropSkillCommand",
+                  "verify_grasp": "#/$defs/VerifyGraspSkillCommand"
+                },
+                "propertyName": "skill"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/StopSkillCommand"
+                },
+                {
+                  "$ref": "#/$defs/SurveySceneSkillCommand"
+                },
+                {
+                  "$ref": "#/$defs/FaceTargetSkillCommand"
+                },
+                {
+                  "$ref": "#/$defs/ApproachTargetSkillCommand"
+                },
+                {
+                  "$ref": "#/$defs/CenterObjectInGripperSkillCommand"
+                },
+                {
+                  "$ref": "#/$defs/ArmToAngleSkillCommand"
+                },
+                {
+                  "$ref": "#/$defs/ClawOpenSkillCommand"
+                },
+                {
+                  "$ref": "#/$defs/ClawCloseSkillCommand"
+                },
+                {
+                  "$ref": "#/$defs/VerifyGraspSkillCommand"
+                },
+                {
+                  "$ref": "#/$defs/GoToDestinationSkillCommand"
+                },
+                {
+                  "$ref": "#/$defs/VerifyDropSkillCommand"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Command"
+        },
+        "last_result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PilotSkillResult"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "localization": {
+          "$ref": "#/$defs/LocalizationState"
+        },
+        "manipulator": {
+          "$ref": "#/$defs/ManipulatorState"
+        },
+        "objective": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Objective",
+          "type": "string"
+        },
+        "observed_ms": {
+          "minimum": 0,
+          "title": "Observed Ms",
+          "type": "integer"
+        },
+        "recent_failures": {
+          "items": {
+            "$ref": "#/$defs/PilotFailure"
+          },
+          "maxItems": 12,
+          "title": "Recent Failures",
+          "type": "array"
+        },
+        "robot_pose": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Pose2D"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "task_phase": {
+          "$ref": "#/$defs/PilotTaskPhase"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        },
+        "visible_objects": {
+          "items": {
+            "$ref": "#/$defs/VisibleObject"
+          },
+          "maxItems": 32,
+          "title": "Visible Objects",
+          "type": "array"
+        },
+        "visible_tags": {
+          "items": {
+            "$ref": "#/$defs/VisibleTag"
+          },
+          "maxItems": 32,
+          "title": "Visible Tags",
+          "type": "array"
+        }
+      },
+      "required": [
+        "observed_ms",
+        "task_phase",
+        "objective",
+        "localization",
+        "manipulator",
+        "bridge"
+      ],
+      "title": "PilotObservation",
+      "type": "object"
+    },
+    "PilotSkillName": {
+      "description": "Closed MVP pilot skill vocabulary.",
+      "enum": [
+        "stop",
+        "survey_scene",
+        "face_target",
+        "approach_target",
+        "center_object_in_gripper",
+        "arm_to_angle",
+        "claw_open",
+        "claw_close",
+        "verify_grasp",
+        "go_to_destination",
+        "verify_drop"
+      ],
+      "title": "PilotSkillName",
+      "type": "string"
+    },
+    "PilotSkillResult": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Command Id",
+          "type": "string"
+        },
+        "completed_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Completed Ms"
+        },
+        "fault": {
+          "anyOf": [
+            {
+              "maxLength": 512,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fault"
+        },
+        "message": {
+          "anyOf": [
+            {
+              "maxLength": 512,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Message"
+        },
+        "skill": {
+          "$ref": "#/$defs/PilotSkillName"
+        },
+        "status": {
+          "$ref": "#/$defs/CommandStatus"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "command_id",
+        "skill",
+        "status"
+      ],
+      "title": "PilotSkillResult",
+      "type": "object"
+    },
+    "PilotTaskPhase": {
+      "enum": [
+        "idle",
+        "survey",
+        "navigate",
+        "manipulate",
+        "verify",
+        "complete",
+        "failed"
+      ],
+      "title": "PilotTaskPhase",
+      "type": "string"
+    },
+    "Pose2D": {
+      "additionalProperties": false,
+      "properties": {
+        "heading_rad": {
+          "title": "Heading Rad",
+          "type": "number"
+        },
+        "x_m": {
+          "title": "X M",
+          "type": "number"
+        },
+        "y_m": {
+          "title": "Y M",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x_m",
+        "y_m",
+        "heading_rad"
+      ],
+      "title": "Pose2D",
+      "type": "object"
+    },
+    "ResultTraceRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "event": {
+          "const": "result",
+          "default": "result",
+          "title": "Event",
+          "type": "string"
+        },
+        "monotonic_ms": {
+          "minimum": 0,
+          "title": "Monotonic Ms",
+          "type": "integer"
+        },
+        "result": {
+          "$ref": "#/$defs/PilotSkillResult"
+        },
+        "seq": {
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "session_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Session Id",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "session_id",
+        "seq",
+        "monotonic_ms",
+        "result"
+      ],
+      "title": "ResultTraceRecord",
+      "type": "object"
+    },
+    "StopSkillCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Command Id",
+          "type": "string"
+        },
+        "issued_ms": {
+          "minimum": 0,
+          "title": "Issued Ms",
+          "type": "integer"
+        },
+        "params": {
+          "$ref": "#/$defs/StopSkillParams"
+        },
+        "skill": {
+          "const": "stop",
+          "default": "stop",
+          "title": "Skill",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "command_id",
+        "issued_ms",
+        "params"
+      ],
+      "title": "StopSkillCommand",
+      "type": "object"
+    },
+    "StopSkillParams": {
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "enum": [
+            "operator",
+            "task_complete",
+            "fault",
+            "unsafe",
+            "policy"
+          ],
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason"
+      ],
+      "title": "StopSkillParams",
+      "type": "object"
+    },
+    "StopTraceRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "event": {
+          "const": "stop",
+          "default": "stop",
+          "title": "Event",
+          "type": "string"
+        },
+        "message": {
+          "anyOf": [
+            {
+              "maxLength": 512,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Message"
+        },
+        "monotonic_ms": {
+          "minimum": 0,
+          "title": "Monotonic Ms",
+          "type": "integer"
+        },
+        "reason": {
+          "enum": [
+            "success",
+            "failure",
+            "operator",
+            "fault",
+            "request_human"
+          ],
+          "title": "Reason",
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "session_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Session Id",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "session_id",
+        "seq",
+        "monotonic_ms",
+        "reason"
+      ],
+      "title": "StopTraceRecord",
+      "type": "object"
+    },
+    "SurveySceneParams": {
+      "additionalProperties": false,
+      "properties": {
+        "timeout_ms": {
+          "default": 5000,
+          "maximum": 30000,
+          "minimum": 1,
+          "title": "Timeout Ms",
+          "type": "integer"
+        },
+        "yaw_span_deg": {
+          "default": 180.0,
+          "maximum": 360.0,
+          "minimum": 0.0,
+          "title": "Yaw Span Deg",
+          "type": "number"
+        }
+      },
+      "title": "SurveySceneParams",
+      "type": "object"
+    },
+    "SurveySceneSkillCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Command Id",
+          "type": "string"
+        },
+        "issued_ms": {
+          "minimum": 0,
+          "title": "Issued Ms",
+          "type": "integer"
+        },
+        "params": {
+          "$ref": "#/$defs/SurveySceneParams"
+        },
+        "skill": {
+          "const": "survey_scene",
+          "default": "survey_scene",
+          "title": "Skill",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "command_id",
+        "issued_ms"
+      ],
+      "title": "SurveySceneSkillCommand",
+      "type": "object"
+    },
+    "VerifyDropParams": {
+      "additionalProperties": false,
+      "properties": {
+        "destination_id": {
+          "anyOf": [
+            {
+              "maxLength": 80,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Destination Id"
+        },
+        "min_confidence": {
+          "default": 0.65,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Min Confidence",
+          "type": "number"
+        }
+      },
+      "title": "VerifyDropParams",
+      "type": "object"
+    },
+    "VerifyDropSkillCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Command Id",
+          "type": "string"
+        },
+        "issued_ms": {
+          "minimum": 0,
+          "title": "Issued Ms",
+          "type": "integer"
+        },
+        "params": {
+          "$ref": "#/$defs/VerifyDropParams"
+        },
+        "skill": {
+          "const": "verify_drop",
+          "default": "verify_drop",
+          "title": "Skill",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "command_id",
+        "issued_ms"
+      ],
+      "title": "VerifyDropSkillCommand",
+      "type": "object"
+    },
+    "VerifyGraspParams": {
+      "additionalProperties": false,
+      "properties": {
+        "min_confidence": {
+          "default": 0.65,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Min Confidence",
+          "type": "number"
+        },
+        "object_id": {
+          "anyOf": [
+            {
+              "maxLength": 80,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Object Id"
+        }
+      },
+      "title": "VerifyGraspParams",
+      "type": "object"
+    },
+    "VerifyGraspSkillCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Command Id",
+          "type": "string"
+        },
+        "issued_ms": {
+          "minimum": 0,
+          "title": "Issued Ms",
+          "type": "integer"
+        },
+        "params": {
+          "$ref": "#/$defs/VerifyGraspParams"
+        },
+        "skill": {
+          "const": "verify_grasp",
+          "default": "verify_grasp",
+          "title": "Skill",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "command_id",
+        "issued_ms"
+      ],
+      "title": "VerifyGraspSkillCommand",
+      "type": "object"
+    },
+    "VisibleObject": {
+      "additionalProperties": false,
+      "properties": {
+        "bbox": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ImageBox"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "label": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "object_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Object Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "label",
+        "confidence"
+      ],
+      "title": "VisibleObject",
+      "type": "object"
+    },
+    "VisibleTag": {
+      "additionalProperties": false,
+      "properties": {
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "family": {
+          "default": "tag36h11",
+          "maxLength": 40,
+          "minLength": 1,
+          "title": "Family",
+          "type": "string"
+        },
+        "pose": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Pose2D"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "tag_id": {
+          "minimum": 0,
+          "title": "Tag Id",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tag_id",
+        "confidence"
+      ],
+      "title": "VisibleTag",
+      "type": "object"
+    }
+  },
+  "discriminator": {
+    "mapping": {
+      "assertion": "#/$defs/AssertionTraceRecord",
+      "command": "#/$defs/CommandTraceRecord",
+      "decision": "#/$defs/DecisionTraceRecord",
+      "observation": "#/$defs/ObservationTraceRecord",
+      "result": "#/$defs/ResultTraceRecord",
+      "stop": "#/$defs/StopTraceRecord"
+    },
+    "propertyName": "event"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/ObservationTraceRecord"
+    },
+    {
+      "$ref": "#/$defs/DecisionTraceRecord"
+    },
+    {
+      "$ref": "#/$defs/CommandTraceRecord"
+    },
+    {
+      "$ref": "#/$defs/ResultTraceRecord"
+    },
+    {
+      "$ref": "#/$defs/AssertionTraceRecord"
+    },
+    {
+      "$ref": "#/$defs/StopTraceRecord"
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+items:
+  - id: ACC-PILOT-MODELS
+    verdict: pass
+    notes: >-
+      contracts/src/contracts/pilot.py defines the requested pydantic v2 pilot
+      models for skill commands, observations, assertions, decisions, and trace
+      records. The models inherit a closed-shape PilotModel using extra="forbid"
+      and JSON-friendly scalar coercion consistent with existing contracts such
+      as control_command.py and self_model.py.
+  - id: ACC-CLOSED-SKILLS
+    verdict: pass
+    notes: >-
+      PilotSkillName contains exactly stop, survey_scene, face_target,
+      approach_target, center_object_in_gripper, arm_to_angle, claw_open,
+      claw_close, verify_grasp, go_to_destination, and verify_drop. The command
+      union is discriminated by per-skill Literal values, and
+      test_pilot_skill_name_is_closed plus the unknown-skill rejection test cover
+      the closed vocabulary.
+  - id: ACC-TYPED-BOUNDED-COMMANDS
+    verdict: pass
+    notes: >-
+      PilotSkillCommand is an Annotated discriminated union over typed command
+      variants, each with a concrete params model and Field bounds for speed,
+      angle, confidence, timeout, tolerance, force, and related envelopes.
+      tests/test_pilot_schemas.py validates every skill and rejects unknown
+      skill names, arm angle overflow, approach speed overflow, and missing
+      go_to_destination target/coordinates.
+  - id: ACC-OBSERVATION-SNAPSHOT
+    verdict: pass
+    notes: >-
+      PilotObservation includes task_phase, objective, robot_pose, localization
+      confidence/age, visible_objects, visible_tags, manipulator, bridge,
+      last_command, last_result, recent_failures, and current_assertions. The
+      model uses contract-native scalar/list/object fields only; no ROS message
+      classes or topic-specific types are present, and an extra ros_topic field
+      is rejected by test coverage.
+  - id: ACC-ASSERTION-RESULTS
+    verdict: pass
+    notes: >-
+      PilotAssertion uses AssertionState values true, false, and unknown,
+      bounded confidence, bounded evidence entries, observed_ms or age_ms
+      metadata enforced by a validator, and optional recovery_hint. Tests cover
+      unknown state acceptance, invalid state rejection, missing time/age
+      rejection, and confidence bounds.
+  - id: ACC-BOUNDED-DECISIONS
+    verdict: pass
+    notes: >-
+      PilotDecisionAction is limited to continue, retry, stop_success,
+      stop_failure, and request_human. PilotDecision consumes that enum and the
+      tests accept a valid continue decision while rejecting an unknown wander
+      action.
+  - id: ACC-TRACE-UNION
+    verdict: pass
+    notes: >-
+      PilotTraceRecord is an append-friendly discriminated union on event for
+      observation, decision, command, result, assertion, and stop records. Tests
+      validate all six event variants and reject an invalid telemetry
+      discriminator.
+  - id: ACC-SCHEMA-EXPORTS
+    verdict: pass
+    notes: >-
+      contracts/src/contracts/schema.py registers the five pilot schema exports,
+      and the committed files under contracts/schemas/ are present and non-empty.
+      I also compared the current registry render output for each pilot schema
+      against the committed JSON files; missing=[] and stale=[].
+  - id: ACC-PUBLIC-EXPORTS
+    verdict: pass
+    notes: >-
+      contracts/src/contracts/__init__.py additively imports and lists the pilot
+      models/enums in __all__ without removing or renaming pre-existing public
+      exports. Existing top-level imports remain intact.
+  - id: ACC-REGRESSION-GATES
+    verdict: pass
+    notes: >-
+      Verified from the current checkout: make sync exits 0, make test exits 0
+      with contracts 190 passed, self_model_generator 26 passed, and
+      robot/ros2-runtime 154 passed/1 skipped; make validate exits 0; make lint
+      exits 0. Focused pilot tests pass 24/24, contracts make lint passes, and
+      the five pilot schema files are byte-current with the schema registry.
+      Literal root uv sync exits 2 because this repo has no root pyproject.toml;
+      that is a pre-existing repo layout fact, while the ai-sdd build check is
+      make sync and delegates uv sync into each vertical successfully.
+verdict: approve
+rework: []
