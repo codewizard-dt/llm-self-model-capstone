@@ -47,6 +47,9 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn("yellow_ball_v_max", launch_text)
         self.assertIn('"yellow_ball":{"diameter_m":0.065}', launch_text)
         self.assertIn("object_indication_node", launch_text)
+        self.assertIn("object_track_node", launch_text)
+        self.assertIn("agent_scene_node", launch_text)
+        self.assertIn("/vision/agent_scene", launch_text)
         self.assertIn("object_overlay_node", launch_text)
         self.assertIn("/vision/object_overlay", launch_text)
         self.assertIn("object_dimensions_json", launch_text)
@@ -139,6 +142,8 @@ class LaunchContractTests(unittest.TestCase):
             "object_indication_node = vexy_ros.object_indication_node:main",
             setup_text,
         )
+        self.assertIn("object_track_node = vexy_ros.object_track_node:main", setup_text)
+        self.assertIn("agent_scene_node = vexy_ros.agent_scene_node:main", setup_text)
         self.assertIn("task_plan_node = vexy_ros.task_plan_node:main", setup_text)
         self.assertIn("survey_scan_node = vexy_ros.survey_scan_node:main", setup_text)
         self.assertIn("vexy_operator_node = vexy_ros.operator.node:main", setup_text)
@@ -160,6 +165,19 @@ class LaunchContractTests(unittest.TestCase):
             "vexy_calibrate_camera = vexy_ros.camera_calibration_capture:main",
             setup_text,
         )
+        self.assertIn(
+            "vexy_localization_benchmark = vexy_ros.localization_benchmark:main",
+            setup_text,
+        )
+
+    def test_demo_scene_launch_enables_multi_ball_hsv_without_yolo(self) -> None:
+        launch_text = (ROOT / "launch" / "vexy_demo_scene.launch.py").read_text()
+
+        ast.parse(launch_text)
+        self.assertIn('"yellow_ball_detector_enabled": "true"', launch_text)
+        self.assertIn('"yellow_ball_max_detections"', launch_text)
+        self.assertIn('default_value="20"', launch_text)
+        self.assertIn('"yolo_enabled": "false"', launch_text)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,7 @@
+{
+  "run_id": "grab-align-baseline",
+  "task": "grab_align",
+  "provenance": "fixture-backed deterministic baseline; not real robot hardware",
+  "fixture_status": "committed_fixture",
+  "canonical_evidence_path": "telemetry-fixtures/grab-align-baseline/contract.jsonl"
+}

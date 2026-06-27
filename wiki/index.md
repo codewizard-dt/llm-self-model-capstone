@@ -184,7 +184,7 @@ The wiki is split into two domains with opposite organizing laws:
 - Components — [knowledge/entities/components/](knowledge/entities/components/) (this project's own modules, services, scripts)
   - [localizer.py](knowledge/entities/components/localizer.md) — planned Pi-side module: load_map, update_from_tag, update_from_odometry, get_vector_to_waypoint; bridges workspace map config and runtime pose state
   - [vexy_ros ROS 2 Runtime](knowledge/entities/components/vexy-ros-runtime.md) — current ROS 2 Jazzy Pi runtime: camera, AprilTags, scene map, object indication projection, bounded skills, V5 bridge, telemetry, proof export, and `vexy_ros.operator`; task-outline sequencing now documented
-  - [Operator LLM Packet Builder](knowledge/entities/components/operator-llm-packet-builder.md) — offline `operator-llm-critic` v0.2.0 package; assembles Markdown evidence packets for the F8 Generator; both JSONL and ROS-bundle input paths implemented; F10 gap analyzer is the only remaining blocker
+  - [Self-Model Packet Builder](knowledge/entities/components/self-model-packet-builder.md) — offline `self-model-generator` package; assembles Markdown evidence packets for the F8 Generator; both JSONL and ROS-bundle input paths implemented; F10 gap analyzer is the only remaining blocker
 
 ---
 

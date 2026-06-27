@@ -1,0 +1,15 @@
+summary: >-
+  Added a minimal self_model_generator fixture loader that reads the committed
+  telemetry-fixtures/grab-align-baseline/contract.jsonl evidence as
+  contracts.ContractLine records, validates the reusable downstream field surface,
+  and covers the smoke path with tests proving it does not import ROS, MCAP,
+  camera, serial, or robot runtime modules. Wired the new self_model_generator smoke into the
+  root Makefile test, validate, lint, and sync targets without modifying schemas
+  or telemetry fixture payloads.
+satisfies:
+  - ACC-LOADER-CONTRACTLINE
+  - ACC-DOWNSTREAM-FIELDS
+  - ACC-FINITE-GAP
+  - ACC-NO-ROS-MCAP-IMPORTS
+  - ACC-REUSABLE-SURFACE
+  - ACC-FROZEN-SCHEMAS-UNCHANGED

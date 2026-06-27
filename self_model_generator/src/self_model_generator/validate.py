@@ -24,7 +24,7 @@ def validate_fixture_packets() -> tuple[str, str]:
         self_model_path=DEFAULT_SELF_MODEL,
         parts_catalog_path=DEFAULT_PARTS,
         contract_jsonl_path=DEFAULT_CONTRACT_JSONL,
-        human_constraints=("offline operator loop only",),
+        human_constraints=("offline self-model loop only",),
     )
     if BLOCKED_F10_GAP not in contract_packet:
         raise AssertionError("contract fixture packet must label missing F10 gap summary")
@@ -49,7 +49,7 @@ def validate_fixture_packets() -> tuple[str, str]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Validate operator packet-builder fixtures.")
+    parser = argparse.ArgumentParser(description="Validate self-model packet-builder fixtures.")
     parser.add_argument("--out", type=Path, default=None)
     args = parser.parse_args(argv)
 
@@ -59,7 +59,7 @@ def main(argv: list[str] | None = None) -> int:
         args.out.write_text(
             contract_packet + "\n\n---\n\n" + ros_packet + "\n",
         )
-    print("OK - operator packet-builder fixtures valid")
+    print("OK - self-model packet-builder fixtures valid")
     return 0
 
 

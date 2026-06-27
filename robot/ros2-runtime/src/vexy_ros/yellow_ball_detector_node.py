@@ -153,6 +153,12 @@ def detect_yellow_balls(
                     confidence=confidence,
                     bbox_xyxy=(float(x), float(y), float(x + width), float(y + height)),
                     stamp_s=stamp_s,
+                    metadata={
+                        "area_px": area,
+                        "circularity": circularity,
+                        "fill_ratio": fill_ratio,
+                        "source": "yellow_hsv",
+                    },
                 ),
             )
         )

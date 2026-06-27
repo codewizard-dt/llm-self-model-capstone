@@ -2,7 +2,8 @@
 
 ``validate.py`` lives at ``contracts/src/contracts/validate.py``; its grandparent
 (``parents[2]``) is the contracts root where ``fixtures/`` and ``parts_catalog.json``
-live (DEC-VALIDATE-PATH). Four dispatches run over that one contracts root:
+live (DEC-VALIDATE-PATH). The dispatches run over that contracts root plus the
+repo-level ``telemetry-fixtures/`` root:
 
 * ``session_*.jsonl`` → ``ContractLine`` — every non-blank line is validated; a failure
   is reported as ``name:lineno: error`` on stderr. The glob is narrowed to the
@@ -17,6 +18,10 @@ live (DEC-VALIDATE-PATH). Four dispatches run over that one contracts root:
   ``validate_config`` (a non-buildable fixture is reported as
   ``name: not buildable — <messages>``). A missing ``parts_catalog.json`` is skipped,
   consistent with an absent fixtures dir.
+* repo-level ``telemetry-fixtures/*/contract.jsonl`` → ``ContractLine`` — every non-blank
+  fixture evidence line is validated through the same runtime envelope as session
+  telemetry. A failure is reported as ``telemetry-fixtures/<run>/contract.jsonl:lineno:
+  error`` on stderr.
 * ``control_command_*.jsonl`` → ``ControlLine`` | ``AckLine`` (F19) — every non-blank
   line is JSON-parsed, then routed by the closed ``type`` discriminator (D2/D16):
   ``type == "ack"`` → ``AckLine.model_validate``; otherwise →
@@ -45,6 +50,7 @@ _control_line_adapter: TypeAdapter[ControlLine] = TypeAdapter(ControlLine)
 
 def main() -> int:
     contracts_root = Path(__file__).resolve().parents[2]
+    repo_root = contracts_root.parent
     fixtures_dir = contracts_root / "fixtures"
     errors: list[str] = []
     fixtures = sorted(fixtures_dir.glob("session_*.jsonl")) if fixtures_dir.is_dir() else []
@@ -57,6 +63,23 @@ def main() -> int:
                 ContractLine.model_validate_json(line)
             except Exception as exc:  # noqa: BLE001 — collect every line's failure
                 errors.append(f"{path.name}:{lineno}: {exc}")
+
+    telemetry_fixture_root = repo_root / "telemetry-fixtures"
+    telemetry_fixtures = (
+        sorted(telemetry_fixture_root.glob("*/contract.jsonl"))
+        if telemetry_fixture_root.is_dir()
+        else []
+    )
+    for path in telemetry_fixtures:
+        label = path.relative_to(repo_root).as_posix()
+        for lineno, raw in enumerate(path.read_text().splitlines(), 1):
+            line = raw.strip()
+            if not line:
+                continue
+            try:
+                ContractLine.model_validate_json(line)
+            except Exception as exc:  # noqa: BLE001 — collect every line's failure
+                errors.append(f"{label}:{lineno}: {exc}")
     self_models = sorted(fixtures_dir.glob("self_model_*.json")) if fixtures_dir.is_dir() else []
     for path in self_models:
         try:

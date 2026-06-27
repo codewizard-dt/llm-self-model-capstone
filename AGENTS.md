@@ -19,12 +19,21 @@ Five verticals (each its own stack; logical names map onto the repo):
 
 - `contracts/` — Python 3.12 · frozen schemas (pydantic v2) + the draft control grammar, adapter
   interfaces, `Synthetic` oracle, `Replay` sources. **All schemas live here.**
-- `operator/` — Python 3.12 · the offline loop: Generator, 3-critic panel, gap analyzer, presenter, demo replay.
+- `self_model_generator/` — Python 3.12 · the offline self-model loop: Generator, 3-critic
+  panel, gap analyzer, presenter, demo replay.
 - `pilot/` — Python 3.11 · the online control loop (LLM-on-Pi). *(new; name provisional.)*
 - `coprocessor` → `robot/ros2-runtime/` — Python 3.12 · ROS 2 Jazzy on Ubuntu 24.04 ·
   PiCam2 via `camera_ros`, rectification, AprilTag scene mapping, V5 serial bridge, MCAP capture,
   and contract-valid JSONL export. `robot/pi-runtime/` remains the legacy/fallback runtime.
 - `brain` → `robot/v5-brain/` — **PROS C++** (FreeRTOS two-task) · emits telemetry + executes clamped commands.
+
+## Naming convention
+
+`operator` is reserved for the live robot-control operator only: ROS packages, nodes, topics, and
+docs under `robot/ros2-runtime/` such as `robot/ros2-runtime/src/vexy_ros/operator`. Do **not**
+create a repo-root `operator/` vertical, `self_model_operator` package, or `self-model-operator`
+project for the offline LLM loop. Offline self-modeling code belongs under `self_model_generator/`
+and uses the `self_model_generator` Python package / `self-model-generator` project name.
 
 ## Build / verify
 

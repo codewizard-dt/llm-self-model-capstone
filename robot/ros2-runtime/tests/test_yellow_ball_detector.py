@@ -95,6 +95,24 @@ class YellowBallDetectorTests(unittest.TestCase):
         self.assertEqual(len(detections), 1)
         self.assertGreaterEqual(detections[0].bbox_xyxy[0], 185.0)
 
+    @unittest.skipIf(cv2 is None, "opencv-python is not installed")
+    def test_can_return_multiple_yellow_balls_with_debug_metadata(self) -> None:
+        import numpy as np
+
+        frame = np.zeros((240, 320, 3), dtype=np.uint8)
+        yellow = self._bgr_from_hsv(24, 220, 225)
+        for center in ((70, 120), (160, 120), (250, 120)):
+            cv2.circle(frame, center, 22, yellow, -1)
+
+        detections = detect_yellow_balls(frame, max_detections=5)
+
+        self.assertEqual(len(detections), 3)
+        payload = detections[0].to_json()
+        self.assertEqual(payload["source"], "yellow_hsv")
+        self.assertIn("area_px", payload)
+        self.assertIn("circularity", payload)
+        self.assertIn("fill_ratio", payload)
+
 
 if __name__ == "__main__":
     unittest.main()

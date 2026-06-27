@@ -2,6 +2,20 @@
 
 ---
 
+## Scope
+
+This runbook records real hardware evidence. MCAP remains the replayable raw
+capture and audit source for those runs, but the self-modeling handoff is the
+exported `contracts.ContractLine` JSONL. Fixture-backed MVP work should use
+`telemetry-fixtures/<run-id>/contract.jsonl` directly; those fixtures are not
+real robot runs and do not require ROS, hardware, or MCAP.
+
+PR #43 is a useful telemetry JSONL baseline with partial MCAP capture. Treat it
+as groundwork for this runbook, not proof that full hardware capture,
+replay/audit, and export requirements are complete.
+
+---
+
 ### Start a bag recording
 
 ```bash
@@ -73,10 +87,12 @@ Default annotation keys:
 | `0` | `uncertain` |
 | `space` | `clear_label` |
 
-### Export VEX bridge topics and scene map to JSON for LLM analysis
+### Export VEX bridge topics and scene map to JSON for diagnostics
 
 Extract `/vision/scene_map`, `/vex/ack`, `/vex/telemetry`, and
-`/vex/bridge_status` messages to newline-delimited JSON:
+`/vex/bridge_status` messages to newline-delimited JSON. This raw topic JSONL is
+useful for diagnostics, but downstream F8, F9, F10, F11, F12, and `make demo`
+consume `contracts.ContractLine` JSONL, not ROS topics or MCAP directly:
 
 ```bash
 ros2 bag convert \
@@ -106,7 +122,8 @@ awk -F',' 'NR>1 {gsub(/^"|"$/, "", $2); print $2}' ack_raw.csv > ack.jsonl
 
 For `vexy_tag_action_proof` runs, export directly from the proof directory. The
 command reads `summary.json`, uses `scene_map.final.json` when present, writes
-`tag_action_bundle.json`, and writes contract JSONL under `contract/`:
+`tag_action_bundle.json`, and writes contract JSONL under `contract/`. This
+`ContractLine` JSONL is the semantic evidence handoff to the self-model loop:
 
 ```bash
 PYTHONPATH=/home/vexy/llm-self-model-capstone/contracts/src:$PYTHONPATH \

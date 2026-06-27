@@ -158,7 +158,7 @@ Once a contract JSON is assembled on the V5 Brain, it travels through a three-st
 `OperatorNode` publishes each result to the `/operator/results` ROS topic as it is produced — **live, per method run** — not only at session close. This means the contract evidence stream is available in real time on the Pi during task execution, and can be recorded to MCAP or forwarded to the offline packet builder via `vexy_ros.evidence_export.contract_jsonl_from_bundle`.
 
 emitted_by::[[vexy-ros-runtime]]
-consumed_by::[[operator-llm-packet-builder]]
+consumed_by::[[self-model-packet-builder]]
 
 ## Driver-Labeled Telemetry Windows (2026-06-26)
 
