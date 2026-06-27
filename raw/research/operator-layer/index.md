@@ -120,11 +120,11 @@ ROS 2 node class extending `rclpy.node.Node` (node name: `"vexy_operator"`).
 
 ### Operator Docs
 
-`operator/docs/llm_critic_architecture.md` (created 2026-06-24, owner: Grace Huang) is the architecture bridge doc for F8/F9. It:
+`self_model_generator/docs/llm_critic_architecture.md` (created 2026-06-24, owner: Grace Huang) is the architecture bridge doc for F8/F9. It:
 - Defines Generator and three stateless Critics (physics, torque, CoM/geometry)
 - Specifies input/output contracts for both
-- Names F10 gap-analyzer as the remaining blocker for full F8 Generator implementation
-- Lists 6 implementation slices (operator-packet-builder → generator-prompt → generator-gap-revision → critic-prompt-panel → critic-review-aggregation → planted-fault-critic-tests)
+- Documents the first deterministic loop-closure slice in `self_model_generator.loop_closure`
+- Lists remaining hardening/adaptor slices: broader residual coverage, planted-fault critic tests, and external LLM prompt adapters
 - Confirms offline LLM work is allowed to run outside the Pi
 
 `robot/ros2-runtime/operator/GUIDEBOOK.md` documents the ROS operator from the operator's perspective: primitive commands, operator abstractions, task outline format, vision inputs, localization, telemetry events, contract results, and ad-hoc SSH commands.
@@ -160,7 +160,7 @@ Neither `operator/` nor `vexy_ros/operator/` defines their own telemetry or self
 
 4. **F10 gap analyzer has a first slice** [S3]: Gap summary sections are blocked (`BLOCKED_F10_GAP`) when no `gap_summary_path` is provided, or labeled with fixture/live/replay provenance when the supplied summary source metadata matches the packet evidence.
 
-5. **F8 Generator and F9 Critics are not yet implemented** [S3]: The architecture doc defines their input/output contracts but lists them as future slices. The packet builder is the completed prerequisite for both.
+5. **F8/F9 have a deterministic first slice** [S3]: `self_model_generator.loop_closure` can emit a candidate `SelfModel`, run physics/torque/CoM critic checks, and export an approved next `TaskEnvelope`. External LLM prompt adapters remain future work.
 
 6. **Task outline drives allowed methods** [S2]: `OperatorTaskContract` parses the `task_outline_json` parameter into a `method_plan`. Ad-hoc SSH commands are only accepted if their action appears in the loaded task outline.
 

@@ -86,6 +86,7 @@ This package must import all telemetry, self-model, and parts schemas from `cont
 `self_model_generator/docs/llm_critic_architecture.md` (owner: Grace Huang, 2026-06-24) defines:
 - One **Generator LLM** that reads the assembled packet and produces a revised SelfModel
 - Three stateless **Critics**: physics, torque, CoM/geometry — each attacks the Generator's output
-- Six implementation slices: self-model-packet-builder (done) -> generator-prompt -> generator-gap-revision -> critic-prompt-panel -> critic-review-aggregation -> planted-fault-critic-tests
+- First deterministic implementation in `self_model_generator.loop_closure`: gap summary -> candidate SelfModel -> critic report -> approved TaskEnvelope
+- Remaining hardening/adaptor slices: broader residual coverage, planted-fault critic tests, and external LLM prompt adapters
 
-The packet builder is the **completed prerequisite**; the remaining five slices are unimplemented pending F10.
+The packet builder is now one stage in the repo-local closure harness rather than the final stop.

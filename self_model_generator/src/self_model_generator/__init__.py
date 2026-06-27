@@ -16,6 +16,11 @@ _GAP_ANALYZER_EXPORTS = {
     "build_gap_summary_from_jsonl",
     "write_gap_summary",
 }
+_LOOP_CLOSURE_EXPORTS = {
+    "export_task_envelope",
+    "generate_self_model_candidate",
+    "run_critic_panel",
+}
 _PACKET_BUILDER_EXPORTS = {
     "BLOCKED_F10_GAP",
     "BLOCKED_HARDWARE_PROOF",
@@ -30,7 +35,12 @@ _PACKET_BUILDER_EXPORTS = {
     "validate_gap_summary_matches_contract_lines",
 }
 
-__all__ = sorted(_FIXTURE_LOADER_EXPORTS | _GAP_ANALYZER_EXPORTS | _PACKET_BUILDER_EXPORTS)
+__all__ = sorted(
+    _FIXTURE_LOADER_EXPORTS
+    | _GAP_ANALYZER_EXPORTS
+    | _LOOP_CLOSURE_EXPORTS
+    | _PACKET_BUILDER_EXPORTS
+)
 
 
 def __getattr__(name: str) -> Any:
@@ -38,6 +48,8 @@ def __getattr__(name: str) -> Any:
         return getattr(import_module("self_model_generator.fixture_loader"), name)
     if name in _GAP_ANALYZER_EXPORTS:
         return getattr(import_module("self_model_generator.gap_analyzer"), name)
+    if name in _LOOP_CLOSURE_EXPORTS:
+        return getattr(import_module("self_model_generator.loop_closure"), name)
     if name in _PACKET_BUILDER_EXPORTS:
         return getattr(import_module("self_model_generator.packet_builder"), name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

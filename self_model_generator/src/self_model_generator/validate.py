@@ -4,12 +4,20 @@ import argparse
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from self_model_generator.loop_closure import (
+    export_task_envelope,
+    generate_self_model_candidate,
+    run_critic_panel,
+)
 from self_model_generator.gap_analyzer import build_gap_summary_from_jsonl, write_gap_summary
 from self_model_generator.packet_builder import (
     BLOCKED_F10_GAP,
     BLOCKED_HARDWARE_PROOF,
     FIXTURE_BACKED_GAP,
     build_packet_from_files,
+    load_parts_catalog,
+    load_self_model,
+    read_contract_lines_jsonl,
 )
 
 
@@ -70,12 +78,43 @@ def validate_fixture_packets() -> tuple[str, str, str]:
     return contract_packet, ros_packet, gap_packet
 
 
+def validate_loop_closure_fixture() -> None:
+    current_model = load_self_model(DEFAULT_SELF_MODEL)
+    parts_catalog = load_parts_catalog(DEFAULT_PARTS)
+    contract_lines = read_contract_lines_jsonl(DEFAULT_CONTRACT_JSONL)
+    gap_summary = build_gap_summary_from_jsonl(DEFAULT_CONTRACT_JSONL)
+
+    candidate, handoff = generate_self_model_candidate(current_model, gap_summary)
+    if candidate.generation != current_model.generation + 1:
+        raise AssertionError("generator must emit the next SelfModel generation")
+    if handoff["candidate_generation"] != candidate.generation:
+        raise AssertionError("generator handoff must name the candidate generation")
+
+    critic_report = run_critic_panel(
+        candidate,
+        parts_catalog=parts_catalog,
+        contract_lines=contract_lines,
+        gap_summary=gap_summary,
+    )
+    if critic_report["approved"] is not True:
+        raise AssertionError("fixture candidate should pass the deterministic critic panel")
+
+    envelope = export_task_envelope(
+        candidate,
+        critic_report=critic_report,
+        seed_contract=contract_lines[0],
+    )
+    if envelope.contract.generation != candidate.generation:
+        raise AssertionError("exported task envelope must carry the candidate generation")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Validate self-model packet-builder fixtures.")
     parser.add_argument("--out", type=Path, default=None)
     args = parser.parse_args(argv)
 
     contract_packet, ros_packet, gap_packet = validate_fixture_packets()
+    validate_loop_closure_fixture()
     if args.out is not None:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(

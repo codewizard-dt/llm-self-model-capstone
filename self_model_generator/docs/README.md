@@ -16,7 +16,7 @@ is reserved for live robot-control code under `robot/ros2-runtime/`.
 
 ## Self-Improving Telemetry Loop
 
-The first executable loop is:
+The first executable bridge is:
 
 ```text
 run robot
@@ -24,15 +24,16 @@ run robot
 -> export/read ContractLine JSONL
 -> build F10 gap summary
 -> build self-model packet
--> generator proposes SelfModel/runtime-config change
--> critics + human approve
--> deploy approved change
--> next run records whether the gap shrank
+-> deterministic Generator emits a candidate SelfModel
+-> deterministic 3-critic panel reviews it
+-> approved candidate exports the next TaskEnvelope
 ```
 
 Telemetry by itself is only memory. The loop becomes useful when the
 `ContractLine` evidence is turned into a gap summary and then into a self-model
-packet that the Generator/Critic workflow can review.
+packet that the Generator/Critic workflow can review. The current implementation
+closes the repo-local artifact loop; it still does not redeploy robot behavior
+without a human/safety gate.
 
 From `self_model_generator/`:
 
@@ -55,6 +56,13 @@ PYTHONPATH=src:../contracts/src:../robot/ros2-runtime/src \
   --human-constraint "critic and human review required before deploy" \
   --out /tmp/self_model_packet.md
 ```
+
+The repo-local closure harness lives in `self_model_generator.loop_closure`:
+
+- `generate_self_model_candidate(...)` emits a revised `contracts.SelfModel`.
+- `run_critic_panel(...)` runs physics, torque, and CoM/geometry reviews.
+- `export_task_envelope(...)` creates the next robot-facing `TaskEnvelope` only
+  after critic approval.
 
 For live robot runs, use the JSONL written from `/operator/results` as the
 `--contract-jsonl` input. The analyzer currently diagnoses:
