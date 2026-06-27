@@ -56,7 +56,7 @@ rebuild-pi:
 	pip uninstall --break-system-packages -y vexy-ros || true
 	pip install --break-system-packages "pydantic>=2,<3"
 	pip install --break-system-packages -e contracts/
-	bash -c "cd $(PI_REPO) && source /opt/ros/jazzy/setup.bash && colcon build --base-paths robot/ros2-runtime --build-base $(PI_ROS_WS)/build --install-base $(PI_ROS_WS)/install --log-base $(PI_ROS_WS)/log --packages-select vexy_ros --cmake-args -DCMAKE_BUILD_TYPE=Release --event-handlers console_direct+"
+	bash -c "cd $(PI_REPO) && source /opt/ros/jazzy/setup.bash && colcon --log-base $(PI_ROS_WS)/log build --base-paths robot/ros2-runtime --build-base $(PI_ROS_WS)/build --install-base $(PI_ROS_WS)/install --packages-select vexy_ros --cmake-args -DCMAKE_BUILD_TYPE=Release --event-handlers console_direct+"
 	systemctl --user restart vexy-ros-stack.service
 	systemctl --user status vexy-ros-stack.service
 
