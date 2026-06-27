@@ -41,6 +41,7 @@ primitive command decision, but they do not encode a full mission.
 | `locate_nearest_apriltag()` | Fresh AprilTag detections from `/tf` and `/vision/scene_map`. | No command if a tag is fresh; otherwise `turn`. |
 | `orient_to_tag(tag_index)` | Fresh tag pose in the calibrated robot frame. | `turn` until yaw is within tolerance, then `stop`. |
 | `move_to_tag(tag_index)` | Fresh tag pose plus drivetrain telemetry and the loaded map. | `drive` toward the map-derived stand-off pose, `turn` if target is missing, `stop` on arrival or fault. |
+| `pickup_ball(duration_ms=700)` | Fresh yellow-ball indications plus manipulator telemetry. | `release`, then rotation-only `drive` search if no ball is visible, then bounded visual approach, then `grab` only after claw-mouth visual capture. |
 | `grab()` | Manipulator telemetry if available. | `grab`; emits `grabbed` when current/velocity indicate a held object. |
 | `lift()` | Command timing and telemetry. | `lift`. |
 | `release()` | Command timing and telemetry. | `release`. |
@@ -83,8 +84,9 @@ Example:
 ```
 
 Supported method names are `locate_nearest_apriltag`, `orient_to_tag`,
-`move_to_tag`, `grab`, `lift`, and `release`. Ad-hoc SSH commands are accepted
-only when their `action` appears in the loaded task outline.
+`move_to_tag`, `pickup_ball`, `grab`, `lift`, and `release`. Ad-hoc SSH
+commands are accepted only when their `action` appears in the loaded task
+outline.
 
 ## Vision Input
 
@@ -120,6 +122,10 @@ The operator publishes structured JSON on `/operator/events`.
 | `apriltag_searching` | The requested tag or nearest tag is not fresh, so the operator sent `turn`. |
 | `apriltag_map_loaded` | The operator loaded its workspace map and detected the available tag IDs. |
 | `apriltag_located` | A nearest fresh AprilTag was selected. |
+| `ball_searching` | `pickup_ball()` has no fresh yellow-ball pose and is rotating in place with zero forward velocity. |
+| `ball_search_acquired` | `pickup_ball()` found a fresh yellow-ball pose and moved into visual approach. |
+| `ball_search_exhausted` | `pickup_ball()` finished its bounded rotation search without finding a ball and sent `stop`. |
+| `grab_verifying` | The claw closed with provisional grip evidence; `pickup_ball()` is waiting for post-grab possession and vision to settle before reporting success. |
 | `oriented` | The requested tag is within yaw tolerance and the operator sent `stop`. |
 | `arrived` | The requested tag is within distance, lateral, and yaw tolerances. |
 | `grabbed` | Manipulator current is elevated while manipulator velocity is low after `grab`. |
@@ -159,11 +165,11 @@ ros2 topic pub --once /operator/command std_msgs/msg/String \
   "{data: '{\"action\":\"move_to_tag\",\"tag_index\":1}'}"
 
 ros2 topic pub --once /operator/command std_msgs/msg/String \
-  "{data: '{\"action\":\"grab\",\"duration_ms\":700}'}"
+  "{data: '{\"action\":\"pickup_ball\",\"duration_ms\":700}'}"
 ```
 
 Supported actions are `locate_nearest_apriltag`, `orient_to_tag`,
-`move_to_tag`, `grab`, `lift`, and `release`.
+`move_to_tag`, `pickup_ball`, `grab`, `lift`, and `release`.
 
 ## Self-Model Task Files
 
@@ -208,7 +214,7 @@ primitive packets directly. For example, ball delivery should run:
 
 1. `locate_nearest_apriltag()`
 2. `move_to_tag(ball_loading_tag_index)`
-3. `grab()`
+3. `pickup_ball()`
 4. `move_to_tag(bin_tag_index)`
 5. `lift()`
 6. `release()`

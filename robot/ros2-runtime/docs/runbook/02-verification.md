@@ -219,6 +219,57 @@ ros2 launch vexy_ros vexy.launch.py \
   camera_in_robot_json:='{"x_m":0.12,"y_m":0.0,"yaw_rad":0.0}'
 ```
 
+### 2.12 Guarded yellow-ball pickup procedure
+
+Only run this after camera, object detection, `/vex/ack`, `/vex/telemetry`, and
+Brain program readiness are green. `pickup_ball` owns its own search procedure:
+if no fresh yellow-ball indication is visible after the claw opens, it rotates in
+place with zero forward velocity, sweeps left/right/return, and fails closed with
+`ball_not_found` rather than driving forward blindly.
+
+Preflight:
+
+```bash
+ros2 topic echo /operator/status --once
+ros2 topic echo /vision/object_detections --once
+ros2 topic echo /vision/object_indications --once
+ros2 topic echo /vex/telemetry --once
+```
+
+Expected: `brain_program_ready:true`, `bridge_status:"ok"`,
+`motion_enabled:true`, and either a fresh yellow-ball indication or an empty
+detection set. Empty detections are not an error; they mean the operator must
+search before approach.
+
+Run one bounded pickup attempt from a sourced shell:
+
+```bash
+ros2 topic echo /operator/events &
+ros2 topic echo /operator/results &
+ros2 topic pub --rate 10 /operator/command std_msgs/String \
+  '{"data":"{\"action\":\"pickup_ball\",\"duration_ms\":700}"}'
+```
+
+Stop publishing after the result is terminal:
+
+- success: `outcome.reason:"ball_grabbed"` plus final `/operator/status`
+  `has_object:true` and camera evidence that the ball is not still outside the
+  claw. A correct run may publish `outcome.reason:"verifying_grab"` first while
+  the operator waits for post-grab possession and vision to settle.
+- clean no-target failure: `outcome.reason:"ball_not_found"` and event
+  `ball_search_exhausted`; the robot should have sent only rotation commands
+  during search
+- clean grab failure: `outcome.reason:"grab_not_confirmed"` with detail showing
+  missing visual capture, missing grip confirmation, or ball still visible
+  outside the claw
+
+Always send a final stop before inspecting the scene:
+
+```bash
+ros2 topic pub --once /vex/cmd std_msgs/String \
+  '{"data":"{\"kind\":\"drive\",\"vx\":0.0,\"vy\":0.0,\"omega\":0.0,\"duration_ms\":100,\"reason\":\"operator_pickup_stop\"}"}'
+```
+
 Current measured VEXY default from static calibration: the claw capture center is
 4.5 in to the robot's right of the camera and 13 in in front of the camera. In
 robot-frame coordinates, record that as the default camera/profile offset before

@@ -20,6 +20,7 @@ from vexy_ros.operator._core import (  # noqa: E402
     MotorSample,
     ObjectObservation,
     Operator,
+    OperatorConfig,
     OperatorEvent,
     OperatorResult,
     PacketCommandSink,
@@ -64,6 +65,7 @@ def make_operator(
     sink: PacketCommandSink,
     *,
     clock: Any = time.monotonic,
+    config: OperatorConfig | None = None,
     event_sink: Any = None,
 ) -> Operator:
     return Operator(
@@ -72,6 +74,7 @@ def make_operator(
         camera_in_robot=Pose2D(0.0, -0.08, 0.0),
         task_contract=TASK_CONTRACT,
         task_outline=TASK_OUTLINE,
+        config=config,
         clock=clock,
         event_sink=event_sink,
     )
@@ -629,6 +632,11 @@ class OperatorCoreTests(unittest.TestCase):
             )
         )
         result = operator.pickup_ball(duration_ms=700)
+        self.assertFalse(result.success)
+        self.assertEqual(result.reason, "verifying_grab")
+
+        now = 16.1
+        result = operator.pickup_ball(duration_ms=700)
         self.assertTrue(result.success)
         self.assertEqual(result.reason, "ball_grabbed")
 
@@ -750,13 +758,18 @@ class OperatorCoreTests(unittest.TestCase):
                         device="effector_motor",
                         subsystem="manipulator",
                         sample_ms=100,
-                        position_deg=-23.0,
+                        position_deg=237.0,
                         velocity_rpm=0.0,
                         current_amp=0.0,
                     ),
                 ),
             )
         )
+        result = operator.pickup_ball(duration_ms=700)
+        self.assertFalse(result.success)
+        self.assertEqual(result.reason, "verifying_grab")
+
+        now = 16.1
         result = operator.pickup_ball(duration_ms=700)
 
         self.assertTrue(result.success)
@@ -766,7 +779,9 @@ class OperatorCoreTests(unittest.TestCase):
         self.assertTrue(events[-1].detail["grip_confirmed"])
         self.assertEqual(sink.packets[-1]["cmd"], "grab")
 
-    def test_pickup_ball_without_visual_lock_drives_forward_then_fails(self) -> None:
+    def test_pickup_ball_fails_when_ball_visible_outside_lateral_zone_after_close(
+        self,
+    ) -> None:
         now = 10.0
 
         def clock() -> float:
@@ -777,21 +792,148 @@ class OperatorCoreTests(unittest.TestCase):
 
         operator.pickup_ball(duration_ms=700)
         now = 10.8
+        operator.update_vision(
+            VisionSnapshot(
+                stamp_s=now,
+                objects=(
+                    ObjectObservation(
+                        "yellow_ball",
+                        "yellow_ball",
+                        now,
+                        forward_m=0.05,
+                        left_m=-0.08,
+                    ),
+                ),
+            )
+        )
+        operator.pickup_ball(duration_ms=700)
+
+        now = 14.3
+        operator.pickup_ball(duration_ms=700)
+        self.assertEqual(sink.packets[-1]["cmd"], "grab")
+
+        now = 15.4
+        operator.update_vision(
+            VisionSnapshot(
+                stamp_s=now,
+                objects=(
+                    ObjectObservation(
+                        "yellow_ball",
+                        "yellow_ball",
+                        now,
+                        forward_m=0.05,
+                        left_m=-0.28,
+                    ),
+                ),
+            )
+        )
+        operator.update_telemetry(
+            TelemetrySnapshot(
+                stamp_s=now,
+                motor_samples=(
+                    MotorSample(
+                        device="effector_motor",
+                        subsystem="manipulator",
+                        sample_ms=100,
+                        position_deg=320.0,
+                        velocity_rpm=0.0,
+                        current_amp=0.0,
+                    ),
+                ),
+            )
+        )
         result = operator.pickup_ball(duration_ms=700)
+
+        self.assertFalse(result.success)
+        self.assertEqual(result.reason, "grab_not_confirmed")
+
+    def test_pickup_ball_without_visual_lock_searches_then_fails(self) -> None:
+        now = 10.0
+
+        def clock() -> float:
+            return now
+
+        sink = PacketCommandSink()
+        operator = make_operator(
+            sink,
+            clock=clock,
+            config=OperatorConfig(
+                ball_search_s=1.0,
+                ball_search_segment_s=0.25,
+                ball_search_omega=0.2,
+            ),
+        )
+
+        operator.pickup_ball(duration_ms=700)
+        now = 10.8
+        result = operator.pickup_ball(duration_ms=700)
+        self.assertFalse(result.success)
+        self.assertEqual(result.reason, "searching_for_ball")
+        self.assertEqual(sink.packets[-1]["cmd"], "drive")
+        self.assertEqual(sink.packets[-1]["reason"], "search_for_ball")
+        self.assertEqual(sink.packets[-1]["vx"], 0.0)
+        self.assertGreater(sink.packets[-1]["omega"], 0.0)
+
+        now = 11.2
+        result = operator.pickup_ball(duration_ms=700)
+        self.assertFalse(result.success)
+        self.assertEqual(result.reason, "searching_for_ball")
+        self.assertEqual(sink.packets[-1]["cmd"], "drive")
+        self.assertEqual(sink.packets[-1]["vx"], 0.0)
+        self.assertLess(sink.packets[-1]["omega"], 0.0)
+
+        now = 12.0
+        result = operator.pickup_ball(duration_ms=700)
+        self.assertFalse(result.success)
+        self.assertEqual(result.reason, "ball_not_found")
+        self.assertEqual(sink.packets[-1]["cmd"], "stop")
+        self.assertEqual(sink.packets[-1]["reason"], "ball_search_exhausted")
+
+    def test_pickup_ball_search_acquires_ball_then_approaches(self) -> None:
+        now = 10.0
+
+        def clock() -> float:
+            return now
+
+        events: list[OperatorEvent] = []
+        sink = PacketCommandSink()
+        operator = make_operator(
+            sink,
+            clock=clock,
+            config=OperatorConfig(ball_search_s=2.0, ball_search_omega=0.2),
+            event_sink=events.append,
+        )
+
+        operator.pickup_ball(duration_ms=700)
+        now = 10.8
+        result = operator.pickup_ball(duration_ms=700)
+        self.assertEqual(result.reason, "searching_for_ball")
+        self.assertEqual(sink.packets[-1]["reason"], "search_for_ball")
+        self.assertEqual(sink.packets[-1]["vx"], 0.0)
+
+        now = 11.0
+        operator.update_vision(
+            VisionSnapshot(
+                stamp_s=now,
+                objects=(
+                    ObjectObservation(
+                        "yellow_ball",
+                        "yellow_ball",
+                        now,
+                        forward_m=0.35,
+                        left_m=0.04,
+                    ),
+                ),
+            )
+        )
+        result = operator.pickup_ball(duration_ms=700)
+
         self.assertFalse(result.success)
         self.assertEqual(result.reason, "moving_to_ball")
         self.assertEqual(sink.packets[-1]["cmd"], "drive")
-        self.assertEqual(
-            sink.packets[-1]["reason"], "push_ball_to_wall_without_visual_lock"
-        )
+        self.assertEqual(sink.packets[-1]["reason"], "push_ball_to_wall")
         self.assertGreater(sink.packets[-1]["vx"], 0.0)
-
-        now = 14.3
-        result = operator.pickup_ball(duration_ms=700)
-        self.assertFalse(result.success)
-        self.assertEqual(result.reason, "grab_not_confirmed")
-        self.assertEqual(sink.packets[-1]["cmd"], "stop")
-        self.assertEqual(sink.packets[-1]["reason"], "ball_capture_zone_missing")
+        self.assertIn("ball_search_acquired", [event.name for event in events])
 
     def test_pickup_ball_fails_after_empty_close_attempts(self) -> None:
         now = 10.0

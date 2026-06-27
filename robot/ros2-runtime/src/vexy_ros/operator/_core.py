@@ -289,14 +289,18 @@ class OperatorConfig:
     pickup_open_ms: int = 600
     pickup_open_settle_s: float = 0.2
     pickup_grab_settle_s: float = 0.35
+    pickup_verify_settle_s: float = 0.6
     ball_capture_forward_m: float = 0.14
     ball_capture_lateral_m: float = 0.08
     ball_approach_target_forward_m: float = 0.07
     ball_approach_max_vx: float = 0.09
     ball_blind_approach_s: float = 1.35
     ball_blind_approach_vx: float = 0.07
+    ball_search_s: float = 32.0
+    ball_search_segment_s: float = 8.0
+    ball_search_omega: float = 0.28
     ball_claw_lateral_target_m: float = -0.08
-    ball_close_forward_m: float = 0.025
+    ball_close_forward_m: float = 0.08
     ball_close_min_approach_s: float = 0.35
     ball_wall_contact_s: float = 3.4
     ball_wall_contact_vx: float = 0.10
@@ -369,7 +373,14 @@ class Operator:
         self.last_pose_update_s: float | None = None
         self.last_command: PrimitiveCommand | None = None
         self.pickup_phase: Literal[
-            "idle", "opening", "approaching", "closing", "done", "failed"
+            "idle",
+            "opening",
+            "searching",
+            "approaching",
+            "closing",
+            "verifying",
+            "done",
+            "failed",
         ] = "idle"
         self.pickup_phase_start_s: float | None = None
         self.pickup_visual_capture_confirmed = False
@@ -1034,8 +1045,86 @@ class Operator:
                     map_pose=self.map_pose,
                     localization_source=self.localization_source,
                 )
-            self.pickup_phase = "approaching"
+            ball = self.fresh_ball()
+            self.pickup_phase = (
+                "approaching"
+                if ball is not None
+                and ball.forward_m is not None
+                and ball.left_m is not None
+                else "searching"
+            )
             self.pickup_phase_start_s = now_s
+
+        if self.pickup_phase == "searching":
+            ball = self.fresh_ball()
+            search_elapsed_s = now_s - float(self.pickup_phase_start_s or now_s)
+            if (
+                ball is not None
+                and ball.forward_m is not None
+                and ball.left_m is not None
+            ):
+                self.pickup_phase = "approaching"
+                self.pickup_phase_start_s = now_s
+                self._emit(
+                    "ball_search_acquired",
+                    {
+                        "search_elapsed_s": search_elapsed_s,
+                        "forward_m": ball.forward_m,
+                        "left_m": ball.left_m,
+                        "confidence": ball.confidence,
+                    },
+                )
+            elif search_elapsed_s >= self.config.ball_search_s:
+                command = PrimitiveCommand(
+                    "stop",
+                    ttl_ms=self.config.stop_ttl_ms,
+                    reason="ball_search_exhausted",
+                )
+                self._send(command)
+                self.pickup_phase = "failed"
+                self.pickup_phase_start_s = now_s
+                self.pickup_attempts = self.config.pickup_max_attempts
+                self._emit(
+                    "ball_search_exhausted",
+                    {
+                        "search_elapsed_s": search_elapsed_s,
+                        "visual_capture_confirmed": self.pickup_visual_capture_confirmed,
+                    },
+                )
+                return OperatorResult(
+                    False,
+                    "ball_not_found",
+                    command=command,
+                    map_pose=self.map_pose,
+                    localization_source=self.localization_source,
+                    has_object=self.has_object(),
+                )
+            else:
+                omega = self._ball_search_omega(search_elapsed_s)
+                command = PrimitiveCommand(
+                    "drive",
+                    vx=0.0,
+                    vy=0.0,
+                    omega=omega,
+                    ttl_ms=self.config.drive_ttl_ms,
+                    reason="search_for_ball",
+                )
+                self._send(command)
+                self._emit(
+                    "ball_searching",
+                    {
+                        "reason": "no_fresh_ball",
+                        "search_elapsed_s": search_elapsed_s,
+                        "omega": omega,
+                    },
+                )
+                return OperatorResult(
+                    False,
+                    "searching_for_ball",
+                    command=command,
+                    map_pose=self.map_pose,
+                    localization_source=self.localization_source,
+                )
 
         if self.pickup_phase == "approaching":
             ball = self.fresh_ball()
@@ -1098,6 +1187,58 @@ class Operator:
                 )
 
             if ball is None or ball.forward_m is None or ball.left_m is None:
+                if not self.pickup_visual_capture_confirmed:
+                    if approach_elapsed_s >= self.config.ball_search_s:
+                        command = PrimitiveCommand(
+                            "stop",
+                            ttl_ms=self.config.stop_ttl_ms,
+                            reason="ball_capture_zone_missing",
+                        )
+                        self._send(command)
+                        self.pickup_phase = "failed"
+                        self.pickup_phase_start_s = now_s
+                        self.pickup_attempts = self.config.pickup_max_attempts
+                        self._emit(
+                            "ball_capture_zone_missing",
+                            {
+                                "reason": "lost_ball_before_capture",
+                                "approach_elapsed_s": approach_elapsed_s,
+                                "visual_capture_confirmed": self.pickup_visual_capture_confirmed,
+                            },
+                        )
+                        return OperatorResult(
+                            False,
+                            "grab_not_confirmed",
+                            command=command,
+                            map_pose=self.map_pose,
+                            localization_source=self.localization_source,
+                            has_object=self.has_object(),
+                        )
+                    omega = self._ball_search_omega(approach_elapsed_s)
+                    command = PrimitiveCommand(
+                        "drive",
+                        vx=0.0,
+                        vy=0.0,
+                        omega=omega,
+                        ttl_ms=self.config.drive_ttl_ms,
+                        reason="reacquire_ball",
+                    )
+                    self._send(command)
+                    self._emit(
+                        "ball_searching",
+                        {
+                            "reason": "lost_ball_before_capture",
+                            "approach_elapsed_s": approach_elapsed_s,
+                            "omega": omega,
+                        },
+                    )
+                    return OperatorResult(
+                        False,
+                        "searching_for_ball",
+                        command=command,
+                        map_pose=self.map_pose,
+                        localization_source=self.localization_source,
+                    )
                 if approach_elapsed_s >= self.config.ball_wall_contact_s:
                     command = PrimitiveCommand(
                         "stop",
@@ -1126,18 +1267,19 @@ class Operator:
                     )
                 command = PrimitiveCommand(
                     "drive",
-                    vx=self.config.ball_wall_contact_vx,
+                    vx=min(self.config.ball_wall_contact_vx, 0.04),
                     vy=0.0,
                     omega=0.0,
                     ttl_ms=self.config.drive_ttl_ms,
-                    reason="push_ball_to_wall_without_visual_lock",
+                    reason="push_ball_after_visual_capture",
                 )
                 self._send(command)
                 self._emit(
                     "ball_wall_contact_approach",
                     {
-                        "reason": "no_fresh_ball",
+                        "reason": "visual_occluded_after_capture",
                         "approach_elapsed_s": approach_elapsed_s,
+                        "visual_capture_confirmed": self.pickup_visual_capture_confirmed,
                     },
                 )
                 return OperatorResult(
@@ -1203,17 +1345,14 @@ class Operator:
             has_object = self.has_object()
             grip_confirmed = self.pickup_grip_confirmed or has_object is True
             ball_after_close = self.fresh_ball()
-            ball_still_outside_claw = (
-                ball_after_close is not None
-                and ball_after_close.forward_m is not None
-                and float(ball_after_close.forward_m)
-                > self.config.ball_capture_forward_m
+            ball_visible_outside_claw = self._ball_visible_outside_claw(
+                ball_after_close
             )
             visual_capture_confirmed = self.pickup_visual_capture_confirmed
             if (
-                not grip_confirmed
+                has_object is not True
                 or not visual_capture_confirmed
-                or ball_still_outside_claw
+                or ball_visible_outside_claw
             ):
                 self.pickup_phase = "failed"
                 self.pickup_phase_start_s = now_s
@@ -1226,8 +1365,80 @@ class Operator:
                         "has_object": has_object,
                         "grip_confirmed": grip_confirmed,
                         "attempts": self.pickup_attempts,
-                        "ball_still_outside_claw": ball_still_outside_claw,
+                        "ball_still_outside_claw": ball_visible_outside_claw,
+                        "ball_visible_outside_claw": ball_visible_outside_claw,
                         "visual_capture_confirmed": visual_capture_confirmed,
+                        "ball_after_close_forward_m": None
+                        if ball_after_close is None
+                        else ball_after_close.forward_m,
+                        "ball_after_close_left_m": None
+                        if ball_after_close is None
+                        else ball_after_close.left_m,
+                    },
+                )
+                return OperatorResult(
+                    False,
+                    "grab_not_confirmed",
+                    map_pose=self.map_pose,
+                    localization_source=self.localization_source,
+                    has_object=has_object,
+                )
+            self.pickup_phase = "verifying"
+            self.pickup_phase_start_s = now_s
+            self._emit(
+                "grab_verifying",
+                {
+                    "has_object": has_object,
+                    "grip_confirmed": grip_confirmed,
+                    "visual_capture_confirmed": visual_capture_confirmed,
+                    "verify_settle_s": self.config.pickup_verify_settle_s,
+                },
+            )
+            return OperatorResult(
+                False,
+                "verifying_grab",
+                map_pose=self.map_pose,
+                localization_source=self.localization_source,
+                has_object=has_object,
+            )
+
+        if self.pickup_phase == "verifying":
+            verified_for_s = now_s - float(self.pickup_phase_start_s or now_s)
+            if verified_for_s < self.config.pickup_verify_settle_s:
+                return OperatorResult(
+                    False,
+                    "verifying_grab",
+                    map_pose=self.map_pose,
+                    localization_source=self.localization_source,
+                    has_object=self.has_object(),
+                )
+            has_object = self.has_object()
+            grip_confirmed = self.pickup_grip_confirmed or has_object is True
+            ball_after_close = self.fresh_ball()
+            ball_visible_outside_claw = self._ball_visible_outside_claw(
+                ball_after_close
+            )
+            visual_capture_confirmed = self.pickup_visual_capture_confirmed
+            if (
+                has_object is not True
+                or not visual_capture_confirmed
+                or ball_visible_outside_claw
+            ):
+                self.pickup_phase = "failed"
+                self.pickup_phase_start_s = now_s
+                self.pickup_visual_capture_confirmed = False
+                self.pickup_grip_confirmed = False
+                self.pickup_attempts = self.config.pickup_max_attempts
+                self._emit(
+                    "grab_not_confirmed",
+                    {
+                        "has_object": has_object,
+                        "grip_confirmed": grip_confirmed,
+                        "attempts": self.pickup_attempts,
+                        "ball_still_outside_claw": ball_visible_outside_claw,
+                        "ball_visible_outside_claw": ball_visible_outside_claw,
+                        "visual_capture_confirmed": visual_capture_confirmed,
+                        "verified_for_s": verified_for_s,
                         "ball_after_close_forward_m": None
                         if ball_after_close is None
                         else ball_after_close.forward_m,
@@ -1252,7 +1463,8 @@ class Operator:
                     "duration_ms": duration_ms,
                     "has_object": has_object,
                     "grip_confirmed": grip_confirmed,
-                    "ball_still_outside_claw": ball_still_outside_claw,
+                    "ball_still_outside_claw": ball_visible_outside_claw,
+                    "ball_visible_outside_claw": ball_visible_outside_claw,
                     "visual_capture_confirmed": self.pickup_visual_capture_confirmed,
                 },
             )
@@ -1403,6 +1615,28 @@ class Operator:
             return False
         current_amp = abs(float(sample.current_amp or 0.0))
         return current_amp >= self.config.end_effector_grip_current_amp
+
+    def _ball_search_omega(self, elapsed_s: float) -> float:
+        segment_s = max(0.05, float(self.config.ball_search_segment_s))
+        omega = abs(float(self.config.ball_search_omega))
+        if elapsed_s < segment_s:
+            direction = 1.0
+        elif elapsed_s < segment_s * 3.0:
+            direction = -1.0
+        else:
+            direction = 1.0
+        return clamp(direction * omega, -self.config.max_omega, self.config.max_omega)
+
+    def _ball_visible_outside_claw(self, ball: ObjectObservation | None) -> bool:
+        if ball is None:
+            return False
+        return (
+            ball.forward_m is None
+            or ball.left_m is None
+            or float(ball.forward_m) > self.config.ball_capture_forward_m
+            or abs(float(ball.left_m) - self.config.ball_claw_lateral_target_m)
+            > self.config.ball_capture_lateral_m
+        )
 
     def _timed_claw(
         self,

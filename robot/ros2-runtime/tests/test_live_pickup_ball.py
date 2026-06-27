@@ -55,7 +55,13 @@ def ensure_stack_running() -> bool:
     return True
 
 
-FAIL_REASONS = {"disabled", "grab_failed", "grab_not_confirmed", "unmapped_tag"}
+FAIL_REASONS = {
+    "ball_not_found",
+    "disabled",
+    "grab_failed",
+    "grab_not_confirmed",
+    "unmapped_tag",
+}
 # (action, payload_extras, timeout_s, repeat_until_success, post_wait_s)
 STEPS = [
     ("locate_nearest_apriltag", {}, 20.0, True, 0.0),
