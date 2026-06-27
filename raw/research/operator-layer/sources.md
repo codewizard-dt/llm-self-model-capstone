@@ -30,9 +30,9 @@ researched: 2026-06-25
 `robot/ros2-runtime/src/vexy_ros/operator/core.py` lines 288–832
 > Methods: `update_vision`, `update_telemetry`, `current_pose`, `require_allowed_method`, `contract_result`, `locate_nearest_apriltag`, `orient_to_tag`, `move_to_tag`, `grab`, `lift`, `release`, `target_distance_for_tag`, `target_pose_for_tag`, `detect_drive_health`, `has_object`
 
-### S3 — F10 blocker statement
-`operator/docs/llm_critic_architecture.md`
-> "F3 parts-catalog grammar has landed. F10 gap analyzer remains the dependency for full F8 Generator implementation, so residual-summary sections must stay blocked or fixture-backed until F10 lands."
+### S3 — F10 gap summary labels
+`self_model_generator/docs/llm_critic_architecture.md`
+> "If `self_model_generator.gap_analyzer` has produced a summary from contract-valid JSONL, packets should include that file and use the matching provenance label instead of the F10 blocked label."
 
 ### S4 — Standoff distances
 `robot/ros2-runtime/operator/GUIDEBOOK.md`

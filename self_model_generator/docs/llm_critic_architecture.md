@@ -32,7 +32,7 @@ used for this loop; `operator` is reserved for live robot-control code under
 
 ## Current Repo Grounding
 
-As of 2026-06-24, the architecture can assume:
+As of 2026-06-27, the architecture can assume:
 
 | Repo surface | Status | LLM/Critic implication |
 |---|---|---|
@@ -42,10 +42,12 @@ As of 2026-06-24, the architecture can assume:
 | `contracts.PartsCatalog` / `validate_config` | Merged in F3 / PR #16 | Generator packets can include finite buildability constraints; CoM/geometry Critics can cite catalog verdicts instead of inventing rules. |
 | `TelemetrySource` / `VisionSource` | Merged in F4 / PR #14 | Runtime sources can be replay, synthetic, serial, or camera without changing generator logic. |
 | ROS 2 align-to-tag evidence path | Merged software PR #15 | MCAP/raw ROS proof should be exported into `ContractLine` before the self-model generator loop consumes it. |
+| F10 gap analyzer first slice | Implemented in `self_model_generator.gap_analyzer` | ContractLine JSONL can now produce provenance-labeled residual/diagnosis summaries for packet input. |
 
-F3 parts-catalog grammar has landed. F10 gap analyzer remains the dependency
-for full F8 Generator implementation, so residual-summary sections must stay
-blocked or fixture-backed until F10 lands.
+F3 parts-catalog grammar has landed. F10 is no longer completely blocked, but
+the current analyzer is still a first self-model generator slice: it covers
+residual summaries and pickup/grab failure diagnoses from contract evidence.
+Broader F10 coverage can expand as new task evidence lands.
 
 ## System Flow
 
@@ -108,7 +110,7 @@ learning belongs in versioned repo artifacts, not hidden critic memory.
 |---|---|---|---|
 | Current or prior `SelfModel` | `contracts.SelfModel` fixtures or approved generation file | Yes for Gen N+1; no for Gen 0 | Gen 0 uses `parent_generation = null`. |
 | Task evidence | `ContractLine` JSONL | Yes | Use `task`, `predicted`, `gap`, `outcome`, `vision`, and `motor_samples`. |
-| Gap summary | F10 gap analyzer | Blocked until F10 | Fixture summaries are allowed if labeled fixture-backed. |
+| Gap summary | F10 gap analyzer | Yes for fixture/current self-model loop | Summaries must be provenance-labeled as fixture, live, or replay and cross-checked against the packet evidence. |
 | Parts vocabulary | `contracts.vocabulary`, `contracts.PartsCatalog`, `contracts.validate_config`, `contracts/parts_catalog.json` | Yes | F3 provides finite axes, buildable combination rules, and catalog verdicts. |
 | Human constraints | Self-model packet markdown | Yes | Demo task, available hardware, time, and safety limits. |
 | Hidden oracle parameters | Never | No | Information separation is part of the thesis. |
@@ -175,6 +177,14 @@ inside packets, prompt outputs, and reviews:
 Blocked sections are allowed in architecture docs and fixture tests. They are
 not allowed to silently become invented field names, units, or build rules.
 
+If `self_model_generator.gap_analyzer` has produced a summary from
+contract-valid JSONL, packets should include that file and use the matching
+provenance label instead of the F10 blocked label:
+
+- `[FIXTURE-BACKED: F10 residual summary]`
+- `[LIVE-BACKED: F10 residual summary]`
+- `[REPLAY-BACKED: F10 residual summary]`
+
 ## Information Separation
 
 The synthetic oracle can know hidden truth. The Generator cannot.
@@ -219,6 +229,7 @@ After this doc is accepted, split implementation into small AI-SDD slices:
 | Slice | Feature | Deliverable |
 |---|---|---|
 | `self-model-packet-builder` | F8 support | Builds a markdown/JSON packet from `SelfModel`, `ContractLine` JSONL, F3 catalog constraints, human constraints, and blocked-state notes. |
+| `self-model-gap-analyzer` | F10 support | Builds a residual/diagnosis summary from contract-valid JSONL and recommends known runtime knobs for review. |
 | `generator-prompt-and-fixtures` | F8 | Prompt skeleton plus fixture proving Gen 0 and Gen N+1 candidate output validates against `contracts.SelfModel`. |
 | `generator-gap-revision` | F8 | Uses a fixture F10 residual summary to revise `predictive`, `gap_model`, and keyed `reasoning`. |
 | `critic-prompt-panel` | F9 | Three stateless critic prompt templates: physics, torque, CoM/geometry. |

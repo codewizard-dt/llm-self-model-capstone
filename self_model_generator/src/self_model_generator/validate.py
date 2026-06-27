@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
+from self_model_generator.gap_analyzer import build_gap_summary_from_jsonl, write_gap_summary
 from self_model_generator.packet_builder import (
     BLOCKED_F10_GAP,
     BLOCKED_HARDWARE_PROOF,
+    FIXTURE_BACKED_GAP,
     build_packet_from_files,
 )
 
@@ -19,7 +22,7 @@ DEFAULT_ROS_BUNDLE = (
 )
 
 
-def validate_fixture_packets() -> tuple[str, str]:
+def validate_fixture_packets() -> tuple[str, str, str]:
     contract_packet = build_packet_from_files(
         self_model_path=DEFAULT_SELF_MODEL,
         parts_catalog_path=DEFAULT_PARTS,
@@ -45,7 +48,26 @@ def validate_fixture_packets() -> tuple[str, str]:
         raise AssertionError("ROS packet should not mark hardware proof as missing")
     if BLOCKED_F10_GAP not in ros_packet:
         raise AssertionError("ROS packet must still label missing F10 gap summary")
-    return contract_packet, ros_packet
+
+    gap_summary = build_gap_summary_from_jsonl(DEFAULT_CONTRACT_JSONL)
+    with TemporaryDirectory() as tmpdir:
+        gap_path = Path(tmpdir) / "gap_summary.json"
+        write_gap_summary(gap_summary, gap_path)
+        gap_packet = build_packet_from_files(
+            self_model_path=DEFAULT_SELF_MODEL,
+            parts_catalog_path=DEFAULT_PARTS,
+            contract_jsonl_path=DEFAULT_CONTRACT_JSONL,
+            gap_summary_path=gap_path,
+            human_constraints=("fixture-backed F10 gap analysis",),
+        )
+
+    if FIXTURE_BACKED_GAP not in gap_packet:
+        raise AssertionError("gap packet must label the F10 residual summary")
+    if '"force_error_N"' not in gap_packet:
+        raise AssertionError("gap packet must preserve residual keys")
+    if BLOCKED_F10_GAP in gap_packet:
+        raise AssertionError("gap packet should not mark F10 as missing")
+    return contract_packet, ros_packet, gap_packet
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -53,11 +75,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", type=Path, default=None)
     args = parser.parse_args(argv)
 
-    contract_packet, ros_packet = validate_fixture_packets()
+    contract_packet, ros_packet, gap_packet = validate_fixture_packets()
     if args.out is not None:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(
-            contract_packet + "\n\n---\n\n" + ros_packet + "\n",
+            contract_packet + "\n\n---\n\n" + ros_packet + "\n\n---\n\n" + gap_packet + "\n",
         )
     print("OK - self-model packet-builder fixtures valid")
     return 0

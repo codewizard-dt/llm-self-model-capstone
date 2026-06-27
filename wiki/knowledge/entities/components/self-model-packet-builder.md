@@ -57,8 +57,10 @@ All constants live in `packet_builder.py`:
 | `BLOCKED_NO_CONTRACT_EVIDENCE` | No contract lines exist in the input |
 | `BLOCKED_HARDWARE_PROOF` | Contract lines exist but none have a `raw_session_path` |
 | `FIXTURE_BACKED_GAP` | Gap summary is supplied via a fixture (not live F10 output) |
+| `LIVE_BACKED_GAP` | Gap summary is supplied from a live telemetry run |
+| `REPLAY_BACKED_GAP` | Gap summary is supplied from replay/proof evidence |
 
-Until F10 (gap analyzer) is implemented, gap summary sections will be either `BLOCKED_F10_GAP` or `FIXTURE_BACKED_GAP`. This is the **only open blocker for the F8 Generator**.
+F10 (gap analyzer) now has a first slice: gap summary sections are either `BLOCKED_F10_GAP` when no summary is provided, or one of the provenance labels above when a summary is supplied. The packet builder cross-checks the summary source metadata against the actual `ContractLine` evidence before building a generator packet.
 
 ## Integration Test
 
