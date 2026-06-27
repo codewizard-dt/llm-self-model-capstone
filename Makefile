@@ -51,6 +51,7 @@ sync-pi:
 	bash scripts/sync_pi_runtime.sh
 
 rebuild-pi:
+	pip uninstall --break-system-packages -y vexy-ros || true
 	pip install --break-system-packages "pydantic>=2,<3"
 	pip install --break-system-packages -e contracts/
 	bash -c "cd ~/ros2_ws && source /opt/ros/jazzy/setup.bash && colcon build --packages-select vexy_ros --cmake-args -DCMAKE_BUILD_TYPE=Release --event-handlers console_direct+"
