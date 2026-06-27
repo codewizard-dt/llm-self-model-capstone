@@ -1,5 +1,5 @@
 # Delegate to per-vertical Makefiles. Add a vertical's target once its Makefile exists.
-.PHONY: sync validate test lint schema schema-check catalog catalog-check m1 m1-judge send-task rebuild-pi
+.PHONY: sync validate test lint schema schema-check catalog catalog-check m1 m1-judge send-task rebuild-pi sync-pi
 
 # m1 contracts-frozen milestone gate (delegates into contracts/).
 m1:
@@ -42,6 +42,9 @@ sync-telemetry:
 send-task:
 	@test -n "$(FILE)" || (echo "usage: make send-task FILE=path/to/task.json" >&2; exit 2)
 	bash scripts/send_task_to_pi.sh "$(FILE)"
+
+sync-pi:
+	bash scripts/sync_pi_runtime.sh
 
 rebuild-pi:
 	pip install --break-system-packages "pydantic>=2,<3"
