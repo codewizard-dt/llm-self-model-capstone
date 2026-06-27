@@ -665,9 +665,18 @@ class Operator:
             else self.target_distance_for_tag(tag_index)
         )
         target_pose = self.target_pose_for_tag(tag_index, target_distance_m)
-        tag = self._fresh_tag_or_search(tag_index)
-        if isinstance(tag, OperatorResult):
-            return tag
+        tag = self.vision.fresh_tag(
+            tag_index, now_s=self.clock(), max_age_s=self.config.tag_stale_s
+        )
+        if tag is None:
+            predicted_result = self._move_to_predicted_tag_pose(
+                tag_index,
+                target_distance_m=target_distance_m,
+                target_pose=target_pose,
+            )
+            if predicted_result is not None:
+                return predicted_result
+            return self._search_for_tag(tag_index)
 
         previous_command_is_approach = (
             self.last_command is not None
@@ -787,6 +796,158 @@ class Operator:
             "moving_to_tag",
             command=command,
             tag=tag,
+            target_distance_m=target_distance_m,
+            target_pose=target_pose,
+            map_pose=self.map_pose,
+            localization_source=self.localization_source,
+            drive_health=drive_health,
+        )
+
+    def _move_to_predicted_tag_pose(
+        self,
+        tag_index: int,
+        *,
+        target_distance_m: float,
+        target_pose: Pose2D,
+    ) -> OperatorResult | None:
+        pose = self.current_pose()
+        if pose is None:
+            return None
+
+        previous_command_is_approach = (
+            self.last_command is not None
+            and self.last_command.reason
+            in {
+                f"orient_to_predicted_tag_{tag_index}",
+                f"move_to_predicted_tag_{tag_index}",
+            }
+        )
+        drive_health = (
+            self.detect_drive_health(tag_index=tag_index)
+            if previous_command_is_approach
+            else DriveHealth("ok", "predicted_approach_not_started")
+        )
+        if drive_health.state == "disabled":
+            command = PrimitiveCommand(
+                "stop",
+                ttl_ms=self.config.stop_ttl_ms,
+                reason=f"operator_{drive_health.state}",
+            )
+            self._send(command)
+            self._emit(
+                drive_health.state,
+                {
+                    "tag_index": tag_index,
+                    "reason": drive_health.reason,
+                    "wheel_velocity_rpm": drive_health.wheel_velocity_rpm,
+                    "source": "predicted_pose",
+                },
+            )
+            return OperatorResult(
+                False,
+                drive_health.state,
+                command=command,
+                target_distance_m=target_distance_m,
+                target_pose=target_pose,
+                map_pose=self.map_pose,
+                localization_source=self.localization_source,
+                drive_health=drive_health,
+            )
+
+        dx = target_pose.x_m - pose.x_m
+        dy = target_pose.y_m - pose.y_m
+        distance_error_m = math.hypot(dx, dy)
+        bearing_rad = math.atan2(dy, dx)
+        yaw_error_rad = normalize_angle(bearing_rad - pose.yaw_rad)
+
+        if (
+            distance_error_m <= self.config.distance_tolerance_m
+            and abs(yaw_error_rad) <= self.config.yaw_tolerance_rad
+        ):
+            command = PrimitiveCommand(
+                "stop",
+                ttl_ms=self.config.stop_ttl_ms,
+                reason=f"arrived_at_predicted_tag_{tag_index}",
+            )
+            self._send(command)
+            self._emit(
+                "arrived",
+                {
+                    "tag_index": tag_index,
+                    "distance_m": target_distance_m,
+                    "source": "predicted_pose",
+                },
+            )
+            return OperatorResult(
+                True,
+                "arrived",
+                command=command,
+                target_distance_m=target_distance_m,
+                target_pose=target_pose,
+                map_pose=self.map_pose,
+                localization_source=self.localization_source,
+                drive_health=drive_health,
+            )
+
+        if abs(yaw_error_rad) > self.config.yaw_tolerance_rad:
+            command = PrimitiveCommand(
+                "turn",
+                omega=clamp(
+                    self.config.turn_kp * yaw_error_rad,
+                    -self.config.max_omega,
+                    self.config.max_omega,
+                ),
+                ttl_ms=self.config.drive_ttl_ms,
+                reason=f"orient_to_predicted_tag_{tag_index}",
+            )
+            self._send(command)
+            self._emit(
+                "apriltag_predicted_orient",
+                {
+                    "tag_index": tag_index,
+                    "yaw_error_rad": yaw_error_rad,
+                    "target_pose": target_pose.to_json(),
+                    "source": self.localization_source,
+                },
+            )
+            return OperatorResult(
+                False,
+                "turning_to_predicted_tag",
+                command=command,
+                target_distance_m=target_distance_m,
+                target_pose=target_pose,
+                map_pose=self.map_pose,
+                localization_source=self.localization_source,
+                drive_health=drive_health,
+            )
+
+        command = PrimitiveCommand(
+            "drive",
+            vx=clamp(0.45 * distance_error_m, 0.0, self.config.max_vx),
+            vy=0.0,
+            omega=clamp(
+                self.config.turn_kp * yaw_error_rad,
+                -self.config.max_omega,
+                self.config.max_omega,
+            ),
+            ttl_ms=self.config.drive_ttl_ms,
+            reason=f"move_to_predicted_tag_{tag_index}",
+        )
+        self._send(command)
+        self._emit(
+            "apriltag_predicted_approach",
+            {
+                "tag_index": tag_index,
+                "distance_error_m": distance_error_m,
+                "yaw_error_rad": yaw_error_rad,
+                "target_pose": target_pose.to_json(),
+                "source": self.localization_source,
+            },
+        )
+        return OperatorResult(
+            False,
+            "moving_to_predicted_tag",
+            command=command,
             target_distance_m=target_distance_m,
             target_pose=target_pose,
             map_pose=self.map_pose,
@@ -1166,12 +1327,7 @@ class Operator:
             has_object=has_object,
         )
 
-    def _fresh_tag_or_search(self, tag_index: int) -> TagObservation | OperatorResult:
-        tag = self.vision.fresh_tag(
-            tag_index, now_s=self.clock(), max_age_s=self.config.tag_stale_s
-        )
-        if tag is not None:
-            return tag
+    def _search_for_tag(self, tag_index: int) -> OperatorResult:
         command = PrimitiveCommand(
             "turn",
             omega=self.config.search_omega,

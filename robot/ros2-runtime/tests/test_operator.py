@@ -392,6 +392,64 @@ class OperatorCoreTests(unittest.TestCase):
         self.assertIsNotNone(pose)
         self.assertGreater(pose.x_m, 1.0)
 
+    def test_move_to_tag_orients_to_predicted_pose_when_target_is_not_visible(
+        self,
+    ) -> None:
+        sink = PacketCommandSink()
+        operator = Operator(
+            sink,
+            april_tag_map={
+                0: TagAnchor(0, Pose2D(1.0, 0.0, 0.0)),
+                1: TagAnchor(1, Pose2D(1.0, 1.0, 0.0)),
+            },
+            camera_in_robot=Pose2D(0.0, 0.0, 0.0),
+            task_contract=TASK_CONTRACT,
+            task_outline=(("move_to_tag", (1,), {"target_distance_m": 0.45}),),
+            clock=lambda: 10.0,
+        )
+        operator.update_vision(
+            VisionSnapshot(
+                stamp_s=10.0,
+                tags={0: TagObservation(0, 9.9, forward_m=1.0, left_m=0.0)},
+            )
+        )
+        operator.update_vision(VisionSnapshot(stamp_s=10.0, tags={}))
+
+        result = operator.move_to_tag(1, target_distance_m=0.45)
+
+        self.assertFalse(result.success)
+        self.assertEqual(result.reason, "turning_to_predicted_tag")
+        self.assertEqual(sink.packets[-1]["cmd"], "turn")
+        self.assertEqual(sink.packets[-1]["reason"], "orient_to_predicted_tag_1")
+        self.assertIsNone(result.tag)
+        self.assertIsNotNone(result.target_pose)
+
+    def test_move_to_tag_drives_to_predicted_pose_when_heading_is_aligned(
+        self,
+    ) -> None:
+        sink = PacketCommandSink()
+        operator = Operator(
+            sink,
+            april_tag_map={1: TagAnchor(1, Pose2D(1.0, 0.0, 0.0))},
+            camera_in_robot=Pose2D(0.0, 0.0, 0.0),
+            task_contract=TASK_CONTRACT,
+            task_outline=(("move_to_tag", (1,), {"target_distance_m": 0.45}),),
+            clock=lambda: 10.0,
+        )
+        operator.map_pose = Pose2D(0.0, 0.0, 0.0)
+        operator.localization_source = "dead_reckoning"
+        operator.last_pose_update_s = 10.0
+        operator.update_vision(VisionSnapshot(stamp_s=10.0, tags={}))
+
+        result = operator.move_to_tag(1, target_distance_m=0.45)
+
+        self.assertFalse(result.success)
+        self.assertEqual(result.reason, "moving_to_predicted_tag")
+        self.assertEqual(sink.packets[-1]["cmd"], "drive")
+        self.assertEqual(sink.packets[-1]["reason"], "move_to_predicted_tag_1")
+        self.assertGreater(sink.packets[-1]["vx"], 0.0)
+        self.assertEqual(sink.packets[-1]["omega"], 0.0)
+
     def test_orient_wrapper_sends_turn_then_stop(self) -> None:
         sink = PacketCommandSink()
         operator = make_operator(sink, clock=lambda: 10.0)
@@ -1622,9 +1680,10 @@ class OperatorNodeTests(unittest.TestCase):
 
 class OperatorRunCaptureTests(unittest.TestCase):
     def test_capture_starts_json_writer_and_bag_with_visual_topics(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp, patch(
-            "vexy_ros.operator_run_capture.subprocess.Popen"
-        ) as popen:
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            patch("vexy_ros.operator_run_capture.subprocess.Popen") as popen,
+        ):
             out_dir = Path(tmp)
 
             processes = start_operator_run_capture(out_dir, label="test-name")

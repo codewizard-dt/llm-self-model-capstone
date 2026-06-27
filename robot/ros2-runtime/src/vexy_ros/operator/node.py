@@ -40,6 +40,7 @@ from ._core import (
     MIN_TAG_ID,
     TIMED_PRIMITIVE_METHOD_NAMES,
     CommandSink,
+    DriveHealth,
     ObjectObservation,
     Operator,
     OperatorEvent,
@@ -60,12 +61,25 @@ IN_PROGRESS_REASONS = {
     "tag_not_visible",
     "turning_to_tag",
     "turning_to_map_tag",
+    "turning_to_predicted_tag",
     "moving_to_tag",
+    "moving_to_predicted_tag",
     "raising_arm_for_tag",
     "opening_claw",
     "moving_to_ball",
     "closing_claw",
     "grab_not_confirmed",
+}
+BRAIN_READY_REQUIRED_ACTIONS = {
+    "move_to_tag",
+    "pickup_ball",
+    "arm",
+    "grab",
+    "lift",
+    "release",
+    "align_to_tag",
+    "survey_scan",
+    "run_routine",
 }
 
 
@@ -151,6 +165,8 @@ class OperatorNode(Node):
         self.declare_parameter("task_poll_period_s", 1.0)
         self.declare_parameter("task_step_timeout_s", 30.0)
         self.declare_parameter("task_timed_primitive_settle_s", 0.05)
+        self.declare_parameter("brain_program_slot", 8)
+        self.declare_parameter("require_brain_program_ready", False)
         self.declare_parameter("command_topic", "/operator/command")
         self.declare_parameter("event_topic", "/operator/events")
         self.declare_parameter("result_topic", "/operator/results")
@@ -199,6 +215,16 @@ class OperatorNode(Node):
         )
         self._task_timed_primitive_settle_s = max(
             0.0, self._parameter_float("task_timed_primitive_settle_s")
+        )
+        brain_slot_value = self.get_parameter(
+            "brain_program_slot"
+        ).get_parameter_value()
+        self._brain_program_slot = int(
+            getattr(brain_slot_value, "integer_value", 0)
+            or getattr(brain_slot_value, "string_value", "8")
+        )
+        self._require_brain_program_ready = self._parameter_bool(
+            "require_brain_program_ready"
         )
         self._visual_snapshot_enabled = self._parameter_bool("visual_snapshot_enabled")
         self._visual_snapshot_period_s = max(
@@ -396,9 +422,7 @@ class OperatorNode(Node):
 
         try:
             self.operator.set_task_contract(operator_task)
-            run_payload = self._begin_operator_run(
-                action="task_file", source=path.name
-            )
+            run_payload = self._begin_operator_run(action="task_file", source=path.name)
             self._publish_event(
                 OperatorEvent(
                     name="task_file_accepted",
@@ -1103,6 +1127,9 @@ class OperatorNode(Node):
             self._survey_cancel_requested = True
             self._publish_command_log("reset")
             return OperatorResult(True, "operator_state_reset")
+        not_ready = self._brain_program_not_ready_result(action)
+        if not_ready is not None:
+            return not_ready
         if action == "locate_nearest_apriltag":
             self.operator.require_allowed_method(action)
             return self.operator.locate_nearest_apriltag()
@@ -1152,6 +1179,38 @@ class OperatorNode(Node):
         if action == "run_routine":
             return self._run_routine(payload)
         raise ValueError(f"unsupported operator action: {action}")
+
+    def _brain_program_not_ready_result(self, action: str) -> OperatorResult | None:
+        if not self._require_brain_program_ready:
+            return None
+        if action not in BRAIN_READY_REQUIRED_ACTIONS:
+            return None
+        if self._last_telemetry is not None or self._bridge.last_ack_seq is not None:
+            return None
+
+        reason = f"brain_program_slot_{self._brain_program_slot}_not_ready"
+        self._publish_event(
+            OperatorEvent(
+                name="brain_program_not_ready",
+                stamp_s=time.monotonic(),
+                detail={
+                    "action": action,
+                    "slot": self._brain_program_slot,
+                    "bridge_status": self._bridge.status,
+                    "bridge_fault": self._bridge.fault,
+                    "telemetry_seen": False,
+                    "next": f"start V5 Brain program slot {self._brain_program_slot}",
+                },
+            )
+        )
+        return OperatorResult(
+            False,
+            "disabled",
+            map_pose=self.operator.current_pose(),
+            localization_source=self.operator.localization_source,
+            drive_health=DriveHealth("disabled", reason),
+            has_object=self.operator.has_object(),
+        )
 
     def _start_align_to_tag(self, payload: Mapping[str, Any]) -> Any:
         goal = AlignToTagGoal(
@@ -1363,6 +1422,12 @@ class OperatorNode(Node):
             "known_tags": sorted(self._tags),
             "object_categories": sorted({obj.category for obj in self._objects}),
             "telemetry_seen": telemetry is not None,
+            "brain_program_slot": self._brain_program_slot,
+            "brain_program_required": self._require_brain_program_ready,
+            "brain_program_ready": telemetry is not None
+            or self._bridge.last_ack_seq is not None,
+            "bridge_status": self._bridge.status,
+            "bridge_fault": self._bridge.fault,
             "localization_source": self.operator.localization_source,
             "map_pose": None if pose is None else pose.to_json(),
             "has_object": self.operator.has_object(),
