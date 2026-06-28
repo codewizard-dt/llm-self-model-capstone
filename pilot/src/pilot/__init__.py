@@ -53,6 +53,14 @@ from pilot.decision import (
     render_prompt,
     request_pilot_decision,
 )
+from pilot.execution import (  # noqa: E402
+    ExecutionStatus,
+    SkillExecutionOutcome,
+    SkillExecutionTransport,
+    TransportTerminalOutcome,
+    execute_one_skill,
+    normalize_skill_result,
+)
 from pilot.executor import (  # noqa: E402
     DEFAULT_EXECUTOR_POLICY,
     ExecutionResult,
@@ -97,6 +105,7 @@ from pilot.skills import (  # noqa: E402
     get_skill_definition,
     list_skill_definitions,
 )
+from pilot.trace import PilotTraceWriter, TraceSink, monotonic_ms
 
 __all__ = [
     "REQUIRED_ASSERTION_IDS",
@@ -112,6 +121,7 @@ __all__ = [
     "DecisionAdapterResult",
     "DecisionPromptClient",
     "ExecutionResult",
+    "ExecutionStatus",
     "ExecutorDeadline",
     "ExecutorPolicy",
     "ExecutorReasonCode",
@@ -120,19 +130,24 @@ __all__ = [
     "MovementEnvelope",
     "ObservationCache",
     "PROMPT_SECTION_ORDER",
+    "PilotTraceWriter",
     "RunLogger",
     "RunLoggerConfig",
     "RunLoggerError",
     "RunLoggerReadbackError",
     "SafetyPolicy",
+    "SkillExecutionOutcome",
+    "SkillExecutionTransport",
     "SkillDefault",
     "SkillDefinition",
     "SkillExecutor",
     "SkillInput",
     "SkillSuccessAssertion",
     "STOP_REASONS",
+    "TraceSink",
     "TransportBoundary",
     "TransportRequest",
+    "TransportTerminalOutcome",
     "ValidationMode",
     "ValidationReason",
     "ValidationReasonCode",
@@ -152,8 +167,11 @@ __all__ = [
     "build_prompt_payload",
     "default_session_id",
     "default_trace_path",
+    "execute_one_skill",
     "format_recent_history",
     "list_skill_definitions",
+    "monotonic_ms",
+    "normalize_skill_result",
     "request_pilot_decision",
     "read_trace_records",
     "render_prompt",

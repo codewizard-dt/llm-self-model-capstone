@@ -1,0 +1,17 @@
+summary: >-
+  Added the PM4 ROS-free one-skill executor core and JSONL trace helpers:
+  validation-first execution through a small fakeable transport protocol, one
+  dispatch per invocation, terminal result normalization to contract-owned
+  PilotSkillResult, contract-valid PilotTraceRecord command/result/stop writes
+  with stable sequence numbers, timeout and interrupt cancellation, additive
+  pilot package exports, and focused executor tests.
+satisfies:
+  - ACC-EXEC-API
+  - ACC-VALIDATE-FIRST
+  - ACC-ONE-DISPATCH
+  - ACC-TRANSPORT-PROTOCOL
+  - ACC-RESULT-NORMALIZATION
+  - ACC-TRACE-JSONL
+  - ACC-CANCEL-ON-STOP
+  - ACC-ROS-FREE-IMPORTS
+  - ACC-REGRESSION-GATES

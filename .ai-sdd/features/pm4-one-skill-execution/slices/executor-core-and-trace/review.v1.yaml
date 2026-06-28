@@ -1,0 +1,63 @@
+items:
+  - id: ACC-EXEC-API
+    verdict: pass
+    notes: >-
+      `pilot.execution.execute_one_skill` is a public one-skill executor that accepts the command,
+      observation, validation mode, human supervision flag, timeout, session id, trace sink, and
+      transport, then returns the stable `SkillExecutionOutcome` dataclass for later CLI use.
+      Additive package exports expose the executor, outcome status, transport protocol, terminal
+      outcome type, trace writer, and normalization helper.
+  - id: ACC-VALIDATE-FIRST
+    verdict: pass
+    notes: >-
+      The executor calls `pilot.safety.validate_skill_command` before any trace command write or
+      transport dispatch. Focused tests cover invalid commands, invalid observations, missing target
+      evidence, stale bridge state, active estop, and missing hardware supervision, all rejected with
+      no dispatch.
+  - id: ACC-ONE-DISPATCH
+    verdict: pass
+    notes: >-
+      Accepted executions call `transport.dispatch` once, wait for one terminal result, write the
+      normalized result and stop record, and return. Timeout and interrupt tests also prove no
+      additional dispatch occurs after cancellation.
+  - id: ACC-TRANSPORT-PROTOCOL
+    verdict: pass
+    notes: >-
+      `SkillExecutionTransport` is a ROS-free protocol with `dispatch`, `wait_for_terminal_result`,
+      and `cancel`. The executor and tests use fake transports and import without `rclpy` or ROS 2
+      packages installed.
+  - id: ACC-RESULT-NORMALIZATION
+    verdict: pass
+    notes: >-
+      `normalize_skill_result` accepts contract `PilotSkillResult`, `TransportTerminalOutcome`, and
+      mapping payloads, fills command id and skill from the accepted command when needed, aliases
+      success/failure/rejected/stale/timeout-like statuses to `CommandStatus`, and validates the
+      final payload as `contracts.PilotSkillResult`.
+  - id: ACC-TRACE-JSONL
+    verdict: pass
+    notes: >-
+      `PilotTraceWriter` writes contract-validated `PilotTraceRecord` JSONL command, result, and
+      stop records with monotonic sequence numbers and the requested session id. Tests validate
+      emitted JSONL records for success, validation failure, timeout, interrupt, and caller-provided
+      raw sinks/start sequence/clock.
+  - id: ACC-CANCEL-ON-STOP
+    verdict: pass
+    notes: >-
+      Timeout and `KeyboardInterrupt` paths call `transport.cancel` with stable reasons before
+      returning `TIMED_OUT` or `INTERRUPTED`; tests assert the cancellation payloads and that only
+      the original command was dispatched.
+  - id: ACC-ROS-FREE-IMPORTS
+    verdict: pass
+    notes: >-
+      `pilot.execution`, `pilot.trace`, and the additive `pilot` package exports import without ROS
+      packages. The focused import test installs a finder that rejects common ROS module roots and
+      verifies no ROS modules are loaded.
+  - id: ACC-REGRESSION-GATES
+    verdict: pass
+    notes: >-
+      Verified locally: focused executor pytest passed 14 tests, focused ruff check and format check
+      passed, root `make test` passed, root `make validate` passed, and root `make lint` passed. The
+      implementation keeps the repo's `uv` and `ruff` toolchain conventions and does not alter the
+      required gate targets.
+verdict: approve
+rework: []

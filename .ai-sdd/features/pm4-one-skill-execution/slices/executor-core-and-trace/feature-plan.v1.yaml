@@ -1,0 +1,211 @@
+summary: >-
+  Add the PM4 ROS-free one-skill executor core for the pilot vertical: validate one
+  contract-owned `PilotSkillCommand` against a `PilotObservation`, dispatch it through a
+  test transport abstraction, wait for exactly one terminal result, normalize the result to
+  `PilotSkillResult`, write contract-valid `PilotTraceRecord` JSONL, and return a stable
+  structured outcome for the later hardware CLI.
+
+scope:
+  in:
+    - >-
+      Create `pilot.src.pilot.execution` with a public one-skill executor API accepting a
+      `contracts.PilotSkillCommand`, `contracts.PilotObservation`, validation mode,
+      human-supervision flag, caller-supplied timeout, session id, trace sink, and an
+      executor transport.
+    - >-
+      Call `pilot.safety.validate_skill_command(..., mode=<mode>, human_supervised=<flag>)`
+      before dispatch and return a structured rejection outcome without calling the transport
+      when validation fails.
+    - >-
+      Dispatch at most one skill command per executor invocation and never chain, retry, or
+      select another skill inside this slice.
+    - >-
+      Define a small ROS-free transport protocol for dispatch, waiting for one terminal
+      result, and canceling/stopping after timeout or interrupt.
+    - >-
+      Normalize transport terminal outcomes for the approved PM4 proof skills into
+      `contracts.PilotSkillResult`, preserving command id, skill, status, completion time,
+      message, and fault where present.
+    - >-
+      Add or extend `pilot.src.pilot.trace` with small JSONL writer helpers that emit
+      contract-valid `PilotTraceRecord` command, result, and stop records using stable
+      sequence numbers and a caller-provided session id.
+    - >-
+      Emit validation-failure, timeout, and interruption trace records that explain why
+      motion did not continue; timeout and interruption must call the transport cancel/stop
+      path before returning failure.
+    - >-
+      Add additive exports from `pilot.src.pilot.__init__` for the executor API, transport
+      protocol, trace helper, and outcome types needed by the later CLI slice.
+    - >-
+      Add focused ROS-free unit tests for validation pass/fail behavior, fake transport
+      dispatch payloads, one-dispatch-only behavior, result normalization, timeout
+      cancellation, interrupt cancellation, contract validation of emitted trace records,
+      and import behavior without ROS packages installed.
+  out:
+    - >-
+      ROS publishers, subscribers, `rclpy` imports, hardware CLI parsing, manual live-robot
+      proof docs, or topic-specific `/survey/goal` and `/survey/result` integration.
+    - >-
+      LLM decisions, prompt parsing, replay-loop orchestration, delivery recipes, task
+      recovery strategy, or observe-decide-act loop control.
+    - >-
+      Skill baseline capture, skill memory calibration, full registry-to-ROS coverage, or
+      implementation of skills outside the approved PM4 executor boundary.
+    - >-
+      Changes to `contracts/` schemas or creation of pilot-local pydantic schemas for
+      commands, results, observations, or trace records.
+    - >-
+      PROS firmware, Brain watchdog behavior, low-level serial packets, ROS runtime command
+      plumbing, or coprocessor topic contracts.
+    - >-
+      `make demo`, which remains an m2 milestone concern rather than a per-slice gate.
+
+acceptance:
+  - id: ACC-EXEC-API
+    description: >-
+      `pilot.execution` exposes a public executor function or class that accepts a
+      `PilotSkillCommand`, `PilotObservation`, validation mode, human-supervision flag,
+      timeout, session id, trace sink, and transport, and returns a stable structured
+      outcome suitable for the future hardware CLI.
+  - id: ACC-VALIDATE-FIRST
+    description: >-
+      The executor calls `validate_skill_command` before transport dispatch and tests prove
+      invalid commands, invalid observations, stale or faulted bridge state, estop state,
+      and missing hardware supervision are rejected without publishing or dispatching.
+  - id: ACC-ONE-DISPATCH
+    description: >-
+      For an accepted command, tests prove exactly one skill command is dispatched and the
+      executor stops after the first terminal result without chaining another skill or retry.
+  - id: ACC-TRANSPORT-PROTOCOL
+    description: >-
+      A ROS-free transport protocol covers dispatch, wait-for-terminal-result, and
+      cancel/stop operations, and fake transports can exercise the executor without `rclpy`
+      or ROS 2 installed.
+  - id: ACC-RESULT-NORMALIZATION
+    description: >-
+      Terminal transport outcomes are normalized to contract-valid `PilotSkillResult`
+      records, including success, failed, rejected, and stale or timeout-like outcomes.
+  - id: ACC-TRACE-JSONL
+    description: >-
+      Successful executions write contract-valid command, result, and stop
+      `PilotTraceRecord` JSONL records with monotonic sequence numbers and the requested
+      session id; validation failure, timeout, and interrupt paths also write contract-valid
+      explanatory stop records.
+  - id: ACC-CANCEL-ON-STOP
+    description: >-
+      Timeout and `KeyboardInterrupt` paths call the transport cancel/stop operation before
+      returning a non-success outcome, and tests prove no additional skill command is
+      dispatched after cancellation.
+  - id: ACC-ROS-FREE-IMPORTS
+    description: >-
+      Tests prove `import pilot`, `import pilot.execution`, and the executor unit tests run
+      on a development machine without ROS 2 packages installed.
+  - id: ACC-REGRESSION-GATES
+    description: >-
+      Focused pilot tests and ruff checks pass for this slice, and the required repo gates
+      remain `uv sync`, `make test`, `make validate`, and `make lint`.
+
+decisions:
+  - id: DEC-PM4-SLICE-BOUNDARY
+    status: closed
+    decision: >-
+      This slice implements only the ROS-free executor core and trace writer, leaving ROS
+      transport, hardware CLI, and manual live proof documentation to later PM4 slices.
+    rationale: >-
+      The slice brief explicitly delivers executor core behavior without importing ROS or
+      implementing the hardware CLI, while the PM4 feature requirements reserve live command
+      plumbing and manual proof docs for the broader milestone.
+    citations:
+      - .ai-sdd/features/pm4-one-skill-execution/slices/executor-core-and-trace.md#what-this-slice-delivers
+      - .ai-sdd/features/pm4-one-skill-execution/slices/executor-core-and-trace.md#out-of-scope
+      - .ai-sdd/features/pm4-one-skill-execution/requirements.md#in-scope
+      - PILOT_MASTER_REQUIREMENTS.md#milestones
+  - id: DEC-CONTRACT-OWNED-TYPES
+    status: closed
+    decision: >-
+      The executor uses `contracts.PilotSkillCommand`, `contracts.PilotObservation`,
+      `contracts.PilotSkillResult`, and `contracts.PilotTraceRecord` directly and does not
+      define new pydantic schemas in `pilot`.
+    rationale: >-
+      Contract ownership stays in `contracts/`; pilot may add dataclasses, protocols, and
+      helpers only. This preserves the PM4 trace as a replayable pilot contract artifact.
+    citations:
+      - MASTER_REQUIREMENTS.md#components
+      - PILOT_MASTER_REQUIREMENTS.md#components
+      - .ai-sdd/conventions/pilot.md#boundary-rules
+      - .ai-sdd/features/pm4-one-skill-execution/requirements.md#constraints
+      - contracts/src/contracts/pilot.py
+  - id: DEC-VALIDATOR-OWNS-SAFETY-GATE
+    status: closed
+    decision: >-
+      Safety gating is performed by the existing `pilot.safety.validate_skill_command`
+      before dispatch, with hardware supervision passed explicitly rather than inferred from
+      execution context.
+    rationale: >-
+      PM4 hardware execution must reject unsafe observations and missing supervision before
+      any motion-producing command can leave the executor boundary.
+    citations:
+      - PILOT_MASTER_REQUIREMENTS.md#constraints
+      - .ai-sdd/features/pm4-one-skill-execution/requirements.md#constraints
+      - .ai-sdd/features/pm4-one-skill-execution/requirements.md#proposed-decisions
+      - pilot/src/pilot/safety.py
+  - id: DEC-ONE-COMMAND-LIMIT
+    status: closed
+    decision: >-
+      Each executor invocation dispatches at most one accepted skill command, waits for one
+      terminal result or bounded stop condition, writes trace records, and returns.
+    rationale: >-
+      PM4 proves one supervised skill execution, not a loop, recovery policy, or baseline
+      workflow. Looping and next-skill choice are later pilot milestones.
+    citations:
+      - PILOT_MASTER_REQUIREMENTS.md#goal
+      - PILOT_MASTER_REQUIREMENTS.md#sub-features
+      - .ai-sdd/features/pm4-one-skill-execution/requirements.md#goal
+      - .ai-sdd/features/pm4-one-skill-execution/slices/executor-core-and-trace.md#requirements
+  - id: DEC-TRANSPORT-ABSTRACTION
+    status: closed
+    decision: >-
+      Dispatch, terminal-result waiting, and cancel/stop behavior sit behind a small
+      transport protocol so executor tests use fakes and ROS integration can be added later
+      without changing core execution semantics.
+    rationale: >-
+      The PM4 requirements require optional ROS integration at import time and core tests
+      that run without ROS 2 Jazzy or `rclpy` installed.
+    citations:
+      - .ai-sdd/features/pm4-one-skill-execution/requirements.md#constraints
+      - .ai-sdd/features/pm4-one-skill-execution/requirements.md#proposed-decisions
+      - .ai-sdd/features/pm4-one-skill-execution/slices/executor-core-and-trace.md#requirements
+      - .ai-sdd/conventions/pilot.md#discovery-record
+  - id: DEC-TRACE-SHAPE
+    status: closed
+    decision: >-
+      The executor writes append-only JSONL made only of contract `PilotTraceRecord`
+      variants: command records when dispatch is attempted, result records when terminal
+      results exist, and stop records for success, failure, timeout, interrupt, or
+      validation rejection.
+    rationale: >-
+      PM4 proof output must be machine-readable by later replay and run-logger work, and a
+      PM4-only proof-log schema would violate the contract ownership boundary.
+    citations:
+      - PILOT_MASTER_REQUIREMENTS.md#components
+      - PILOT_MASTER_REQUIREMENTS.md#constraints
+      - .ai-sdd/features/pm4-one-skill-execution/requirements.md#in-scope
+      - .ai-sdd/features/pm4-one-skill-execution/requirements.md#proposed-decisions
+      - contracts/src/contracts/pilot.py
+
+files:
+  - pilot/src/pilot/execution.py
+  - pilot/src/pilot/trace.py
+  - pilot/src/pilot/__init__.py
+  - pilot/tests/test_execution.py
+
+tests:
+  - uv sync
+  - make test
+  - make validate
+  - make lint
+  - cd pilot && uv sync
+  - cd pilot && PYTHONPATH=src:../contracts/src uv run pytest tests/test_execution.py -v
+  - cd pilot && PYTHONPATH=src:../contracts/src uv run ruff check src/pilot/execution.py src/pilot/trace.py src/pilot/__init__.py tests/test_execution.py
+  - cd pilot && PYTHONPATH=src:../contracts/src uv run ruff format --check src/pilot/execution.py src/pilot/trace.py src/pilot/__init__.py tests/test_execution.py
