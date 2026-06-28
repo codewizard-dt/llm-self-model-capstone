@@ -534,6 +534,29 @@ class OperatorCoreTests(unittest.TestCase):
         self.assertEqual(events[-1].name, "grabbed")
         self.assertEqual(sink.packets[-1]["cmd"], "grab")
 
+    def test_closed_manipulator_position_without_current_is_not_object_proof(
+        self,
+    ) -> None:
+        sink = PacketCommandSink()
+        operator = make_operator(sink, clock=lambda: 10.0)
+        operator.update_telemetry(
+            TelemetrySnapshot(
+                stamp_s=9.9,
+                motor_samples=(
+                    MotorSample(
+                        device="effector_motor",
+                        subsystem="manipulator",
+                        sample_ms=100,
+                        position_deg=-319.0,
+                        velocity_rpm=0.0,
+                        current_amp=0.0,
+                    ),
+                ),
+            )
+        )
+
+        self.assertFalse(operator.has_object())
+
     def test_pickup_ball_opens_approaches_and_closes_on_visual_ball(self) -> None:
         now = 10.0
 
@@ -628,7 +651,7 @@ class OperatorCoreTests(unittest.TestCase):
                         sample_ms=100,
                         position_deg=320.0,
                         velocity_rpm=0.0,
-                        current_amp=0.0,
+                        current_amp=0.3,
                     ),
                 ),
             )
@@ -778,7 +801,7 @@ class OperatorCoreTests(unittest.TestCase):
                         sample_ms=100,
                         position_deg=308.0,
                         velocity_rpm=0.0,
-                        current_amp=0.0,
+                        current_amp=0.3,
                     ),
                 ),
             )

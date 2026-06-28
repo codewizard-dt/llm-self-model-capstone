@@ -1385,12 +1385,12 @@ class Operator:
             )
             visual_capture_confirmed = self.pickup_visual_capture_confirmed
             if (
-                has_object is not True
+                not grip_confirmed
                 or not visual_capture_confirmed
                 or ball_visible_outside_claw
             ):
                 if (
-                    has_object is not True
+                    not grip_confirmed
                     and visual_capture_confirmed
                     and not ball_visible_outside_claw
                     and self._sample_may_settle_to_grip(
@@ -1574,7 +1574,7 @@ class Operator:
             )
             visual_capture_confirmed = self.pickup_visual_capture_confirmed
             if (
-                has_object is not True
+                not grip_confirmed
                 or not visual_capture_confirmed
                 or ball_visible_outside_claw
             ):
@@ -1794,20 +1794,17 @@ class Operator:
         velocity_rpm = abs(float(sample.velocity_rpm or 0.0))
         if self._sample_indicates_grip(sample):
             return True
+        if (
+            current_amp >= self.config.end_effector_current_object_amp
+            and velocity_rpm <= self.config.end_effector_low_velocity_rpm
+        ):
+            return True
         if sample.position_deg is not None:
             position_deg = abs(float(sample.position_deg))
             if position_deg <= self.config.end_effector_open_max_deg:
                 return False
-            if (
-                position_deg <= self.config.end_effector_object_max_closed_deg
-                and velocity_rpm <= self.config.end_effector_low_velocity_rpm
-            ):
-                return True
             return False
-        return (
-            current_amp >= self.config.end_effector_current_object_amp
-            and velocity_rpm <= self.config.end_effector_low_velocity_rpm
-        )
+        return False
 
     def _sample_indicates_grip(self, sample: MotorSample | None) -> bool:
         if sample is None:
