@@ -1,0 +1,32 @@
+apiVersion: ai-sdd/v1
+kind: Changeset
+metadata:
+  feature: safety-validator
+  slice: validator-tests-and-exports
+  stack: pilot
+
+summary: >-
+  Closed the final safety-validator acceptance slice by expanding
+  acceptance-level pilot safety tests, confirming additive public package
+  exports, and adding a small validator health gate for existing command-result
+  evidence. Tests now cover replay acceptance without supervision, hardware
+  acceptance with supervision, stable reason-code values, bridge and command
+  health rejection, stop admissibility under unsafe health, contract-owned and
+  registry-owned numeric envelopes, stale target and destination evidence,
+  missing and mismatched registry lookups, invalid raw commands, and full pilot
+  package export completeness. The validator now treats rejected, failed, or
+  stale `PilotObservation.last_result` values and command-sourced
+  `recent_failures` as deterministic health reasons for non-stop commands while
+  still allowing stop commands to report those reasons.
+
+satisfies:
+  - SV-FINAL-001
+  - SV-FINAL-002
+  - SV-FINAL-003
+  - SV-FINAL-004
+  - SV-FINAL-005
+  - SV-FINAL-006
+  - SV-FINAL-007
+  - SV-FINAL-008
+  - SV-FINAL-009
+  - SV-FINAL-010

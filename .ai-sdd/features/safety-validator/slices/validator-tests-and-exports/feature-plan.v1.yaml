@@ -1,0 +1,196 @@
+summary: >-
+  Finish the pilot safety-validator feature by adding acceptance-level unit
+  coverage, confirming public package exports, and making only small validator
+  fixes required by coverage or gates. The slice keeps the validator ROS-free,
+  deterministic, contract-backed, and limited to the approved safety-validator
+  surface.
+
+scope:
+  in:
+    - >-
+      Broaden `pilot/tests/test_safety.py` to cover the full safety-validator
+      acceptance bar from the approved feature requirements and this final
+      slice.
+    - >-
+      Verify replay/dry-run acceptance and hardware-mode acceptance with human
+      supervision.
+    - >-
+      Verify deterministic rejection or stop outcomes for stale bridge or
+      telemetry, estop, bridge fault, missing hardware supervision, oversized
+      numeric envelopes, missing target or destination evidence, missing
+      registry definitions, invalid commands, and stable reason strings.
+    - >-
+      Confirm `pilot` package exports expose the public safety-validator API
+      without adding schemas or breaking existing observation-builder and skill
+      registry exports.
+    - >-
+      Apply only small fixes in `pilot/src/pilot/safety.py` that are directly
+      required to satisfy acceptance tests, package exports, or lint/type gates.
+    - >-
+      Run pilot-local and root gates required by the feature and clearly report
+      any unrelated pre-existing failure.
+  out:
+    - >-
+      Executor, LLM adapter, assertion engine, run logger, replay runner,
+      delivery recipe, skill-baseline capture, or hardware proof behavior.
+    - >-
+      ROS publishing, ROS action/result waiting, or changes under
+      `robot/ros2-runtime/`.
+    - >-
+      PROS firmware, Brain clamps, command packet changes, or hardware safety
+      proof runs.
+    - >-
+      Contract schema redesign, new pilot skill names, or pydantic schema
+      surfaces in `pilot/`.
+    - >-
+      Broad refactors, new abstractions, new dependencies, or implementation
+      edits outside the three files listed in this plan.
+
+acceptance:
+  - id: SV-FINAL-001
+    description: >-
+      `pilot/tests/test_safety.py` covers valid replay/dry-run commands and
+      valid hardware-mode commands with human supervision, and asserts accepted
+      results preserve normalized contract-valid commands and `ok` reason
+      codes.
+  - id: SV-FINAL-002
+    description: >-
+      Tests cover stale bridge or heartbeat/telemetry health, estop, bridge
+      fault, and command rejection/fault health inputs with deterministic
+      rejected or stopped outcomes and stable `ValidationReasonCode` values.
+  - id: SV-FINAL-003
+    description: >-
+      Tests cover hardware-mode rejection when human supervision is absent,
+      while replay mode remains usable without a live supervision signal.
+  - id: SV-FINAL-004
+    description: >-
+      Tests cover oversized duration, drive speed, turn rate, arm angle or
+      velocity, and claw force/opening requests, proving values beyond registry
+      or contract-owned envelopes do not reach an accepted motion command.
+  - id: SV-FINAL-005
+    description: >-
+      Tests cover target- and destination-dependent skills rejecting missing,
+      stale, or insufficient object/tag/assertion evidence, including stable
+      reason codes for target and destination evidence failures.
+  - id: SV-FINAL-006
+    description: >-
+      Tests cover unknown or missing registry lookup failures and invalid
+      command inputs with deterministic machine-readable reason strings rather
+      than free-form exception behavior.
+  - id: SV-FINAL-007
+    description: >-
+      Tests confirm `stop` remains admissible under unsafe health conditions and
+      reports the unsafe health reasons instead of being blocked by motion
+      gates.
+  - id: SV-FINAL-008
+    description: >-
+      The `pilot` package exports the public safety API, including
+      `SafetyPolicy`, `ValidationMode`, `ValidationReason`,
+      `ValidationReasonCode`, `ValidationResult`, `ValidationStatus`,
+      `DEFAULT_SAFETY_POLICY`, and `validate_skill_command`, without removing
+      existing observation or skill registry exports.
+  - id: SV-FINAL-009
+    description: >-
+      Any edits to `pilot/src/pilot/safety.py` are limited to small
+      coverage/gate fixes for the accepted validator behavior; no executor,
+      LLM, assertion, replay, hardware, or schema behavior is introduced.
+  - id: SV-FINAL-010
+    description: >-
+      The final safety-validator feature acceptance in
+      `.ai-sdd/features/safety-validator/requirements.md` is met by the public
+      API, deterministic validator behavior, ROS-free tests, package exports,
+      and green pilot/root gates or a clearly identified unrelated pre-existing
+      gate failure.
+
+decisions:
+  - id: SV-FINAL-PLAN-001
+    status: closed
+    decision: >-
+      Treat this slice as an acceptance-hardening slice, not a feature-expansion
+      slice.
+    grounded_in:
+      - ".ai-sdd/features/safety-validator/slices/validator-tests-and-exports.md: What this slice delivers"
+      - ".ai-sdd/features/safety-validator/requirements.md: Acceptance"
+      - "PILOT_MASTER_REQUIREMENTS.md: P5 safety-validator"
+    rationale: >-
+      The safety-validator behavior has already been planned and implemented in
+      earlier slices; this final slice should close coverage, exports, and gate
+      polish without adding new pilot subsystems.
+  - id: SV-FINAL-PLAN-002
+    status: closed
+    decision: >-
+      Keep implementation changes restricted to
+      `pilot/src/pilot/__init__.py`, `pilot/src/pilot/safety.py`, and
+      `pilot/tests/test_safety.py`.
+    grounded_in:
+      - ".ai-sdd/features/safety-validator/slices/validator-tests-and-exports.md: Files to create / change"
+      - ".ai-sdd/features/safety-validator/requirements.md: Constraints"
+      - ".ai-sdd/conventions/pilot.md: Boundary rules"
+    rationale: >-
+      The slice explicitly allows final public exports, small safety fixes from
+      coverage/gate failures, and acceptance tests only.
+  - id: SV-FINAL-PLAN-003
+    status: closed
+    decision: >-
+      Verify exports through the `pilot` package while preserving existing
+      observation-builder and skill-registry public imports.
+    grounded_in:
+      - ".ai-sdd/features/safety-validator/slices/validator-tests-and-exports.md: Requirements"
+      - "PILOT_MASTER_REQUIREMENTS.md: Components -> Skill validator"
+      - "MASTER_REQUIREMENTS.md: Tech stacks -> pilot"
+    rationale: >-
+      Downstream executor and logger slices need a discoverable validator API,
+      but this slice must be additive and must not destabilize already exported
+      pilot surfaces.
+  - id: SV-FINAL-PLAN-004
+    status: closed
+    decision: >-
+      Use tests to lock stable reason codes and accepted/rejected/stopped
+      status behavior rather than asserting on incidental exception text or
+      implementation internals.
+    grounded_in:
+      - ".ai-sdd/features/safety-validator/requirements.md: SV-006"
+      - ".ai-sdd/features/safety-validator/slices/validator-tests-and-exports.md: Requirements"
+      - "PILOT_MASTER_REQUIREMENTS.md: Verification"
+    rationale: >-
+      Later executor, logger, and replay code will consume deterministic result
+      objects and reason codes, so acceptance coverage should protect that
+      contract.
+  - id: SV-FINAL-PLAN-005
+    status: closed
+    decision: >-
+      Preserve the contracts boundary: import and validate contract-owned pilot
+      models, but do not add schemas or new skill names in `pilot/`.
+    grounded_in:
+      - ".ai-sdd/conventions/pilot.md: No schema defined here"
+      - ".ai-sdd/features/safety-validator/requirements.md: Constraints"
+      - "MASTER_REQUIREMENTS.md: Components -> Boundary rule"
+    rationale: >-
+      `contracts/` remains the schema-owning vertical; the safety validator may
+      define plain helper dataclasses but must not create schema surfaces.
+  - id: SV-FINAL-PLAN-006
+    status: closed
+    decision: >-
+      Run both pilot-local gates and root gates for final acceptance, with
+      unrelated pre-existing failures documented instead of hidden.
+    grounded_in:
+      - ".ai-sdd/features/safety-validator/slices/validator-tests-and-exports.md: Acceptance"
+      - ".ai-sdd/features/safety-validator/requirements.md: Acceptance"
+      - "MASTER_REQUIREMENTS.md: Build / verify"
+    rationale: >-
+      This is the last slice for the feature, so validation must prove the
+      vertical remains green locally and under the root reviewer runbook.
+
+files:
+  - pilot/src/pilot/__init__.py
+  - pilot/src/pilot/safety.py
+  - pilot/tests/test_safety.py
+
+tests:
+  - uv sync
+  - make -C pilot test
+  - make -C pilot validate
+  - make -C pilot lint
+  - make test
+  - make validate
+  - make lint

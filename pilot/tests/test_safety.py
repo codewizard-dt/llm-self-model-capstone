@@ -19,6 +19,7 @@ from contracts import (
     ClawCloseParams,
     ClawCloseSkillCommand,
     ClawOpenSkillCommand,
+    CommandStatus,
     FaceTargetParams,
     FaceTargetSkillCommand,
     GoToDestinationParams,
@@ -30,7 +31,9 @@ from contracts import (
     MAX_LINEAR,
     MAX_OMEGA,
     PilotAssertion,
+    PilotFailure,
     PilotObservation,
+    PilotSkillResult,
     PilotSkillName,
     PilotTaskPhase,
     Pose2D,
@@ -80,6 +83,8 @@ def _observation(
     visible_objects: list[VisibleObject] | None = None,
     visible_tags: list[VisibleTag] | None = None,
     manipulator: ManipulatorState | None = None,
+    last_result: PilotSkillResult | None = None,
+    recent_failures: list[PilotFailure] | None = None,
     current_assertions: list[PilotAssertion] | None = None,
 ) -> PilotObservation:
     pose = robot_pose or Pose2D(x_m=0.4, y_m=0.2, heading_rad=0.1)
@@ -101,6 +106,8 @@ def _observation(
             estop=False,
             battery_pct=80.0,
         ),
+        last_result=last_result,
+        recent_failures=recent_failures if recent_failures is not None else [],
         current_assertions=current_assertions if current_assertions is not None else [],
     )
 
@@ -157,6 +164,56 @@ def test_safety_module_imports_without_ros_packages_and_exports_public_api(monke
     assert ros_roots.isdisjoint(sys.modules)
 
 
+def test_pilot_package_exports_complete_safety_observation_and_registry_api() -> None:
+    import pilot
+
+    expected_exports = {
+        "DEFAULT_SAFETY_POLICY",
+        "SafetyPolicy",
+        "ValidationMode",
+        "ValidationReason",
+        "ValidationReasonCode",
+        "ValidationResult",
+        "ValidationStatus",
+        "validate_skill_command",
+        "ObservationCache",
+        "sorted_visible_objects",
+        "get_skill_definition",
+        "list_skill_definitions",
+    }
+
+    assert expected_exports <= set(pilot.__all__)
+    for name in expected_exports:
+        assert getattr(pilot, name) is not None
+
+
+def test_validation_reason_code_values_are_stable() -> None:
+    assert {code.value for code in ValidationReasonCode} == {
+        "ok",
+        "invalid_command",
+        "invalid_observation",
+        "unknown_skill",
+        "registry_missing",
+        "human_supervision_required",
+        "bridge_stale",
+        "bridge_fault",
+        "estop_active",
+        "heartbeat_missing",
+        "heartbeat_stale",
+        "command_rejected",
+        "command_failed",
+        "command_stale",
+        "duration_envelope",
+        "movement_envelope",
+        "target_evidence",
+        "destination_evidence",
+        "localization_missing",
+        "localization_stale",
+        "localization_low_confidence",
+        "verification_evidence",
+    }
+
+
 def test_policy_reason_and_result_types_are_immutable() -> None:
     policy = SafetyPolicy(heartbeat_stale_after_ms=100)
     result = validate_skill_command(
@@ -192,6 +249,21 @@ def test_replay_mode_accepts_healthy_known_contract_command() -> None:
     assert result.message == "command accepted"
 
 
+def test_replay_mode_accepts_raw_contract_mapping_without_supervision() -> None:
+    command = _motion_command()
+
+    result = validate_skill_command(
+        command.model_dump(),
+        _observation(),
+        mode=ValidationMode.REPLAY,
+        human_supervised=False,
+    )
+
+    assert result.status is ValidationStatus.ACCEPTED
+    assert result.command == command
+    assert result.reason_code is ValidationReasonCode.OK
+
+
 def test_hardware_mode_rejects_non_stop_without_human_supervision() -> None:
     result = validate_skill_command(
         _motion_command(),
@@ -206,14 +278,19 @@ def test_hardware_mode_rejects_non_stop_without_human_supervision() -> None:
 
 
 def test_hardware_mode_accepts_non_stop_with_human_supervision() -> None:
+    command = _motion_command()
+
     result = validate_skill_command(
-        _motion_command(),
+        command.model_dump(),
         _observation(),
         mode=ValidationMode.HARDWARE,
         human_supervised=True,
     )
 
     assert result.status is ValidationStatus.ACCEPTED
+    assert result.command == command
+    assert result.mode is ValidationMode.HARDWARE
+    assert result.skill is PilotSkillName.APPROACH_TARGET
     assert result.reason_code is ValidationReasonCode.OK
 
 
@@ -254,6 +331,57 @@ def test_non_stop_commands_reject_unsafe_bridge_health(
 
     assert result.status is ValidationStatus.REJECTED
     assert expected_code in _reason_codes(result)
+
+
+@pytest.mark.parametrize(
+    "last_result_status,expected_code",
+    [
+        (CommandStatus.REJECTED, ValidationReasonCode.COMMAND_REJECTED),
+        (CommandStatus.FAILED, ValidationReasonCode.COMMAND_FAILED),
+        (CommandStatus.STALE, ValidationReasonCode.COMMAND_STALE),
+    ],
+)
+def test_non_stop_commands_reject_unsafe_command_result_health(
+    last_result_status: CommandStatus,
+    expected_code: ValidationReasonCode,
+) -> None:
+    result = validate_skill_command(
+        _motion_command(),
+        _observation(
+            last_result=PilotSkillResult(
+                command_id="cmd-previous",
+                skill=PilotSkillName.APPROACH_TARGET,
+                status=last_result_status,
+                fault="bridge rejected command"
+                if last_result_status is CommandStatus.REJECTED
+                else None,
+            )
+        ),
+        mode=ValidationMode.REPLAY,
+    )
+
+    assert result.status is ValidationStatus.REJECTED
+    assert result.reason_code is expected_code
+
+
+def test_non_stop_commands_reject_recent_command_failure_health() -> None:
+    result = validate_skill_command(
+        _motion_command(),
+        _observation(
+            recent_failures=[
+                PilotFailure(
+                    failed_ms=110,
+                    source="command",
+                    summary="previous command fault",
+                    command_id="cmd-previous",
+                )
+            ]
+        ),
+        mode=ValidationMode.REPLAY,
+    )
+
+    assert result.status is ValidationStatus.REJECTED
+    assert result.reason_code is ValidationReasonCode.COMMAND_FAILED
 
 
 def test_heartbeat_threshold_uses_policy_value() -> None:
@@ -302,6 +430,25 @@ def test_stop_remains_admissible_and_reports_unsafe_health() -> None:
     )
 
 
+def test_stop_remains_admissible_and_reports_command_health() -> None:
+    result = validate_skill_command(
+        _stop_command(),
+        _observation(
+            last_result=PilotSkillResult(
+                command_id="cmd-previous",
+                skill=PilotSkillName.APPROACH_TARGET,
+                status=CommandStatus.FAILED,
+                fault="motor fault",
+            )
+        ),
+        mode=ValidationMode.HARDWARE,
+        human_supervised=False,
+    )
+
+    assert result.status is ValidationStatus.ACCEPTED
+    assert result.reason_code is ValidationReasonCode.COMMAND_FAILED
+
+
 def test_invalid_command_returns_stable_rejection_reason() -> None:
     result = validate_skill_command(
         {"v": 1, "command_id": "bad", "issued_ms": 1, "skill": "fly", "params": {}},
@@ -315,7 +462,7 @@ def test_invalid_command_returns_stable_rejection_reason() -> None:
 
 
 def test_contract_invalid_oversized_raw_command_stays_invalid_command() -> None:
-    result = validate_skill_command(
+    oversized_commands = [
         {
             "v": 1,
             "command_id": "bad-speed",
@@ -323,12 +470,19 @@ def test_contract_invalid_oversized_raw_command_stays_invalid_command() -> None:
             "skill": "approach_target",
             "params": {"target_id": "block-1", "max_speed_mps": MAX_LINEAR + 1.0},
         },
-        _observation(),
-        mode=ValidationMode.REPLAY,
-    )
+        {
+            "v": 1,
+            "command_id": "bad-opening",
+            "issued_ms": 1,
+            "skill": "claw_open",
+            "params": {"opening_pct": 101.0},
+        },
+    ]
 
-    assert result.status is ValidationStatus.REJECTED
-    assert result.reason_code is ValidationReasonCode.INVALID_COMMAND
+    for command in oversized_commands:
+        result = validate_skill_command(command, _observation(), mode=ValidationMode.REPLAY)
+        assert result.status is ValidationStatus.REJECTED
+        assert result.reason_code is ValidationReasonCode.INVALID_COMMAND
 
 
 def test_missing_registry_definition_returns_stable_registry_reason(monkeypatch) -> None:
@@ -337,6 +491,21 @@ def test_missing_registry_definition_returns_stable_registry_reason(monkeypatch)
 
     monkeypatch.setitem(
         validate_skill_command.__globals__, "get_skill_definition", missing_definition
+    )
+
+    result = validate_skill_command(_motion_command(), _observation(), mode=ValidationMode.REPLAY)
+
+    assert result.status is ValidationStatus.REJECTED
+    assert result.skill is PilotSkillName.APPROACH_TARGET
+    assert result.reason_code is ValidationReasonCode.REGISTRY_MISSING
+
+
+def test_mismatched_registry_definition_returns_stable_registry_reason(monkeypatch) -> None:
+    wrong_definition = get_skill_definition(PilotSkillName.STOP)
+    monkeypatch.setitem(
+        validate_skill_command.__globals__,
+        "get_skill_definition",
+        lambda name: wrong_definition,
     )
 
     result = validate_skill_command(_motion_command(), _observation(), mode=ValidationMode.REPLAY)
@@ -464,6 +633,29 @@ def test_target_and_destination_skills_require_current_evidence(
 
     assert result.status is ValidationStatus.REJECTED
     assert result.reason_code is expected_code
+
+
+def test_target_skill_rejects_stale_assertion_evidence() -> None:
+    command = FaceTargetSkillCommand(
+        command_id="cmd-face-stale-assertion",
+        issued_ms=100,
+        params=FaceTargetParams(target_id="block-2"),
+    )
+    observation = _observation(
+        visible_objects=[],
+        current_assertions=[
+            _assertion(
+                "assert.target.visible",
+                predicate="block-2 target is visible",
+                age_ms=1001,
+            )
+        ],
+    )
+
+    result = validate_skill_command(command, observation, mode=ValidationMode.REPLAY)
+
+    assert result.status is ValidationStatus.REJECTED
+    assert result.reason_code is ValidationReasonCode.TARGET_EVIDENCE
 
 
 def test_destination_id_accepts_current_assertion_evidence() -> None:

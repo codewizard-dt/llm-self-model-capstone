@@ -8,7 +8,13 @@ from typing import Final
 
 from pydantic import TypeAdapter, ValidationError
 
-from contracts import AssertionState, PilotObservation, PilotSkillCommand, PilotSkillName
+from contracts import (
+    AssertionState,
+    CommandStatus,
+    PilotObservation,
+    PilotSkillCommand,
+    PilotSkillName,
+)
 from pilot.skills import SkillDefinition, get_skill_definition
 
 
@@ -41,6 +47,9 @@ class ValidationReasonCode(StrEnum):
     ESTOP_ACTIVE = "estop_active"
     HEARTBEAT_MISSING = "heartbeat_missing"
     HEARTBEAT_STALE = "heartbeat_stale"
+    COMMAND_REJECTED = "command_rejected"
+    COMMAND_FAILED = "command_failed"
+    COMMAND_STALE = "command_stale"
     DURATION_ENVELOPE = "duration_envelope"
     MOVEMENT_ENVELOPE = "movement_envelope"
     TARGET_EVIDENCE = "target_evidence"
@@ -184,6 +193,7 @@ def validate_skill_command(
         )
 
     health_reasons = _bridge_health_reasons(normalized_observation, policy=policy)
+    health_reasons = (*health_reasons, *_command_health_reasons(normalized_observation))
     if skill is PilotSkillName.STOP:
         return _result(
             ValidationStatus.ACCEPTED,
@@ -283,6 +293,46 @@ def _bridge_health_reasons(
         )
 
     return tuple(reasons)
+
+
+def _command_health_reasons(observation: PilotObservation) -> tuple[ValidationReason, ...]:
+    reasons: list[ValidationReason] = []
+    last_result = observation.last_result
+    if last_result is not None:
+        match last_result.status:
+            case CommandStatus.REJECTED:
+                reasons.append(
+                    ValidationReason(
+                        ValidationReasonCode.COMMAND_REJECTED,
+                        "last command result was rejected",
+                    )
+                )
+            case CommandStatus.FAILED:
+                reasons.append(
+                    ValidationReason(
+                        ValidationReasonCode.COMMAND_FAILED,
+                        "last command result failed",
+                    )
+                )
+            case CommandStatus.STALE:
+                reasons.append(
+                    ValidationReason(
+                        ValidationReasonCode.COMMAND_STALE,
+                        "last command result is stale",
+                    )
+                )
+            case _:
+                pass
+
+    if any(failure.source == "command" for failure in observation.recent_failures):
+        reasons.append(
+            ValidationReason(
+                ValidationReasonCode.COMMAND_FAILED,
+                "recent command failure is present",
+            )
+        )
+
+    return tuple(dict.fromkeys(reasons))
 
 
 def _skill_rule_reasons(
