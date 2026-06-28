@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 import json
 from json import JSONDecodeError
-from collections.abc import Mapping, Sequence
-from typing import Literal, TypeAlias
+from typing import Literal, Protocol, TypeAlias
 
 from pydantic import ValidationError
 
@@ -104,6 +104,63 @@ class DecisionParseResult:
         return self.decision.command
 
 
+class DecisionPromptClient(Protocol):
+    """Provider boundary for submitting one rendered prompt and receiving one raw response."""
+
+    def complete(self, prompt: str) -> str:
+        """Submit one rendered prompt string and return the provider's raw response text."""
+
+
+@dataclass(frozen=True, slots=True)
+class DecisionAdapterError:
+    """Final adapter failure after bounded provider attempts are exhausted."""
+
+    attempt_count: int
+    max_attempts: int
+    final_error: DecisionParseError
+
+    @property
+    def code(self) -> DecisionParseErrorCode:
+        return self.final_error.code
+
+    @property
+    def message(self) -> str:
+        return self.final_error.message
+
+    @property
+    def details(self) -> dict[str, JsonValue]:
+        return dict(self.final_error.details)
+
+
+@dataclass(frozen=True, slots=True)
+class DecisionAdapterResult:
+    """Result of invoking the LLM decision adapter."""
+
+    decision: PilotDecision | None = None
+    error: DecisionAdapterError | None = None
+    attempt_count: int = 0
+
+    def __post_init__(self) -> None:
+        has_decision = self.decision is not None
+        has_error = self.error is not None
+        if has_decision == has_error:
+            raise ValueError(
+                "decision adapter result must contain exactly one of decision or error"
+            )
+        if self.attempt_count < 1:
+            raise ValueError("decision adapter result attempt_count must be at least 1")
+
+    @property
+    def ok(self) -> bool:
+        return self.decision is not None
+
+    @property
+    def command(self) -> object | None:
+        if self.decision is None:
+            return None
+        return self.decision.command
+
+
 class _NonStandardJsonConstant(ValueError):
     def __init__(self, constant: str) -> None:
         super().__init__(f"non-standard JSON constant is not allowed: {constant}")
@@ -174,6 +231,61 @@ def parse_decision_response(response_text: str) -> DecisionParseResult:
     return DecisionParseResult(decision=decision)
 
 
+def request_pilot_decision(
+    observation: PilotObservation,
+    *,
+    client: DecisionPromptClient,
+    recent_history: str = "",
+    safety_constraints: Sequence[str] = (),
+    allowed_skills: Sequence[Mapping[str, JsonValue]] | None = None,
+    max_attempts: int = 1,
+) -> DecisionAdapterResult:
+    """Invoke an injected prompt client until a valid pilot decision or bounded exhaustion.
+
+    ``max_attempts`` is the total provider submission limit, including the first prompt. Failed
+    parser/contract validations are retryable; only a successful final parse exposes a
+    ``PilotDecision`` or command object.
+    """
+
+    if type(max_attempts) is not int or max_attempts < 1:
+        raise ValueError("max_attempts must be an integer greater than or equal to 1")
+
+    base_payload = build_prompt_payload(
+        observation,
+        recent_history=recent_history,
+        safety_constraints=safety_constraints,
+        allowed_skills=allowed_skills,
+    )
+    previous_error: DecisionParseError | None = None
+
+    for attempt_number in range(1, max_attempts + 1):
+        payload = _payload_for_attempt(base_payload, attempt_number, previous_error)
+        raw_response = client.complete(render_prompt(payload))
+        parse_result = parse_decision_response(raw_response)
+
+        if parse_result.decision is not None:
+            return DecisionAdapterResult(
+                decision=parse_result.decision,
+                attempt_count=attempt_number,
+            )
+
+        if parse_result.error is None:  # Defensive guard; DecisionParseResult prevents this.
+            raise RuntimeError("parser returned neither decision nor error")
+        previous_error = parse_result.error
+
+    if previous_error is None:  # Defensive guard; max_attempts validation prevents this.
+        raise RuntimeError("adapter exhausted without recording a parser error")
+
+    return DecisionAdapterResult(
+        error=DecisionAdapterError(
+            attempt_count=max_attempts,
+            max_attempts=max_attempts,
+            final_error=previous_error,
+        ),
+        attempt_count=max_attempts,
+    )
+
+
 def build_prompt_payload(
     observation: PilotObservation,
     *,
@@ -242,6 +354,29 @@ def build_decision_prompt(
         allowed_skills=allowed_skills,
     )
     return payload, render_prompt(payload)
+
+
+def _payload_for_attempt(
+    base_payload: Mapping[str, JsonValue],
+    attempt_number: int,
+    previous_error: DecisionParseError | None,
+) -> PromptPayload:
+    payload = _json_clone(base_payload)
+    if not isinstance(payload, dict):
+        raise TypeError("prompt payload must be a JSON object")
+
+    if previous_error is not None:
+        payload["retry_context"] = {
+            "previous_attempt": {
+                "attempt_number": attempt_number - 1,
+                "error": {
+                    "code": previous_error.code,
+                    "message": previous_error.message,
+                    "details": _json_safe(previous_error.details),
+                },
+            }
+        }
+    return payload
 
 
 def _render_section(section: str, value: JsonValue) -> str:
@@ -382,13 +517,17 @@ def _json_safe(value: object) -> JsonValue:
 
 
 __all__ = [
+    "DecisionAdapterError",
+    "DecisionAdapterResult",
     "DecisionParseError",
     "DecisionParseErrorCode",
     "DecisionParseResult",
+    "DecisionPromptClient",
     "PROMPT_SECTION_ORDER",
     "PromptPayload",
     "build_decision_prompt",
     "build_prompt_payload",
     "parse_decision_response",
     "render_prompt",
+    "request_pilot_decision",
 ]

@@ -1,0 +1,191 @@
+summary: >
+  Add the public ROS-free pilot LLM decision adapter API that combines the existing deterministic
+  prompt builder and strict decision parser with an injected text provider protocol, bounded
+  retry-on-invalid-output behavior, retry-context prompting, and clear exhaustion errors that never
+  return an executable decision or command.
+scope:
+  in:
+    - Extend pilot.decision with a minimal provider/client Protocol that accepts rendered prompt
+      text and returns raw model response text.
+    - Add an adapter function or class that builds the prompt from contracts.PilotObservation,
+      invokes the injected provider, parses and validates each raw response with the existing
+      parse_decision_response helper, and returns a validated contracts.PilotDecision on success.
+    - Add bounded retry behavior for malformed JSON, unknown actions, unknown skills, and
+      schema-invalid decisions, using explicit total-attempt semantics so the provider cannot be
+      called indefinitely.
+    - Include structured parse/validation failure context in each retry prompt after the first
+      failed attempt while preserving deterministic prompt rendering and JSON-compatible payloads.
+    - Return a clear adapter-level failure result after attempt exhaustion, including the final
+      parse/validation error and attempt count, with no PilotDecision and no executable command
+      object exposed on the failure path.
+    - Add deterministic in-memory/mock provider behavior in pilot tests to prove response order,
+      recorded prompts, successful retries, and exhaustion behavior.
+    - Add additive public exports from pilot.__init__ only for stable adapter API types/functions
+      introduced by this slice.
+    - Preserve existing prompt-builder and parser APIs/tests from prior slices.
+  out:
+    - Real remote or local LLM provider implementations.
+    - API keys, provider SDK dependencies, network behavior, model selection, or Pi runtime secret
+      handling.
+    - Pilot loop ownership, loop-control retry, skill execution, ROS publishing, safety-validator
+      enforcement, assertion computation, run logging, replay orchestration, recipes, or hardware
+      motion.
+    - Changing contracts schemas or defining new schemas in pilot/.
+    - Modifying prompt section requirements except for adapter-local retry context on retry
+      attempts.
+acceptance:
+  - id: RAA-001
+    description: >
+      pilot.decision exposes a provider-agnostic adapter API that accepts a contracts.PilotObservation
+      plus recent history, safety constraints, and an injected prompt-to-raw-text client, then returns
+      a validated contracts.PilotDecision on a valid first response.
+  - id: RAA-002
+    description: >
+      Tests cover malformed JSON on the first provider response followed by a valid retry, proving
+      the second prompt includes structured failure context from the malformed parse.
+  - id: RAA-003
+    description: >
+      Tests cover an unknown skill response followed by a valid retry, proving registry validation
+      failures are retryable and no executable command is exposed from the failed attempt.
+  - id: RAA-004
+    description: >
+      Tests cover an unknown or invalid action response followed by a valid retry, proving action
+      validation failures are retryable and the eventual success returns only the validated final
+      decision.
+  - id: RAA-005
+    description: >
+      Tests cover retry exhaustion at the configured total-attempt limit and prove the adapter
+      failure result carries no contracts.PilotDecision and no executable command object.
+  - id: RAA-006
+    description: >
+      Tests cover deterministic in-memory/mock client behavior, including provider response order
+      and the exact number of prompts submitted for success and exhaustion paths.
+  - id: RAA-007
+    description: >
+      Tests prove retry prompts remain deterministic and JSON-compatible, with failure context
+      rendered in a stable shape that includes at least the previous attempt number, error code,
+      message, and details.
+  - id: RAA-008
+    description: >
+      Tests prove pilot.decision remains ROS-free and provider-SDK-free by importing and exercising
+      the adapter while rejecting ROS and common provider package imports.
+  - id: RAA-009
+    description: >
+      Existing prompt-builder and parser tests continue to pass unchanged, proving this slice layers
+      orchestration over the prior deterministic prompt and validation behavior.
+decisions:
+  - id: RAA-D001
+    status: closed
+    decision: >
+      Implement the adapter orchestration in pilot/src/pilot/decision.py, with optional additive
+      exports from pilot/src/pilot/__init__.py and focused tests in pilot/tests/test_decision_adapter.py.
+    rationale: >
+      LLM Decision Adapter decision LDA-001 places adapter behavior in pilot.decision, separate from
+      observation and skills. The retrying-adapter-api slice lists decision.py, optional __init__.py
+      exports, and a new adapter test file as the scoped files. MASTER_REQUIREMENTS Tech stacks and
+      PILOT_MASTER_REQUIREMENTS Components define pilot/ as the online-control vertical root.
+  - id: RAA-D002
+    status: closed
+    decision: >
+      Define the provider boundary as a minimal pure-Python Protocol that submits one rendered prompt
+      string and returns one raw response string, with no model/provider options in this slice.
+    rationale: >
+      LDA-002 closes the decision to use a minimal injected provider protocol with no real provider
+      implementation. PILOT_MASTER_REQUIREMENTS P4 assigns model invocation to the LLM decision
+      adapter, while the feature requirements and pilot convention keep provider choice, API keys,
+      network behavior, and SDK imports out of scope.
+  - id: RAA-D003
+    status: closed
+    decision: >
+      Use an adapter result/error type local to pilot.decision rather than adding a contract schema;
+      successful results may carry contracts.PilotDecision, while failures carry adapter error data
+      only.
+    rationale: >
+      MASTER_REQUIREMENTS Components and the pilot convention state that schemas are owned by
+      contracts and must not be defined in pilot/. The retrying-adapter-api slice requires clear
+      adapter errors with no executable command after exhaustion, but does not require a shared
+      contract for adapter-internal failure data.
+  - id: RAA-D004
+    status: closed
+    decision: >
+      Reuse build_decision_prompt for the first attempt and parse_decision_response for every
+      provider response; do not duplicate prompt construction, JSON parsing, action validation,
+      skill validation, or contract model validation inside the retry loop.
+    rationale: >
+      LDA-003 requires deterministic JSON-compatible prompt payloads rendered stably for provider
+      calls, and LDA-004 requires output validation through contracts.PilotDecision and contract
+      validation. The prior slices already implemented and tested those surfaces in pilot.decision.
+  - id: RAA-D005
+    status: closed
+    decision: >
+      Express the retry bound as max_attempts, the total number of provider submissions including
+      the initial attempt, validate it as an integer greater than or equal to one, and stop without
+      another provider call once max_attempts is reached.
+    rationale: >
+      The retrying-adapter-api slice requires bounded retry up to a configured limit and a clear stop
+      on exhaustion. PILOT_MASTER_REQUIREMENTS Execution Checklist says the deterministic Python
+      owner keeps timing and retries bounded, and P-ADR-03 says LLM output is advisory until
+      validated.
+  - id: RAA-D006
+    status: closed
+    decision: >
+      Treat every parse_decision_response failure as retryable until max_attempts is exhausted,
+      including malformed_json, non_object_json, unknown_action, unknown_skill, schema_validation,
+      and action_command_mismatch.
+    rationale: >
+      The feature scope requires retry/adaptation for malformed JSON or invalid decisions without
+      executing skills. The parser slice already classifies these as non-executable validation
+      failures suitable for retry prompting.
+  - id: RAA-D007
+    status: closed
+    decision: >
+      Add retry context to attempts after the first by rendering the normal deterministic prompt
+      payload with an extra adapter-local retry_context section containing prior attempt number,
+      error code, message, and JSON-safe details.
+    rationale: >
+      The retrying-adapter-api slice requires parse/validation failure context in retry attempts.
+      The existing render_prompt helper deterministically renders known sections first and then
+      additional payload keys in sorted order, so this preserves stable rendering without changing
+      the required base prompt sections from PILOT_MASTER_REQUIREMENTS.
+  - id: RAA-D008
+    status: closed
+    decision: >
+      Keep the in-memory/mock provider as a deterministic test helper in
+      pilot/tests/test_decision_adapter.py unless the implementation needs a tiny public fake for
+      type examples; do not add it as a production provider or dependency.
+    rationale: >
+      The slice allows an in-memory/mock client implementation or test helper for deterministic
+      tests. LDA-002 rejects adding real provider dependencies now, and the pilot convention marks
+      the production runtime/key/network posture as an open gap outside this slice.
+  - id: RAA-D009
+    status: closed
+    decision: >
+      Adapter failures, exhausted retries, and intermediate invalid attempts must never expose a
+      contracts.PilotDecision or command object; only a successful final parse may expose the
+      validated decision and its command.
+    rationale: >
+      The LLM Decision Adapter goal says invalid output is retried or rejected before anything can
+      reach the robot, and P-ADR-03 states LLM output is advisory until validated. The slice
+      explicitly requires no executable command object on exhaustion.
+  - id: RAA-D010
+    status: closed
+    decision: >
+      Verification uses pilot-local sync/test/lint plus root make sync, make test, make validate,
+      and make lint; make demo remains excluded from this per-slice plan.
+    rationale: >
+      The slice acceptance lists make -C pilot test, make -C pilot lint, root make test, root make
+      validate, and root make lint. The approved feature requirements require make sync rather than
+      root uv sync for this repo's per-vertical pyproject layout, while the plan-feature skill says
+      make demo is an m2 milestone concern and not a per-slice gate.
+files:
+  - pilot/src/pilot/decision.py
+  - pilot/src/pilot/__init__.py
+  - pilot/tests/test_decision_adapter.py
+tests:
+  - make -C pilot sync
+  - make -C pilot test
+  - make -C pilot lint
+  - make sync
+  - make test
+  - make validate
+  - make lint

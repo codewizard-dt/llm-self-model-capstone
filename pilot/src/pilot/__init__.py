@@ -15,10 +15,14 @@ from pilot.observation import (
     visible_tag_sort_key,
 )
 from pilot.decision import (
+    DecisionAdapterError,
+    DecisionAdapterResult,
+    DecisionPromptClient,
     PROMPT_SECTION_ORDER,
     build_decision_prompt,
     build_prompt_payload,
     render_prompt,
+    request_pilot_decision,
 )
 from pilot.skills import (
     BoundReference,
@@ -33,6 +37,9 @@ from pilot.skills import (
 
 __all__ = [
     "BoundReference",
+    "DecisionAdapterError",
+    "DecisionAdapterResult",
+    "DecisionPromptClient",
     "MovementEnvelope",
     "ObservationCache",
     "PROMPT_SECTION_ORDER",
@@ -46,6 +53,7 @@ __all__ = [
     "build_decision_prompt",
     "build_prompt_payload",
     "list_skill_definitions",
+    "request_pilot_decision",
     "render_prompt",
     "sorted_assertions",
     "sorted_failures",
