@@ -523,7 +523,7 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument("yellow_ball_max_hz", default_value="5.0"),
             DeclareLaunchArgument("yellow_ball_min_area_px", default_value="200.0"),
-            DeclareLaunchArgument("yellow_ball_min_circularity", default_value="0.55"),
+            DeclareLaunchArgument("yellow_ball_min_circularity", default_value="0.45"),
             DeclareLaunchArgument("yellow_ball_max_detections", default_value="1"),
             DeclareLaunchArgument("yellow_ball_h_min", default_value="20"),
             DeclareLaunchArgument("yellow_ball_s_min", default_value="80"),

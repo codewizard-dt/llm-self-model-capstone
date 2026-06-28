@@ -1159,21 +1159,36 @@ class Operator:
                 forward_m = float(ball.forward_m)
                 left_m = float(ball.left_m)
                 lateral_error_m = left_m - self.config.ball_claw_lateral_target_m
+                ball_laterally_aligned = (
+                    abs(lateral_error_m) <= self.config.ball_capture_lateral_m
+                )
                 ball_in_claw_zone = (
                     forward_m <= self.config.ball_capture_forward_m
-                    and abs(lateral_error_m) <= self.config.ball_capture_lateral_m
+                    and ball_laterally_aligned
                 )
                 if ball_in_claw_zone:
                     self.pickup_visual_capture_confirmed = True
+                wall_contact_lateral_lock = (
+                    approach_elapsed_s >= self.config.ball_wall_contact_s
+                    and ball_laterally_aligned
+                )
+                if wall_contact_lateral_lock:
+                    self.pickup_visual_capture_confirmed = True
                 if (
                     approach_elapsed_s >= self.config.ball_close_min_approach_s
-                    and ball_in_claw_zone
                     and (
-                        forward_m <= self.config.ball_close_forward_m
-                        or approach_elapsed_s >= self.config.ball_wall_contact_s
+                        (
+                            ball_in_claw_zone
+                            and forward_m <= self.config.ball_close_forward_m
+                        )
+                        or wall_contact_lateral_lock
                     )
                 ):
-                    close_reason = "ball_at_claw"
+                    close_reason = (
+                        "ball_wall_contact_lateral_lock"
+                        if wall_contact_lateral_lock and not ball_in_claw_zone
+                        else "ball_at_claw"
+                    )
             elif (
                 approach_elapsed_s >= self.config.ball_wall_contact_s
                 and self.pickup_visual_capture_confirmed
@@ -1374,6 +1389,35 @@ class Operator:
                 or not visual_capture_confirmed
                 or ball_visible_outside_claw
             ):
+                if (
+                    has_object is not True
+                    and visual_capture_confirmed
+                    and not ball_visible_outside_claw
+                    and self._sample_may_settle_to_grip(
+                        self.telemetry.manipulator_sample
+                        if self.telemetry is not None
+                        else None
+                    )
+                ):
+                    self.pickup_phase = "verifying"
+                    self.pickup_phase_start_s = now_s
+                    self._emit(
+                        "grab_verifying",
+                        {
+                            "has_object": has_object,
+                            "grip_confirmed": grip_confirmed,
+                            "grip_settle_pending": True,
+                            "visual_capture_confirmed": visual_capture_confirmed,
+                            "verify_settle_s": self.config.pickup_verify_settle_s,
+                        },
+                    )
+                    return OperatorResult(
+                        False,
+                        "verifying_grab",
+                        map_pose=self.map_pose,
+                        localization_source=self.localization_source,
+                        has_object=has_object,
+                    )
                 return self._handle_pickup_grab_failure(
                     now_s=now_s,
                     detail={
@@ -1770,6 +1814,21 @@ class Operator:
             return False
         current_amp = abs(float(sample.current_amp or 0.0))
         return current_amp >= self.config.end_effector_grip_current_amp
+
+    def _sample_may_settle_to_grip(self, sample: MotorSample | None) -> bool:
+        if sample is None:
+            return False
+        current_amp = abs(float(sample.current_amp or 0.0))
+        if current_amp >= self.config.end_effector_current_object_amp:
+            return True
+        if sample.position_deg is None:
+            return False
+        position_deg = abs(float(sample.position_deg))
+        return (
+            self.config.end_effector_open_max_deg
+            < position_deg
+            <= self.config.end_effector_object_max_closed_deg
+        )
 
     def _ball_search_omega(self, elapsed_s: float) -> float:
         segment_s = max(0.05, float(self.config.ball_search_segment_s))
