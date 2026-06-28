@@ -1,0 +1,10 @@
+apiVersion: ai-sdd/v1
+kind: Pipeline
+metadata: { name: pm3-live-observation, version: 1 }
+spec:
+  semantics: enabler
+  nodes:
+    - { id: live-payload-mapping, kind: pipeline, pipeline: ../.., stack: pilot }
+    - { id: observe-cli-proof, kind: pipeline, pipeline: ../.., stack: pilot }
+  edges:
+    - { from: live-payload-mapping, to: observe-cli-proof }
