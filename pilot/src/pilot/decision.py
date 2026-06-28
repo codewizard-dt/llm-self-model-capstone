@@ -1,16 +1,28 @@
-"""Deterministic prompt construction for pilot LLM decisions."""
+"""Deterministic prompt construction and parsing for pilot LLM decisions."""
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 import json
+from json import JSONDecodeError
 from collections.abc import Mapping, Sequence
-from typing import TypeAlias
+from typing import Literal, TypeAlias
 
-from contracts import PilotDecisionAction, PilotObservation
+from pydantic import ValidationError
+
+from contracts import PilotDecision, PilotDecisionAction, PilotObservation
 import pilot.skills as skill_registry
 from pilot.skills import JsonValue
 
 PromptPayload: TypeAlias = dict[str, JsonValue]
+DecisionParseErrorCode: TypeAlias = Literal[
+    "malformed_json",
+    "non_object_json",
+    "unknown_action",
+    "unknown_skill",
+    "schema_validation",
+    "action_command_mismatch",
+]
 
 PROMPT_SECTION_ORDER: tuple[str, ...] = (
     "objective",
@@ -57,6 +69,109 @@ _OUTPUT_SCHEMA: PromptPayload = {
         "required_when_action": ["continue", "retry"],
     },
 }
+
+
+@dataclass(frozen=True, slots=True)
+class DecisionParseError:
+    """Structured, retry-prompt-friendly parser failure data."""
+
+    code: DecisionParseErrorCode
+    message: str
+    details: dict[str, JsonValue] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class DecisionParseResult:
+    """Result of parsing one raw LLM response."""
+
+    decision: PilotDecision | None = None
+    error: DecisionParseError | None = None
+
+    def __post_init__(self) -> None:
+        has_decision = self.decision is not None
+        has_error = self.error is not None
+        if has_decision == has_error:
+            raise ValueError("decision parse result must contain exactly one of decision or error")
+
+    @property
+    def ok(self) -> bool:
+        return self.decision is not None
+
+    @property
+    def command(self) -> object | None:
+        if self.decision is None:
+            return None
+        return self.decision.command
+
+
+class _NonStandardJsonConstant(ValueError):
+    def __init__(self, constant: str) -> None:
+        super().__init__(f"non-standard JSON constant is not allowed: {constant}")
+        self.constant = constant
+
+
+def parse_decision_response(response_text: str) -> DecisionParseResult:
+    """Parse and validate a strict JSON LLM decision response.
+
+    Ordinary malformed model output is returned as structured parser errors. Only successful
+    results carry a contract-owned ``PilotDecision`` and executable command object.
+    """
+
+    try:
+        parsed = json.loads(
+            response_text.strip(),
+            parse_constant=_reject_non_standard_json_constant,
+        )
+    except _NonStandardJsonConstant as exc:
+        return _failure(
+            "malformed_json",
+            "response must be strict whole-response JSON",
+            {
+                "constant": exc.constant,
+                "reason": "non-standard JSON constants are not valid JSON",
+            },
+        )
+    except JSONDecodeError as exc:
+        return _failure(
+            "malformed_json",
+            "response must be strict whole-response JSON",
+            {
+                "line": exc.lineno,
+                "column": exc.colno,
+                "position": exc.pos,
+                "reason": exc.msg,
+            },
+        )
+
+    if not isinstance(parsed, dict):
+        return _failure(
+            "non_object_json",
+            "response JSON must be an object",
+            {"parsed_type": _json_type(parsed)},
+        )
+
+    action_error = _validate_action_value(parsed)
+    if action_error is not None:
+        return _failure_from_error(action_error)
+
+    skill_error = _validate_command_skill(parsed)
+    if skill_error is not None:
+        return _failure_from_error(skill_error)
+
+    try:
+        decision = PilotDecision.model_validate(parsed)
+    except ValidationError as exc:
+        return _failure(
+            "schema_validation",
+            "response does not match the PilotDecision contract",
+            {"errors": _json_safe(exc.errors(include_url=False))},
+        )
+
+    consistency_error = _validate_action_command_consistency(decision)
+    if consistency_error is not None:
+        return _failure_from_error(consistency_error)
+
+    return DecisionParseResult(decision=decision)
 
 
 def build_prompt_payload(
@@ -142,10 +257,138 @@ def _json_clone(value: object) -> JsonValue:
     return json.loads(_canonical_json(value))
 
 
+def _reject_non_standard_json_constant(constant: str) -> object:
+    raise _NonStandardJsonConstant(constant)
+
+
+def _validate_action_value(parsed: Mapping[str, object]) -> DecisionParseError | None:
+    action = parsed.get("action")
+    if not isinstance(action, str):
+        return None
+
+    try:
+        PilotDecisionAction(action)
+    except ValueError:
+        return DecisionParseError(
+            code="unknown_action",
+            message=f"unknown decision action: {action}",
+            details={
+                "action": action,
+                "allowed_actions": [allowed.value for allowed in PilotDecisionAction],
+            },
+        )
+    return None
+
+
+def _validate_command_skill(parsed: Mapping[str, object]) -> DecisionParseError | None:
+    command = parsed.get("command")
+    if command is None or not isinstance(command, dict):
+        return None
+
+    skill = command.get("skill")
+    if not isinstance(skill, str):
+        return None
+
+    try:
+        skill_registry.get_skill_definition(skill)
+    except (KeyError, ValueError):
+        return DecisionParseError(
+            code="unknown_skill",
+            message=f"unknown command skill: {skill}",
+            details={
+                "skill": skill,
+                "allowed_skills": [
+                    str(summary["name"]) for summary in skill_registry.list_skill_summaries()
+                ],
+            },
+        )
+    return None
+
+
+def _validate_action_command_consistency(
+    decision: PilotDecision,
+) -> DecisionParseError | None:
+    action = decision.action
+    command = decision.command
+
+    if action in (PilotDecisionAction.CONTINUE, PilotDecisionAction.RETRY):
+        if command is None:
+            return DecisionParseError(
+                code="action_command_mismatch",
+                message=f"{action.value} decisions require a validated command",
+                details={"action": action.value, "required_command": True},
+            )
+        return None
+
+    if action is PilotDecisionAction.REQUEST_HUMAN:
+        if command is not None:
+            return DecisionParseError(
+                code="action_command_mismatch",
+                message="request_human decisions must not include a command",
+                details={"action": action.value, "allowed_command": None},
+            )
+        return None
+
+    if action in (PilotDecisionAction.STOP_SUCCESS, PilotDecisionAction.STOP_FAILURE):
+        if command is not None and command.skill != "stop":
+            return DecisionParseError(
+                code="action_command_mismatch",
+                message=f"{action.value} decisions may only include a stop command",
+                details={
+                    "action": action.value,
+                    "received_skill": str(command.skill),
+                    "allowed_skill": "stop",
+                },
+            )
+    return None
+
+
+def _failure(
+    code: DecisionParseErrorCode,
+    message: str,
+    details: Mapping[str, JsonValue] | None = None,
+) -> DecisionParseResult:
+    return DecisionParseResult(
+        error=DecisionParseError(code=code, message=message, details=dict(details or {}))
+    )
+
+
+def _failure_from_error(error: DecisionParseError) -> DecisionParseResult:
+    return DecisionParseResult(error=error)
+
+
+def _json_type(value: object) -> str:
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, list):
+        return "array"
+    if isinstance(value, str):
+        return "string"
+    if isinstance(value, int | float):
+        return "number"
+    return type(value).__name__
+
+
+def _json_safe(value: object) -> JsonValue:
+    if value is None or isinstance(value, str | int | float | bool):
+        return value
+    if isinstance(value, list):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, dict):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    return str(value)
+
+
 __all__ = [
+    "DecisionParseError",
+    "DecisionParseErrorCode",
+    "DecisionParseResult",
     "PROMPT_SECTION_ORDER",
     "PromptPayload",
     "build_decision_prompt",
     "build_prompt_payload",
+    "parse_decision_response",
     "render_prompt",
 ]
