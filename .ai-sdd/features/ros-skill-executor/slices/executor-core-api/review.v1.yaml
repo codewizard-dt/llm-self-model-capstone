@@ -1,0 +1,61 @@
+items:
+  - id: ACC-EXECUTOR-ROS-FREE-IMPORT
+    verdict: pass
+    notes: >-
+      `pilot.executor` imports only contracts, pilot safety/skills, dataclasses,
+      typing, enum, and time helpers; tests enforce importability while rejecting
+      ROS package imports and package-level exports load without ROS.
+  - id: ACC-EXECUTOR-PUBLIC-API
+    verdict: pass
+    notes: >-
+      The executor module exposes `SkillExecutor`, `execute_validated_command`,
+      immutable policy/deadline/route/request/result helper dataclasses, a
+      transport protocol/callable boundary, and stable executor reason codes.
+  - id: ACC-ACCEPTED-VALIDATION-HANDOFF
+    verdict: pass
+    notes: >-
+      Accepted `ValidationResult` objects with commands build exactly one
+      `TransportRequest` carrying the normalized command, command id, skill, route
+      metadata, deadline metadata, and fake transport payload in tests.
+  - id: ACC-REFUSE-NON-ACCEPTED-VALIDATION
+    verdict: pass
+    notes: >-
+      Rejected and stopped validations return `CommandStatus.REJECTED` without
+      transport calls. The prior empty-`reasons` defect is fixed by guarding before
+      indexing and returning `malformed_validation` with a deterministic message.
+  - id: ACC-REFUSE-MISSING-COMMAND
+    verdict: pass
+    notes: >-
+      Accepted validations with `command is None` return a rejected
+      `missing_command` result, preserve available skill context, and do not call
+      transport.
+  - id: ACC-CONTRACT-OWNED-STATUS
+    verdict: pass
+    notes: >-
+      `ExecutionResult.status` uses `contracts.CommandStatus`; no pilot-local
+      status enum or pydantic result schema is introduced.
+  - id: ACC-RESULT-PRESERVES-DIAGNOSTICS
+    verdict: pass
+    notes: >-
+      Boundary success and refusal paths preserve available command id, skill,
+      issued/completed timing, stable reason code, concise message, and optional
+      raw transport payload storage.
+  - id: ACC-REGISTRY-REUSED
+    verdict: pass
+    notes: >-
+      Accepted execution derives command path, expected result source, and maximum
+      duration from `pilot.skills.get_skill_definition()` instead of duplicating
+      routing tables in executor code.
+  - id: ACC-SCOPE-LIMITED-FILES
+    verdict: pass
+    notes: >-
+      The working tree changes are limited to `pilot/src/pilot/executor.py`,
+      additive exports in `pilot/src/pilot/__init__.py`, and
+      `pilot/tests/test_executor.py`.
+  - id: ACC-EXECUTOR-GATES
+    verdict: pass
+    notes: >-
+      Verified `make sync`, `make -C pilot test`, `make -C pilot lint`,
+      `make test`, `make validate`, and `make lint`; all completed successfully.
+verdict: approve
+rework: []
