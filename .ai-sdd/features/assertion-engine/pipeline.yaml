@@ -1,0 +1,12 @@
+apiVersion: ai-sdd/v1
+kind: Pipeline
+metadata: { name: assertion-engine, version: 1 }
+spec:
+  semantics: enabler
+  nodes:
+    - { id: assertion-context-and-api, kind: pipeline, pipeline: ../.., stack: pilot }
+    - { id: assertion-evaluators, kind: pipeline, pipeline: ../.., stack: pilot }
+    - { id: assertion-contract-coverage, kind: pipeline, pipeline: ../.., stack: pilot }
+  edges:
+    - { from: assertion-context-and-api, to: assertion-evaluators }
+    - { from: assertion-evaluators, to: assertion-contract-coverage }

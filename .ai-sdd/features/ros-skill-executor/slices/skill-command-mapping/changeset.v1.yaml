@@ -1,0 +1,20 @@
+summary: >-
+  Added deterministic executor-local skill-command mapping for every current
+  contract-owned pilot skill. Accepted non-verification skills now carry a
+  JSON-compatible transport payload with command id, skill, route/action,
+  bounded parameters, deadline, and registry metadata; operator-supported tag,
+  survey, arm, grab, and release skills prefer /operator/command while object or
+  coordinate-only motion uses a bounded control route. verify_grasp and
+  verify_drop now return assertion-only CommandStatus.OK results without calling
+  transport, preserving the existing validation refusal behavior.
+satisfies:
+  - ACC-SKILL-MAPPING-COVERAGE
+  - ACC-PAYLOAD-JSON-SHAPE
+  - ACC-REGISTRY-ALIGNED-MAPPING
+  - ACC-OPERATOR-ROUTE-FIRST
+  - ACC-STOP-HALT-PAYLOAD
+  - ACC-MOTION-MANIPULATOR-ACTIONS
+  - ACC-ASSERTION-ONLY-NO-PUBLISH
+  - ACC-VALIDATION-GATE-PRESERVED
+  - ACC-ROS-FREE-MAPPING
+  - ACC-SCOPE-LIMITED-FILES

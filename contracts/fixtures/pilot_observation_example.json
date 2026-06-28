@@ -1,0 +1,145 @@
+{
+  "v": 1,
+  "observed_ms": 120000,
+  "task_phase": "manipulate",
+  "objective": "Pick up cube-red-1 and drop it at goal-blue-1",
+  "robot_pose": {
+    "x_m": 1.2,
+    "y_m": 0.8,
+    "heading_rad": 0.12
+  },
+  "localization": {
+    "pose": {
+      "x_m": 1.2,
+      "y_m": 0.8,
+      "heading_rad": 0.12
+    },
+    "confidence": 0.91,
+    "age_ms": 45
+  },
+  "visible_objects": [
+    {
+      "object_id": "cube-red-1",
+      "label": "red_cube",
+      "confidence": 0.88,
+      "bbox": {
+        "x_px": 304,
+        "y_px": 188,
+        "width_px": 74,
+        "height_px": 66
+      }
+    }
+  ],
+  "visible_tags": [
+    {
+      "tag_id": 12,
+      "family": "tag36h11",
+      "confidence": 0.94,
+      "pose": {
+        "x_m": 1.42,
+        "y_m": 0.54,
+        "heading_rad": 0.0
+      }
+    }
+  ],
+  "manipulator": {
+    "arm_deg": 42.0,
+    "claw_state": "open",
+    "held_object_id": null
+  },
+  "bridge": {
+    "state": "ok",
+    "last_heartbeat_age_ms": 38,
+    "estop": false,
+    "battery_pct": 83.5,
+    "fault": null
+  },
+  "last_command": {
+    "v": 1,
+    "command_id": "cmd-face-cube-red-1",
+    "issued_ms": 118700,
+    "skill": "face_target",
+    "params": {
+      "target_id": "cube-red-1",
+      "max_turn_rad_s": 0.5,
+      "timeout_ms": 3000
+    }
+  },
+  "last_result": {
+    "v": 1,
+    "command_id": "cmd-face-cube-red-1",
+    "skill": "face_target",
+    "status": "ok",
+    "completed_ms": 119450,
+    "message": "target centered within turn tolerance",
+    "fault": null
+  },
+  "recent_failures": [
+    {
+      "failed_ms": 116200,
+      "source": "vision",
+      "summary": "cube-red-1 was briefly occluded during approach",
+      "command_id": "cmd-approach-cube-red-1-a",
+      "recovery_hint": "survey before retrying approach"
+    }
+  ],
+  "current_assertions": [
+    {
+      "v": 1,
+      "assertion_id": "assert-bridge-fresh",
+      "predicate": "bridge heartbeat is fresh and estop is clear",
+      "state": "true",
+      "confidence": 0.99,
+      "evidence": [
+        {
+          "source": "bridge",
+          "summary": "last heartbeat observed 38 ms ago; estop false",
+          "confidence": 0.99,
+          "observed_ms": 119962,
+          "age_ms": 38
+        }
+      ],
+      "observed_ms": 119962,
+      "age_ms": 38,
+      "recovery_hint": null
+    },
+    {
+      "v": 1,
+      "assertion_id": "assert-cube-visible",
+      "predicate": "cube-red-1 is visible in the gripper approach corridor",
+      "state": "true",
+      "confidence": 0.88,
+      "evidence": [
+        {
+          "source": "vision",
+          "summary": "detector reports cube-red-1 at image box 304,188,74,66",
+          "confidence": 0.88,
+          "observed_ms": 119920,
+          "age_ms": 80
+        }
+      ],
+      "observed_ms": 119920,
+      "age_ms": 80,
+      "recovery_hint": "survey_scene if object confidence drops"
+    },
+    {
+      "v": 1,
+      "assertion_id": "assert-gripper-empty",
+      "predicate": "claw is open and not holding an object",
+      "state": "true",
+      "confidence": 0.93,
+      "evidence": [
+        {
+          "source": "telemetry",
+          "summary": "arm at 42 degrees, claw reports open, no held object id",
+          "confidence": 0.93,
+          "observed_ms": 119955,
+          "age_ms": 45
+        }
+      ],
+      "observed_ms": 119955,
+      "age_ms": 45,
+      "recovery_hint": null
+    }
+  ]
+}

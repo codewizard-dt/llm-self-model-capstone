@@ -1,0 +1,169 @@
+summary: >
+  Add the ROS-free response parsing and validation layer for pilot LLM decisions. The slice accepts
+  raw model response text, parses strict JSON, validates the result through contract-owned pilot
+  decision and skill command schemas plus the pilot.skills registry, and returns structured errors
+  instead of executable decision objects for malformed or invalid output.
+scope:
+  in:
+    - Extend pilot.decision with a parser API for raw LLM decision response text.
+    - Parse only strict JSON object responses after trimming surrounding whitespace; reject
+      malformed JSON, arrays, strings, numbers, booleans, and null responses.
+    - Validate action values against contracts.PilotDecisionAction before constructing a decision,
+      so unknown actions produce a clear unknown-action error.
+    - Validate selected command skill names against the pilot.skills registry before accepting a
+      decision, so registry drift or unknown skills produce a clear unknown-skill error.
+    - Validate embedded command payloads and the full decision through contracts.PilotDecision and
+      contract-owned pydantic models/adapters; do not hand-accept command dictionaries.
+    - Return a non-executable structured parser result for every failure, with a stable error code,
+      human-readable message, and validation detail suitable for a retry prompt.
+    - Ensure failed parses never return contracts.PilotDecision or any other executable command
+      object.
+    - Add focused pilot tests for valid and invalid parser behavior while preserving the existing
+      prompt-builder tests from the prior slice.
+  out:
+    - Retrying model calls or adapting prompts after failure.
+    - Calling real or mock LLM providers.
+    - Running the pilot loop, executing skills, evaluating skill preconditions, or publishing ROS
+      commands.
+    - Adding safety-policy enforcement beyond parser-level action/command consistency.
+    - Computing observations, assertions, recent history, run logs, recipes, replay orchestration,
+      or hardware behavior.
+    - Defining new schemas in pilot/ or changing contract schemas.
+acceptance:
+  - id: DPV-001
+    description: >
+      pilot.decision exposes a parser helper that accepts raw response text and returns either a
+      valid contracts.PilotDecision or a structured parser error, without raising for ordinary
+      malformed model output.
+  - id: DPV-002
+    description: >
+      Tests cover valid continue and retry decisions with registry-known skill commands validated
+      through contracts.PilotDecision.
+  - id: DPV-003
+    description: >
+      Tests cover valid stop decisions using the contract action values stop_success and
+      stop_failure, accepting only a null command or a registry-known stop command for those stop
+      actions.
+  - id: DPV-004
+    description: >
+      Tests cover a valid request_human decision and prove it does not carry or return any
+      executable command object.
+  - id: DPV-005
+    description: >
+      Tests cover malformed JSON and non-object JSON responses, and each failure returns a
+      structured parser error rather than a PilotDecision.
+  - id: DPV-006
+    description: >
+      Tests cover unknown action values and unknown command skill names with distinct, clear error
+      codes and messages suitable for a retry prompt.
+  - id: DPV-007
+    description: >
+      Tests cover schema-invalid command parameters, including at least one out-of-bounds parameter
+      enforced by contract-owned pydantic validation.
+  - id: DPV-008
+    description: >
+      Tests prove every invalid case has no decision object and no executable command object in the
+      parser result.
+  - id: DPV-009
+    description: >
+      pilot.decision remains pure Python, provider-agnostic, ROS-free, and compatible with the
+      prompt-builder helpers already implemented in the prior slice.
+decisions:
+  - id: DPV-D001
+    status: closed
+    decision: >
+      Implement the response parser in pilot/src/pilot/decision.py and add tests in
+      pilot/tests/test_decision_parser.py.
+    rationale: >
+      LLM Decision Adapter decision LDA-001 places the adapter in pilot.decision, separate from
+      observation and skills. MASTER_REQUIREMENTS Tech stacks and Components define pilot/ as the
+      online-control vertical root, and the slice brief lists only decision.py plus
+      test_decision_parser.py for this work.
+  - id: DPV-D002
+    status: closed
+    decision: >
+      Treat model output as strict whole-response JSON: strip surrounding whitespace, parse with the
+      standard JSON parser, and reject any surrounding prose, markdown fences, malformed JSON, or
+      parsed non-object value.
+    rationale: >
+      The slice requires strict JSON and malformed/non-object rejection. The feature goal says the
+      adapter parses model JSON before anything reaches the robot, and ADR-19 keeps online control
+      bounded to fixed grammar rather than free-form output.
+  - id: DPV-D003
+    status: closed
+    decision: >
+      Return structured parser failures as pilot-local result/error data, not as contract schemas,
+      and never return contracts.PilotDecision on failure.
+    rationale: >
+      MASTER_REQUIREMENTS Components and Constraints state schemas are owned by contracts and no
+      schema is defined outside contracts. The slice requires clear errors instead of executable
+      command objects when output is malformed or schema-invalid.
+  - id: DPV-D004
+    status: closed
+    decision: >
+      Validate successful output by constructing contracts.PilotDecision, with embedded commands
+      validated by the contract-owned discriminated PilotSkillCommand models.
+    rationale: >
+      ADR-06 chooses pydantic v2 contract validation, the feature decision LDA-004 requires parsing
+      and validation through contracts.PilotDecision and TypeAdapter-style contract validation, and
+      the pilot convention repeats that pilot imports frozen schemas instead of defining them.
+  - id: DPV-D005
+    status: closed
+    decision: >
+      Check action strings against contracts.PilotDecisionAction before full model validation, and
+      report unknown_action separately from generic schema validation.
+    rationale: >
+      The slice explicitly requires clear structured errors for unknown actions. The canonical
+      contract action vocabulary is PilotDecisionAction in contracts, which currently includes
+      continue, retry, stop_success, stop_failure, and request_human.
+  - id: DPV-D006
+    status: closed
+    decision: >
+      Check command.skill against pilot.skills.get_skill_definition before accepting a command, and
+      report unknown_skill separately from schema-invalid parameters.
+    rationale: >
+      The slice requires validating selected skill names against the pilot.skills registry. The
+      feature requirements require using pilot.skills registry summaries as the allowed skill list,
+      and MASTER_REQUIREMENTS ADR-19 restricts online control to the fixed control grammar.
+  - id: DPV-D007
+    status: closed
+    decision: >
+      Enforce parser-level action/command consistency: continue and retry require a validated
+      command; request_human requires no command; stop_success and stop_failure allow no command or
+      only the validated stop skill command.
+    rationale: >
+      The feature goal says invalid LLM output must be rejected before anything can reach the robot,
+      and the slice requires invalid output never to return an executable decision object. This
+      keeps non-execution actions from carrying arbitrary executable commands while preserving the
+      contract fixture pattern where stop_success can carry a bounded stop command.
+  - id: DPV-D008
+    status: closed
+    decision: >
+      Keep parsing provider-agnostic and ROS-free, with no network, API-key, hardware, or provider
+      SDK dependency.
+    rationale: >
+      LLM Decision Adapter constraints require pure Python, provider-agnostic behavior and no API
+      keys, provider SDKs, network calls, ROS imports, or hardware dependencies. The pilot
+      convention marks the production LLM runtime/key/network posture as an open gap outside this
+      slice.
+  - id: DPV-D009
+    status: closed
+    decision: >
+      Verification for this slice uses pilot-local test/lint gates plus root sync, test, validate,
+      and lint gates; make demo is excluded.
+    rationale: >
+      The slice acceptance lists make -C pilot test, make -C pilot lint, root make test, root make
+      validate, and root make lint. The approved feature requirements say to use make sync rather
+      than root uv sync because this repo has per-vertical pyproject.toml files, while the
+      plan-feature skill explicitly excludes make demo as a per-slice gate.
+files:
+  - pilot/src/pilot/decision.py
+  - pilot/tests/test_decision_parser.py
+tests:
+  - make -C pilot sync
+  - make -C pilot test
+  - make -C pilot lint
+  - make sync
+  - make test
+  - make validate
+  - make lint

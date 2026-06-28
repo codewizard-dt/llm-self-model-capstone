@@ -1,0 +1,24 @@
+apiVersion: ai-sdd/v1
+kind: Changeset
+metadata:
+  feature: observation-builder
+  slice: pilot-scaffold-and-cache
+  stack: pilot
+
+summary: >-
+  Added the initial Python 3.11 pilot uv project scaffold, package-local Makefile,
+  ROS-free normalized ObservationCache/input helpers, deterministic ordering helpers,
+  and focused tests for cache construction, contract model reuse, stale or missing
+  inputs, and import without ROS packages. Wired root sync, test, validate, and lint
+  targets to delegate into pilot alongside the existing verticals.
+
+satisfies:
+  - ACC-PILOT-SCAFFOLD
+  - ACC-NORMALIZED-CACHE-MODELS
+  - ACC-CONTRACT-MODEL-REUSE
+  - ACC-DETERMINISTIC-ORDERING
+  - ACC-STALE-MISSING-INPUTS
+  - ACC-NO-ROS-DEPENDENCY
+  - ACC-ROOT-MAKEFILE-DELEGATION
+  - ACC-SNAPSHOT-BUILDER-DEFERRED
+  - ACC-REGRESSION-GATES

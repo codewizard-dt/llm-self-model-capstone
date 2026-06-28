@@ -1,0 +1,227 @@
+summary: >-
+  Extend the existing ROS-free `pilot.run_logger` core into an append-only JSONL
+  writer: each append validates a `contracts.PilotTraceRecord`, serializes one
+  compact JSON object plus newline, preserves append order and sequence numbers,
+  supports explicit and default run paths, creates parent directories, and
+  flushes successful writes predictably while leaving the file unchanged for
+  invalid append attempts.
+
+scope:
+  in:
+    - >-
+      Extend `pilot/src/pilot/run_logger.py` so `RunLogger` can open and own a
+      UTF-8 JSONL trace file for a single pilot session while remaining importable
+      without ROS packages or hardware.
+    - >-
+      Support caller-supplied output paths through the existing logger
+      configuration/API, accepting `str`/`PathLike` inputs without imposing a
+      global trace location.
+    - >-
+      Add a default run-file policy that resolves to the ignored runtime
+      location `pilot/runs/<session_id>.jsonl` when no explicit path is supplied.
+    - >-
+      Create parent directories for both explicit and default output paths before
+      the first successful write path needs them.
+    - >-
+      Write newline-delimited UTF-8 JSON with exactly one compact JSON object per
+      successful append and no prefixes, suffixes, blank lines, pretty-printing,
+      or diagnostic text in the trace file.
+    - >-
+      Preserve caller append order exactly and keep `seq` monotonic across the
+      existing observation, decision, command, result, assertion, and stop append
+      helpers.
+    - >-
+      Validate the full trace record through the contract-owned
+      `contracts.PilotTraceRecord` union before serializing or writing any bytes.
+    - >-
+      Flush after each successful append by default and expose deterministic
+      close/context-manager behavior so tests can inspect complete lines after
+      interruption-style shutdown.
+    - >-
+      Add focused tests in `pilot/tests/test_run_logger.py` for successful JSONL
+      writes, contract validation of written lines, append order, stable sequence
+      numbers, default paths, explicit paths, parent directory creation, flush and
+      close behavior, invalid append rejection, unchanged file bytes after failed
+      appends, and no ROS import dependency.
+  out:
+    - >-
+      Trace readback/parsing APIs, malformed-line reporting, recent-history
+      selection or formatting, replay-mode integration, CLI wiring, or loop
+      orchestration.
+    - >-
+      Multi-process locking, file rotation, compaction, compression, fsync-based
+      durability guarantees, or recovery from externally corrupted trace files.
+    - >-
+      ROS publishers/subscribers, `rclpy` imports, MCAP/ROS bag export, raw image
+      capture, provider transcript capture, hardware integration, or changes
+      under `robot/ros2-runtime` or `robot/v5-brain`.
+    - >-
+      Choosing skills, validating safety policy, executing commands, computing
+      assertions, calling an LLM provider, parsing LLM output, or modifying the
+      semantics of recorded payloads.
+    - >-
+      Contract schema changes, generated schema changes, pilot-local pydantic
+      schemas, fixture rewrites outside the focused logger tests, or duplicate
+      trace schemas outside `contracts/`.
+
+acceptance:
+  - id: ACC-RL-WRITER-ROS-FREE
+    description: >-
+      `pilot.run_logger` remains importable and testable on a dev machine without
+      `rclpy`, ROS message packages, live hardware, provider SDKs, or concrete
+      transport implementations.
+  - id: ACC-RL-EXPLICIT-PATH
+    description: >-
+      A caller can supply an explicit trace path in a temporary directory, append
+      records to it, close the logger, and observe that the requested file exists
+      at that exact path with complete JSONL lines.
+  - id: ACC-RL-DEFAULT-PATH
+    description: >-
+      When no path is supplied, the logger derives a deterministic default path
+      under `pilot/runs/<session_id>.jsonl`; tests prove the configured session id
+      appears in the filename and the runtime directory is not a source-tracked
+      artifact location.
+  - id: ACC-RL-PARENT-DIRS
+    description: >-
+      Parent directories for explicit and default output paths are created with
+      `parents=True`/`exist_ok=True` semantics before writing, including nested
+      temporary directories used by tests.
+  - id: ACC-RL-ONE-LINE-JSON
+    description: >-
+      Each successful append writes exactly one newline-terminated compact JSON
+      object and no extra text; tests parse the file by lines and find no blank,
+      partial, prefixed, or multi-line records.
+  - id: ACC-RL-CONTRACT-VALID-LINES
+    description: >-
+      Every written JSON object validates through the contract-owned
+      `contracts.PilotTraceRecord` union after being loaded from disk, with no
+      pilot-local schema or untyped durable record format.
+  - id: ACC-RL-ORDER-AND-SEQUENCE
+    description: >-
+      Tests append multiple event variants in a known order and prove the JSONL
+      line order matches the call order while `seq` starts from the configured
+      value and increments by exactly one per successful write.
+  - id: ACC-RL-FLUSH-CLOSE
+    description: >-
+      With default settings, a successful append is flushed before the next
+      append; closing the logger or exiting its context manager leaves readable
+      complete lines on disk for interruption-style inspection.
+  - id: ACC-RL-INVALID-NO-WRITE
+    description: >-
+      Invalid payloads, invalid stop reasons, invalid metadata, or contract
+      validation failures raise the existing logger error type before any bytes
+      are written for that attempt; tests snapshot file bytes before and after a
+      failed append and prove they are unchanged.
+  - id: ACC-RL-INVALID-NO-SEQ
+    description: >-
+      Failed append attempts do not consume sequence state; the next valid append
+      uses the sequence number that was pending before the rejected attempt.
+  - id: ACC-RL-SCOPE-LIMITED-FILES
+    description: >-
+      Implementation changes stay within `pilot/src/pilot/run_logger.py` and
+      `pilot/tests/test_run_logger.py`; no source schemas, ROS code, replay code,
+      CLI wiring, or hardware integration files are edited for this slice.
+  - id: ACC-RL-GATES
+    description: >-
+      The implementer runs the maintained sync and verification gates for this
+      repo layout: `uv sync`, `make -C pilot test`, `make -C pilot lint`, root
+      `make test`, root `make validate`, and root `make lint`.
+
+decisions:
+  - id: DEC-RL-WRITER-IN-RUN-LOGGER
+    status: closed
+    decision: >-
+      Implement the append writer in the existing `pilot/src/pilot/run_logger.py`
+      module and extend the existing `RunLogger`/`RunLoggerConfig` surface rather
+      than creating a separate trace-writer module for this slice.
+    rationale: >-
+      The prior logger-core-api slice already established `pilot.run_logger` as
+      the ROS-free record-building boundary, and this slice explicitly lists the
+      same module as the file to change for JSONL writing.
+    grounds:
+      - ".ai-sdd/features/run-logger/slices/trace-append-writer.md: Files to create / change"
+      - ".ai-sdd/features/run-logger/requirements.md: Proposed Decisions RL-001"
+      - "pilot/src/pilot/run_logger.py: existing RunLogger core API"
+  - id: DEC-RL-CONTRACT-BEFORE-BYTES
+    status: closed
+    decision: >-
+      Build and validate the full `contracts.PilotTraceRecord` first, then
+      serialize the validated pydantic model and write exactly one line only
+      after validation succeeds.
+    rationale: >-
+      The run logger is the audit/replay boundary; invalid durable lines would
+      break replay and diagnosis, and the slice requires invalid appends to leave
+      the trace unchanged.
+    grounds:
+      - ".ai-sdd/features/run-logger/requirements.md: Proposed Decisions RL-002 and RL-004"
+      - ".ai-sdd/features/run-logger/slices/trace-append-writer.md: Requirements"
+      - ".ai-sdd/conventions/pilot.md: Boundary rules -> No schema defined here"
+      - "contracts/src/contracts/pilot.py: PilotTraceRecord"
+  - id: DEC-RL-DEFAULT-RUNS-PATH
+    status: closed
+    decision: >-
+      Use `pilot/runs/<session_id>.jsonl` as the default trace path, resolved
+      from the pilot package location rather than the process current working
+      directory; explicit caller paths override this policy.
+    rationale: >-
+      Runtime traces should land in an ignored pilot run directory by default,
+      while tests, future CLI callers, and harness code need deterministic
+      explicit paths.
+    grounds:
+      - ".ai-sdd/features/run-logger/requirements.md: Proposed Decisions RL-010"
+      - ".ai-sdd/features/run-logger/slices/trace-append-writer.md: Requirements"
+      - "PILOT_MASTER_REQUIREMENTS.md: Tech stacks -> pilot ignore_folders includes runs"
+      - ".gitignore: generic runs/ ignore rule"
+  - id: DEC-RL-FLUSH-NOT-FSYNC
+    status: closed
+    decision: >-
+      Flush the Python file handle after each successful append by default, but
+      do not add fsync, locking, or crash-recovery semantics in this MVP writer
+      slice.
+    rationale: >-
+      Predictable flushes make supervised runs inspectable after ordinary
+      interruption or close, while the approved feature defers multi-process and
+      stronger durability guarantees.
+    grounds:
+      - ".ai-sdd/features/run-logger/requirements.md: Proposed Decisions RL-005 and RL-006"
+      - ".ai-sdd/features/run-logger/slices/trace-append-writer.md: Out Of Scope"
+      - "PILOT_MASTER_REQUIREMENTS.md: Constraints -> pilot must log enough context"
+  - id: DEC-RL-SINGLE-PROCESS-APPEND-MODE
+    status: closed
+    decision: >-
+      Open the trace file for append-only UTF-8 text writes owned by one logger
+      instance, preserving caller order within the deterministic pilot harness
+      and avoiding multi-process coordination.
+    rationale: >-
+      The MVP logger has one deterministic harness process as the trace owner,
+      and the feature explicitly excludes concurrent append safety.
+    grounds:
+      - ".ai-sdd/features/run-logger/requirements.md: Proposed Decisions RL-005 and RL-006"
+      - ".ai-sdd/features/run-logger/slices/trace-append-writer.md: Requirements and Out Of Scope"
+  - id: DEC-RL-WRITER-SLICE-ONLY
+    status: closed
+    decision: >-
+      Do not add readback helpers, recent-history formatting, replay integration,
+      CLI commands, ROS/MCAP capture, raw-image capture, provider transcript
+      capture, or hardware hooks in this slice.
+    rationale: >-
+      Those behaviors are part of the broader run-logger feature or downstream
+      pilot features, but the rendered slice is limited to append-only JSONL
+      writing, path policy, parent directory creation, flushing, and invalid
+      append atomicity at the file-content level.
+    grounds:
+      - ".ai-sdd/features/run-logger/slices/trace-append-writer.md: Out Of Scope"
+      - ".ai-sdd/features/run-logger/requirements.md: Out Of Scope"
+      - "PILOT_MASTER_REQUIREMENTS.md: Sub-features -> P8 run-logger before P9 replay-mode"
+
+files:
+  - pilot/src/pilot/run_logger.py
+  - pilot/tests/test_run_logger.py
+
+tests:
+  - uv sync
+  - make -C pilot test
+  - make -C pilot lint
+  - make test
+  - make validate
+  - make lint

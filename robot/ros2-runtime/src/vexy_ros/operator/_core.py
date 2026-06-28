@@ -475,7 +475,9 @@ class Operator:
     def _contract_gap(self, result: OperatorResult) -> dict[str, float]:
         gap: dict[str, float] = {}
         predicted = self.task_contract.contract_line.get("predicted", {})
-        if isinstance(predicted, Mapping) and isinstance(predicted.get("success"), bool):
+        if isinstance(predicted, Mapping) and isinstance(
+            predicted.get("success"), bool
+        ):
             gap["success_error"] = _bool_residual(
                 predicted=predicted["success"],
                 observed=result.success,

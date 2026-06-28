@@ -1,0 +1,81 @@
+items:
+  - id: ACC-CLI-ENTRYPOINT
+    verdict: pass
+    notes: >-
+      `pilot/pyproject.toml` exposes `pilot = "pilot.cli:main"`. Verified the
+      previously failing smoke path with `env -u PYTHONPATH uv run --frozen pilot
+      skill --hardware --skill survey_scene --duration-s 3.0` from `pilot/`; it
+      reaches CLI execution without ROS imports or `ModuleNotFoundError`.
+  - id: ACC-SURVEY-COMMAND-CONTRACT
+    verdict: pass
+    notes: >-
+      The CLI builds a contract-owned `SurveySceneSkillCommand` for
+      `survey_scene`, derives `timeout_ms` from `--duration-s`, uses the stable
+      `pilot-survey_scene-<issued_ms>` command id shape, and records the issued
+      timestamp. CLI tests assert the constructed contract type and parameters.
+  - id: ACC-SAFETY-PATH
+    verdict: pass
+    notes: >-
+      Parsed CLI arguments are converted to a contract command plus
+      contract-valid observation before calling `validate_skill_command`.
+      Hardware mode is selected for `--hardware`, and tests prove the executor
+      receives only the accepted `ValidationResult` rather than raw arguments.
+  - id: ACC-SUPERVISION-GATE
+    verdict: pass
+    notes: >-
+      Hardware mode supplies `human_supervised=True` through the shared safety
+      validator path. The `--no-supervision` test uses the real validator,
+      returns `human_supervision_required`, and records no executor calls.
+  - id: ACC-EXECUTOR-INVOKED-ON-ACCEPTED
+    verdict: pass
+    notes: >-
+      Accepted-validation CLI coverage injects a fake executor and proves it is
+      called exactly once with the accepted `ValidationResult`; the executor
+      result is emitted as stable structured JSON.
+  - id: ACC-VALIDATION-REFUSAL-NO-EXECUTE
+    verdict: pass
+    notes: >-
+      Rejected and stopped validations return nonzero CLI status, include the
+      validator reason in output, and never invoke the executor or transport.
+      Tests cover both stopped validation and hardware-supervision refusal.
+  - id: ACC-CLI-OUTPUT-STATUS
+    verdict: pass
+    notes: >-
+      Success, validation-refusal, and default no-transport execution paths emit
+      sorted JSON containing command id, skill, status, reason code, and message.
+      The direct smoke command now emits structured `transport_failed` JSON
+      instead of an import traceback.
+  - id: ACC-PUBLIC-EXPORTS-STABLE
+    verdict: pass
+    notes: >-
+      Existing package exports for executor, safety, registry, observation,
+      assertion, and decision helpers remain import-compatible. The only package
+      initializer change is the repo-local contracts import shim needed for the
+      packaged CLI path.
+  - id: ACC-ROS-FREE-CLI-TESTS
+    verdict: pass
+    notes: >-
+      `pilot/tests/test_cli.py` injects validator/executor dependencies and
+      rejects ROS imports during CLI import. `make -C pilot test` passed without
+      `rclpy`, ROS message packages, or a live ROS graph.
+  - id: ACC-FEATURE-ACCEPTANCE-REGRESSION
+    verdict: pass
+    notes: >-
+      Existing executor acceptance coverage remains intact for accepted
+      execution, validation refusal, per-skill mapping, timeout classification,
+      terminal result parsing, stop behavior, assertion-only behavior, ROS-free
+      imports, and JSON payload shape. The full pilot suite passed.
+  - id: ACC-GATES
+    verdict: pass
+    notes: >-
+      Verified `make -C pilot test`, `make -C pilot lint`, root `make test`,
+      root `make validate`, and root `make lint`; all completed successfully.
+  - id: ACC-SCOPE-LIMITED
+    verdict: pass
+    notes: >-
+      Current working tree changes are limited to `pilot/pyproject.toml`,
+      `pilot/src/pilot/__init__.py`, new `pilot/src/pilot/cli.py`, and new
+      `pilot/tests/test_cli.py`. No contracts, ROS runtime, robot firmware, or
+      executor core changes were introduced in this reworked slice.
+verdict: approve
+rework: []

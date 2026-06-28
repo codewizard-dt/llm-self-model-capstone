@@ -1,0 +1,19 @@
+summary: >-
+  Hardened the ROS-free pilot executor refusal path so malformed non-accepted
+  ValidationResult objects with no reasons return deterministic
+  CommandStatus.REJECTED results using the existing malformed_validation executor
+  reason without invoking transport. Added a focused regression test for the
+  empty-reasons rejected validation case while preserving the existing executor
+  API, package exports, accepted transport handoff behavior, and satisfied
+  acceptance coverage.
+satisfies:
+  - ACC-EXECUTOR-ROS-FREE-IMPORT
+  - ACC-EXECUTOR-PUBLIC-API
+  - ACC-ACCEPTED-VALIDATION-HANDOFF
+  - ACC-REFUSE-NON-ACCEPTED-VALIDATION
+  - ACC-REFUSE-MISSING-COMMAND
+  - ACC-CONTRACT-OWNED-STATUS
+  - ACC-RESULT-PRESERVES-DIAGNOSTICS
+  - ACC-REGISTRY-REUSED
+  - ACC-SCOPE-LIMITED-FILES
+  - ACC-EXECUTOR-GATES

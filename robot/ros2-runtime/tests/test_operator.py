@@ -952,7 +952,9 @@ class OperatorCoreTests(unittest.TestCase):
         self.assertNotIn("stale_prior_gap", payload["gap"])
         self.assertEqual(payload["gap"]["success_error"], -1.0)
 
-    def test_contract_result_preserves_raw_session_path_for_hardware_proof(self) -> None:
+    def test_contract_result_preserves_raw_session_path_for_hardware_proof(
+        self,
+    ) -> None:
         sink = PacketCommandSink()
         operator = make_operator(
             sink,

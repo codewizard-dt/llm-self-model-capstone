@@ -1,0 +1,26 @@
+apiVersion: ai-sdd/v1
+kind: Changeset
+metadata:
+  feature: safety-validator
+  slice: validator-api-and-policy
+  stack: pilot
+
+summary: >-
+  Added the ROS-free pilot.safety validator API with explicit replay and hardware
+  modes, immutable safety policy, validation status, reason, and result helper
+  types, and deterministic validation for contract-owned PilotSkillCommand and
+  PilotObservation objects. The validator accepts healthy replay commands,
+  requires human supervision for hardware non-stop commands, blocks non-stop
+  commands on stale or faulted bridge state, estop, missing heartbeat age, or
+  stale heartbeat age, and keeps stop commands admissible while reporting unsafe
+  health reason codes. Added package exports and focused tests for importability,
+  immutability, mode behavior, supervision, bridge health gates, heartbeat
+  threshold policy, stop behavior, and stable invalid-command rejection.
+
+satisfies:
+  - SV-API-001
+  - SV-API-002
+  - SV-API-003
+  - SV-API-004
+  - SV-API-005
+  - SV-API-006

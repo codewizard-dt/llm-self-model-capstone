@@ -1,0 +1,74 @@
+items:
+  - id: ACC-SUMMARY-HELPERS-EXIST
+    verdict: pass
+    notes: >-
+      pilot.skills now exposes list_skill_summaries() and get_skill_summary()
+      beside the existing immutable SkillDefinition registry API. The helpers
+      summarize definitions without mutating or replacing list_skill_definitions()
+      or get_skill_definition(); tests also assert the helpers are public from
+      pilot.skills.__all__.
+  - id: ACC-SUMMARY-JSON-SERIALIZABLE
+    verdict: pass
+    notes: >-
+      test_skill_summaries_are_json_serializable_plain_data passes. It round
+      trips list_skill_summaries() through json.dumps(..., sort_keys=True) and
+      json.loads(), then recursively rejects dataclass instances, enum objects,
+      tuple values, class objects, and object repr strings in every summary.
+  - id: ACC-SUMMARY-DETERMINISTIC-ORDER
+    verdict: pass
+    notes: >-
+      list_skill_summaries() maps over list_skill_definitions(), which is ordered
+      by the contracts.PilotSkillName declaration. Tests prove repeated summary
+      calls produce identical sorted JSON and that summary names match the enum
+      value order exactly.
+  - id: ACC-SUMMARY-COMPLETE-METADATA
+    verdict: pass
+    notes: >-
+      test_every_summary_has_complete_static_metadata passes for every registry
+      definition. The summary surface includes non-empty inputs/defaults,
+      preconditions, max_duration_ms, movement, command_path,
+      expected_result_source, success_assertion id/name, failure_reasons,
+      recovery_hints, bound_references, and stable module-qualified contract
+      model names.
+  - id: ACC-BOUNDED-EVERY-SKILL
+    verdict: pass
+    notes: >-
+      Existing definition tests and the new summary bound tests verify every
+      skill has 0 < max_duration_ms <= contracts.pilot.PILOT_TIMEOUT_MS_MAX.
+      Movement envelope values remain within the contract-owned drive, turn, arm,
+      and claw bounds where present.
+  - id: ACC-CONTRACT-NAMES-REUSED
+    verdict: pass
+    notes: >-
+      Summary names are serialized from definition.name.value and the focused
+      tests assert exact coverage of contracts.PilotSkillName with no extra,
+      missing, duplicate, or pilot-local skill-name entries.
+  - id: ACC-SYMBOLIC-ROUTE-DECLARATIONS
+    verdict: pass
+    notes: >-
+      Command paths and expected result sources remain symbolic strings in both
+      definitions and summaries. Tests reject ROS topic separators, ROS package
+      names, message class hints, and provider-like fragments.
+  - id: ACC-SKILLS-IMPORT-ROS-FREE
+    verdict: pass
+    notes: >-
+      test_skills_module_imports_without_ros_packages passes with a meta_path
+      guard that raises on rclpy, std_msgs, sensor_msgs, and geometry_msgs imports.
+      The test imports pilot.skills, lists definitions, lists summaries, and
+      confirms those ROS roots are absent from sys.modules.
+  - id: ACC-SCOPE-LIMITED-FILES
+    verdict: pass
+    notes: >-
+      git diff --name-only shows implementation changes limited to
+      pilot/src/pilot/skills.py and pilot/tests/test_skills.py. No contracts
+      schemas or fixtures, pilot package-root exports, ROS wiring, feature files,
+      prompt builders, or runtime-loop files are edited.
+  - id: ACC-REGRESSION-GATES
+    verdict: pass
+    notes: >-
+      Verified in this checkout: make sync exits 0; make -C pilot test exits 0
+      with 28 passed; make -C pilot lint exits 0; make validate exits 0; make
+      test exits 0 with contracts 197 passed, self_model_generator 26 passed,
+      pilot 28 passed, and robot/ros2-runtime 154 passed/1 skipped; make lint
+      exits 0 across all delegated verticals.
+verdict: approve

@@ -1,0 +1,273 @@
+summary: >-
+  Add the ROS-free core API for the pilot run logger: immutable logger
+  configuration, deterministic session/sequence/timestamp bookkeeping, typed
+  trace-record builders for the six contract-owned pilot event variants, and a
+  public module surface that validates every constructed record through
+  `contracts.PilotTraceRecord` without implementing durable JSONL writes yet.
+
+scope:
+  in:
+    - >-
+      Add `pilot/src/pilot/run_logger.py` as the ROS-free run-logger foundation
+      for the online pilot loop.
+    - >-
+      Define small immutable pilot-local configuration/helper types for
+      `session_id`, starting sequence, and injected monotonic clock behavior.
+    - >-
+      Expose a logger object or equivalent public API that maintains stable
+      session metadata and advances `seq` exactly once for each successfully
+      built trace record.
+    - >-
+      Provide typed builder/append-skeleton helpers for `observation`,
+      `decision`, `command`, `result`, `assertion`, and `stop` trace events.
+    - >-
+      Reuse `contracts.PilotObservation`, `contracts.PilotDecision`,
+      `contracts.PilotSkillCommand`, `contracts.PilotSkillResult`,
+      `contracts.PilotAssertion`, `contracts.PilotTraceRecord`, and the
+      existing stop reason vocabulary; do not define pydantic schemas in
+      `pilot/`.
+    - >-
+      Validate every constructed trace record through the contract-owned
+      `PilotTraceRecord` union before returning or handing it to later writer
+      code.
+    - >-
+      Reject invalid payloads deterministically before exposing a trace record
+      and without consuming sequence state.
+    - >-
+      Add focused ROS-free tests covering metadata behavior, deterministic
+      clocks, all six variants, contract validation, invalid payload rejection,
+      package exports, and no ROS import dependency.
+    - >-
+      Add only additive package exports from `pilot/src/pilot/__init__.py` if
+      they are useful for the stable run-logger API.
+  out:
+    - >-
+      Durable JSONL file opening, file append mode, flushing, fsync policy,
+      default run-file path creation, or generated trace files.
+    - >-
+      Trace readback/parsing, malformed-line reporting, recent-history
+      selection or formatting, replay-mode integration, CLI wiring, or run-loop
+      orchestration.
+    - >-
+      ROS publishers/subscribers, `rclpy` imports, operator topic changes,
+      `robot/ros2-runtime` changes, PROS firmware changes, or hardware run
+      orchestration.
+    - >-
+      Choosing skills, validating safety, executing commands, computing
+      assertions, calling an LLM provider, parsing LLM output, or altering any
+      command/result/assertion semantics.
+    - >-
+      Contract schema changes, generated schema changes, fixture rewrites,
+      pilot-local pydantic schemas, or duplicate trace schemas outside
+      `contracts/`.
+    - >-
+      Multi-process append safety, binary artifacts, raw camera frames, provider
+      transcripts, secrets, environment variables, or unbounded logs.
+
+acceptance:
+  - id: ACC-RL-ROS-FREE-IMPORT
+    description: >-
+      `pilot.run_logger` and any additive package-level exports import and can
+      be exercised on a dev machine without `rclpy`, ROS message packages, ROS
+      topic classes, live hardware, provider SDKs, or concrete transport
+      implementations.
+  - id: ACC-RL-CONFIG-SESSION
+    description: >-
+      The module exposes a small public configuration/API surface that keeps one
+      stable `session_id` for a logger instance, supports caller-supplied
+      session ids, and can generate a non-empty default session id without
+      reading ROS state.
+  - id: ACC-RL-SEQUENCE
+    description: >-
+      Tests prove `seq` starts at zero by default, can start from an explicit
+      caller-provided value when needed for later resume/readback work, and
+      increments by exactly one only after a trace record has validated and been
+      exposed by the logger API.
+  - id: ACC-RL-DETERMINISTIC_TIME
+    description: >-
+      `monotonic_ms` comes from an injected deterministic clock or an explicit
+      caller value; tests prove core record construction does not require hidden
+      wall-clock reads.
+  - id: ACC-RL-SIX_VARIANTS
+    description: >-
+      The public API can construct all MVP `contracts.PilotTraceRecord` variants:
+      `observation`, `decision`, `command`, `result`, `assertion`, and `stop`,
+      using the existing contract-owned payload types and stop reasons.
+  - id: ACC-RL-CONTRACT_VALIDATION
+    description: >-
+      Every helper validates the full trace record through `contracts.PilotTraceRecord`
+      or an equivalent pydantic `TypeAdapter` before returning it; tests
+      round-trip returned records through the same contract union.
+  - id: ACC-RL-INVALID_REJECTED
+    description: >-
+      Invalid event payloads, invalid stop reasons, or invalid metadata produce
+      a deterministic logger error before writer handoff, return no trace
+      record, and do not consume sequence state.
+  - id: ACC-RL-APPEND_SKELETON_ONLY
+    description: >-
+      This slice may name builder helpers as append-oriented public methods for
+      future writer reuse, but tests prove no durable files are created, opened,
+      written, flushed, parsed, or read by the core API.
+  - id: ACC-RL-NO_SCHEMA_DRIFT
+    description: >-
+      The implementation imports contract-owned pilot schemas and defines only
+      plain pilot-local helper/configuration/error types; it does not edit
+      `contracts/`, regenerate schemas, or add pydantic schema models under
+      `pilot/`.
+  - id: ACC-RL-SCOPE_LIMITED_FILES
+    description: >-
+      Implementation changes stay within `pilot/src/pilot/run_logger.py`,
+      optional additive exports in `pilot/src/pilot/__init__.py`, and
+      `pilot/tests/test_run_logger.py`.
+  - id: ACC-RL-GATES
+    description: >-
+      The implementer runs the maintained sync and verification gates for this
+      per-vertical repo layout: `make -C pilot sync`, `make -C pilot test`,
+      `make -C pilot lint`, root `make sync`, root `make test`, root
+      `make validate`, and root `make lint`.
+
+decisions:
+  - id: DEC-RL-MODULE
+    status: closed
+    decision: >-
+      Implement the run-logger foundation in `pilot/src/pilot/run_logger.py`,
+      with optional additive exports from `pilot/src/pilot/__init__.py` and
+      focused tests in `pilot/tests/test_run_logger.py`.
+    rationale: >-
+      The run-logger feature belongs to the pilot vertical and the rendered
+      logger-core-api slice explicitly scopes the foundation to a new
+      `pilot.run_logger` module plus tests, separate from observation, decision,
+      executor, assertion, CLI, replay, and ROS runtime modules.
+    grounds:
+      - ".ai-sdd/features/run-logger/requirements.md: Proposed Decisions RL-001"
+      - ".ai-sdd/features/run-logger/slices/logger-core-api.md: Files to create / change"
+      - "PILOT_MASTER_REQUIREMENTS.md: Components -> Run logger"
+  - id: DEC-RL-CONTRACT_TRACE_UNION
+    status: closed
+    decision: >-
+      Use the existing `contracts.PilotTraceRecord` discriminated union and its
+      `ObservationTraceRecord`, `DecisionTraceRecord`, `CommandTraceRecord`,
+      `ResultTraceRecord`, `AssertionTraceRecord`, and `StopTraceRecord`
+      variants as the only durable trace shape; define no pilot-local trace
+      schema.
+    rationale: >-
+      The feature is an audit/replay boundary whose line format is owned by
+      `contracts/`, and the repo-wide boundary rule forbids schema ownership in
+      `pilot/`.
+    grounds:
+      - ".ai-sdd/features/run-logger/requirements.md: Proposed Decisions RL-002"
+      - ".ai-sdd/conventions/pilot.md: Boundary rules -> No schema defined here"
+      - "MASTER_REQUIREMENTS.md: Components -> Boundary rule"
+      - "contracts/src/contracts/pilot.py: PilotTraceRecord"
+  - id: DEC-RL-METADATA_OWNED_BY_LOGGER
+    status: closed
+    decision: >-
+      Make `session_id`, `seq`, and `monotonic_ms` logger-managed metadata, with
+      caller injection for session id, starting sequence, deterministic clock,
+      or explicit timestamp override.
+    rationale: >-
+      The deterministic harness should not duplicate trace bookkeeping, and the
+      logger-core-api slice requires stable session, sequence, and timestamp
+      behavior before file writing arrives.
+    grounds:
+      - ".ai-sdd/features/run-logger/requirements.md: Proposed Decisions RL-003"
+      - ".ai-sdd/features/run-logger/slices/logger-core-api.md: Requirements"
+      - "PILOT_MASTER_REQUIREMENTS.md: Constraints -> loop must be replayable"
+  - id: DEC-RL_VALIDATE_BEFORE_EXPOSE
+    status: closed
+    decision: >-
+      Validate the complete trace record through the contract union before the
+      public helper returns it or any later writer code can receive it.
+    rationale: >-
+      Invalid records would make replay and diagnostics unreliable; this slice
+      establishes the validation boundary before append-only JSONL writing is
+      layered on top.
+    grounds:
+      - ".ai-sdd/features/run-logger/requirements.md: Proposed Decisions RL-004"
+      - ".ai-sdd/features/run-logger/slices/logger-core-api.md: Requirements"
+      - "PILOT_MASTER_REQUIREMENTS.md: Execution Checklist -> Contract first"
+  - id: DEC-RL_NO_SEQ_ON_REJECT
+    status: closed
+    decision: >-
+      A failed validation must not advance the logger's next sequence number;
+      sequence state advances only after a record validates and is exposed.
+    rationale: >-
+      The slice acceptance requires `seq` to increment exactly once per
+      built/appended record, and rejected payloads produce no record for the
+      eventual JSONL trace.
+    grounds:
+      - ".ai-sdd/features/run-logger/slices/logger-core-api.md: Acceptance"
+      - ".ai-sdd/features/run-logger/requirements.md: Acceptance"
+      - "contracts/src/contracts/pilot.py: TraceRecordBase"
+  - id: DEC-RL_STOP_REASON_VOCAB
+    status: closed
+    decision: >-
+      Support stop records using the existing contract-owned reason vocabulary:
+      `success`, `failure`, `operator`, `fault`, and `request_human`.
+    rationale: >-
+      The full feature requires these stop outcomes, and the contract already
+      owns the closed `StopTraceRecord.reason` literal set.
+    grounds:
+      - ".ai-sdd/features/run-logger/requirements.md: Acceptance"
+      - "contracts/src/contracts/pilot.py: StopTraceRecord"
+      - "PILOT_MASTER_REQUIREMENTS.md: LLM Role and Constraints"
+  - id: DEC-RL_CORE_ONLY_NO_IO
+    status: closed
+    decision: >-
+      Keep this slice limited to record construction and public API skeleton;
+      durable JSONL opening, append flushing, default run-file naming, readback,
+      and recent-history formatting are deferred to the downstream run-logger
+      slices.
+    rationale: >-
+      The rendered slice explicitly establishes `pilot.run_logger` without yet
+      implementing durable JSONL file writes, while later slices own writer and
+      readback/history behavior.
+    grounds:
+      - ".ai-sdd/features/run-logger/slices/logger-core-api.md: What this slice delivers"
+      - ".ai-sdd/features/run-logger/slices/trace-append-writer.md: What this slice delivers"
+      - ".ai-sdd/features/run-logger/slices/trace-readback-history.md: What this slice delivers"
+  - id: DEC-RL_ROS_FREE_SINGLE_PROCESS
+    status: closed
+    decision: >-
+      Keep the core logger pure Python, ROS-free, deterministic, and
+      single-process; do not import ROS packages, publish topics, execute
+      commands, or add multi-process locking in this slice.
+    rationale: >-
+      The logger is an audit/replay boundary for one deterministic pilot harness
+      process, and unit/replay tests must run on a dev machine without ROS.
+    grounds:
+      - ".ai-sdd/features/run-logger/requirements.md: Proposed Decisions RL-006"
+      - ".ai-sdd/features/run-logger/slices/logger-core-api.md: Out Of Scope"
+      - ".ai-sdd/conventions/pilot.md: Boundary rules"
+      - "PILOT_MASTER_REQUIREMENTS.md: Execution Checklist and Constraints"
+  - id: DEC-RL_GATE_SET
+    status: closed
+    decision: >-
+      Use the maintained per-vertical gates for verification: `make -C pilot
+      sync`, `make -C pilot test`, `make -C pilot lint`, root `make sync`, root
+      `make test`, root `make validate`, and root `make lint`; do not add
+      `make demo` as a per-slice gate.
+    rationale: >-
+      The repository uses per-vertical uv projects, root `make sync` delegates
+      dependency synchronization, the run-logger requirements list the pilot and
+      root gates, and `make demo` remains an m2 offline-loop milestone rather
+      than a pilot run-logger slice gate.
+    grounds:
+      - ".ai-sdd/features/run-logger/requirements.md: Acceptance"
+      - "AGENTS.md: Build / verify"
+      - "Makefile: sync/test/validate/lint"
+      - "MASTER_REQUIREMENTS.md: Milestones -> m2 loop-closes-synthetic"
+
+files:
+  - pilot/src/pilot/run_logger.py
+  - pilot/src/pilot/__init__.py
+  - pilot/tests/test_run_logger.py
+
+tests:
+  - make -C pilot sync
+  - make -C pilot test
+  - make -C pilot lint
+  - make sync
+  - make test
+  - make validate
+  - make lint

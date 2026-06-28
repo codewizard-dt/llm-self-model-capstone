@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>pilot-online-task-loop — ai-sdd dashboard</title>
+<style>
+:root {
+    --status-done: #2e7d32;
+    --status-in-progress: #1565c0;
+    --status-rework: #f9a825;
+    --status-escalated: #c62828;
+    --status-runnable: #616161;
+    --status-pending: #9e9e9e;
+  --text: #1f2328;
+  --muted: #59636e;
+  --line: #d0d7de;
+  --panel: #f6f8fa;
+  --background: #ffffff;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--background); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.45; }
+.dashboard-page { max-width: 1180px; margin: 0 auto; padding: 32px 20px 48px; }
+.dashboard-header { border-bottom: 1px solid var(--line); padding-bottom: 24px; }
+.dashboard-kicker { color: var(--muted); font-size: 0.82rem; font-weight: 700; letter-spacing: 0; margin: 0 0 8px; text-transform: uppercase; }
+h1 { font-size: 2rem; margin: 0 0 20px; }
+h2 { font-size: 1.2rem; margin: 0; }
+.summary-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: 20px; }
+.summary-grid > div { border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
+.summary-value { display: block; font-size: 1.55rem; font-weight: 700; }
+.summary-label { color: var(--muted); font-size: 0.86rem; }
+.progress-wrap p { color: var(--muted); margin: 8px 0 0; }
+.progress-track { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; height: 14px; overflow: hidden; }
+.progress-fill { background: var(--status-done); height: 100%; }
+.status-legend ul { display: flex; flex-wrap: wrap; gap: 10px 18px; justify-content: center; list-style: none; margin: 22px 0; padding: 0; }
+.status-legend li { align-items: center; color: var(--muted); display: flex; gap: 8px; font-size: 0.92rem; }
+.legend-swatch { border-radius: 999px; display: inline-block; height: 10px; width: 10px; }
+.dashboard-charts { align-items: start; display: grid; gap: 24px; grid-template-columns: minmax(0, 1fr); margin-bottom: 28px; }
+.dashboard-chart-fig { margin: 0; }
+.dashboard-chart-caption { color: var(--muted); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; margin-bottom: 6px; text-transform: uppercase; }
+.dashboard-chart-donut { justify-self: center; text-align: center; }
+.dashboard-chart { max-width: 100%; }
+.dashboard-status-donut { justify-self: center; max-width: 360px; }
+.dashboard-grouped-bars { width: 100%; }
+.temporal-eta { color: var(--muted); font-size: 0.92rem; margin-top: 8px; }
+.eta-confidence { color: var(--muted); font-size: 0.82rem; }
+.eta-suppressed { color: var(--muted); }
+.temporal-burndown { margin: 10px 0 0; }
+.temporal-burndown-caption { color: var(--muted); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; margin-bottom: 4px; text-transform: uppercase; }
+.dashboard-burndown { width: 100%; max-width: 760px; }
+.burndown-axis-label { fill: var(--muted); font-size: 0.7rem; }
+.dashboard-section { border-top: 1px solid var(--line); padding: 26px 0; }
+.dashboard-section > header { align-items: baseline; display: flex; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.dashboard-section > header p { color: var(--muted); margin: 0; }
+.stale-run-marker { color: var(--status-rework); font-size: 0.8rem; font-weight: 700; margin-left: 10px; white-space: nowrap; }
+.definition-pane { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid #d97706; border-radius: 8px; margin-bottom: 16px; padding: 12px 16px; }
+.definition-pane h3 { color: var(--muted); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; margin: 0 0 6px; text-transform: uppercase; }
+.definition-pane p { margin: 0; white-space: pre-line; }
+.dashboard-node.critical-path { border-left-color: #d97706; box-shadow: inset 0 0 0 1px #d97706; }
+.verdict-band { border: 1px solid var(--line); border-radius: 8px; margin: 24px 0 18px; padding: 18px 20px; }
+.verdict-kicker { color: var(--muted); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.verdict-trajectory { font-size: 1.5rem; font-weight: 700; margin: 6px 0 10px; }
+.trajectory-on-track { color: var(--status-done); }
+.trajectory-slipping { color: var(--status-rework); }
+.trajectory-stalled { color: var(--status-escalated); }
+.verdict-meta { align-items: center; color: var(--muted); display: flex; flex-wrap: wrap; gap: 12px; margin: 0; }
+.verdict-freshness { font-size: 0.82rem; font-weight: 700; }
+.verdict-freshness.stale { color: var(--status-rework); }
+.verdict-freshness.fresh { color: var(--status-done); }
+.attention-band { border: 1px solid var(--line); border-radius: 8px; margin: 0 0 18px; padding: 16px 20px; }
+.attention-band h2 { margin: 0 0 12px; }
+.attention-band h3 { color: var(--muted); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; margin: 12px 0 6px; text-transform: uppercase; }
+.attention-band ul { list-style: none; margin: 0; padding: 0; }
+.attention-band li { align-items: baseline; display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0; }
+.attention-escalation h3 { color: var(--status-escalated); }
+.attention-rework h3 { color: var(--status-rework); }
+.attention-slice { font-weight: 700; }
+.attention-feature { color: var(--muted); font-size: 0.9rem; }
+.attention-unblock-count { color: var(--muted); font-size: 0.82rem; }
+.portfolio-band { margin: 0 0 28px; }
+.portfolio-band h2 { margin-bottom: 12px; }
+.portfolio-table { border-collapse: collapse; font-size: 0.92rem; width: 100%; }
+.portfolio-table th, .portfolio-table td { border-bottom: 1px solid var(--line); padding: 10px 8px; text-align: left; vertical-align: top; }
+.portfolio-table th { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; }
+.dashboard-mermaid-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; margin-bottom: 18px; overflow-x: auto; padding: 16px; }
+.dashboard-mermaid { margin: 0; min-width: 640px; text-align: center; }
+.dashboard-graph { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr) minmax(220px, 0.45fr); margin-bottom: 18px; }
+.dashboard-nodes { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); list-style: none; margin: 0; padding: 0; }
+.dashboard-node { border: 1px solid var(--line); border-left: 5px solid currentColor; border-radius: 8px; color: var(--muted); min-height: 70px; padding: 12px; }
+.node-id { color: var(--text); display: block; font-weight: 700; overflow-wrap: anywhere; }
+.node-status { display: block; font-size: 0.82rem; margin-top: 6px; }
+.dashboard-edges { background: var(--panel); border-radius: 8px; list-style: none; margin: 0; padding: 12px; }
+.dashboard-edges li { align-items: center; display: flex; gap: 8px; min-height: 26px; overflow-wrap: anywhere; }
+.slice-table { border-collapse: collapse; font-size: 0.92rem; width: 100%; }
+.slice-table th, .slice-table td { border-bottom: 1px solid var(--line); padding: 10px 8px; text-align: left; vertical-align: top; }
+.slice-table th { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; }
+.status-done { color: var(--status-done); }
+.status-in-progress { color: var(--status-in-progress); }
+.status-rework { color: var(--status-rework); }
+.status-escalated { color: var(--status-escalated); }
+.status-runnable { color: var(--status-runnable); }
+.status-pending { color: var(--status-pending); }
+.legend-swatch.status-done { background: var(--status-done); }
+.legend-swatch.status-in-progress { background: var(--status-in-progress); }
+.legend-swatch.status-rework { background: var(--status-rework); }
+.legend-swatch.status-escalated { background: var(--status-escalated); }
+.legend-swatch.status-runnable { background: var(--status-runnable); }
+.legend-swatch.status-pending { background: var(--status-pending); }
+@media (max-width: 760px) {
+  .dashboard-graph { grid-template-columns: 1fr; }
+  .slice-table { display: block; overflow-x: auto; }
+}
+</style>
+</head>
+<body>
+  <main class="dashboard-page">
+    <header class="dashboard-header">
+      <p class="dashboard-kicker">ai-sdd project status</p>
+      <h1>pilot-online-task-loop</h1>
+      <div class="summary-grid" aria-label="Dashboard summary">
+        <div><span class="summary-value">1</span><span class="summary-label">features</span></div>
+        <div><span class="summary-value">21</span><span class="summary-label">slices</span></div>
+        <div><span class="summary-value">0/21</span><span class="summary-label">done</span></div>
+        <div><span class="summary-value">0%</span><span class="summary-label">progress</span></div>
+      </div>
+      <div class="progress-wrap" aria-label="0 of 21 slices done">
+        <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="progress-fill" style="width: 0.0%"></div></div>
+        <p>0/21 done</p>
+      </div>
+    </header>
+        <nav class="status-legend" aria-label="Status legend">
+      <ul>
+        <li><span class="legend-swatch status-done"></span>done</li>
+        <li><span class="legend-swatch status-in-progress"></span>in-progress</li>
+        <li><span class="legend-swatch status-rework"></span>rework</li>
+        <li><span class="legend-swatch status-escalated"></span>escalated</li>
+        <li><span class="legend-swatch status-runnable"></span>runnable</li>
+        <li><span class="legend-swatch status-pending"></span>pending</li>
+      </ul>
+    </nav>
+    <section class="dashboard-charts" aria-label="Dashboard charts">
+      <figure class="dashboard-chart-fig dashboard-chart-donut"><figcaption class="dashboard-chart-caption">Status distribution</figcaption><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" role="img" aria-label="Status distribution: done 0, in-progress 0, rework 0, escalated 0, runnable 1, pending 20" class="dashboard-chart dashboard-status-donut">
+  <g transform="translate(78 72) rotate(-90)">
+    <circle cx="0" cy="0" r="48" fill="none" stroke="#eceff1" stroke-width="18"/>
+    <circle class="status-segment status-done" data-status="done" data-count="0" cx="0" cy="0" r="48" fill="none" stroke="#2e7d32" stroke-width="18" pathLength="21" stroke-dasharray="0 21" stroke-dashoffset="-0"><title>done: 0</title></circle>
+    <circle class="status-segment status-in-progress" data-status="in-progress" data-count="0" cx="0" cy="0" r="48" fill="none" stroke="#1565c0" stroke-width="18" pathLength="21" stroke-dasharray="0 21" stroke-dashoffset="-0"><title>in-progress: 0</title></circle>
+    <circle class="status-segment status-rework" data-status="rework" data-count="0" cx="0" cy="0" r="48" fill="none" stroke="#f9a825" stroke-width="18" pathLength="21" stroke-dasharray="0 21" stroke-dashoffset="-0"><title>rework: 0</title></circle>
+    <circle class="status-segment status-escalated" data-status="escalated" data-count="0" cx="0" cy="0" r="48" fill="none" stroke="#c62828" stroke-width="18" pathLength="21" stroke-dasharray="0 21" stroke-dashoffset="-0"><title>escalated: 0</title></circle>
+    <circle class="status-segment status-runnable" data-status="runnable" data-count="1" cx="0" cy="0" r="48" fill="none" stroke="#616161" stroke-width="18" pathLength="21" stroke-dasharray="1 20" stroke-dashoffset="-0"><title>runnable: 1</title></circle>
+    <circle class="status-segment status-pending" data-status="pending" data-count="20" cx="0" cy="0" r="48" fill="none" stroke="#9e9e9e" stroke-width="18" pathLength="21" stroke-dasharray="20 1" stroke-dashoffset="-1"><title>pending: 20</title></circle>
+  </g>
+  <text x="78" y="77" text-anchor="middle" class="chart-total">21</text>
+  <g class="chart-legend">
+    <rect x="160" y="10" width="12" height="12" fill="#2e7d32"/>
+    <text x="180" y="20" class="legend-label">done 0</text>
+    <rect x="160" y="36" width="12" height="12" fill="#1565c0"/>
+    <text x="180" y="46" class="legend-label">in-progress 0</text>
+    <rect x="160" y="62" width="12" height="12" fill="#f9a825"/>
+    <text x="180" y="72" class="legend-label">rework 0</text>
+    <rect x="160" y="88" width="12" height="12" fill="#c62828"/>
+    <text x="180" y="98" class="legend-label">escalated 0</text>
+    <rect x="160" y="114" width="12" height="12" fill="#616161"/>
+    <text x="180" y="124" class="legend-label">runnable 1</text>
+    <rect x="160" y="140" width="12" height="12" fill="#9e9e9e"/>
+    <text x="180" y="150" class="legend-label">pending 20</text>
+  </g>
+</svg></figure>
+      <figure class="dashboard-chart-fig"><figcaption class="dashboard-chart-caption">Load by owner</figcaption><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 132" role="img" aria-label="Load by owner: 215eight 6, David 15" class="dashboard-chart dashboard-grouped-bars">
+  <g class="bar-groups">
+    <g class="bar-group" data-group="215eight" data-total="6">
+      <text x="0" y="45" class="group-label">215eight</text>
+      <rect x="260" y="32" width="420" height="16" fill="#eceff1"/>
+      <rect class="status-bar status-done" data-status="done" data-count="0" x="260" y="32" width="0" height="16" fill="#2e7d32"><title>215eight done: 0</title></rect>
+      <rect class="status-bar status-in-progress" data-status="in-progress" data-count="0" x="260" y="32" width="0" height="16" fill="#1565c0"><title>215eight in-progress: 0</title></rect>
+      <rect class="status-bar status-rework" data-status="rework" data-count="0" x="260" y="32" width="0" height="16" fill="#f9a825"><title>215eight rework: 0</title></rect>
+      <rect class="status-bar status-escalated" data-status="escalated" data-count="0" x="260" y="32" width="0" height="16" fill="#c62828"><title>215eight escalated: 0</title></rect>
+      <rect class="status-bar status-runnable" data-status="runnable" data-count="1" x="260" y="32" width="28" height="16" fill="#616161"><title>215eight runnable: 1</title></rect>
+      <rect class="status-bar status-pending" data-status="pending" data-count="5" x="288" y="32" width="140" height="16" fill="#9e9e9e"><title>215eight pending: 5</title></rect>
+      <text x="696" y="45" class="group-total">6</text>
+    </g>
+    <g class="bar-group" data-group="David" data-total="15">
+      <text x="0" y="81" class="group-label">David</text>
+      <rect x="260" y="68" width="420" height="16" fill="#eceff1"/>
+      <rect class="status-bar status-done" data-status="done" data-count="0" x="260" y="68" width="0" height="16" fill="#2e7d32"><title>David done: 0</title></rect>
+      <rect class="status-bar status-in-progress" data-status="in-progress" data-count="0" x="260" y="68" width="0" height="16" fill="#1565c0"><title>David in-progress: 0</title></rect>
+      <rect class="status-bar status-rework" data-status="rework" data-count="0" x="260" y="68" width="0" height="16" fill="#f9a825"><title>David rework: 0</title></rect>
+      <rect class="status-bar status-escalated" data-status="escalated" data-count="0" x="260" y="68" width="0" height="16" fill="#c62828"><title>David escalated: 0</title></rect>
+      <rect class="status-bar status-runnable" data-status="runnable" data-count="0" x="260" y="68" width="0" height="16" fill="#616161"><title>David runnable: 0</title></rect>
+      <rect class="status-bar status-pending" data-status="pending" data-count="15" x="260" y="68" width="420" height="16" fill="#9e9e9e"><title>David pending: 15</title></rect>
+      <text x="696" y="81" class="group-total">15</text>
+    </g>
+  </g>
+</svg></figure>
+      <figure class="dashboard-chart-fig"><figcaption class="dashboard-chart-caption">Progress by feature</figcaption><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 110" role="img" aria-label="Progress by feature: pilot-online-task-loop 21" class="dashboard-chart dashboard-grouped-bars">
+  <g class="bar-groups">
+    <g class="bar-group" data-group="pilot-online-task-loop" data-total="21">
+      <text x="0" y="45" class="group-label">pilot-online-task-loop</text>
+      <rect x="260" y="32" width="420" height="16" fill="#eceff1"/>
+      <rect class="status-bar status-done" data-status="done" data-count="0" x="260" y="32" width="0" height="16" fill="#2e7d32"><title>pilot-online-task-loop done: 0</title></rect>
+      <rect class="status-bar status-in-progress" data-status="in-progress" data-count="0" x="260" y="32" width="0" height="16" fill="#1565c0"><title>pilot-online-task-loop in-progress: 0</title></rect>
+      <rect class="status-bar status-rework" data-status="rework" data-count="0" x="260" y="32" width="0" height="16" fill="#f9a825"><title>pilot-online-task-loop rework: 0</title></rect>
+      <rect class="status-bar status-escalated" data-status="escalated" data-count="0" x="260" y="32" width="0" height="16" fill="#c62828"><title>pilot-online-task-loop escalated: 0</title></rect>
+      <rect class="status-bar status-runnable" data-status="runnable" data-count="1" x="260" y="32" width="20" height="16" fill="#616161"><title>pilot-online-task-loop runnable: 1</title></rect>
+      <rect class="status-bar status-pending" data-status="pending" data-count="20" x="280" y="32" width="400" height="16" fill="#9e9e9e"><title>pilot-online-task-loop pending: 20</title></rect>
+      <text x="696" y="45" class="group-total">21</text>
+    </g>
+  </g>
+</svg></figure>
+    </section>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' });
+      await mermaid.run({ querySelector: '.dashboard-mermaid' });
+    </script>
+    <section class="verdict-band" aria-label="Project verdict">
+      <span class="verdict-kicker">verdict</span>
+      <p class="verdict-trajectory trajectory-on-track">on track</p>
+      <div class="verdict-temporal" aria-label="Temporal metrics">
+        <span class="temporal-velocity">velocity —</span>
+        <div class="temporal-eta" aria-label="ETA band"><span class="eta-note eta-suppressed">eta — (insufficient history)</span></div>
+        <figure class="temporal-burndown">
+          <figcaption class="temporal-burndown-caption">burndown</figcaption>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 220" role="img" aria-label="Burndown: no timestamped completions" class="dashboard-chart dashboard-burndown">
+  <text x="44" y="40" class="empty-label">No timestamped completions</text>
+</svg>
+        </figure>
+      <div class="temporal-whats-changed" aria-label="What changed since 7d">
+        <span class="whats-changed-caption">what changed · 7d</span>
+        <p class="whats-changed-empty">no change since 7d</p>
+      </div>
+      </div>
+      <p class="verdict-meta">
+        <span class="verdict-generated">generated 2026-06-27 21:28 UTC</span>
+        <span class="verdict-freshness fresh">fresh</span>
+      </p>
+    </section>
+    <section class="attention-band" aria-label="Attention">
+      <h2>Attention</h2>
+      <div class="attention-group attention-unblocker">
+        <h3>Top unblockers</h3>
+        <ul>
+          <li><span class="attention-slice">pilot-schemas</span> <span class="attention-feature">Program · pilot-online-task-loop</span> <span class="attention-unblock-count">(unblocks 20)</span></li>
+        </ul>
+      </div>
+    </section>
+    <section class="portfolio-band" aria-label="Portfolio health">
+      <h2>Portfolio</h2>
+      <table class="portfolio-table">
+        <thead>
+          <tr><th>Feature</th><th>Slices</th><th>Owner</th><th>Blocker</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Program · pilot-online-task-loop</td>
+            <td>0/21 (0%) slices</td>
+            <td>215eight</td>
+            <td>—</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+    <section class="dashboard-section">
+      <header>
+        <h2>Program · pilot-online-task-loop</h2>
+        <p>0/21 done</p>
+      </header>
+      <div class="dashboard-mermaid-wrap" aria-label="Dependency graph">
+        <pre class="mermaid dashboard-mermaid">
+flowchart TD
+    pilot_schemas[&quot;pilot-schemas&lt;br/&gt;runnable slice [contracts] @215eight&quot;]:::status_runnable
+    pm1_schemas_ready{{&quot;pm1-schemas-ready&lt;br/&gt;pending milestone-gate @215eight&quot;}}:::milestone_pending
+    observation_builder[&quot;observation-builder&lt;br/&gt;pending slice [pilot] @215eight&quot;]:::status_pending
+    skill_registry[&quot;skill-registry&lt;br/&gt;pending slice [pilot] @215eight&quot;]:::status_pending
+    llm_decision_adapter[&quot;llm-decision-adapter&lt;br/&gt;pending slice [pilot] @215eight&quot;]:::status_pending
+    safety_validator[&quot;safety-validator&lt;br/&gt;pending slice [pilot] @David&quot;]:::status_pending
+    ros_skill_executor[&quot;ros-skill-executor&lt;br/&gt;pending slice [pilot] @David&quot;]:::status_pending
+    assertion_engine[&quot;assertion-engine&lt;br/&gt;pending slice [pilot] @David&quot;]:::status_pending
+    run_logger[&quot;run-logger&lt;br/&gt;pending slice [pilot] @David&quot;]:::status_pending
+    pm3_live_observation{{&quot;pm3-live-observation&lt;br/&gt;pending milestone-gate @215eight&quot;}}:::milestone_pending
+    replay_mode[&quot;replay-mode&lt;br/&gt;pending slice [pilot] @David&quot;]:::status_pending
+    pm2_replay_loop{{&quot;pm2-replay-loop&lt;br/&gt;pending milestone-gate @David&quot;}}:::milestone_pending
+    pm4_one_skill_execution{{&quot;pm4-one-skill-execution&lt;br/&gt;pending milestone-gate @David&quot;}}:::milestone_pending
+    skill_baseline_capture[&quot;skill-baseline-capture&lt;br/&gt;pending slice [pilot] @David&quot;]:::status_pending
+    pm5_skill_baselines{{&quot;pm5-skill-baselines&lt;br/&gt;pending milestone-gate @David&quot;}}:::milestone_pending
+    delivery_recipe[&quot;delivery-recipe&lt;br/&gt;pending slice [pilot] @David&quot;]:::status_pending
+    pm6_delivery_loop_replay{{&quot;pm6-delivery-loop-replay&lt;br/&gt;pending milestone-gate @David&quot;}}:::milestone_pending
+    supervised_hardware_run[&quot;supervised-hardware-run&lt;br/&gt;pending slice [pilot] @David&quot;]:::status_pending
+    pm7_supervised_delivery_run{{&quot;pm7-supervised-delivery-run&lt;br/&gt;pending milestone-gate @David&quot;}}:::milestone_pending
+    generalized_recipes[&quot;generalized-recipes&lt;br/&gt;pending slice [pilot] @David&quot;]:::status_pending
+    pm8_expansion_proof{{&quot;pm8-expansion-proof&lt;br/&gt;pending milestone-gate @David&quot;}}:::milestone_pending
+    pilot_schemas --&gt; pm1_schemas_ready
+    pm1_schemas_ready --&gt; observation_builder
+    pm1_schemas_ready --&gt; skill_registry
+    observation_builder --&gt; llm_decision_adapter
+    skill_registry --&gt; llm_decision_adapter
+    skill_registry --&gt; safety_validator
+    safety_validator --&gt; ros_skill_executor
+    observation_builder --&gt; assertion_engine
+    llm_decision_adapter --&gt; run_logger
+    ros_skill_executor --&gt; run_logger
+    assertion_engine --&gt; run_logger
+    observation_builder --&gt; pm3_live_observation
+    llm_decision_adapter --&gt; replay_mode
+    assertion_engine --&gt; replay_mode
+    run_logger --&gt; replay_mode
+    replay_mode --&gt; pm2_replay_loop
+    ros_skill_executor --&gt; pm4_one_skill_execution
+    pm4_one_skill_execution --&gt; skill_baseline_capture
+    assertion_engine --&gt; skill_baseline_capture
+    run_logger --&gt; skill_baseline_capture
+    skill_baseline_capture --&gt; pm5_skill_baselines
+    pm5_skill_baselines --&gt; delivery_recipe
+    delivery_recipe --&gt; pm6_delivery_loop_replay
+    pm6_delivery_loop_replay --&gt; supervised_hardware_run
+    supervised_hardware_run --&gt; pm7_supervised_delivery_run
+    pm7_supervised_delivery_run --&gt; generalized_recipes
+    generalized_recipes --&gt; pm8_expansion_proof
+    classDef status_done fill:#ffffff,stroke:#2e7d32,stroke-width:3px,color:#1f2328
+    classDef status_in_progress fill:#ffffff,stroke:#1565c0,stroke-width:3px,color:#1f2328
+    classDef status_rework fill:#ffffff,stroke:#f9a825,stroke-width:3px,color:#1f2328
+    classDef status_escalated fill:#ffffff,stroke:#c62828,stroke-width:3px,color:#1f2328
+    classDef status_runnable fill:#ffffff,stroke:#616161,stroke-width:3px,color:#1f2328
+    classDef status_pending fill:#ffffff,stroke:#9e9e9e,stroke-width:3px,color:#1f2328
+    classDef milestone_pending fill:#f6f8fa,stroke:#9e9e9e,stroke-width:4px,color:#1f2328,stroke-dasharray:0
+        </pre>
+      </div>
+      <table class="slice-table">
+        <thead>
+          <tr><th>Node</th><th>Status</th><th>Owner</th><th>Stack</th><th>Lane</th><th>Milestone</th><th>Dependencies</th><th>Next action</th></tr>
+        </thead>
+        <tbody>
+          <tr class="status-runnable">
+            <td>pilot-schemas</td>
+            <td>runnable</td>
+            <td>215eight</td>
+            <td>contracts</td>
+            <td>—</td>
+            <td>—</td>
+            <td>0</td>
+            <td>start-work</td>
+          </tr>
+          <tr class="status-pending">
+            <td>pm1-schemas-ready</td>
+            <td>pending</td>
+            <td>215eight</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td>1</td>
+            <td>waiting-on-dependencies</td>
+          </tr>
+          <tr class="status-pending">
+            <td>observation-builder</td>
+            <td>pending</td>
+            <td>215eight</td>
+            <td>pilot</td>
+            <td>—</td>
+            <td>—</td>
+            <td>1</td>
+            <td>waiting-on-dependencies</td>
+          </tr>
+          <tr class="status-pending">
+            <td>skill-registry</td>
+            <td>pending</td>
+            <td>215eight</td>
+            <td>pilot</td>
+            <td>—</td>
+            <td>—</td>
+            <td>1</td>
+            <td>waiting-on-dependencies</td>
+          </tr>
+          <tr class="status-pending">
+            <td>llm-decision-adapter</td>
+            <td>pending</td>
+            <td>215eight</td>
+            <td>pilot</td>
+            <td>—</td>
+            <td>—</td>
+            <td>2</td>
+            <td>waiting-on-dependencies</td>
+          </tr>
+          <tr class="status-pending">
+            <td>safety-validator</td>
+            <td>pending</td>
+            <td>David</td>
+            <td>pilot</td>
+            <td>—</td>
+            <td>—</td>
+            <td>1</td>
+            <td>waiting-on-dependencies</td>
+          </tr>
+          <tr class="status-pending">
+            <td>ros-skill-executor</td>
+            <td>pending</td>
+            <td>David</td>
+            <td>pilot</td>
+            <td>—</td>
+            <td>—</td>
+            <td>1</td>
+            <td>waiting-on-dependencies</td>
+          </tr>
+          <tr class="status-pending">
+            <td>assertion-engine</td>
+            <td>pending</td>
+            <td>David</td>
+            <td>pilot</td>
+            <td>—</td>
+            <td>—</td>
+            <td>1</td>
+            <td>waiting-on-dependencies</td>
+          </tr>
+          <tr class="status-pending">
+            <td>run-logger</td>
+            <td>pending</td>
+            <td>David</td>
+            <td>pilot</td>
+            <td>—</td>
+            <td>—</td>
+            <td>3</td>
+            <td>waiting-on-dependencies</td>
+          </tr>
+          <tr class="status-pending">
+            <td>pm3-live-observation</td>
+            <td>pending</td>
+            <td>215eight</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td>1</td>
+            <td>waiting-on-dependencies</td>
+          </tr>
+          <tr class="status-pending">
+            <td>replay-mode</td>
+            <td>pending</td>
+            <td>David</td>
+            <td>pilot</td>
+            <td>—</td>
+            <td>—</td>
+            <td>3</td>
+            <td>waiting-on-dependencies</td>
+          </tr>
+          <tr class="status-pending">
+            <td>pm2-replay-loop</td>
+            <td>pending</td>
+            <td>David</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td>1</td>
+            <td>waiting-on-dependencies</td>
+          </tr>
+          <tr class="status-pending">
+            <td>pm4-one-skill-execution</td>
+            <td>pending</td>
+            <td>David</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td>1</td>
+            <td>waiting-on-dependencies</td>
+          </tr>
+          <tr class="status-pending">
+            <td>skill-baseline-capture</td>
+            <td>pending</td>
+            <td>David</td>
+            <td>pilot</td>
+            <td>—</td>
+            <td>—</td>
+            <td>3</td>
+            <td>waiting-on-dependencies</td>
+          </tr>
+          <tr class="status-pending">
+            <td>pm5-skill-baselines</td>
+            <td>pending</td>
+            <td>David</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td>1</td>
+            <td>waiting-on-dependencies</td>
+          </tr>
+          <tr class="status-pending">
+            <td>delivery-recipe</td>
+            <td>pending</td>
+            <td>David</td>
+            <td>pilot</td>
+            <td>—</td>
+            <td>—</td>
+            <td>1</td>
+            <td>waiting-on-dependencies</td>
+          </tr>
+          <tr class="status-pending">
+            <td>pm6-delivery-loop-replay</td>
+            <td>pending</td>
+            <td>David</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td>1</td>
+            <td>waiting-on-dependencies</td>
+          </tr>
+          <tr class="status-pending">
+            <td>supervised-hardware-run</td>
+            <td>pending</td>
+            <td>David</td>
+            <td>pilot</td>
+            <td>—</td>
+            <td>—</td>
+            <td>1</td>
+            <td>waiting-on-dependencies</td>
+          </tr>
+          <tr class="status-pending">
+            <td>pm7-supervised-delivery-run</td>
+            <td>pending</td>
+            <td>David</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td>1</td>
+            <td>waiting-on-dependencies</td>
+          </tr>
+          <tr class="status-pending">
+            <td>generalized-recipes</td>
+            <td>pending</td>
+            <td>David</td>
+            <td>pilot</td>
+            <td>—</td>
+            <td>—</td>
+            <td>1</td>
+            <td>waiting-on-dependencies</td>
+          </tr>
+          <tr class="status-pending">
+            <td>pm8-expansion-proof</td>
+            <td>pending</td>
+            <td>David</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td>1</td>
+            <td>waiting-on-dependencies</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>

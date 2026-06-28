@@ -1,0 +1,54 @@
+items:
+  - id: PB-001
+    verdict: pass
+    notes: >-
+      pilot.decision exposes build_prompt_payload(), render_prompt(), and
+      build_decision_prompt(). The builders accept a contracts.PilotObservation,
+      recent_history text, safety_constraints, and optional allowed skill
+      summaries; build_decision_prompt() returns both the JSON-compatible payload
+      and rendered prompt string.
+  - id: PB-002
+    verdict: pass
+    notes: >-
+      test_prompt_payload_and_text_include_required_sections verifies the payload
+      and rendered prompt include objective, current phase, observation snapshot,
+      assertions, last skill/result, recent history, allowed skills, safety
+      constraints, and output schema sections in the fixed section order.
+  - id: PB-003
+    verdict: pass
+    notes: >-
+      build_prompt_payload() converts the observation, skill summaries, and output
+      schema through canonical JSON serialization. The focused JSON test round
+      trips the payload through json.dumps/json.loads and recursively rejects
+      dataclasses, enums, tuples, classes, non-JSON values, and object repr strings.
+  - id: PB-004
+    verdict: pass
+    notes: >-
+      render_prompt() emits sections in PROMPT_SECTION_ORDER and serializes every
+      section with json.dumps(..., sort_keys=True, indent=2). The determinism test
+      verifies repeated payload construction and prompt rendering are identical for
+      the same inputs.
+  - id: PB-005
+    verdict: pass
+    notes: >-
+      The default allowed-skills path calls pilot.skills.list_skill_summaries()
+      through the imported registry module. Tests monkeypatch that registry API and
+      also compare the default allowed_skills payload directly to
+      list_skill_summaries(), so prompt-builder metadata is not duplicated.
+  - id: PB-006
+    verdict: pass
+    notes: >-
+      pilot.decision imports only standard-library JSON/typing helpers,
+      contract-owned PilotObservation/PilotDecisionAction, and pilot.skills. The
+      guarded import test rejects ROS/provider roots and successfully imports and
+      runs the module without network, API-key, hardware, ROS, or provider SDK
+      dependencies.
+  - id: PB-007
+    verdict: pass
+    notes: >-
+      pilot.__init__ adds only prompt-builder exports and leaves existing
+      observation and skills APIs in place. The package export test confirms the
+      new helpers are exported while existing ObservationCache and
+      list_skill_definitions remain available.
+verdict: approve
+rework: []

@@ -1,0 +1,66 @@
+items:
+  - id: ACC-SNAPSHOT-BUILDER-API
+    verdict: pass
+    notes: >-
+      pilot.observation exposes build_observation_snapshot(cache, *, observed_ms),
+      validates observed_ms as non-negative, requires an ObservationCache input,
+      and returns a contracts.PilotObservation constructed through contract
+      validation. The implementation is pure Python and does not depend on ROS.
+  - id: ACC-COMPLETE-SNAPSHOT-MAPPING
+    verdict: pass
+    notes: >-
+      test_build_observation_snapshot_maps_complete_cache covers objective, task
+      phase, robot pose, localization confidence and age, visible objects, visible
+      tags, manipulator state, bridge health, last command, last result, recent
+      failures, and current assertions, and verifies each field is preserved in the
+      emitted snapshot.
+  - id: ACC-CONTRACT-VALIDATION
+    verdict: pass
+    notes: >-
+      build_observation_snapshot returns PilotObservation.model_validate({...}),
+      and the complete-cache test proves the returned value is a PilotObservation
+      that round-trips through PilotObservation.model_validate(snapshot.model_dump()).
+  - id: ACC-DETERMINISTIC-BOUNDED-LISTS
+    verdict: pass
+    notes: >-
+      The builder sorts visible objects, visible tags, recent failures, and current
+      assertions with the existing deterministic helper functions before slicing to
+      MAX_VISIBLE_OBJECTS, MAX_VISIBLE_TAGS, MAX_RECENT_FAILURES, and MAX_ASSERTIONS
+      from contracts.pilot. The bounded-list test supplies over-limit inputs and
+      verifies both deterministic order and final lengths.
+  - id: ACC-MISSING-STALE-OPTIONAL-EVIDENCE
+    verdict: pass
+    notes: >-
+      test_build_observation_snapshot_carries_missing_and_stale_optional_evidence
+      verifies missing optional fields remain None or empty lists and that explicit
+      stale/unknown localization, manipulator, and bridge values are carried without
+      optimistic fabricated defaults.
+  - id: ACC-OBJECTIVE-REQUIRED
+    verdict: pass
+    notes: >-
+      The builder rejects None, empty, and whitespace-only objectives with a clear
+      ValueError before constructing the contract snapshot, matching the required
+      non-fabrication behavior for PilotObservation.objective.
+  - id: ACC-NO-ROS-DEPENDENCY
+    verdict: pass
+    notes: >-
+      pilot.observation imports only standard-library dataclass/typing support and
+      contracts models/constants. The import guard test re-imports the module while
+      rejecting rclpy, std_msgs, and sensor_msgs imports, and the builder test
+      exercises snapshot construction under that guard.
+  - id: ACC-SCOPE-LIMITED-FILES
+    verdict: pass
+    notes: >-
+      The current diff is limited to pilot/src/pilot/observation.py and the new
+      pilot/tests/test_observation_builder.py. No contract schemas, ROS wiring,
+      feature files, runtime-loop files, or other source files are edited.
+  - id: ACC-REGRESSION-GATES
+    verdict: pass
+    notes: >-
+      Verified in the current checkout: make -C pilot test, make -C pilot lint,
+      make sync, make test, make validate, and make lint all exit 0. The repo has
+      per-vertical pyproject.toml files rather than a root project, so make sync is
+      the valid repository sync gate and runs uv sync in each vertical, including
+      pilot.
+verdict: approve
+rework: []

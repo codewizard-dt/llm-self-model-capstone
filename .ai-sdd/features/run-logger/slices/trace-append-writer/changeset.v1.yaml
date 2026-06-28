@@ -1,0 +1,24 @@
+summary: >-
+  Extended the ROS-free pilot RunLogger into an append-only UTF-8 JSONL writer.
+  RunLoggerConfig now accepts explicit trace paths and default paths resolve to
+  pilot/runs/<session_id>.jsonl, parent directories are created lazily before
+  the first successful append, each validated PilotTraceRecord is serialized as
+  one compact newline-terminated JSON object, successful appends flush by
+  default, close/context-manager behavior is deterministic, and rejected appends
+  preserve both file bytes and pending sequence state. Added focused tests for
+  explicit/default paths, parent directory creation, contract-valid written
+  lines, append order, sequence stability, flush/close behavior, invalid append
+  rejection, and ROS-free imports.
+satisfies:
+  - ACC-RL-WRITER-ROS-FREE
+  - ACC-RL-EXPLICIT-PATH
+  - ACC-RL-DEFAULT-PATH
+  - ACC-RL-PARENT-DIRS
+  - ACC-RL-ONE-LINE-JSON
+  - ACC-RL-CONTRACT-VALID-LINES
+  - ACC-RL-ORDER-AND-SEQUENCE
+  - ACC-RL-FLUSH-CLOSE
+  - ACC-RL-INVALID-NO-WRITE
+  - ACC-RL-INVALID-NO-SEQ
+  - ACC-RL-SCOPE-LIMITED-FILES
+  - ACC-RL-GATES

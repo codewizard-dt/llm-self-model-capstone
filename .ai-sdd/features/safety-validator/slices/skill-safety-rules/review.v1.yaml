@@ -1,0 +1,77 @@
+items:
+  - id: SV-RULES-001
+    verdict: pass
+    notes: >-
+      Every normalized PilotSkillCommand is resolved through
+      pilot.skills.get_skill_definition() before skill-specific rules run.
+      Missing definitions and mismatched returned definitions reject with the
+      stable registry_missing reason, and the match statement covers the closed
+      PilotSkillName vocabulary.
+  - id: SV-RULES-002
+    verdict: pass
+    notes: >-
+      Commands with timeout_ms above SkillDefinition.max_duration_ms reject
+      with duration_envelope before evidence checks. In-envelope durations
+      continue through the validator without clamping, preserving accepted paths
+      when the remaining safety gates pass.
+  - id: SV-RULES-003
+    verdict: pass
+    notes: >-
+      Drive and turn request fields are checked against registry movement
+      envelopes: max_speed_mps for approach_target, center_object_in_gripper,
+      and go_to_destination, and max_turn_rad_s for face_target. No-motion
+      verification skills have no movement parameters in the contract models,
+      so movement attempts are rejected during contract normalization.
+  - id: SV-RULES-004
+    verdict: pass
+    notes: >-
+      Manipulator request fields are rejected when outside contract or registry
+      envelopes: arm_to_angle validates arm angle and optional velocity,
+      claw_close validates grip force, and claw_open relies on the contract
+      opening percentage bounds while rejecting unsupported force-like payloads
+      as invalid command shapes.
+  - id: SV-RULES-005
+    verdict: pass
+    notes: >-
+      Target-dependent skills require current evidence from the observation:
+      face_target and approach_target check visible object, tag, or assertion
+      evidence; center_object_in_gripper requires the named visible object; and
+      go_to_destination requires destination evidence when a symbolic
+      destination_id is used.
+  - id: SV-RULES-006
+    verdict: pass
+    notes: >-
+      Approach and go_to_destination now both apply policy-controlled
+      localization checks for missing pose, stale age, and low confidence.
+      This includes symbolic destination_id navigation as well as coordinate
+      navigation, and replay mode remains usable with contract observation
+      evidence.
+  - id: SV-RULES-007
+    verdict: pass
+    notes: >-
+      verify_grasp and verify_drop remain ROS-free no-motion paths based only
+      on current manipulator state and assertion/destination evidence.
+      Destination-specific verify_drop now requires sufficient destination
+      evidence before an open or unknown claw state can pass.
+  - id: SV-RULES-008
+    verdict: pass
+    notes: >-
+      Existing validator behavior is preserved: healthy replay commands pass,
+      hardware non-stop commands require human supervision by default,
+      bridge/fault/estop/heartbeat gates still reject unsafe motion, and stop
+      remains admissible under unsafe health.
+  - id: SV-RULES-009
+    verdict: pass
+    notes: >-
+      The safety tests cover representative accepted and rejected cases across
+      the skill families, including registry failures, duration and movement
+      envelopes, missing target and destination evidence, symbolic and
+      coordinate localization failures, destination-specific verification
+      evidence failures, and stable reason strings. make -C pilot test passes.
+  - id: SV-RULES-010
+    verdict: pass
+    notes: >-
+      The current diff is limited to pilot/src/pilot/safety.py and
+      pilot/tests/test_safety.py. No contracts, ROS runtime, executor,
+      assertion-engine, package export, or other out-of-scope files are edited.
+verdict: approve

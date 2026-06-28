@@ -1,0 +1,235 @@
+summary: >-
+  Add deterministic, JSON-serializable registry summary helpers to `pilot.skills`
+  and extend the registry tests so later prompt construction and validator
+  features can consume compact skill metadata without importing ROS or executing
+  skills.
+
+scope:
+  in:
+    - >-
+      Add prompt-friendly helper functions in `pilot/src/pilot/skills.py` that
+      summarize the existing immutable registry definitions as deterministic
+      plain Python data suitable for `json.dumps`.
+    - >-
+      Convert registry-only types into serializable values in the summary surface:
+      `PilotSkillName` to its contract string value, dataclass metadata to nested
+      dictionaries/lists, and contract model classes to stable module-qualified
+      names or omit them from prompt summaries.
+    - >-
+      Keep the summary compact while retaining the metadata later validators and
+      prompts need: skill name, inputs/defaults, preconditions, max duration,
+      movement envelope, symbolic command path, expected result source, success
+      assertion, failure reasons, recovery hints, and bound references.
+    - >-
+      Extend `pilot/tests/test_skills.py` with deterministic serialization,
+      bounded metadata, ROS-free import, symbolic route, and contract-name reuse
+      coverage for every registry definition.
+    - >-
+      Add any new helper names to `pilot.skills.__all__` only if they are part of
+      the module-level public registry surface for downstream pilot imports.
+  out:
+    - >-
+      Executing skills, evaluating preconditions, computing success assertions,
+      safety validation, numeric clamping/enforcement, ROS publishing, ack waiting,
+      concrete ROS route mapping, or hardware motion.
+    - >-
+      Building final LLM prompts, parsing LLM decisions, retry orchestration,
+      recipes, run logging, replay-loop orchestration, or task completion policy.
+    - >-
+      Adding new skills, changing the closed `contracts.PilotSkillName` vocabulary,
+      redefining command schemas in `pilot/`, or editing any `contracts` schemas,
+      fixtures, or generated artifacts.
+    - >-
+      Editing `pilot/src/pilot/__init__.py`, feature source files under
+      `.ai-sdd/features/`, ROS/coprocessor code, root project metadata, or any
+      files other than the two files named in this plan.
+    - >-
+      Adding `make demo` as a per-slice gate; it remains an m2 milestone concern.
+
+acceptance:
+  - id: ACC-SUMMARY-HELPERS-EXIST
+    description: >-
+      `pilot.skills` exposes deterministic helper(s) that return the registry in
+      compact prompt-friendly summary form without mutating or replacing the
+      immutable `SkillDefinition` registry API.
+  - id: ACC-SUMMARY-JSON-SERIALIZABLE
+    description: >-
+      Tests prove every summary entry can be passed to `json.dumps(...,
+      sort_keys=True)` without custom encoders, object repr strings, enum objects,
+      dataclass instances, or Python class objects leaking into the output.
+  - id: ACC-SUMMARY-DETERMINISTIC-ORDER
+    description: >-
+      Tests prove repeated summary calls produce byte-for-byte identical sorted
+      JSON and preserve `contracts.PilotSkillName` enum declaration order.
+  - id: ACC-SUMMARY-COMPLETE-METADATA
+    description: >-
+      Tests prove each summary includes non-empty input/default metadata,
+      preconditions, max duration, movement envelope, command path, expected result
+      source, success assertion id/name, failure reasons, recovery hints, and bound
+      references.
+  - id: ACC-BOUNDED-EVERY-SKILL
+    description: >-
+      Tests prove every skill summary and definition has a positive
+      `max_duration_ms` not exceeding `contracts.pilot.PILOT_TIMEOUT_MS_MAX`, and
+      movement envelope values remain within the contract-owned drive, turn, arm,
+      and claw bounds where present.
+  - id: ACC-CONTRACT-NAMES-REUSED
+    description: >-
+      Tests prove summary names exactly equal the closed
+      `contracts.PilotSkillName` values, with no pilot-local skill-name vocabulary
+      or extra/missing summary entries.
+  - id: ACC-SYMBOLIC-ROUTE-DECLARATIONS
+    description: >-
+      Tests prove command path and expected result source declarations remain
+      symbolic strings only, with no ROS topic paths, ROS package names, message
+      classes, or concrete provider identifiers in registry definitions or
+      summaries.
+  - id: ACC-SKILLS-IMPORT-ROS-FREE
+    description: >-
+      Tests prove importing and summarizing `pilot.skills` succeeds while ROS
+      imports such as `rclpy`, `std_msgs`, `sensor_msgs`, and `geometry_msgs` are
+      rejected, and those packages do not appear in `sys.modules`.
+  - id: ACC-SCOPE-LIMITED-FILES
+    description: >-
+      Implementation changes are limited to `pilot/src/pilot/skills.py` and
+      `pilot/tests/test_skills.py`; no source contracts, package root exports, ROS
+      wiring, feature files, prompt builders, or runtime-loop files are edited.
+  - id: ACC-REGRESSION-GATES
+    description: >-
+      The implementer runs focused pilot checks and required repo gates:
+      `make sync`, `make -C pilot test`, `make -C pilot lint`, `make test`,
+      `make validate`, and `make lint`.
+
+decisions:
+  - id: DEC-ADD-SUMMARY-HELPERS-IN-SKILLS
+    status: closed
+    decision: >-
+      Add the serializable registry summary helper surface inside
+      `pilot/src/pilot/skills.py`, alongside the immutable registry definitions it
+      summarizes.
+    rationale: >-
+      The slice explicitly asks for compact serializable registry representations
+      and names `pilot/src/pilot/skills.py` as the only source file to change; colocating
+      the helpers with the registry avoids a second metadata source.
+    grounds: >-
+      `.ai-sdd/features/skill-registry/slices/registry-tests-and-exports.md`
+      Requirements and Files to create / change; completed `registry-definitions`
+      plan DEC-EXPORT_ONLY_REGISTRY_SURFACE; MASTER_REQUIREMENTS.md Components
+      `Online-control harness` and ADR-19; `.ai-sdd/conventions/pilot.md`
+      Vertical and Boundary rules.
+  - id: DEC-PLAIN-DATA-NOT-SCHEMA
+    status: closed
+    decision: >-
+      Return plain JSON-compatible dictionaries/lists/scalars from the summary
+      helper(s), not pydantic models, new dataclasses, or a pilot-local schema.
+    rationale: >-
+      The registry summary is implementation metadata for prompts and validators,
+      while `contracts` owns all schema-bearing command and observation contracts.
+      Plain data is sufficient for serialization tests and avoids defining a new
+      schema in `pilot/`.
+    grounds: >-
+      skill-registry requirements Constraints and Proposed Decision SR-001;
+      MASTER_REQUIREMENTS.md Components boundary rule, Frozen Contracts, ADR-06,
+      and ADR-19; `.ai-sdd/conventions/pilot.md` Boundary rules;
+      `.ai-sdd/schemas/task-telemetry.schema.yaml`,
+      `.ai-sdd/schemas/self-model.schema.yaml`, and
+      `.ai-sdd/schemas/parts-catalog.schema.yaml`.
+  - id: DEC-SUMMARY-USES-CONTRACT-SKILL-VALUES
+    status: closed
+    decision: >-
+      Serialize skill identities as the exact string values from
+      `contracts.PilotSkillName` and keep tests asserting exact enum coverage.
+    rationale: >-
+      The online control loop may choose only named bounded skills from the
+      contract-owned closed vocabulary; prompt summaries must not introduce
+      aliases or pilot-local names.
+    grounds: >-
+      skill-registry requirements Goal, In Scope, Acceptance, and Constraints;
+      completed `registry-definitions` plan DEC-KEY-BY-PILOT-SKILL-NAME;
+      MASTER_REQUIREMENTS.md Components `Control grammar` and ADR-19.
+  - id: DEC-SUMMARY_OMITS_OR_STRINGIFIES_MODELS
+    status: closed
+    decision: >-
+      Keep Python class objects out of the prompt summary by omitting
+      `params_model`/`command_model` from the compact helper output or representing
+      them only as stable module-qualified names in a non-executable metadata
+      field.
+    rationale: >-
+      Contract model classes are useful inside immutable registry definitions, but
+      prompt/validator summaries must remain JSON-serializable, compact, and free
+      of executable schema duplication.
+    grounds: >-
+      `registry-tests-and-exports` Requirements for compact serializable
+      representation; skill-registry requirements Constraints; MASTER_REQUIREMENTS.md
+      ADR-06 and ADR-19; `.ai-sdd/conventions/pilot.md` Boundary rules.
+  - id: DEC-KEEP_ROUTES_SYMBOLIC_AND_ROS_FREE
+    status: closed
+    decision: >-
+      Preserve command paths and result sources as symbolic route strings in both
+      definitions and summaries, and extend tests to reject ROS topic paths,
+      provider identifiers, ROS packages, and message classes.
+    rationale: >-
+      The executor will later map symbolic routes onto concrete ROS/bridge
+      plumbing; this registry must remain importable for prompt generation,
+      validator inspection, and replay tests without ROS installed.
+    grounds: >-
+      skill-registry requirements Proposed Decision SR-003 and Constraints;
+      `registry-tests-and-exports` Requirements; MASTER_REQUIREMENTS.md ADR-01,
+      ADR-19, and ADR-20; `.ai-sdd/conventions/pilot.md` Boundary rules.
+  - id: DEC-METADATA_DESCRIPTIVE_ONLY
+    status: closed
+    decision: >-
+      Treat summaries as descriptive snapshots of registry metadata only; do not
+      add executable precondition checks, safety-validator logic, assertion
+      computation, command dispatch, or prompt construction.
+    rationale: >-
+      This slice prepares the static action surface for downstream features, while
+      validation, execution, and prompting are explicitly out of scope.
+    grounds: >-
+      `registry-tests-and-exports` Requirements and Out Of Scope;
+      skill-registry requirements Out Of Scope and Proposed Decisions SR-004/SR-005;
+      `.ai-sdd/conventions/pilot.md` Boundary rules.
+  - id: DEC-DO_NOT_EDIT_PACKAGE_ROOT_EXPORTS
+    status: closed
+    decision: >-
+      Do not edit `pilot/src/pilot/__init__.py` in this slice; if helper exports are
+      needed, expose them through `pilot.skills.__all__` in the same file that owns
+      the helper implementation.
+    rationale: >-
+      The rendered instruction narrows this planner output to helper/test work in
+      `pilot/src/pilot/skills.py` and `pilot/tests/test_skills.py`; package-root
+      export changes were already covered by the completed registry-definitions
+      slice and are outside this slice's requested file set.
+    grounds: >-
+      Rendered worker instruction; `registry-tests-and-exports` Files to create /
+      change; completed `registry-definitions` plan ACC-PACKAGE-EXPORTS and
+      DEC-EXPORT_ONLY_REGISTRY_SURFACE.
+  - id: DEC-GATE-SET
+    status: closed
+    decision: >-
+      The implementer must run `make sync`, `make -C pilot test`,
+      `make -C pilot lint`, root `make test`, root `make validate`, and root
+      `make lint`; `make demo` is excluded.
+    rationale: >-
+      The worker skill requires sync/test/validate/lint coverage, the slice
+      acceptance requires focused pilot checks, this repo has no root
+      `pyproject.toml` so root `uv sync` is not the maintained dependency gate, and
+      the root `make sync` target delegates per-vertical sync. `make demo` is
+      reserved for the m2 milestone rather than per-slice validation.
+    grounds: >-
+      plan-feature SKILL.md tests requirement; AGENTS.md Build / verify;
+      `registry-tests-and-exports` Acceptance; MASTER_REQUIREMENTS.md Tech stacks,
+      Verification & Reviewer Runbook, and Milestones m2; root Makefile sync
+      target.
+
+files:
+  - pilot/src/pilot/skills.py
+  - pilot/tests/test_skills.py
+
+tests:
+  - make sync
+  - make -C pilot test
+  - make -C pilot lint
+  - make test
+  - make validate
+  - make lint

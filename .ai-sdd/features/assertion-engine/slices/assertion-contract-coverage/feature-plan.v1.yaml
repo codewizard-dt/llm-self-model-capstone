@@ -1,0 +1,188 @@
+summary: >-
+  Add final contract and integration coverage for the pilot assertion engine so
+  assertion outputs are deterministic, package-exported, ROS-free, and able to
+  round-trip through `ObservationCache.current_assertions` and
+  `contracts.PilotObservation` snapshots for later replay, logging, skill
+  baseline, and delivery-recipe slices.
+
+scope:
+  in:
+    - >-
+      Prove `evaluate_assertions(observation, context)` returns exactly one
+      `contracts.PilotAssertion` for each required delivery assertion id in the
+      source-brief order defined by `REQUIRED_ASSERTION_IDS`, with identical id
+      ordering and contract-valid payloads across repeated calls.
+    - >-
+      Add focused tests showing assertion outputs can be inserted into
+      `pilot.observation.ObservationCache.current_assertions`, compacted by
+      `build_observation_snapshot`, and validated as a
+      `contracts.PilotObservation` without changing contract schemas.
+    - >-
+      Cover deterministic ordering when observations contain unsorted visible
+      objects, visible tags, recent failures, and current assertions; object,
+      tag, failure, and assertion order must not depend on caller input order.
+    - >-
+      Verify package-level exports from `pilot` expose the assertion API needed
+      by downstream callers while preserving existing observation and skill
+      registry exports.
+    - >-
+      Verify importing and evaluating `pilot.assertions` and `pilot` works when
+      ROS imports such as `rclpy`, `std_msgs`, and `sensor_msgs` are rejected.
+    - >-
+      Add representative full delivery-progress snapshot tests that feed
+      current assertions through the observation builder for at least early
+      visibility/pose progress, grasp/carry progress, and destination/drop
+      progress.
+  out:
+    - >-
+      Implementing new assertion heuristics beyond minimal ordering/export
+      polish required to satisfy this slice; evaluator semantics were delivered
+      by the prerequisite assertion-evaluators slice.
+    - >-
+      New or changed contract schemas, generated schemas, contract fixtures, or
+      pilot-local pydantic models.
+    - >-
+      ROS subscriptions, live topic wiring, camera/object tracker
+      implementation, AprilTag mapping, concrete provider adapters, hardware
+      captures, or imports of ROS packages.
+    - >-
+      Replay runner, run logger, LLM adapter, safety validator, skill executor,
+      skill-baseline capture, delivery recipe orchestration, or hardware proof
+      runs.
+    - >-
+      Changes outside `pilot/src/pilot/assertions.py`,
+      `pilot/src/pilot/__init__.py`, and `pilot/tests/test_assertions.py`;
+      dependency-management, CI, docs, and root Makefile edits are out of
+      scope.
+    - >-
+      `make demo`, which remains an m2 milestone concern rather than a
+      per-slice gate.
+
+acceptance:
+  - id: ACC-CONTRACT-ROUNDTRIP
+    description: >-
+      Tests prove every `evaluate_assertions` output round-trips through
+      `contracts.PilotAssertion.model_validate(assertion.model_dump())`, carries
+      at least one evidence entry, has confidence within contract bounds, and
+      can be embedded in a `contracts.PilotObservation` via
+      `ObservationCache.current_assertions` and `build_observation_snapshot`.
+  - id: ACC-EXACT-ID-ORDER
+    description: >-
+      Tests prove `evaluate_assertions` returns exactly the nine required ids in
+      `REQUIRED_ASSERTION_IDS` order, without duplicates or omissions, across
+      repeated calls on equivalent observations.
+  - id: ACC-SNAPSHOT-DETERMINISM
+    description: >-
+      Tests prove full delivery-progress snapshots remain deterministic when
+      visible objects, visible tags, recent failures, and current assertions are
+      provided in unsorted order; the compacted `PilotObservation` uses the
+      established pilot observation sort rules and stays contract-valid.
+  - id: ACC-PUBLIC-EXPORTS
+    description: >-
+      Tests prove the package-level `pilot` exports include the intended
+      assertion API (`REQUIRED_ASSERTION_IDS`, assertion context/config/target
+      types, builders, and `evaluate_assertions`) while preserving existing
+      observation cache/sort helpers and skill registry exports.
+  - id: ACC-NO-ROS-IMPORTS
+    description: >-
+      Tests install an import guard that rejects ROS modules and prove importing
+      `pilot.assertions`, importing `pilot`, and evaluating assertions succeed
+      without loading `rclpy`, `std_msgs`, `sensor_msgs`, or other ROS packages.
+  - id: ACC-DELIVERY-PROGRESS-SNAPSHOTS
+    description: >-
+      Tests include representative delivery-progress snapshots for
+      visibility/pose, grasp/carry, and destination/drop states, feed the
+      resulting current assertions into `build_observation_snapshot`, and prove
+      the resulting snapshots expose stable `current_assertions` suitable for
+      later run-logger and replay-mode features.
+  - id: ACC-SCOPE-AND-GATES
+    description: >-
+      Implementation changes are limited to `pilot/src/pilot/assertions.py`,
+      `pilot/src/pilot/__init__.py`, and `pilot/tests/test_assertions.py` as
+      needed, and the implementer runs `make sync`, `make -C pilot test`,
+      `make -C pilot lint`, `make test`, `make validate`, and `make lint`.
+
+decisions:
+  - id: DEC-CONTRACT-COVERAGE-NOT-SEMANTICS
+    status: closed
+    decision: >-
+      Treat this slice as final contract and integration coverage over the
+      existing assertion evaluator API, not as a new heuristic implementation
+      slice.
+    rationale: >-
+      The prerequisite assertion-evaluators slice already owns fused evaluator
+      semantics; this slice's brief asks for deterministic ordering, contract
+      round-trip behavior, public exports, no-ROS checks, and delivery-progress
+      snapshot regressions.
+    grounds: >-
+      `.ai-sdd/features/assertion-engine/slices/assertion-contract-coverage.md`
+      What this slice delivers and Requirements; `.ai-sdd/features/assertion-engine/requirements.md`
+      Acceptance for stable ordering and contract validation.
+  - id: DEC-OBSERVATION-CACHE-INTEGRATION
+    status: closed
+    decision: >-
+      Prove assertion integration by routing evaluator outputs through
+      `ObservationCache.current_assertions` and `build_observation_snapshot`
+      rather than adding a separate integration path.
+    rationale: >-
+      `PilotObservation` is the compact LLM-facing snapshot contract, and the
+      observation builder already owns deterministic compaction and sorting for
+      current assertions, visible objects, tags, and recent failures.
+    grounds: >-
+      `PILOT_MASTER_REQUIREMENTS.md` Observation snapshot and Components
+      `Observation builder` / `Assertion engine`; current
+      `pilot/src/pilot/observation.py`; assertion-contract-coverage
+      Requirements.
+  - id: DEC-ADDITIVE-PACKAGE-EXPORTS
+    status: closed
+    decision: >-
+      Keep package exports additive: expose the assertion API from `pilot` only
+      if missing, and preserve existing observation and skill registry exports.
+    rationale: >-
+      Downstream run logger, replay mode, skill baselines, and delivery recipe
+      features need a stable public pilot API, while this slice must not disturb
+      existing observation-builder or skill-registry surfaces.
+    grounds: >-
+      assertion-contract-coverage Requirements and Acceptance; current
+      `pilot/src/pilot/__init__.py`; `PILOT_MASTER_REQUIREMENTS.md` Components.
+  - id: DEC-ROS-FREE-REPLAYABLE-TESTS
+    status: closed
+    decision: >-
+      Cover no-ROS behavior with import guards and fixture-sized in-memory
+      contract models; do not use hardware captures, ROS messages, wall-clock
+      reads, or live providers in tests.
+    rationale: >-
+      The assertion engine must remain deterministic and replay-friendly so it
+      can run on dev machines and feed later replay/run-logger features without
+      ROS installed.
+    grounds: >-
+      `.ai-sdd/conventions/pilot.md` Boundary rules; `.ai-sdd/features/assertion-engine/requirements.md`
+      Goal, Out Of Scope, and Constraints; `PILOT_MASTER_REQUIREMENTS.md`
+      Execution Checklist.
+  - id: DEC-GATE-SET
+    status: closed
+    decision: >-
+      Use the maintained sync target plus focused pilot and root gates:
+      `make sync`, `make -C pilot test`, `make -C pilot lint`, `make test`,
+      `make validate`, and `make lint`; exclude `make demo`.
+    rationale: >-
+      The repo delegates uv sync through per-vertical Makefiles, the slice asks
+      for focused pilot checks plus root gates, and `make demo` is reserved for
+      the offline m2 milestone rather than this pilot coverage slice.
+    grounds: >-
+      `.ai-sdd/features/assertion-engine/requirements.md` Proposed Decision
+      AE-009 and Acceptance; `AGENTS.md` Build / verify;
+      `MASTER_REQUIREMENTS.md` Milestones m2.
+
+files:
+  - pilot/src/pilot/assertions.py
+  - pilot/src/pilot/__init__.py
+  - pilot/tests/test_assertions.py
+
+tests:
+  - make sync
+  - make -C pilot test
+  - make -C pilot lint
+  - make test
+  - make validate
+  - make lint

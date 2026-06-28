@@ -1,0 +1,55 @@
+items:
+  - id: ACC-TARGET-VISIBILITY
+    verdict: pass
+    notes: >-
+      target_ball_visible now matches a visible object by configured object_id or label, gates true
+      on visible_confidence_min, returns false when usable visible-object evidence excludes the
+      target, and returns unknown for absent, unsafe, or below-threshold evidence. Tests cover id
+      match, label fallback, exclusion, low confidence, and unsafe bridge cases.
+  - id: ACC-POSE-RELIABILITY
+    verdict: pass
+    notes: >-
+      robot_pose_reliable evaluates robot pose presence, localization confidence and age, bridge
+      heartbeat age, bridge state, faults, and estop without fabricating certainty. Tests cover
+      reliable pose, stale/faulted false outcomes, and missing-pose unknown behavior.
+  - id: ACC-REACHABLE-CENTERED
+    verdict: pass
+    notes: >-
+      ball_reachable and ball_centered_for_grasp use the configured reachability,
+      image-center, and grasp-corridor thresholds from bbox evidence, include signal-specific
+      evidence summaries, and return unknown when required bbox evidence is missing.
+  - id: ACC-GRASP-CARRY-FUSION
+    verdict: pass
+    notes: >-
+      grasp_likely and carrying_ball require an action evidence class, from manipulator or skill
+      result, plus held-object evidence before returning true. A single verify_grasp/claw-close
+      signal is unknown, compatible negative action evidence can return false, and conflicting
+      action/object evidence returns unknown with a recovery hint.
+  - id: ACC-DESTINATION-DROP-FINAL
+    verdict: pass
+    notes: >-
+      at_destination uses configured destination pose or tag evidence; drop_likely and
+      ball_at_destination fuse destination readiness with manipulator, last-result, and target
+      object-at-destination evidence. drop_likely no longer returns true without target object
+      evidence at the destination, and conflict cases return unknown with recovery guidance.
+  - id: ACC-UNCERTAINTY-EVIDENCE
+    verdict: pass
+    notes: >-
+      Evaluators produce contract-owned AssertionEvidence with bounded confidence and time/age
+      metadata, and build contract-valid PilotAssertion records. Missing, unsafe, below-threshold,
+      and contradictory evidence paths are represented conservatively as unknown except for the
+      explicitly accepted false cases such as target exclusion and stale/faulted pose reliability.
+  - id: ACC-DETERMINISTIC-CONTRACT-ORDER
+    verdict: pass
+    notes: >-
+      evaluate_assertions remains pure Python, ROS-free, deterministic, and replay-friendly,
+      returns exactly one PilotAssertion for each REQUIRED_ASSERTION_IDS entry in stable order, and
+      tests round-trip returned assertions through contracts.PilotAssertion.model_validate.
+  - id: ACC-SCOPE-AND-GATES
+    verdict: pass
+    notes: >-
+      The implementation diff is limited to pilot/src/pilot/assertions.py and
+      pilot/tests/test_assertions.py, with no schema, ROS, provider, export, or toolchain drift. I
+      independently ran make sync, make -C pilot test, make -C pilot lint, make test,
+      make validate, and make lint; all passed.
+verdict: approve

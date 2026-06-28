@@ -1,0 +1,19 @@
+summary: >
+  Added the ROS-free retrying pilot decision adapter API on top of the existing deterministic prompt
+  builder and strict parser. The adapter accepts an injected prompt client, enforces bounded
+  max_attempts total provider submissions, retries parse and validation failures with deterministic
+  JSON-safe retry_context prompts, and returns either a validated contracts.PilotDecision or an
+  adapter exhaustion error with no executable command object. Focused tests cover valid first
+  responses, malformed JSON retries, unknown skill/action retries, bounded exhaustion, deterministic
+  mock client ordering, JSON-compatible retry context, SDK/ROS-free imports, additive package
+  exports, and unchanged prompt/parser behavior.
+satisfies:
+  - RAA-001
+  - RAA-002
+  - RAA-003
+  - RAA-004
+  - RAA-005
+  - RAA-006
+  - RAA-007
+  - RAA-008
+  - RAA-009

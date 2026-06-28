@@ -21,21 +21,25 @@ m1-judge:
 sync:
 	$(MAKE) -C contracts sync
 	$(MAKE) -C self_model_generator sync
+	$(MAKE) -C pilot sync
 	$(MAKE) -C robot/ros2-runtime sync
 
 validate:
 	$(MAKE) -C contracts validate
 	$(MAKE) -C self_model_generator validate
+	$(MAKE) -C pilot validate
 	$(MAKE) -C robot/ros2-runtime validate
 
 test:
 	$(MAKE) -C contracts test
 	$(MAKE) -C self_model_generator test
+	$(MAKE) -C pilot test
 	$(MAKE) -C robot/ros2-runtime test
 
 lint:
 	$(MAKE) -C contracts lint
 	$(MAKE) -C self_model_generator lint
+	$(MAKE) -C pilot lint
 	$(MAKE) -C robot/ros2-runtime lint
 
 schema:

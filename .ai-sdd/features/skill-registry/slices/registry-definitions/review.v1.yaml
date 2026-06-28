@@ -1,0 +1,69 @@
+items:
+  - id: ACC-REGISTRY-IMMUTABLE-API
+    verdict: pass
+    notes: >-
+      pilot.skills defines frozen, slotted dataclasses for registry metadata.
+      list_skill_definitions() returns a tuple without side effects, and
+      get_skill_definition() performs strict lookup through the private registry.
+  - id: ACC-EXACT-SKILL-COVERAGE
+    verdict: pass
+    notes: >-
+      The registry is keyed by contracts.PilotSkillName and covers the closed MVP
+      enum exactly once: stop, survey_scene, face_target, approach_target,
+      center_object_in_gripper, arm_to_angle, claw_open, claw_close, verify_grasp,
+      go_to_destination, and verify_drop. The focused tests assert enum coverage,
+      uniqueness, enum-keyed definitions, and absence of extra returned skills.
+  - id: ACC-DETERMINISTIC-ORDERING
+    verdict: pass
+    notes: >-
+      list_skill_definitions() returns tuple(_REGISTRY[name] for name in
+      PilotSkillName), so ordering follows the contract enum declaration. Tests
+      prove repeated calls are stable and match strict lookup order.
+  - id: ACC-STRICT-LOOKUP
+    verdict: pass
+    notes: >-
+      get_skill_definition() accepts known PilotSkillName values and known string
+      values, returns the matching immutable definition, raises ValueError with a
+      clear "unknown pilot skill" message for unknown strings, and retains a clear
+      KeyError path for missing enum-backed registry entries.
+  - id: ACC-COMPLETE-METADATA
+    verdict: pass
+    notes: >-
+      Every definition includes non-empty inputs, defaults, preconditions, bounded
+      max duration, movement envelope, command path, expected result source,
+      success assertion id/name, failure reasons, recovery hints, and bound
+      references. The completeness test covers every listed definition.
+  - id: ACC-CONTRACT-BOUNDS-REUSED
+    verdict: pass
+    notes: >-
+      The registry imports PilotSkillName, command parameter models, skill command
+      models, PILOT_TIMEOUT_MS_MAX, and movement/parameter bounds from contracts.
+      No pilot-local schema model or conflicting movement bound is introduced.
+  - id: ACC-SYMBOLIC-ROS-FREE-PATHS
+    verdict: pass
+    notes: >-
+      Command paths and expected result sources are symbolic strings only. The
+      skills module imports standard-library dataclasses plus contracts, and the
+      import-guard test rejects rclpy/std_msgs/sensor_msgs/geometry_msgs imports
+      while exercising pilot.skills.
+  - id: ACC-PACKAGE-EXPORTS
+    verdict: pass
+    notes: >-
+      pilot.__init__ additively exports BoundReference, MovementEnvelope,
+      SkillDefault, SkillDefinition, SkillInput, SkillSuccessAssertion,
+      get_skill_definition, and list_skill_definitions while preserving all
+      existing observation exports.
+  - id: ACC-SCOPE-LIMITED-FILES
+    verdict: pass
+    notes: >-
+      Current implementation changes are limited to pilot/src/pilot/skills.py,
+      pilot/src/pilot/__init__.py, and pilot/tests/test_skills.py. No contracts,
+      ROS wiring, feature files, prompt helpers, runtime-loop files, schemas,
+      fixtures, or examples are edited.
+  - id: ACC-REGRESSION-GATES
+    verdict: pass
+    notes: >-
+      Verified make sync, make -C pilot test, make -C pilot lint, make test,
+      make validate, and make lint all exit 0 in the current checkout. The sync
+      gate uses the corrected root make sync delegator rather than root uv sync.
+verdict: approve

@@ -1,0 +1,66 @@
+items:
+  - id: ACC-SKILL-MAPPING-COVERAGE
+    verdict: pass
+    notes: >-
+      `test_all_contract_skills_have_mapping_or_assertion_only_executor_outcome`
+      asserts exact coverage for every current `contracts.PilotSkillName` and
+      also checks registry definitions cover the same enum set, so adding a new
+      skill without executor coverage fails.
+  - id: ACC-PAYLOAD-JSON-SHAPE
+    verdict: pass
+    notes: >-
+      Transport requests carry a plain dict payload with route, action,
+      command_id, skill, timing/deadline metadata, registry metadata, and a
+      bounded `parameters` object from `command.params.model_dump(mode="json")`;
+      tests round-trip the payload through `json.dumps`/`json.loads`.
+  - id: ACC-REGISTRY-ALIGNED-MAPPING
+    verdict: pass
+    notes: >-
+      `_transport_request` uses `get_skill_definition()` to derive command path,
+      expected result source, and max duration, and tests compare payload
+      metadata against the registry for each non-assertion skill.
+  - id: ACC-OPERATOR-ROUTE-FIRST
+    verdict: pass
+    notes: >-
+      Operator-backed skills map to `/operator/command` for survey, tag
+      alignment/navigation, arm, grab, and release actions; object or coordinate
+      cases without a direct operator action remain on the bounded control route.
+  - id: ACC-STOP-HALT-PAYLOAD
+    verdict: pass
+    notes: >-
+      `stop` maps to the deterministic `halt` action, preserves command id,
+      skill, and reason in the payload, and does not introduce raw motor fields.
+  - id: ACC-MOTION-MANIPULATOR-ACTIONS
+    verdict: pass
+    notes: >-
+      Tests cover the expected action or bounded route for `survey_scene`,
+      `face_target`, `approach_target`, `center_object_in_gripper`,
+      `go_to_destination`, `arm_to_angle`, `claw_open`, and `claw_close`.
+  - id: ACC-ASSERTION-ONLY-NO-PUBLISH
+    verdict: pass
+    notes: >-
+      `verify_grasp` and `verify_drop` return deterministic
+      `CommandStatus.OK` results with `assertion_validated`, no raw transport
+      payload, and no transport call; the result message ties the outcome to
+      accepted safety validation evidence.
+  - id: ACC-VALIDATION-GATE-PRESERVED
+    verdict: pass
+    notes: >-
+      Malformed, rejected, stopped, and accepted-without-command validation
+      results return before transport construction and do not call the transport
+      boundary; the existing refusal tests still pass.
+  - id: ACC-ROS-FREE-MAPPING
+    verdict: pass
+    notes: >-
+      `pilot.executor` imports only standard library, `contracts`, and pilot
+      safety/registry modules. The ROS-free import test rejects ROS package
+      imports at module import time and passes.
+  - id: ACC-SCOPE-LIMITED-FILES
+    verdict: pass
+    notes: >-
+      Source/test changes in the working tree are limited to
+      `pilot/src/pilot/executor.py` and `pilot/tests/test_executor.py`; no
+      contract, registry, ROS runtime, firmware, CLI, logger, or replay files are
+      edited.
+verdict: approve
+rework: []

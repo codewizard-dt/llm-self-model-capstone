@@ -1,0 +1,46 @@
+items:
+  - id: ACC-CONTRACT-ROUNDTRIP
+    verdict: pass
+    notes: >-
+      Added tests validate every evaluate_assertions result through
+      PilotAssertion.model_validate(assertion.model_dump()), assert non-empty
+      evidence and bounded confidence, and embed the assertions through
+      ObservationCache.current_assertions into a contract-valid PilotObservation snapshot.
+  - id: ACC-EXACT-ID-ORDER
+    verdict: pass
+    notes: >-
+      evaluate_assertions already emits one assertion per REQUIRED_ASSERTION_IDS entry, and the new
+      repeated-call test proves the exact nine ids are returned in required order without
+      duplicates or model_dump drift across equivalent calls.
+  - id: ACC-SNAPSHOT-DETERMINISM
+    verdict: pass
+    notes: >-
+      The unsorted-input snapshot regression reverses and reorders visible objects, visible tags,
+      recent failures, and current assertions, then proves build_observation_snapshot produces an
+      identical contract-valid PilotObservation using the established observation sort helpers.
+  - id: ACC-PUBLIC-EXPORTS
+    verdict: pass
+    notes: >-
+      pilot.__init__ additively exports build_observation_snapshot while preserving the existing
+      assertion, observation-cache/sort-helper, and skill-registry public surface; the package export
+      test verifies the expected symbols and representative identity bindings.
+  - id: ACC-NO-ROS-IMPORTS
+    verdict: pass
+    notes: >-
+      The ROS import guard now rejects rclpy, std_msgs, sensor_msgs, geometry_msgs, nav_msgs,
+      tf2_ros, and rosbag2_py roots, clears pilot modules from sys.modules, then proves importing
+      pilot.assertions, importing pilot, and evaluating assertions all succeed without ROS modules.
+  - id: ACC-DELIVERY-PROGRESS-SNAPSHOTS
+    verdict: pass
+    notes: >-
+      Parameterized full-snapshot tests cover visibility/pose progress, grasp/carry progress, and
+      destination/drop progress, route each state through current_assertions, and prove the embedded
+      assertions expose stable ids with expected true progress signals.
+  - id: ACC-SCOPE-AND-GATES
+    verdict: pass
+    notes: >-
+      The diff is limited to pilot/src/pilot/__init__.py and pilot/tests/test_assertions.py, a
+      subset of the allowed files, with no schema, provider, ROS, dependency, or toolchain changes.
+      I independently ran make sync, make -C pilot test, make -C pilot lint, make test,
+      make validate, and make lint; all passed.
+verdict: approve

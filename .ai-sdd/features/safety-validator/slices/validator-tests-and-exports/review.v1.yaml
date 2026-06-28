@@ -1,0 +1,77 @@
+items:
+  - id: SV-FINAL-001
+    verdict: pass
+    notes: >-
+      `pilot/tests/test_safety.py` covers healthy replay validation for typed
+      commands and raw contract mappings without supervision, plus hardware
+      validation with human supervision. Accepted results preserve the
+      normalized contract command, mode, skill, accepted status, and `ok`
+      reason code.
+  - id: SV-FINAL-002
+    verdict: pass
+    notes: >-
+      Tests cover stale bridge state, bridge fault, estop, missing heartbeat,
+      stale heartbeat, rejected/failed/stale previous command results, and
+      command-sourced recent failures. Each unsafe non-stop case deterministically
+      rejects with the expected `ValidationReasonCode`.
+  - id: SV-FINAL-003
+    verdict: pass
+    notes: >-
+      Hardware mode rejects non-stop commands without human supervision using
+      `human_supervision_required`, while replay mode explicitly accepts the same
+      healthy command without a live supervision signal.
+  - id: SV-FINAL-004
+    verdict: pass
+    notes: >-
+      Tests cover duration above registry limits, stricter registry envelopes for
+      drive speed, turn rate, arm angle, arm velocity, and claw force, and
+      contract-owned rejection for oversized claw opening. Oversized values do
+      not reach accepted motion outcomes.
+  - id: SV-FINAL-005
+    verdict: pass
+    notes: >-
+      Tests cover missing target evidence for target-dependent skills, missing
+      destination evidence for symbolic navigation, stale target assertion
+      evidence, stale localization for symbolic destination navigation, and
+      stale or insufficient destination assertion evidence for destination-bound
+      verification. Stable target and destination reason codes are asserted
+      where those gates apply.
+  - id: SV-FINAL-006
+    verdict: pass
+    notes: >-
+      Tests cover invalid raw command input, contract-invalid numeric payloads,
+      missing registry definitions, and mismatched registry definitions. Each
+      path returns a structured rejection with stable machine-readable reason
+      codes instead of leaking exception behavior.
+  - id: SV-FINAL-007
+    verdict: pass
+    notes: >-
+      Stop commands remain accepted under unsafe bridge and command health. The
+      result reports the unsafe health reasons, including bridge fault, estop,
+      stale heartbeat, and command failure, rather than blocking stop behind
+      motion gates.
+  - id: SV-FINAL-008
+    verdict: pass
+    notes: >-
+      The `pilot` package exports the public safety API:
+      `SafetyPolicy`, `ValidationMode`, `ValidationReason`,
+      `ValidationReasonCode`, `ValidationResult`, `ValidationStatus`,
+      `DEFAULT_SAFETY_POLICY`, and `validate_skill_command`. Tests also confirm
+      existing observation and skill-registry exports remain present.
+  - id: SV-FINAL-009
+    verdict: pass
+    notes: >-
+      The current diff is limited to `pilot/src/pilot/safety.py` and
+      `pilot/tests/test_safety.py`. The safety change only adds deterministic
+      command-result health reasons using contract-owned models; no executor,
+      LLM adapter, assertion engine, replay runner, hardware behavior, ROS
+      transport, new schema, new dependency, or broad refactor is introduced.
+  - id: SV-FINAL-010
+    verdict: pass
+    notes: >-
+      Final feature acceptance is met by the ROS-free public validator API,
+      deterministic reason-code behavior, additive package exports, and passing
+      gates: `make -C pilot test`, `make -C pilot validate`,
+      `make -C pilot lint`, root `make test`, root `make validate`, and root
+      `make lint`.
+verdict: approve

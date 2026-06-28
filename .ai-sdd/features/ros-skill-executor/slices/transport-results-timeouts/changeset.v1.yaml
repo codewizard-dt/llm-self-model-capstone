@@ -1,0 +1,25 @@
+summary: >-
+  Extended the ROS-free pilot executor so accepted transport-backed skills send
+  exactly one normalized request, then derive the final ExecutionResult from
+  matching terminal payloads or deterministic timeout policy rather than publish
+  success. Terminal mapping/JSON payloads now classify ok, rejected, failed, and
+  stale outcomes with command-id correlation and ordered fallback; effective
+  deadlines use min(command timeout_ms, registry max_duration_ms) plus transport
+  grace. stop remains a halt request with deterministic stopped/ok timeout
+  behavior, while validation refusals and assertion-only verify skills still do
+  not publish.
+satisfies:
+  - ACC-TRANSPORT-SEND-ONCE
+  - ACC-NO-PUBLISH-SUCCESS
+  - ACC-TERMINAL-OK-RESULT
+  - ACC-TERMINAL-REJECTED-FAILED
+  - ACC-TIMEOUT-STALE
+  - ACC-DEADLINE-MIN-BOUND
+  - ACC-COMMAND-ID-CORRELATION
+  - ACC-ORDERED-FALLBACK
+  - ACC-FAKE-TRANSPORT
+  - ACC-ROS-FREE-IMPORTS
+  - ACC-STOP-HALT-RESULT
+  - ACC-VALIDATION-GATE-PRESERVED
+  - ACC-ASSERTION-ONLY-PRESERVED
+  - ACC-SCOPE-LIMITED-FILES

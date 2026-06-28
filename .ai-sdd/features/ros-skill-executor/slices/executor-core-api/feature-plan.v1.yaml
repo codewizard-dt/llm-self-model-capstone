@@ -1,0 +1,254 @@
+summary: >-
+  Add the ROS-free pilot executor core API for the executor-core-api slice:
+  immutable pilot-local execution result and request helper types, a narrow
+  transport protocol boundary for later ROS/fake adapters, and a deterministic
+  validation gate that executes only accepted `pilot.safety.ValidationResult`
+  objects while refusing rejected, stopped, or malformed validation outcomes.
+
+scope:
+  in:
+    - >-
+      Add `pilot/src/pilot/executor.py` as the public ROS-free executor core
+      module for accepted pilot skill commands.
+    - >-
+      Define immutable dataclasses or typed helper objects for executor policy
+      and deadline settings, a symbolic transport request/payload handoff, and a
+      deterministic execution result that preserves command id, skill name,
+      contract-owned command status, reason code, human-readable message,
+      issued/completed timing, and optional raw transport payloads for later
+      diagnostics.
+    - >-
+      Expose a deterministic function or small class that accepts a
+      `pilot.safety.ValidationResult`, refuses anything whose status is not
+      `accepted`, and refuses accepted results whose command is missing.
+    - >-
+      Reuse `contracts.CommandStatus`, `contracts.PilotSkillCommand`,
+      `contracts.PilotSkillName`, `pilot.safety.ValidationResult`, and
+      `pilot.skills.get_skill_definition()` / registry metadata; do not define
+      pydantic schemas in `pilot`.
+    - >-
+      Introduce a minimal ROS-free transport protocol or callable boundary that
+      receives the normalized contract command plus symbolic registry route
+      metadata, allowing tests to prove accepted validations reach the executor
+      mapping boundary without concrete ROS JSON mapping.
+    - >-
+      Return deterministic refusal results for rejected, stopped, malformed, or
+      commandless validation results and ensure those paths never publish or hand
+      off transport payloads.
+    - >-
+      Add additive package exports from `pilot/src/pilot/__init__.py` for only
+      the executor API surface delivered by this slice.
+    - >-
+      Add focused ROS-free tests in `pilot/tests/test_executor.py` covering public
+      API shape, importability without ROS packages, accepted handoff to a fake
+      transport/mapping boundary, validation refusal, missing-command refusal,
+      result status/reason determinism, and package exports.
+  out:
+    - >-
+      Concrete per-skill ROS JSON payload mapping, `/operator/command` topic
+      publishing, `/task_plan/request` routing, ROS node/adaptor implementation,
+      or `rclpy` imports.
+    - >-
+      Waiting for operator feedback/results, terminal result correlation,
+      timeout classification, transport grace-period behavior beyond storing
+      policy/deadline settings for later slices, or parsing raw ROS result
+      payloads.
+    - >-
+      CLI wiring, hardware-supervised proof commands, live supervision signals,
+      run logging, replay runner integration, assertion-engine fused judgments,
+      full pilot loop orchestration, LLM adapter behavior, or delivery recipes.
+    - >-
+      Safety validation logic, stale-state policy, numeric clamping, registry
+      precondition enforcement, or changes to `pilot.safety` beyond consuming its
+      public `ValidationResult` API.
+    - >-
+      New or changed schemas, contract fixtures, generated contract JSON schemas,
+      closed MVP skill vocabulary changes, ROS operator stack rewrites, PROS
+      firmware, or low-level motor/bridge packet changes.
+    - >-
+      Changes outside `pilot/src/pilot/executor.py`,
+      `pilot/src/pilot/__init__.py`, and `pilot/tests/test_executor.py`.
+
+acceptance:
+  - id: ACC-EXECUTOR-ROS-FREE-IMPORT
+    description: >-
+      `pilot.executor` and the package-level executor exports import and can be
+      exercised in a dev-machine test process without `rclpy`, ROS message
+      packages, ROS topic classes, or concrete provider implementations.
+  - id: ACC-EXECUTOR-PUBLIC-API
+    description: >-
+      The module exposes the public executor entry point plus immutable
+      pilot-local executor policy/deadline, transport request or payload, reason,
+      and execution-result helper types needed by downstream executor, logger, and
+      replay slices.
+  - id: ACC-ACCEPTED-VALIDATION-HANDOFF
+    description: >-
+      An accepted `pilot.safety.ValidationResult` containing a contract-valid
+      `PilotSkillCommand` reaches the executor mapping boundary exactly once via a
+      fake transport/protocol, carrying the normalized command, command id, skill
+      name, and symbolic route metadata from `pilot.skills`.
+  - id: ACC-REFUSE-NON-ACCEPTED-VALIDATION
+    description: >-
+      Rejected, stopped, or otherwise non-accepted validation results return a
+      deterministic refusal execution result using `contracts.CommandStatus.REJECTED`
+      and never call the transport boundary.
+  - id: ACC-REFUSE-MISSING-COMMAND
+    description: >-
+      An accepted validation result with `command is None` returns a deterministic
+      malformed/missing-command refusal result, preserves any available skill or
+      reason context, and never calls the transport boundary.
+  - id: ACC-CONTRACT-OWNED-STATUS
+    description: >-
+      Execution result statuses are values from `contracts.CommandStatus`; this
+      slice does not define a pilot-local status enum or pydantic result schema.
+  - id: ACC-RESULT-PRESERVES-DIAGNOSTICS
+    description: >-
+      Success-at-boundary and refusal results preserve command id when available,
+      skill name when available, stable reason code, concise message, issued and
+      completed timing fields, and optional raw transport payload storage for later
+      diagnostics.
+  - id: ACC-REGISTRY-REUSED
+    description: >-
+      The executor derives skill route/deadline metadata from
+      `pilot.skills.get_skill_definition()` rather than duplicating a second skill
+      routing table in the executor core.
+  - id: ACC-SCOPE-LIMITED-FILES
+    description: >-
+      Implementation changes are limited to `pilot/src/pilot/executor.py`,
+      additive exports in `pilot/src/pilot/__init__.py`, and
+      `pilot/tests/test_executor.py`; no contracts, safety validator, registry,
+      ROS runtime, run-loop, logger, replay, CLI, or feature-source files are
+      edited.
+  - id: ACC-EXECUTOR-GATES
+    description: >-
+      The implementer runs focused pilot checks and required repository gates:
+      `make sync`, `make -C pilot test`, `make -C pilot lint`, root `make test`,
+      root `make validate`, and root `make lint`.
+
+decisions:
+  - id: DEC-EXECUTOR-CORE-MODULE
+    status: closed
+    decision: >-
+      Implement this slice as a new ROS-free `pilot/src/pilot/executor.py` module
+      with additive package exports from `pilot/src/pilot/__init__.py`.
+    rationale: >-
+      The slice explicitly delivers the pilot-side executor core API and typed
+      result surface, while concrete ROS adapters and hardware proof commands are
+      later executor slices.
+    grounds: >-
+      executor-core-api slice Files to create / change and Requirements; ROS Skill
+      Executor Feature Requirements RSE-001; PILOT_MASTER_REQUIREMENTS.md
+      Components `Skill executor`; `.ai-sdd/conventions/pilot.md` Boundary rules.
+  - id: DEC-VALIDATION-RESULT-IS-THE-GATE
+    status: closed
+    decision: >-
+      The executor public entry point accepts only `pilot.safety.ValidationResult`
+      and proceeds only when `status == accepted` and `command` is present.
+    rationale: >-
+      The executor must sit behind contract validation and safety policy rather
+      than parsing raw LLM output or re-running partial validation.
+    grounds: >-
+      ROS Skill Executor Feature Requirements Goal, Constraints, and RSE-002;
+      executor-core-api slice Requirements and Acceptance;
+      PILOT_MASTER_REQUIREMENTS.md Execution Checklist and LLM Role;
+      pilot-online-task-loop program Shared Constraints.
+  - id: DEC-LOCAL_RESULTS_NOT_SCHEMAS
+    status: closed
+    decision: >-
+      Represent executor policy, request, reason, and result values as immutable
+      pilot-local dataclasses or typed helpers, while using `contracts.CommandStatus`
+      for status and importing contract-owned command and skill types.
+    rationale: >-
+      Logger and replay slices need deterministic structured outcomes, but
+      `contracts/` remains the only schema-owning vertical.
+    grounds: >-
+      ROS Skill Executor Feature Requirements RSE-003 and Constraints;
+      executor-core-api slice Requirements; MASTER_REQUIREMENTS.md Components
+      boundary rule; `.ai-sdd/conventions/pilot.md` Boundary rules; frozen
+      `.ai-sdd/schemas/task-telemetry.schema.yaml`,
+      `.ai-sdd/schemas/self-model.schema.yaml`, and
+      `.ai-sdd/schemas/parts-catalog.schema.yaml`.
+  - id: DEC-BOUNDARY_RETURNS_QUEUED
+    status: closed
+    decision: >-
+      For this slice, an accepted command handed to the symbolic transport/mapping
+      boundary returns a deterministic `contracts.CommandStatus.QUEUED` result;
+      terminal `ok`, `failed`, `stale`, timeout, and result-correlation behavior
+      are deferred to later executor slices.
+    rationale: >-
+      The rendered slice stops at the core API and mapping boundary, while the
+      feature's full wait/result semantics require concrete transport adapters and
+      operator feedback parsing.
+    grounds: >-
+      executor-core-api slice What this slice delivers, Acceptance, and Out Of
+      Scope; ROS Skill Executor Feature Requirements Acceptance; RSE-006 and
+      RSE-007.
+  - id: DEC-REUSE_SKILL_REGISTRY
+    status: closed
+    decision: >-
+      Derive command path and max-duration/deadline metadata from
+      `pilot.skills.get_skill_definition()` instead of creating a separate executor
+      routing table.
+    rationale: >-
+      The skill registry is the pilot-owned source for symbolic command paths,
+      max durations, expected result sources, and movement metadata, so duplicating
+      it in the executor would create drift before concrete ROS mapping lands.
+    grounds: >-
+      ROS Skill Executor Feature Requirements Constraints and RSE-004;
+      executor-core-api slice Requirements; skill-registry feature plans and
+      `pilot/src/pilot/skills.py`; PILOT_MASTER_REQUIREMENTS.md Skill Model.
+  - id: DEC-TRANSPORT_PROTOCOL_ONLY
+    status: closed
+    decision: >-
+      Introduce only a minimal ROS-free transport protocol or callable boundary in
+      this slice, with tests using a fake transport; do not import ROS or publish
+      concrete JSON payloads yet.
+    rationale: >-
+      Executor mapping and refusal behavior must be unit-testable on a dev machine
+      without ROS, while concrete `/operator/command` mapping belongs to later
+      slices.
+    grounds: >-
+      ROS Skill Executor Feature Requirements In Scope and Constraints; RSE-001;
+      executor-core-api slice Out Of Scope; `.ai-sdd/conventions/pilot.md` Boundary
+      rules; pilot-online-task-loop program Shared Constraints.
+  - id: DEC-REFUSAL_IS_REJECTED_STATUS
+    status: closed
+    decision: >-
+      Classify non-accepted validation results and accepted-but-commandless results
+      as executor refusals with `contracts.CommandStatus.REJECTED`, stable reason
+      codes, concise messages, and no transport handoff.
+    rationale: >-
+      This keeps the executor deterministic and prevents invalid or unsafe
+      validation outcomes from reaching the robot command surface.
+    grounds: >-
+      executor-core-api slice Requirements and Acceptance; ROS Skill Executor
+      Feature Requirements Goal and Acceptance; PILOT_MASTER_REQUIREMENTS.md
+      Execution Checklist and Constraints.
+  - id: DEC-GATE-SET
+    status: closed
+    decision: >-
+      The implementer must run the maintained dependency sync gate `make sync`,
+      focused `make -C pilot test` and `make -C pilot lint`, then root `make test`,
+      `make validate`, and `make lint`; `make demo` is excluded.
+    rationale: >-
+      The root repository delegates per-vertical uv synchronization through
+      `make sync`, this slice requires pilot-local test/lint coverage, the feature
+      requirements require the root gates, and `make demo` remains an m2 milestone
+      concern rather than a per-slice executor gate.
+    grounds: >-
+      ROS Skill Executor Feature Requirements Acceptance; plan-feature SKILL.md
+      tests requirement; AGENTS.md Build / verify; root Makefile sync target;
+      MASTER_REQUIREMENTS.md Tech stacks and Milestones m2.
+
+files:
+  - pilot/src/pilot/executor.py
+  - pilot/src/pilot/__init__.py
+  - pilot/tests/test_executor.py
+
+tests:
+  - make sync
+  - make -C pilot test
+  - make -C pilot lint
+  - make test
+  - make validate
+  - make lint

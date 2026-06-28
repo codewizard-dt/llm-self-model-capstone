@@ -1,0 +1,58 @@
+items:
+  - id: RAA-001
+    verdict: pass
+    notes: >-
+      pilot.decision exposes DecisionPromptClient and request_pilot_decision(), which accept a
+      contracts.PilotObservation, recent history, safety constraints, optional allowed skill prompt
+      data, and an injected prompt-to-text client. A valid first response is parsed through
+      parse_decision_response() and returned as a contracts.PilotDecision in DecisionAdapterResult.
+  - id: RAA-002
+    verdict: pass
+    notes: >-
+      test_malformed_json_retries_with_structured_failure_context covers malformed JSON followed
+      by a valid response, verifies exactly two provider prompts, and asserts the retry prompt
+      contains the previous attempt number plus malformed_json code, message, and details.
+  - id: RAA-003
+    verdict: pass
+    notes: >-
+      test_unknown_skill_retries_without_exposing_failed_command covers an unknown fly_to_goal
+      skill followed by a valid response. The adapter retries from the parser's unknown_skill
+      failure and the public result exposes only the final validated face_target command.
+  - id: RAA-004
+    verdict: pass
+    notes: >-
+      test_unknown_action_retries_and_returns_only_final_valid_decision covers an invalid hover
+      action followed by a valid response. The retry context carries unknown_action details and the
+      eventual result contains only the final validated continue decision.
+  - id: RAA-005
+    verdict: pass
+    notes: >-
+      test_retry_exhaustion_returns_error_without_decision_or_command proves the adapter stops at
+      the configured total-attempt limit and returns DecisionAdapterError with attempt counts and
+      final parse error while DecisionAdapterResult.decision and .command are both None.
+  - id: RAA-006
+    verdict: pass
+    notes: >-
+      test_mock_client_response_order_and_prompt_count_for_success_and_exhaustion uses the
+      deterministic SequencedPromptClient helper to prove response order and exact provider prompt
+      counts for both retry-success and exhaustion paths.
+  - id: RAA-007
+    verdict: pass
+    notes: >-
+      test_retry_prompt_context_is_deterministic_and_json_compatible compares two independently
+      rendered retry prompts for equality and round-trips retry_context through JSON. The stable
+      context includes previous attempt number, error code, message, and details.
+  - id: RAA-008
+    verdict: pass
+    notes: >-
+      test_adapter_import_and_execution_remain_ros_free_and_provider_sdk_free imports and exercises
+      the adapter under a guard that rejects ROS and common provider SDK imports. The implementation
+      adds no provider dependencies and defines no pilot-local schemas.
+  - id: RAA-009
+    verdict: pass
+    notes: >-
+      Existing prompt-builder and parser tests continue to pass unchanged alongside the adapter
+      tests. make -C pilot test, make -C pilot lint, make test, make validate, and make lint all
+      pass for the current diff.
+verdict: approve
+rework: []

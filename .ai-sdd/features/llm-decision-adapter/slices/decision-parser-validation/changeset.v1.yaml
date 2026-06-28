@@ -1,0 +1,17 @@
+summary: >
+  Added the ROS-free pilot decision response parser with strict whole-response JSON parsing,
+  pilot-local structured success/error results, distinct unknown_action and unknown_skill failures,
+  contract-owned PilotDecision validation for commands and decisions, registry-backed skill checks,
+  parser-level action/command consistency rules, explicit malformed_json rejection for non-standard
+  JSON constants (NaN, Infinity, and -Infinity), and focused DPV parser tests proving invalid
+  responses return no decision or executable command object.
+satisfies:
+  - DPV-001
+  - DPV-002
+  - DPV-003
+  - DPV-004
+  - DPV-005
+  - DPV-006
+  - DPV-007
+  - DPV-008
+  - DPV-009

@@ -1,0 +1,124 @@
+summary: >
+  Add the ROS-free pilot safety validator API for the validator-api-and-policy
+  slice: immutable policy/result helper types, explicit replay and hardware
+  validation modes, stop-command admissibility, and core bridge, estop,
+  heartbeat, and human-supervision health gates before any command can reach
+  the ROS skill executor.
+scope:
+  in:
+    - Define the public `pilot.safety` validation API for checking a `contracts.PilotSkillCommand` against a `contracts.PilotObservation`, policy thresholds, mode, and pilot skill registry metadata.
+    - Add immutable dataclasses or typed helper objects for validation mode, policy thresholds, validation status/reason, and validation result.
+    - Implement explicit replay and hardware validation modes.
+    - Enforce hardware-mode human supervision for non-stop commands.
+    - Reject or stop unsafe non-stop commands when bridge state is stale or faulted, estop is active, or bridge heartbeat age exceeds the configured threshold.
+    - Keep `stop` admissible under unsafe observation health and report the unsafe health state through stable reason codes and concise messages.
+    - Add focused unit tests for importability, API shape, mode behavior, supervision, bridge/estop/heartbeat health gates, and stop behavior.
+  out:
+    - Skill-specific target or destination evidence checks.
+    - Numeric movement-envelope enforcement beyond requiring already contract-valid command objects.
+    - ROS publishing, ROS action/result waiting, executor feedback handling, or changes under `robot/ros2-runtime/`.
+    - LLM response parsing, prompt rendering, assertion computation, run logging, replay-loop orchestration, or delivery recipe work.
+    - New pydantic schemas or contract ownership changes in `pilot/`.
+    - PROS firmware, Brain clamps, or low-level command packet changes.
+acceptance:
+  - id: SV-API-001
+    description: >
+      `pilot.safety` imports without ROS dependencies and exposes the public
+      validation entry point plus immutable mode, policy, status/reason, and
+      result helper types.
+  - id: SV-API-002
+    description: >
+      A healthy replay-mode validation of a contract-valid non-stop
+      `PilotSkillCommand` with a compatible `PilotObservation` and known skill
+      registry entry returns an accepted result containing the normalized
+      contract command.
+  - id: SV-API-003
+    description: >
+      Hardware-mode validation rejects non-stop commands when human supervision
+      is absent, using a stable machine-readable reason code and concise
+      message.
+  - id: SV-API-004
+    description: >
+      Non-stop commands reject or produce a stopped outcome when bridge state is
+      `stale` or `fault`, estop is active, or bridge heartbeat freshness exceeds
+      the configured threshold.
+  - id: SV-API-005
+    description: >
+      `stop` remains admissible when observation health is unsafe and returns
+      an accepted or stopped result that includes the unsafe health reason code
+      instead of being blocked by motion gates.
+  - id: SV-API-006
+    description: >
+      Validation failures use deterministic reason codes that are stable enough
+      for executor, logger, replay, and unit-test assertions.
+decisions:
+  - id: SV-PLAN-001
+    status: closed
+    decision: >
+      Implement this slice as a ROS-free `pilot.safety` module with immutable
+      dataclass or typed helper result and policy types.
+    grounded_in:
+      - "Safety Validator Feature Requirements: SV-001 and Constraints"
+      - "PILOT_MASTER_REQUIREMENTS.md: Components -> Skill validator"
+      - ".ai-sdd/conventions/pilot.md: Boundary rules"
+    rationale: >
+      The executor and logger need an inspectable API, while the pilot vertical
+      must not own schemas or import ROS for deterministic unit tests.
+  - id: SV-PLAN-002
+    status: closed
+    decision: >
+      Validate in two explicit modes, `replay` and `hardware`, with human
+      supervision required only for hardware-mode non-stop commands.
+    grounded_in:
+      - "Safety Validator Feature Requirements: SV-002"
+      - "PILOT_MASTER_REQUIREMENTS.md: Scope cut and Constraints"
+      - "MASTER_REQUIREMENTS.md: ADR-19"
+    rationale: >
+      Replay must remain runnable without live robot supervision, while
+      hardware execution must stay bounded and interruptible.
+  - id: SV-PLAN-003
+    status: closed
+    decision: >
+      Keep `stop` admissible under unsafe observation health and surface the
+      health problem in the validation result.
+    grounded_in:
+      - "Safety Validator Feature Requirements: SV-004"
+      - ".ai-sdd/features/safety-validator/slices/validator-api-and-policy.md: Requirements"
+      - "PILOT_MASTER_REQUIREMENTS.md: Constraints"
+    rationale: >
+      Safety policy must never block a halt request just because the health
+      gates that block motion are already failing.
+  - id: SV-PLAN-004
+    status: closed
+    decision: >
+      Limit this slice to core API, mode, supervision, bridge state, estop, and
+      heartbeat freshness gates; defer target evidence and numeric movement
+      envelope enforcement to later safety-validator slices.
+    grounded_in:
+      - ".ai-sdd/features/safety-validator/slices/validator-api-and-policy.md: Out Of Scope"
+      - "Safety Validator Feature Requirements: SV-005"
+    rationale: >
+      The rendered slice explicitly establishes the executor/logger-facing
+      contract first and leaves skill-specific checks to the next slice.
+  - id: SV-PLAN-005
+    status: closed
+    decision: >
+      Use stable machine-readable reason codes with short human-readable
+      messages as the validation failure surface.
+    grounded_in:
+      - "Safety Validator Feature Requirements: SV-006"
+      - ".ai-sdd/features/safety-validator/slices/validator-api-and-policy.md: Requirements"
+    rationale: >
+      Later executor, logger, and replay components need deterministic behavior
+      and readable traces.
+files:
+  - pilot/src/pilot/safety.py
+  - pilot/src/pilot/__init__.py
+  - pilot/tests/test_safety.py
+tests:
+  - uv sync
+  - make -C pilot test
+  - make -C pilot lint
+  - make test
+  - make validate
+  - make lint

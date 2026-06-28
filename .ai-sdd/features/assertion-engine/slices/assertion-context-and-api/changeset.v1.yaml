@@ -1,0 +1,15 @@
+summary: >-
+  Added the pilot assertion foundation: immutable task context/config types, the stable nine-id
+  assertion vocabulary, contract-valid assertion builders, a ROS-free evaluate_assertions API that
+  emits explicit unknown placeholders, additive package exports, and focused regression tests.
+satisfies:
+  - ACC-ASSERTION-CONTEXT-IMMUTABLE
+  - ACC-REQUIRED-ASSERTION-IDS
+  - ACC-CONTRACT-VALID-BUILDERS
+  - ACC-PUBLIC-EVALUATE-API
+  - ACC-PLACEHOLDER-UNCERTAINTY
+  - ACC-NO-SCHEMA-DRIFT
+  - ACC-NO-ROS-DEPENDENCY
+  - ACC-PACKAGE-EXPORTS
+  - ACC-SCOPE-LIMITED-FILES
+  - ACC-REGRESSION-GATES

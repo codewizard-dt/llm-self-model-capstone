@@ -1,0 +1,76 @@
+items:
+  - id: ACC-PILOT-FIXTURE-FAMILIES
+    verdict: pass
+    notes: >-
+      The five required pilot fixture families exist under contracts/fixtures:
+      pilot_observation_example.json plus JSONL examples for skill commands,
+      assertions, decisions, and trace records. Each file contains at least one
+      committed valid example and is accepted by the matching contracts.pilot
+      model or TypeAdapter.
+  - id: ACC-FIXTURE-CONTEXT-COVERAGE
+    verdict: pass
+    notes: >-
+      The observation and related JSONL fixtures cover bridge heartbeat
+      freshness, telemetry/vision evidence age, bridge estop=false,
+      manipulator state, motion-relevant command params, last command/result,
+      current assertions, recent failure context, and stable
+      pilot-replay/session identifiers using existing pilot model fields only.
+  - id: ACC-TRACE-EVENT-COVERAGE
+    verdict: pass
+    notes: >-
+      pilot_trace_example.jsonl is append-friendly JSONL and validates through
+      TypeAdapter(PilotTraceRecord). Its deterministic sequence covers
+      observation, decision, command, result, assertion, and stop events with
+      session_id pilot-replay-001 and seq values 1 through 6.
+  - id: ACC-VALIDATION-DISPATCH
+    verdict: pass
+    notes: >-
+      contracts.validate additively dispatches pilot_observation_example.json
+      through PilotObservation, assertion and decision JSONL through their
+      models, and skill command plus trace JSONL through TypeAdapter dispatch
+      for discriminated unions. Error reporting follows the existing
+      <file>:<line>: <error> or <file>: <error> shape.
+  - id: ACC-COMMITTED-FIXTURES-ACCEPTED
+    verdict: pass
+    notes: >-
+      Tests validate the committed pilot fixtures both directly through the
+      matching model/adapter paths and indirectly through validate.main(). I
+      verified cd contracts && uv run pytest tests/test_validate.py: 24 passed,
+      and make validate: exit 0 with all fixture families accepted.
+  - id: ACC-INVALID-MUTATIONS-REJECTED
+    verdict: pass
+    notes: >-
+      tests/test_validate.py constructs invalid pilot examples in temp fixture
+      roots for unknown decision actions, unknown skill names, oversized
+      approach speed, malformed bridge health, and invalid trace event
+      discriminators. Each path asserts validate.main() returns 1 with readable
+      stderr identifying the pilot fixture family.
+  - id: ACC-EXISTING-DISPATCH-PRESERVED
+    verdict: pass
+    notes: >-
+      Existing session telemetry, self_model, parts catalog/buildability,
+      repo-level telemetry-fixtures, and control_command dispatches are
+      unchanged except for isolated pilot fixture handling after the existing
+      dispatches. The glob families remain narrowed and make test plus make
+      validate remain green.
+  - id: ACC-DETERMINISTIC-SMALL-FIXTURES
+    verdict: pass
+    notes: >-
+      The committed pilot fixtures are compact, deterministic, hand-readable,
+      and replay-oriented. They use fixed timestamps, ids, seq values, command
+      ids, object/tag ids, and bounded scalar values, with no dependency on live
+      hardware, ROS messages, runtime services, or generated data.
+  - id: ACC-REGRESSION-GATES
+    verdict: pass
+    notes: >-
+      Verified in the current checkout: make sync exits 0 and runs uv sync in
+      contracts, self_model_generator, and robot/ros2-runtime; make test exits
+      0 with contracts 197 passed, self_model_generator 26 passed, and
+      robot/ros2-runtime 154 passed/1 skipped; make validate exits 0; make lint
+      exits 0; and cd contracts && uv run pytest tests/test_validate.py exits
+      0 with 24 passed. Caveat: literal root-level uv sync exits 2 because this
+      repo has no root pyproject.toml; this is a pre-existing per-vertical repo
+      layout, and the delegated repo dependency gate make sync plus the
+      contracts-local uv sync both pass.
+verdict: approve
+rework: []

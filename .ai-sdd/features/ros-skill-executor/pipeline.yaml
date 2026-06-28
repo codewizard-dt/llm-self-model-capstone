@@ -1,0 +1,14 @@
+apiVersion: ai-sdd/v1
+kind: Pipeline
+metadata: { name: ros-skill-executor, version: 1 }
+spec:
+  semantics: enabler
+  nodes:
+    - { id: executor-core-api, kind: pipeline, pipeline: ../.., stack: pilot }
+    - { id: skill-command-mapping, kind: pipeline, pipeline: ../.., stack: pilot }
+    - { id: transport-results-timeouts, kind: pipeline, pipeline: ../.., stack: pilot }
+    - { id: cli-tests-and-exports, kind: pipeline, pipeline: ../.., stack: pilot }
+  edges:
+    - { from: executor-core-api, to: skill-command-mapping }
+    - { from: skill-command-mapping, to: transport-results-timeouts }
+    - { from: transport-results-timeouts, to: cli-tests-and-exports }

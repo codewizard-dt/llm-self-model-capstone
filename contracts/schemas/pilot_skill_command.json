@@ -1,0 +1,813 @@
+{
+  "$defs": {
+    "ApproachTargetParams": {
+      "additionalProperties": false,
+      "properties": {
+        "max_speed_mps": {
+          "default": 0.35,
+          "maximum": 0.35,
+          "minimum": 0.0,
+          "title": "Max Speed Mps",
+          "type": "number"
+        },
+        "standoff_m": {
+          "default": 0.2,
+          "maximum": 5.0,
+          "minimum": 0.0,
+          "title": "Standoff M",
+          "type": "number"
+        },
+        "target_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Target Id",
+          "type": "string"
+        },
+        "timeout_ms": {
+          "default": 10000,
+          "maximum": 30000,
+          "minimum": 1,
+          "title": "Timeout Ms",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "target_id"
+      ],
+      "title": "ApproachTargetParams",
+      "type": "object"
+    },
+    "ApproachTargetSkillCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Command Id",
+          "type": "string"
+        },
+        "issued_ms": {
+          "minimum": 0,
+          "title": "Issued Ms",
+          "type": "integer"
+        },
+        "params": {
+          "$ref": "#/$defs/ApproachTargetParams"
+        },
+        "skill": {
+          "const": "approach_target",
+          "default": "approach_target",
+          "title": "Skill",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "command_id",
+        "issued_ms",
+        "params"
+      ],
+      "title": "ApproachTargetSkillCommand",
+      "type": "object"
+    },
+    "ArmToAngleParams": {
+      "additionalProperties": false,
+      "properties": {
+        "deg": {
+          "maximum": 90.0,
+          "minimum": 0.0,
+          "title": "Deg",
+          "type": "number"
+        },
+        "vel_rpm": {
+          "anyOf": [
+            {
+              "maximum": 600.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vel Rpm"
+        }
+      },
+      "required": [
+        "deg"
+      ],
+      "title": "ArmToAngleParams",
+      "type": "object"
+    },
+    "ArmToAngleSkillCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Command Id",
+          "type": "string"
+        },
+        "issued_ms": {
+          "minimum": 0,
+          "title": "Issued Ms",
+          "type": "integer"
+        },
+        "params": {
+          "$ref": "#/$defs/ArmToAngleParams"
+        },
+        "skill": {
+          "const": "arm_to_angle",
+          "default": "arm_to_angle",
+          "title": "Skill",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "command_id",
+        "issued_ms",
+        "params"
+      ],
+      "title": "ArmToAngleSkillCommand",
+      "type": "object"
+    },
+    "CenterObjectInGripperParams": {
+      "additionalProperties": false,
+      "properties": {
+        "image_tolerance_px": {
+          "default": 16,
+          "maximum": 320,
+          "minimum": 0,
+          "title": "Image Tolerance Px",
+          "type": "integer"
+        },
+        "object_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Object Id",
+          "type": "string"
+        },
+        "timeout_ms": {
+          "default": 6000,
+          "maximum": 30000,
+          "minimum": 1,
+          "title": "Timeout Ms",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "object_id"
+      ],
+      "title": "CenterObjectInGripperParams",
+      "type": "object"
+    },
+    "CenterObjectInGripperSkillCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Command Id",
+          "type": "string"
+        },
+        "issued_ms": {
+          "minimum": 0,
+          "title": "Issued Ms",
+          "type": "integer"
+        },
+        "params": {
+          "$ref": "#/$defs/CenterObjectInGripperParams"
+        },
+        "skill": {
+          "const": "center_object_in_gripper",
+          "default": "center_object_in_gripper",
+          "title": "Skill",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "command_id",
+        "issued_ms",
+        "params"
+      ],
+      "title": "CenterObjectInGripperSkillCommand",
+      "type": "object"
+    },
+    "ClawCloseParams": {
+      "additionalProperties": false,
+      "properties": {
+        "grip_force_n": {
+          "anyOf": [
+            {
+              "maximum": 100.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Grip Force N"
+        }
+      },
+      "title": "ClawCloseParams",
+      "type": "object"
+    },
+    "ClawCloseSkillCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Command Id",
+          "type": "string"
+        },
+        "issued_ms": {
+          "minimum": 0,
+          "title": "Issued Ms",
+          "type": "integer"
+        },
+        "params": {
+          "$ref": "#/$defs/ClawCloseParams"
+        },
+        "skill": {
+          "const": "claw_close",
+          "default": "claw_close",
+          "title": "Skill",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "command_id",
+        "issued_ms"
+      ],
+      "title": "ClawCloseSkillCommand",
+      "type": "object"
+    },
+    "ClawOpenParams": {
+      "additionalProperties": false,
+      "properties": {
+        "opening_pct": {
+          "anyOf": [
+            {
+              "maximum": 100.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Opening Pct"
+        }
+      },
+      "title": "ClawOpenParams",
+      "type": "object"
+    },
+    "ClawOpenSkillCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Command Id",
+          "type": "string"
+        },
+        "issued_ms": {
+          "minimum": 0,
+          "title": "Issued Ms",
+          "type": "integer"
+        },
+        "params": {
+          "$ref": "#/$defs/ClawOpenParams"
+        },
+        "skill": {
+          "const": "claw_open",
+          "default": "claw_open",
+          "title": "Skill",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "command_id",
+        "issued_ms"
+      ],
+      "title": "ClawOpenSkillCommand",
+      "type": "object"
+    },
+    "FaceTargetParams": {
+      "additionalProperties": false,
+      "properties": {
+        "max_turn_rad_s": {
+          "default": 0.6,
+          "maximum": 0.6,
+          "minimum": 0.0,
+          "title": "Max Turn Rad S",
+          "type": "number"
+        },
+        "target_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Target Id",
+          "type": "string"
+        },
+        "timeout_ms": {
+          "default": 4000,
+          "maximum": 30000,
+          "minimum": 1,
+          "title": "Timeout Ms",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "target_id"
+      ],
+      "title": "FaceTargetParams",
+      "type": "object"
+    },
+    "FaceTargetSkillCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Command Id",
+          "type": "string"
+        },
+        "issued_ms": {
+          "minimum": 0,
+          "title": "Issued Ms",
+          "type": "integer"
+        },
+        "params": {
+          "$ref": "#/$defs/FaceTargetParams"
+        },
+        "skill": {
+          "const": "face_target",
+          "default": "face_target",
+          "title": "Skill",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "command_id",
+        "issued_ms",
+        "params"
+      ],
+      "title": "FaceTargetSkillCommand",
+      "type": "object"
+    },
+    "GoToDestinationParams": {
+      "additionalProperties": false,
+      "properties": {
+        "destination_id": {
+          "anyOf": [
+            {
+              "maxLength": 80,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Destination Id"
+        },
+        "heading_rad": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Heading Rad"
+        },
+        "max_speed_mps": {
+          "default": 0.35,
+          "maximum": 0.35,
+          "minimum": 0.0,
+          "title": "Max Speed Mps",
+          "type": "number"
+        },
+        "position_tolerance_m": {
+          "default": 0.1,
+          "maximum": 2.0,
+          "minimum": 0.0,
+          "title": "Position Tolerance M",
+          "type": "number"
+        },
+        "timeout_ms": {
+          "default": 15000,
+          "maximum": 30000,
+          "minimum": 1,
+          "title": "Timeout Ms",
+          "type": "integer"
+        },
+        "x_m": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "X M"
+        },
+        "y_m": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Y M"
+        }
+      },
+      "title": "GoToDestinationParams",
+      "type": "object"
+    },
+    "GoToDestinationSkillCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Command Id",
+          "type": "string"
+        },
+        "issued_ms": {
+          "minimum": 0,
+          "title": "Issued Ms",
+          "type": "integer"
+        },
+        "params": {
+          "$ref": "#/$defs/GoToDestinationParams"
+        },
+        "skill": {
+          "const": "go_to_destination",
+          "default": "go_to_destination",
+          "title": "Skill",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "command_id",
+        "issued_ms",
+        "params"
+      ],
+      "title": "GoToDestinationSkillCommand",
+      "type": "object"
+    },
+    "StopSkillCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Command Id",
+          "type": "string"
+        },
+        "issued_ms": {
+          "minimum": 0,
+          "title": "Issued Ms",
+          "type": "integer"
+        },
+        "params": {
+          "$ref": "#/$defs/StopSkillParams"
+        },
+        "skill": {
+          "const": "stop",
+          "default": "stop",
+          "title": "Skill",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "command_id",
+        "issued_ms",
+        "params"
+      ],
+      "title": "StopSkillCommand",
+      "type": "object"
+    },
+    "StopSkillParams": {
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "enum": [
+            "operator",
+            "task_complete",
+            "fault",
+            "unsafe",
+            "policy"
+          ],
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason"
+      ],
+      "title": "StopSkillParams",
+      "type": "object"
+    },
+    "SurveySceneParams": {
+      "additionalProperties": false,
+      "properties": {
+        "timeout_ms": {
+          "default": 5000,
+          "maximum": 30000,
+          "minimum": 1,
+          "title": "Timeout Ms",
+          "type": "integer"
+        },
+        "yaw_span_deg": {
+          "default": 180.0,
+          "maximum": 360.0,
+          "minimum": 0.0,
+          "title": "Yaw Span Deg",
+          "type": "number"
+        }
+      },
+      "title": "SurveySceneParams",
+      "type": "object"
+    },
+    "SurveySceneSkillCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Command Id",
+          "type": "string"
+        },
+        "issued_ms": {
+          "minimum": 0,
+          "title": "Issued Ms",
+          "type": "integer"
+        },
+        "params": {
+          "$ref": "#/$defs/SurveySceneParams"
+        },
+        "skill": {
+          "const": "survey_scene",
+          "default": "survey_scene",
+          "title": "Skill",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "command_id",
+        "issued_ms"
+      ],
+      "title": "SurveySceneSkillCommand",
+      "type": "object"
+    },
+    "VerifyDropParams": {
+      "additionalProperties": false,
+      "properties": {
+        "destination_id": {
+          "anyOf": [
+            {
+              "maxLength": 80,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Destination Id"
+        },
+        "min_confidence": {
+          "default": 0.65,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Min Confidence",
+          "type": "number"
+        }
+      },
+      "title": "VerifyDropParams",
+      "type": "object"
+    },
+    "VerifyDropSkillCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Command Id",
+          "type": "string"
+        },
+        "issued_ms": {
+          "minimum": 0,
+          "title": "Issued Ms",
+          "type": "integer"
+        },
+        "params": {
+          "$ref": "#/$defs/VerifyDropParams"
+        },
+        "skill": {
+          "const": "verify_drop",
+          "default": "verify_drop",
+          "title": "Skill",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "command_id",
+        "issued_ms"
+      ],
+      "title": "VerifyDropSkillCommand",
+      "type": "object"
+    },
+    "VerifyGraspParams": {
+      "additionalProperties": false,
+      "properties": {
+        "min_confidence": {
+          "default": 0.65,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Min Confidence",
+          "type": "number"
+        },
+        "object_id": {
+          "anyOf": [
+            {
+              "maxLength": 80,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Object Id"
+        }
+      },
+      "title": "VerifyGraspParams",
+      "type": "object"
+    },
+    "VerifyGraspSkillCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Command Id",
+          "type": "string"
+        },
+        "issued_ms": {
+          "minimum": 0,
+          "title": "Issued Ms",
+          "type": "integer"
+        },
+        "params": {
+          "$ref": "#/$defs/VerifyGraspParams"
+        },
+        "skill": {
+          "const": "verify_grasp",
+          "default": "verify_grasp",
+          "title": "Skill",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "command_id",
+        "issued_ms"
+      ],
+      "title": "VerifyGraspSkillCommand",
+      "type": "object"
+    }
+  },
+  "discriminator": {
+    "mapping": {
+      "approach_target": "#/$defs/ApproachTargetSkillCommand",
+      "arm_to_angle": "#/$defs/ArmToAngleSkillCommand",
+      "center_object_in_gripper": "#/$defs/CenterObjectInGripperSkillCommand",
+      "claw_close": "#/$defs/ClawCloseSkillCommand",
+      "claw_open": "#/$defs/ClawOpenSkillCommand",
+      "face_target": "#/$defs/FaceTargetSkillCommand",
+      "go_to_destination": "#/$defs/GoToDestinationSkillCommand",
+      "stop": "#/$defs/StopSkillCommand",
+      "survey_scene": "#/$defs/SurveySceneSkillCommand",
+      "verify_drop": "#/$defs/VerifyDropSkillCommand",
+      "verify_grasp": "#/$defs/VerifyGraspSkillCommand"
+    },
+    "propertyName": "skill"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/StopSkillCommand"
+    },
+    {
+      "$ref": "#/$defs/SurveySceneSkillCommand"
+    },
+    {
+      "$ref": "#/$defs/FaceTargetSkillCommand"
+    },
+    {
+      "$ref": "#/$defs/ApproachTargetSkillCommand"
+    },
+    {
+      "$ref": "#/$defs/CenterObjectInGripperSkillCommand"
+    },
+    {
+      "$ref": "#/$defs/ArmToAngleSkillCommand"
+    },
+    {
+      "$ref": "#/$defs/ClawOpenSkillCommand"
+    },
+    {
+      "$ref": "#/$defs/ClawCloseSkillCommand"
+    },
+    {
+      "$ref": "#/$defs/VerifyGraspSkillCommand"
+    },
+    {
+      "$ref": "#/$defs/GoToDestinationSkillCommand"
+    },
+    {
+      "$ref": "#/$defs/VerifyDropSkillCommand"
+    }
+  ]
+}

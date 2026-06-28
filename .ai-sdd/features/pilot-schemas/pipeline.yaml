@@ -1,0 +1,10 @@
+apiVersion: ai-sdd/v1
+kind: Pipeline
+metadata: { name: pilot-schemas, version: 1 }
+spec:
+  semantics: enabler
+  nodes:
+    - { id: models-and-schemas,    kind: pipeline, pipeline: ../.., stack: contracts }
+    - { id: fixtures-and-validation, kind: pipeline, pipeline: ../.., stack: contracts }
+  edges:
+    - { from: models-and-schemas, to: fixtures-and-validation }

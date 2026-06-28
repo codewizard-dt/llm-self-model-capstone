@@ -1,0 +1,58 @@
+items:
+  - id: DPV-001
+    verdict: pass
+    notes: >-
+      pilot.decision exposes parse_decision_response(), which accepts raw response text and returns
+      either a contracts.PilotDecision or a DecisionParseError result. Ordinary malformed syntax,
+      prose-wrapped JSON, and non-standard JSON constants are converted to structured malformed_json
+      failures without raising.
+  - id: DPV-002
+    verdict: pass
+    notes: >-
+      test_parse_valid_continue_and_retry_with_registry_known_commands covers continue and retry
+      decisions with registry-known face_target and survey_scene commands, and both successful
+      paths construct contracts.PilotDecision through contract validation.
+  - id: DPV-003
+    verdict: pass
+    notes: >-
+      test_parse_valid_stop_decisions_with_null_or_stop_command_only covers stop_success with a
+      null command, stop_failure with a registry-known stop command, and rejection of a stop_success
+      decision carrying a non-stop command.
+  - id: DPV-004
+    verdict: pass
+    notes: >-
+      test_parse_valid_request_human_returns_no_executable_command covers request_human with a null
+      command and asserts both the contract decision command and result.command are None.
+  - id: DPV-005
+    verdict: pass
+    notes: >-
+      test_parse_malformed_json_and_non_object_json_return_structured_errors covers malformed
+      syntax, prose-wrapped JSON, arrays, and strings; test_parse_trims_whitespace_but_rejects_non_object_values
+      adds null and number responses. All covered failures return parser errors rather than
+      PilotDecision objects.
+  - id: DPV-006
+    verdict: pass
+    notes: >-
+      test_parse_unknown_action_and_unknown_skill_have_distinct_errors verifies unknown_action and
+      unknown_skill are distinct structured failures with clear messages and allowed-value details
+      suitable for retry prompting.
+  - id: DPV-007
+    verdict: pass
+    notes: >-
+      test_parse_schema_invalid_command_parameters_use_contract_validation covers an out-of-bounds
+      arm_to_angle.deg parameter and verifies the failure is reported through contract-owned
+      PilotDecision validation.
+  - id: DPV-008
+    verdict: pass
+    notes: >-
+      _assert_invalid() is used across invalid parser cases to prove no decision object and no
+      executable command object are returned. The reworked non-standard JSON constant test also
+      asserts NaN, Infinity, and -Infinity return malformed_json with no decision or command.
+  - id: DPV-009
+    verdict: pass
+    notes: >-
+      pilot.decision remains pure Python, provider-agnostic, and ROS-free, uses contract-owned
+      PilotDecision/PilotDecisionAction models plus the pilot.skills registry, and preserves the
+      existing prompt-builder helpers.
+verdict: approve
+rework: []

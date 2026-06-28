@@ -1,0 +1,76 @@
+items:
+  - id: ACC-RL-WRITER-ROS-FREE
+    verdict: pass
+    notes: >-
+      `pilot.run_logger` remains ROS-free and provider-free, importing only
+      stdlib, pydantic, and contract-owned types. The focused import test blocks
+      ROS package imports while loading the module and package exports.
+  - id: ACC-RL-EXPLICIT-PATH
+    verdict: pass
+    notes: >-
+      `RunLoggerConfig.trace_path` accepts explicit string/path-like values and
+      `RunLogger.trace_path` preserves the requested path. Tests append, close,
+      and read complete JSONL lines from the exact temporary path supplied.
+  - id: ACC-RL-DEFAULT-PATH
+    verdict: pass
+    notes: >-
+      `default_trace_path(session_id)` resolves from the pilot package root to
+      `pilot/runs/<session_id>.jsonl`, and the test verifies the session id is
+      in the filename under the ignored `runs` runtime directory.
+  - id: ACC-RL-PARENT-DIRS
+    verdict: pass
+    notes: >-
+      `_open_trace_file` creates `self._trace_path.parent` with
+      `parents=True, exist_ok=True` before opening the append file. Tests cover
+      nested explicit paths and default path creation.
+  - id: ACC-RL-ONE-LINE-JSON
+    verdict: pass
+    notes: >-
+      Each successful append writes `record.model_dump_json()` plus exactly one
+      newline to an append-mode UTF-8 text file, with no diagnostic text. Tests
+      assert compact, nonblank, single-line JSON objects.
+  - id: ACC-RL-CONTRACT-VALID-LINES
+    verdict: pass
+    notes: >-
+      Records are built through `TypeAdapter(PilotTraceRecord)` before any write
+      and written lines are loaded from disk and revalidated through the same
+      contract-owned union. No pilot-local pydantic trace schema was added.
+  - id: ACC-RL-ORDER-AND-SEQUENCE
+    verdict: pass
+    notes: >-
+      All six append helpers share the same validated append path, preserve call
+      order, and advance `_next_seq` only after successful writes. Tests verify
+      ordered event lines and exact sequence values from configured starts.
+  - id: ACC-RL-FLUSH-CLOSE
+    verdict: pass
+    notes: >-
+      `flush_after_append` defaults to true, successful appends flush the open
+      file handle, `close()` is idempotent, and context-manager exit closes the
+      file. Tests read complete lines after append, close, and context exit.
+  - id: ACC-RL-INVALID-NO-WRITE
+    verdict: pass
+    notes: >-
+      Invalid payloads, invalid stop reasons, invalid timestamps, and invalid
+      configuration raise `RunLoggerError` during pre-write validation. Tests
+      snapshot file bytes and prove rejected append attempts leave them
+      unchanged.
+  - id: ACC-RL-INVALID-NO-SEQ
+    verdict: pass
+    notes: >-
+      `_build_record` no longer consumes sequence state; `_next_seq` advances
+      only in `_append_validated_record` after a successful write. Tests confirm
+      rejected attempts do not skip the pending sequence number.
+  - id: ACC-RL-SCOPE-LIMITED-FILES
+    verdict: pass
+    notes: >-
+      The implementation diff is limited to `pilot/src/pilot/run_logger.py` and
+      `pilot/tests/test_run_logger.py`. No contracts, schemas, ROS code, replay
+      code, CLI wiring, or hardware integration files are changed.
+  - id: ACC-RL-GATES
+    verdict: pass
+    notes: >-
+      Verified `make sync`, `make -C pilot test`, `make -C pilot lint`, root
+      `make test`, root `make validate`, and root `make lint`; all completed
+      successfully.
+verdict: approve
+rework: []

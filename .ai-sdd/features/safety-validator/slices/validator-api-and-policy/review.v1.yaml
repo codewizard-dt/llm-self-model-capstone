@@ -1,0 +1,46 @@
+items:
+  - id: SV-API-001
+    verdict: pass
+    notes: >-
+      pilot.safety is ROS-free at import time and exposes validate_skill_command
+      plus immutable SafetyPolicy, ValidationMode, ValidationStatus,
+      ValidationReasonCode, ValidationReason, and ValidationResult helper types.
+      The package __init__ exports the new public API additively.
+  - id: SV-API-002
+    verdict: pass
+    notes: >-
+      Healthy replay-mode validation of a contract-valid ApproachTarget command
+      against a compatible PilotObservation and registered skill definition
+      returns ValidationStatus.ACCEPTED with the normalized contract command,
+      replay mode, skill, and ok reason.
+  - id: SV-API-003
+    verdict: pass
+    notes: >-
+      Hardware-mode non-stop validation rejects when human_supervised is false
+      under the default policy, using the stable
+      human_supervision_required reason code and concise
+      "hardware mode requires human supervision" message.
+  - id: SV-API-004
+    verdict: pass
+    notes: >-
+      Non-stop commands are rejected when bridge state is stale or faulted,
+      estop is active, heartbeat age is missing, or heartbeat age exceeds the
+      configured SafetyPolicy threshold. Tests cover each deterministic health
+      reason code and the policy threshold boundary.
+  - id: SV-API-005
+    verdict: pass
+    notes: >-
+      Stop commands remain admissible under unsafe observation health, including
+      hardware mode without supervision, and return an accepted result carrying
+      the unsafe bridge, estop, and heartbeat reason codes instead of being
+      blocked by motion gates.
+  - id: SV-API-006
+    verdict: pass
+    notes: >-
+      Validation failures and health findings use deterministic
+      ValidationReasonCode enum values for invalid commands, invalid
+      observations, unknown skills, missing supervision, bridge state, estop,
+      missing heartbeat, and stale heartbeat. The tests assert stable codes for
+      executor, logger, replay, and unit-test consumers.
+verdict: approve
+rework: []

@@ -1,0 +1,198 @@
+summary: >-
+  Create the initial `pilot/` Python 3.11 vertical scaffold and ROS-free normalized observation
+  cache/input models that later observation-builder slices can compact into
+  `contracts.PilotObservation`, without implementing final snapshot-builder behavior.
+
+scope:
+  in:
+    - >-
+      Add the `pilot/` uv project, package layout, package-local Makefile, and ruff/pytest tooling
+      needed for the online-control vertical to run `sync`, `test`, `validate`, and `lint`.
+    - >-
+      Define normalized in-process cache/input models in `pilot.observation` for task objective and
+      phase, localization/pose, visible objects, visible tags, manipulator state, bridge health,
+      last command/result, recent failures, and current assertions.
+    - >-
+      Reuse contract-owned pilot models where appropriate, including `PilotAssertion`,
+      `PilotSkillCommand`, `PilotSkillResult`, `PilotTaskPhase`, and existing observation component
+      models such as pose, localization, visible object/tag, manipulator, bridge, and failure types.
+    - >-
+      Provide deterministic helper functions or ordering keys that preserve compact, replayable
+      ordering for object, tag, failure, and assertion cache entries in a later builder.
+    - >-
+      Add package-local tests covering cache construction, stale or missing inputs, contract-model
+      reuse, deterministic sort keys, and absence of ROS message requirements.
+    - >-
+      Wire the root `Makefile` so repo-level `sync`, `test`, `validate`, and `lint` delegate into
+      the new `pilot/` vertical once its Makefile exists.
+  out:
+    - >-
+      Building, exporting, or validating a final `contracts.PilotObservation` snapshot from the
+      normalized cache; that is reserved for the next observation-builder slice.
+    - >-
+      ROS subscription nodes, live topic wiring, MCAP/replay readers, concrete telemetry or vision
+      providers, command transport, or dependence on ROS message classes.
+    - >-
+      LLM prompting, LLM runtime selection, skill registry execution, safety policy, assertion
+      computation, run logging, replay-loop orchestration, or hardware motion.
+    - >-
+      Defining schema-bearing outputs in `pilot/`, changing any `contracts/` model or fixture, or
+      redesigning frozen task-telemetry, self-model, parts-catalog, control-command, or pilot
+      schemas.
+    - >-
+      Changes to `self_model_generator/`, `robot/ros2-runtime/`, `robot/v5-brain/`, docs, CI, or
+      dependency-management tools other than uv/ruff configuration for the new pilot vertical.
+    - >-
+      Adding `make demo` as a per-slice gate; it remains an m2 milestone concern.
+
+acceptance:
+  - id: ACC-PILOT-SCAFFOLD
+    description: >-
+      `pilot/pyproject.toml`, `pilot/Makefile`, `pilot/src/pilot/__init__.py`, and
+      `pilot/src/pilot/observation.py` define an installable Python 3.11 uv project named `pilot`
+      with pytest and ruff targets matching the repo's Python vertical conventions.
+  - id: ACC-NORMALIZED-CACHE-MODELS
+    description: >-
+      `pilot.observation` exposes ROS-free normalized cache/input models for objective, task phase,
+      localization/pose, visible objects, visible tags, manipulator state, bridge health, last
+      command/result, recent failures, and current assertions.
+  - id: ACC-CONTRACT-MODEL-REUSE
+    description: >-
+      The normalized models import and reuse contract-owned pilot types where appropriate,
+      especially `PilotAssertion`, `PilotSkillCommand`, `PilotSkillResult`, `PilotTaskPhase`, and
+      existing contract component models, without introducing schema-bearing pilot duplicates.
+  - id: ACC-DETERMINISTIC-ORDERING
+    description: >-
+      `pilot.observation` provides deterministic helper functions or ordering keys for visible
+      objects, visible tags, failures, and assertions, and tests prove equal inputs sort
+      repeatably.
+  - id: ACC-STALE-MISSING-INPUTS
+    description: >-
+      Tests prove stale or missing optional cache inputs are represented explicitly with unknown,
+      `None`, empty-list, or stale-state values rather than fabricated confidence or fabricated
+      observations.
+  - id: ACC-NO-ROS-DEPENDENCY
+    description: >-
+      Tests prove `pilot.observation` can be imported and exercised without `rclpy`, ROS message
+      packages, or any concrete ROS topic classes installed.
+  - id: ACC-ROOT-MAKEFILE-DELEGATION
+    description: >-
+      Root `make sync`, `make test`, `make validate`, and `make lint` delegate into `pilot/` in
+      addition to the existing verticals, and `pilot/Makefile` supplies matching targets.
+  - id: ACC-SNAPSHOT-BUILDER-DEFERRED
+    description: >-
+      No public function or test in this slice constructs the final `contracts.PilotObservation`
+      snapshot; the slice stops at normalized cache/input foundations.
+  - id: ACC-REGRESSION-GATES
+    description: >-
+      The required repo gates `uv sync`, `make test`, `make validate`, and `make lint` pass, with
+      focused `make -C pilot test` and `make -C pilot lint` runs during implementation.
+
+decisions:
+  - id: DEC-PILOT-VERTICAL-SCAFFOLD
+    status: closed
+    decision: >-
+      Initialize `pilot/` as a separate Python package and uv project for this slice, using Python
+      3.11 and the existing repo pattern of package-local Makefile targets.
+    rationale: >-
+      The observation-builder feature is assigned to the pilot stack, `pilot/` is currently absent,
+      and the slice explicitly delivers the initial vertical scaffold.
+    grounds: >-
+      MASTER_REQUIREMENTS.md Tech stacks `pilot`; `.ai-sdd/conventions/pilot.md` Vertical and
+      Discovery Record; pilot-scaffold-and-cache slice Files to create / change.
+  - id: DEC-NORMALIZED-ROS-FREE-INPUTS
+    status: closed
+    decision: >-
+      Model the cache/input surface as ROS-free Python/pydantic-compatible records inside
+      `pilot.observation`, with no direct ROS message imports or provider-specific classes.
+    rationale: >-
+      The online loop must support replayable inputs and non-ROS unit tests, while live topic
+      wiring belongs to later coprocessor/pilot integration work.
+    grounds: >-
+      observation-builder requirements Constraints and Out Of Scope; pilot-scaffold-and-cache slice
+      Requirements and Acceptance; `.ai-sdd/conventions/pilot.md` Boundary rules.
+  - id: DEC-CONTRACTS-OWN-SCHEMAS
+    status: closed
+    decision: >-
+      Reuse `contracts` pilot models for schema-bearing concepts and keep any pilot-local models as
+      normalized cache/input shapes only.
+    rationale: >-
+      The repo boundary rule says schemas live only in `contracts`, and existing contract exports
+      already cover the command, assertion, phase, result, pose, localization, object/tag,
+      manipulator, bridge, failure, and observation component types needed by this slice.
+    grounds: >-
+      MASTER_REQUIREMENTS.md Components boundary rule and Frozen Contracts; `.ai-sdd/schemas`
+      `task-telemetry`, `self-model`, and `parts-catalog`; observation-builder requirements
+      Constraints; pilot-scaffold-and-cache slice Requirements.
+  - id: DEC-DEFER-PILOT-OBSERVATION-BUILD
+    status: closed
+    decision: >-
+      Defer the final transformation from normalized cache state to `contracts.PilotObservation` to
+      the next slice and do not expose a snapshot-builder API in this scaffold/cache slice.
+    rationale: >-
+      The slice is intentionally a foundation slice, and building the final snapshot would consume
+      acceptance items assigned to the next observation-builder step.
+    grounds: >-
+      pilot-scaffold-and-cache slice What this slice delivers and Out Of Scope; observation-builder
+      feature Acceptance; user-rendered instruction limiting this worker's implementation scope.
+  - id: DEC-DETERMINISTIC_COMPACTION_FOUNDATION
+    status: closed
+    decision: >-
+      Provide deterministic ordering helpers now, but leave truncation and final compaction into the
+      contract-bounded snapshot to the later builder slice.
+    rationale: >-
+      Stable ordering is safe to establish with cache/input models and is necessary for replayable
+      LLM observations, while bounded snapshot assembly is out of scope here.
+    grounds: >-
+      observation-builder requirements Constraints and Proposed Decisions OB-004; pilot-scaffold-
+      and-cache slice Requirements and Out Of Scope.
+  - id: DEC_STALE_INPUTS_EXPLICIT
+    status: closed
+    decision: >-
+      Represent stale or missing optional inputs explicitly through unknown states, `None`, empty
+      lists, stale bridge/localization states, or caller-supplied ages instead of invented facts.
+    rationale: >-
+      Later LLM decisions and safety assertions must see uncertainty rather than optimistic default
+      observations.
+    grounds: >-
+      observation-builder requirements Constraints and Proposed Decisions OB-005; MASTER_REQUIREMENTS.md
+      Goal and Constraints; pilot-scaffold-and-cache slice Requirements.
+  - id: DEC-MAKEFILE-DELEGATION
+    status: closed
+    decision: >-
+      Add `pilot` delegation to root `sync`, `test`, `validate`, and `lint` targets after creating
+      `pilot/Makefile`.
+    rationale: >-
+      Repo-level gates are the reviewer contract, and the root Makefile already documents that pilot
+      delegation should be filled in once the vertical Makefile exists.
+    grounds: >-
+      AGENTS.md Build / verify; MASTER_REQUIREMENTS.md Shared tooling; root `Makefile` pilot stub;
+      pilot-scaffold-and-cache slice Acceptance.
+  - id: DEC-GATE-SET
+    status: closed
+    decision: >-
+      The implementer must run `uv sync`, `make test`, `make validate`, and `make lint`, plus
+      focused `make -C pilot test` and `make -C pilot lint`; `make demo` is excluded.
+    rationale: >-
+      The worker skill requires the repo-level baseline gates, the focused pilot commands give fast
+      proof for the new vertical, and `make demo` is reserved for the m2 milestone.
+    grounds: >-
+      plan-feature SKILL.md tests requirement; AGENTS.md Build / verify; MASTER_REQUIREMENTS.md
+      Milestones m2; pilot-scaffold-and-cache slice Acceptance.
+
+files:
+  - pilot/pyproject.toml
+  - pilot/Makefile
+  - pilot/uv.lock
+  - pilot/src/pilot/__init__.py
+  - pilot/src/pilot/observation.py
+  - pilot/tests/test_observation_cache.py
+  - Makefile
+
+tests:
+  - uv sync
+  - make -C pilot test
+  - make -C pilot lint
+  - make test
+  - make validate
+  - make lint

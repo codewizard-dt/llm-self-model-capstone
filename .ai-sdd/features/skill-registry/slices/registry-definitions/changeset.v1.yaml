@@ -1,0 +1,26 @@
+apiVersion: ai-sdd/v1
+kind: Changeset
+metadata:
+  feature: skill-registry
+  slice: registry-definitions
+  stack: pilot
+
+summary: >-
+  Added the ROS-free pilot skill registry with frozen, tuple-backed dataclasses,
+  exact coverage for the contracts.PilotSkillName MVP vocabulary, deterministic
+  list and strict lookup APIs, contract-owned parameter/command model references,
+  symbolic command/result routes, bounded movement metadata, additive package
+  exports, and focused registry tests for coverage, ordering, lookup behavior,
+  metadata completeness, contract-bound reuse, and ROS-free imports.
+
+satisfies:
+  - ACC-REGISTRY-IMMUTABLE-API
+  - ACC-EXACT-SKILL-COVERAGE
+  - ACC-DETERMINISTIC-ORDERING
+  - ACC-STRICT-LOOKUP
+  - ACC-COMPLETE-METADATA
+  - ACC-CONTRACT-BOUNDS-REUSED
+  - ACC-SYMBOLIC-ROS-FREE-PATHS
+  - ACC-PACKAGE-EXPORTS
+  - ACC-SCOPE-LIMITED-FILES
+  - ACC-REGRESSION-GATES

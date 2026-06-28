@@ -1,0 +1,218 @@
+summary: >-
+  Add canonical pilot fixtures and wire them into the existing contracts validation path so pilot
+  observations, skill commands, assertion results, pilot decisions, and pilot trace records validate
+  through the contract-owned pydantic models introduced by `models-and-schemas`.
+
+scope:
+  in:
+    - >-
+      Create the five pilot fixture families requested by the slice under `contracts/fixtures/`:
+      one compact observation JSON document and JSONL examples for skill commands, assertion
+      results, pilot decisions, and trace records.
+    - >-
+      Populate the fixtures with deterministic replay-friendly examples carrying bridge freshness,
+      telemetry/vision evidence freshness, estop and motion-relevant state, last command/result
+      context, current assertions, and replay/session identifiers.
+    - >-
+      Add pilot fixture dispatches to `contracts.validate` using the already-defined
+      `contracts.pilot` pydantic models and `TypeAdapter` instances for discriminated unions.
+    - >-
+      Add focused validation tests proving the committed pilot fixtures are accepted by the
+      validation entrypoint and by the matching model/adapter dispatches.
+    - >-
+      Add negative validation tests for unknown pilot decisions, unknown skills, oversized numeric
+      envelopes, stale or malformed hardware-health examples where represented by the existing
+      model fields, and malformed trace records.
+    - >-
+      Preserve existing fixture validation behavior for task telemetry, self-model, parts catalog,
+      telemetry-fixtures, and control-command families except for narrowly scoped pilot fixture
+      glob additions.
+  out:
+    - >-
+      Redesigning `contracts.pilot` models, changing generated pilot JSON Schemas, changing public
+      pilot exports, or altering the frozen task-telemetry, self-model, parts-catalog, or
+      control-command contracts.
+    - >-
+      Implementing pilot runtime behavior, observation builders, skill registry execution, safety
+      validation policy, replay runner behavior, run logger behavior, ROS topic integration, or
+      hardware commands.
+    - >-
+      Changes to `pilot/`, `robot/ros2-runtime/`, `robot/v5-brain/`, `self_model_generator/`, or
+      any schema definition outside `contracts/`.
+    - >-
+      Adding invalid committed fixtures; rejection cases belong in tests using temporary fixtures or
+      in-memory mutations.
+    - >-
+      New dependency-management, linting, formatting, CI, or secret-handling tools.
+    - >-
+      `make demo` remains an m2 milestone concern, not a per-slice gate.
+
+acceptance:
+  - id: ACC-PILOT-FIXTURE-FAMILIES
+    description: >-
+      `contracts/fixtures/` contains `pilot_observation_example.json`,
+      `pilot_skill_command_examples.jsonl`, `pilot_assertion_examples.jsonl`,
+      `pilot_decision_examples.jsonl`, and `pilot_trace_example.jsonl`, each with at least one valid
+      committed example for its pilot contract family.
+  - id: ACC-FIXTURE-CONTEXT-COVERAGE
+    description: >-
+      The committed pilot fixtures exercise bridge heartbeat freshness, telemetry or vision evidence
+      freshness, bridge estop state, manipulator/motion-relevant state, last command, last result,
+      current assertions, and stable replay/session identifiers using fields already present in the
+      completed pilot models.
+  - id: ACC-TRACE-EVENT-COVERAGE
+    description: >-
+      `pilot_trace_example.jsonl` validates as append-friendly JSONL and includes observation,
+      decision, command, result, assertion, and stop event records in a deterministic sequence.
+  - id: ACC-VALIDATION-DISPATCH
+    description: >-
+      `contracts.validate.main()` validates each pilot fixture family against the matching
+      pydantic model or `TypeAdapter` and reports failures as readable `<file>:<line>: <error>` or
+      `<file>: <error>` messages consistent with the existing validation entrypoint.
+  - id: ACC-COMMITTED-FIXTURES-ACCEPTED
+    description: >-
+      Tests prove the committed pilot fixtures validate through both direct model/adapter checks and
+      the repo validation entrypoint used by `make validate`.
+  - id: ACC-INVALID-MUTATIONS-REJECTED
+    description: >-
+      Tests prove invalid pilot examples are rejected for unknown decision actions, unknown skill
+      names, oversized numeric command envelopes, stale or malformed hardware health where
+      represented by the existing model fields, and malformed trace records.
+  - id: ACC-EXISTING-DISPATCH-PRESERVED
+    description: >-
+      Existing session telemetry, self-model, parts catalog/buildability, repo-level
+      telemetry-fixture, and control-command validation dispatches remain unchanged except for
+      isolated pilot fixture glob handling that prevents cross-parsing.
+  - id: ACC-DETERMINISTIC-SMALL-FIXTURES
+    description: >-
+      The committed pilot fixtures are small, deterministic, hand-readable, and suitable as
+      replay-mode seeds for later pilot features without depending on live hardware or ROS messages.
+  - id: ACC-REGRESSION-GATES
+    description: >-
+      The required repo gates `uv sync`, `make test`, `make validate`, and `make lint` pass, with
+      focused contracts validation tests run during implementation.
+
+decisions:
+  - id: DEC-USE-COMPLETED-PILOT-MODELS
+    status: closed
+    decision: >-
+      Use the `contracts.pilot` models, public exports, and generated pilot JSON Schemas produced by
+      the completed `models-and-schemas` slice as fixed inputs for this slice.
+    rationale: >-
+      This slice is the downstream fixture and validation wiring slice; changing the model surface
+      would reopen work already accepted by the prerequisite slice.
+    grounds: >-
+      fixtures-and-validation slice Depends on `models-and-schemas`; completed
+      models-and-schemas `feature-plan.v1.yaml` scope/out and DEC-FILE-BOUNDARY;
+      MASTER_REQUIREMENTS.md ADR-06 and ADR-19.
+  - id: DEC-FIXTURE-FAMILY-SHAPE
+    status: closed
+    decision: >-
+      Store the compact observation as one JSON document and store pilot skill commands,
+      assertions, decisions, and trace records as JSONL fixture families under the exact filenames
+      named by the slice.
+    rationale: >-
+      The observation is a single snapshot fixture, while commands, assertions, decisions, and trace
+      records naturally support multiple appendable examples and later replay-oriented expansion.
+    grounds: >-
+      fixtures-and-validation slice Files to create / change and Requirements; pilot-schemas
+      requirements In Scope and Acceptance; MASTER_REQUIREMENTS.md ADR-11.
+  - id: DEC-EXISTING-FIELD-FRESHNESS-COVERAGE
+    status: closed
+    decision: >-
+      Represent freshness and health context in fixtures through existing completed-model fields:
+      `bridge.last_heartbeat_age_ms`, `bridge.state`, `bridge.estop`, timestamp/age fields on
+      assertions and assertion evidence, manipulator state, last command/result, and trace
+      `session_id`/`seq`/`monotonic_ms`.
+    rationale: >-
+      The slice must exercise freshness, estop, motion-relevant state, and replay identifiers
+      without adding or redesigning schema fields.
+    grounds: >-
+      fixtures-and-validation slice Requirements and Out Of Scope; pilot-schemas requirements
+      Acceptance and Constraints; completed models-and-schemas ACC-OBSERVATION-SNAPSHOT and
+      DEC-NORMALIZED-OBSERVATIONS.
+  - id: DEC-PILOT-VALIDATION-DISPATCH
+    status: closed
+    decision: >-
+      Add explicit pilot fixture globs in `contracts.validate`: whole-file JSON validation for
+      `pilot_observation_example.json`, per-line model validation for assertion and decision JSONL
+      files, and `TypeAdapter` validation for `PilotSkillCommand` and `PilotTraceRecord` JSONL
+      discriminated unions.
+    rationale: >-
+      Pydantic v2 models and TypeAdapters are the established contract validation mechanism, and
+      discriminated unions do not expose a `model_validate_json` classmethod.
+    grounds: >-
+      MASTER_REQUIREMENTS.md ADR-06; contracts convention Model / entity; fixtures-and-validation
+      slice Requirements; completed models-and-schemas DEC-TRACE-DISCRIMINATED-UNION.
+  - id: DEC-TRACE-SEQUENCE-COVERAGE
+    status: closed
+    decision: >-
+      The committed trace fixture includes one valid record for each trace event variant:
+      observation, decision, command, result, assertion, and stop.
+    rationale: >-
+      The run trace contract is append-friendly only if every event variant validates through the
+      same JSONL validation path before later replay/run-logger work depends on it.
+    grounds: >-
+      fixtures-and-validation slice Requirements and Acceptance; pilot-schemas requirements PS-005;
+      completed models-and-schemas ACC-TRACE-UNION.
+  - id: DEC-NEGATIVE-TESTS-IN-TEMP-TREES
+    status: closed
+    decision: >-
+      Keep committed fixtures valid and construct invalid examples in tests via temporary fixture
+      trees or in-memory mutations.
+    rationale: >-
+      `make validate` must pass on the committed tree while tests still prove readable failures for
+      malformed examples.
+    grounds: >-
+      fixtures-and-validation slice Acceptance; MASTER_REQUIREMENTS.md Verification & Reviewer
+      Runbook; existing `contracts/tests/test_validate.py` temp-root pattern.
+  - id: DEC-CROSS-DISPATCH-ISOLATION
+    status: closed
+    decision: >-
+      Pilot fixture glob handling is additive and must not route pilot fixtures through existing
+      `session_*.jsonl`, `self_model_*.json`, `control_command_*.jsonl`, or telemetry-fixtures
+      dispatches.
+    rationale: >-
+      The validation entrypoint already relies on narrowed fixture families to avoid
+      cross-parsing; pilot fixtures need the same isolation to preserve existing contract behavior.
+    grounds: >-
+      fixtures-and-validation slice Requirements; existing `contracts.validate` control-command
+      dispatch notes; completed models-and-schemas Out Of Scope.
+  - id: DEC-FILE-BOUNDARY
+    status: closed
+    decision: >-
+      Implementation is limited to the five new pilot fixture files,
+      `contracts/src/contracts/validate.py`, and `contracts/tests/test_validate.py`.
+    rationale: >-
+      The prerequisite schema/model work is complete, and the current slice is fixture plus
+      validation wiring only.
+    grounds: >-
+      fixtures-and-validation slice Files to create / change and Out Of Scope; completed
+      models-and-schemas scope/out; plan-feature SKILL.md boundary rules.
+  - id: DEC-GATE-SET
+    status: closed
+    decision: >-
+      The implementer must run `uv sync`, `make test`, `make validate`, and `make lint`, plus a
+      focused contracts validation test command while developing this slice.
+    rationale: >-
+      The worker skill requires the repo-level baseline gates; the focused contracts test gives
+      faster proof for the changed validation entrypoint. `make demo` is intentionally excluded.
+    grounds: >-
+      plan-feature SKILL.md tests requirement; MASTER_REQUIREMENTS.md Verification & Reviewer
+      Runbook and Milestone m2; .ai-sdd/conventions/contracts.md Discovery Record.
+
+files:
+  - contracts/fixtures/pilot_observation_example.json
+  - contracts/fixtures/pilot_skill_command_examples.jsonl
+  - contracts/fixtures/pilot_assertion_examples.jsonl
+  - contracts/fixtures/pilot_decision_examples.jsonl
+  - contracts/fixtures/pilot_trace_example.jsonl
+  - contracts/src/contracts/validate.py
+  - contracts/tests/test_validate.py
+
+tests:
+  - uv sync
+  - make test
+  - make validate
+  - make lint
+  - cd contracts && uv run pytest tests/test_validate.py

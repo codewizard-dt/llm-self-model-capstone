@@ -1,0 +1,62 @@
+items:
+  - id: ACC-PILOT-SCAFFOLD
+    verdict: pass
+    notes: >-
+      pilot/pyproject.toml defines a Python >=3.11,<3.12 uv project named pilot with
+      hatchling packaging, pytest and ruff dev tooling, and pilot/Makefile exposes sync,
+      test, validate, and lint targets following the repo's per-vertical pattern. The
+      package layout includes pilot/src/pilot/__init__.py and pilot/src/pilot/observation.py.
+  - id: ACC-NORMALIZED-CACHE-MODELS
+    verdict: pass
+    notes: >-
+      pilot.observation exposes ObservationCache plus explicit helpers for objective,
+      task phase, robot pose, localization, visible objects, visible tags, manipulator
+      state, bridge health, last command/result, recent failures, and current assertions.
+      The cache is ROS-free and remains an in-process normalized input foundation.
+  - id: ACC-CONTRACT-MODEL-REUSE
+    verdict: pass
+    notes: >-
+      ObservationCache and helper functions import and reuse contract-owned PilotAssertion,
+      PilotSkillCommand, PilotSkillResult, PilotTaskPhase, Pose2D, LocalizationState,
+      VisibleObject, VisibleTag, ManipulatorState, BridgeHealth, and PilotFailure. No
+      schema-bearing pilot duplicates or contracts changes were introduced.
+  - id: ACC-DETERMINISTIC-ORDERING
+    verdict: pass
+    notes: >-
+      pilot.observation provides deterministic sort keys and sorted tuple helpers for
+      visible objects, visible tags, failures, and assertions. The focused tests verify
+      repeatable ordering for the cache entry classes covered by this slice.
+  - id: ACC-STALE-MISSING-INPUTS
+    verdict: pass
+    notes: >-
+      Missing inputs normalize to explicit None, empty tuple, unknown localization,
+      unknown manipulator, and stale bridge values. Stale caller-supplied localization
+      and bridge inputs are preserved without fabricated confidence, pose, heartbeat,
+      or observation data.
+  - id: ACC-NO-ROS-DEPENDENCY
+    verdict: pass
+    notes: >-
+      pilot.observation imports only Python standard library and contracts models. The
+      focused ROS-import guard test re-imports the module while rejecting rclpy, std_msgs,
+      and sensor_msgs imports, and make -C pilot test passes without ROS packages.
+  - id: ACC-ROOT-MAKEFILE-DELEGATION
+    verdict: pass
+    notes: >-
+      The root Makefile now delegates sync, test, validate, and lint into pilot after
+      contracts and self_model_generator and before robot/ros2-runtime. pilot/Makefile
+      supplies the matching targets, and make sync/test/validate/lint all exercised the
+      pilot delegation successfully.
+  - id: ACC-SNAPSHOT-BUILDER-DEFERRED
+    verdict: pass
+    notes: >-
+      This slice does not expose a function that builds contracts.PilotObservation and
+      the tests do not construct a final PilotObservation snapshot. The implementation
+      stops at normalized cache/input models and deterministic ordering helpers.
+  - id: ACC-REGRESSION-GATES
+    verdict: pass
+    notes: >-
+      Verified in the current checkout: make -C pilot sync, make -C pilot test, make -C
+      pilot lint, make sync, make test, make validate, and make lint all exit 0. The
+      root sync gate runs uv sync in each vertical, including the new pilot vertical.
+verdict: approve
+rework: []

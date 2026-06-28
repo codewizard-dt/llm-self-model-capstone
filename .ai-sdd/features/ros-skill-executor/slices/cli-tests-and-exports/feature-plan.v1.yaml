@@ -1,0 +1,223 @@
+summary: >-
+  Add the final pilot one-skill CLI hook for the ros-skill-executor feature,
+  wire it through contract command construction, safety validation, and the
+  completed executor core, and close packaging/export and acceptance-level
+  ROS-free test coverage gaps without changing contracts or robot runtime code.
+
+scope:
+  in:
+    - >-
+      Add a `pilot skill` command-line path that supports the supervised manual
+      proof shape equivalent to `pilot skill --hardware --skill survey_scene
+      --duration-s 3.0`.
+    - >-
+      Construct a contract-owned `contracts.PilotSkillCommand` for the selected
+      skill, initially covering the documented `survey_scene` proof path and
+      returning deterministic CLI errors for unsupported or invalid argument
+      combinations.
+    - >-
+      Route the CLI through `pilot.safety.validate_skill_command` using
+      `ValidationMode.HARDWARE` for `--hardware`; pass the resulting
+      `ValidationResult` to the existing executor only when validation is
+      accepted.
+    - >-
+      Require the hardware/supervision signal through the same
+      `human_supervised` safety-validator input used by executor callers rather
+      than adding a CLI-only bypass.
+    - >-
+      Add a console script entry if one is missing so `uv run pilot skill ...`
+      invokes `pilot.cli:main`.
+    - >-
+      Keep executor public exports stable and add only final export cleanup that
+      tests prove is needed for existing pilot imports.
+    - >-
+      Add ROS-free CLI tests for argument parsing, survey command construction,
+      hardware flag handling, validation refusal, and executor invocation
+      through injected fakes or fake transport.
+    - >-
+      Add or adjust final executor acceptance tests only for feature-level
+      coverage gaps discovered while wiring the CLI.
+  out:
+    - >-
+      Running the full pilot loop, adding LLM decision orchestration, replay
+      mode, run logging, delivery recipes, assertion-engine work, or skill
+      baseline capture.
+    - >-
+      Live robot proof execution, ROS graph integration, ROS operator node
+      changes, PROS firmware changes, or bridge packet changes.
+    - >-
+      Defining or changing pydantic schemas in `pilot/`, changing
+      `contracts/`, or extending the closed `contracts.PilotSkillName`
+      vocabulary.
+    - >-
+      Reworking the completed executor mapping, terminal-result parsing, or
+      timeout behavior except for small fixes directly required by final CLI or
+      acceptance tests.
+    - >-
+      Adding broad command coverage for every skill to the CLI; this slice only
+      needs the documented one-skill proof hook.
+
+acceptance:
+  - id: ACC-CLI-ENTRYPOINT
+    description: >-
+      `pilot/pyproject.toml` exposes a `pilot` console script when needed, and
+      `uv run pilot skill --hardware --skill survey_scene --duration-s 3.0`
+      reaches the pilot CLI parser without importing ROS packages.
+  - id: ACC-SURVEY-COMMAND-CONTRACT
+    description: >-
+      The CLI converts the documented survey arguments into a
+      contract-valid `SurveySceneSkillCommand` with `timeout_ms` derived from
+      `--duration-s`, a stable command id, and an issued timestamp.
+  - id: ACC-SAFETY-PATH
+    description: >-
+      The CLI invokes `validate_skill_command` with the constructed contract
+      command, a contract-valid observation/supervision input, and hardware mode
+      when `--hardware` is supplied; it does not call executor APIs directly
+      from parsed arguments.
+  - id: ACC-SUPERVISION-GATE
+    description: >-
+      Hardware execution is accepted only when the CLI supplies the same
+      `human_supervised=True` signal consumed by the safety validator; missing
+      supervision produces a deterministic validation-refusal CLI result and no
+      transport call.
+  - id: ACC-EXECUTOR-INVOKED-ON-ACCEPTED
+    description: >-
+      When validation returns `ValidationStatus.ACCEPTED`, CLI tests prove the
+      accepted `ValidationResult` is passed to the existing executor exactly
+      once using an injected fake executor or fake transport.
+  - id: ACC-VALIDATION-REFUSAL-NO-EXECUTE
+    description: >-
+      When validation returns rejected or stopped, the CLI reports a
+      deterministic nonzero result containing the validation reason and never
+      invokes the executor or transport.
+  - id: ACC-CLI-OUTPUT-STATUS
+    description: >-
+      CLI success and failure output includes the command id, skill, final
+      status, reason code, and message from validation or execution in a stable
+      text or JSON-friendly shape suitable for the manual pm4 proof.
+  - id: ACC-PUBLIC-EXPORTS-STABLE
+    description: >-
+      Existing `pilot` package exports for executor, safety, registry,
+      observation, assertion, and decision helpers remain import-compatible;
+      any new CLI helper exports are additive only.
+  - id: ACC-ROS-FREE-CLI-TESTS
+    description: >-
+      `pilot/tests/test_cli.py` and existing executor tests run without `rclpy`,
+      ROS message packages, or live ROS graph dependencies by injecting fakes at
+      the CLI/executor boundary.
+  - id: ACC-FEATURE-ACCEPTANCE-REGRESSION
+    description: >-
+      Final tests preserve completed executor acceptance coverage for accepted
+      execution, validation refusal, per-skill mapping, timeout classification,
+      terminal result parsing, stop behavior, assertion-only behavior,
+      ROS-free imports, and JSON payload shape.
+  - id: ACC-GATES
+    description: >-
+      `make -C pilot test`, `make -C pilot lint`, root `make test`, root
+      `make validate`, and root `make lint` pass, or any pre-existing unrelated
+      root failure is recorded clearly by the implementer.
+  - id: ACC-SCOPE-LIMITED
+    description: >-
+      Implementation changes stay within `pilot/pyproject.toml`,
+      `pilot/src/pilot/cli.py`, `pilot/tests/test_cli.py`,
+      `pilot/tests/test_executor.py`, and only touch
+      `pilot/src/pilot/executor.py` or `pilot/src/pilot/__init__.py` if final
+      coverage proves a small compatibility/export fix is required.
+
+decisions:
+  - id: DEC-CLI-THIN-WRAPPER
+    status: closed
+    decision: >-
+      Implement the one-skill command as a thin CLI wrapper over contract
+      command construction, `validate_skill_command`, and the existing executor
+      API, not as a separate hardware script or direct ROS publisher.
+    rationale: >-
+      The approved feature requires the manual pm4 proof path to exercise the
+      same deterministic validation and executor path as the later pilot loop.
+    grounds:
+      - ".ai-sdd/features/ros-skill-executor/requirements.md: Goal and RSE-008"
+      - ".ai-sdd/features/ros-skill-executor/slices/cli-tests-and-exports.md: Requirements"
+      - "PILOT_MASTER_REQUIREMENTS.md: Execution Checklist -> Contract first"
+  - id: DEC-SURVEY-ONLY-CLI-MVP
+    status: closed
+    decision: >-
+      Limit the CLI implementation to the documented `survey_scene` one-skill
+      proof in this slice, while leaving all other skill execution available
+      through the executor API and tests.
+    rationale: >-
+      The slice exists to enable a supervised one-skill hardware proof and close
+      packaging/test gaps; broad CLI ergonomics for every pilot skill would
+      expand beyond the final executor slice.
+    grounds:
+      - ".ai-sdd/features/ros-skill-executor/slices/cli-tests-and-exports.md: What this slice delivers"
+      - ".ai-sdd/features/ros-skill-executor/requirements.md: In Scope -> one-skill proof"
+      - ".ai-sdd/programs/pilot-online-task-loop/requirements.md: Hardware verification targets"
+  - id: DEC-SUPERVISION-VIA-SAFETY
+    status: closed
+    decision: >-
+      Represent hardware supervision by passing the CLI supervision signal into
+      `validate_skill_command(..., mode=ValidationMode.HARDWARE,
+      human_supervised=True)`; missing supervision must fail in validation
+      before executor invocation.
+    rationale: >-
+      Program decision O6 requires an explicit hardware flag plus supervision,
+      and the existing safety validator already owns the deterministic
+      supervision gate used by executor callers.
+    grounds:
+      - ".ai-sdd/programs/pilot-online-task-loop/requirements.md: O6"
+      - ".ai-sdd/features/ros-skill-executor/requirements.md: Constraints"
+      - "pilot/src/pilot/safety.py: validate_skill_command"
+  - id: DEC-CONSOLE-SCRIPT
+    status: closed
+    decision: >-
+      Add `[project.scripts] pilot = \"pilot.cli:main\"` to
+      `pilot/pyproject.toml` if no equivalent entry point exists.
+    rationale: >-
+      The documented verification target uses `pilot skill ...`; relying on
+      `python -m` only would not satisfy the user-facing command hook.
+    grounds:
+      - ".ai-sdd/features/ros-skill-executor/slices/cli-tests-and-exports.md: Requirements"
+      - ".ai-sdd/programs/pilot-online-task-loop/requirements.md: Hardware verification targets"
+  - id: DEC-ROS-FREE-TEST-SEAM
+    status: closed
+    decision: >-
+      Design `pilot.cli` so tests can inject the validator, executor, clock, and
+      observation/supervision inputs without importing ROS packages or touching
+      live hardware.
+    rationale: >-
+      Executor and CLI tests must run on a development machine without ROS,
+      while still proving the production control flow from CLI arguments to
+      validation and executor invocation.
+    grounds:
+      - ".ai-sdd/features/ros-skill-executor/requirements.md: In Scope -> ROS-free transport"
+      - ".ai-sdd/features/ros-skill-executor/slices/cli-tests-and-exports.md: Acceptance"
+      - ".ai-sdd/conventions/pilot.md: Boundary rules -> Reuse command path"
+  - id: DEC-NO-SCHEMA-OR-ROBOT-CHANGES
+    status: closed
+    decision: >-
+      Do not edit contracts, ROS operator code, PROS firmware, registry
+      vocabulary, or pilot pydantic schemas for this slice.
+    rationale: >-
+      Contract ownership remains in `contracts/`, prior executor slices already
+      mapped the closed skill vocabulary, and this final slice only adds the
+      user-facing hook plus test/export closure.
+    grounds:
+      - ".ai-sdd/conventions/pilot.md: Boundary rules -> No schema defined here"
+      - ".ai-sdd/features/ros-skill-executor/requirements.md: Out Of Scope"
+      - "MASTER_REQUIREMENTS.md: Constraints -> Frozen Contracts"
+
+files:
+  - pilot/pyproject.toml
+  - pilot/src/pilot/cli.py
+  - pilot/src/pilot/__init__.py
+  - pilot/src/pilot/executor.py
+  - pilot/tests/test_cli.py
+  - pilot/tests/test_executor.py
+
+tests:
+  - uv sync
+  - make -C pilot test
+  - make -C pilot lint
+  - make test
+  - make validate
+  - make lint
