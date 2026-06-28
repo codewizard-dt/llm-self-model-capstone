@@ -1,0 +1,57 @@
+items:
+  - id: ACC-CLI-ARGUMENTS
+    verdict: pass
+    notes: >-
+      `pilot.observe.build_parser` exposes the `observe` subcommand with required `--objective`,
+      `--duration-s`, optional `--count`, stdout default behavior, and optional `--out`. Focused
+      tests cover the missing-objective parse error, stdout JSONL default, count bounding, and file
+      output selection.
+  - id: ACC-ROS-OPTIONAL
+    verdict: pass
+    notes: >-
+      `pilot.observe` imports without ROS 2 packages because `rclpy` and `std_msgs.msg.String` are
+      imported only inside `load_ros_runtime`. Tests cover import safety on a development machine
+      and a nonzero, clear ROS dependency error when the live path cannot load ROS.
+  - id: ACC-READ-ONLY-SUBSCRIPTIONS
+    verdict: pass
+    notes: >-
+      `ObserveNode` creates subscriptions only for the approved read-only JSON evidence topics in
+      `READ_ONLY_TOPIC_FIELDS` and does not call the publisher API. The focused test asserts the
+      exact subscription set, an empty publisher list, and no use of `/operator/command`,
+      `/task_plan/request`, or `/vex/cmd`.
+  - id: ACC-STRICT-READINESS
+    verdict: pass
+    notes: >-
+      `TopicCache.ready` requires `/vision/agent_scene`, `/vision/object_tracks`, `/vex/telemetry`,
+      and `/vex/bridge_status` with no malformed required payloads before snapshots are emitted.
+      Tests cover missing `/vex/bridge_status` and malformed `/vision/agent_scene` as nonzero
+      readiness failures with clear stderr reasons.
+  - id: ACC-JSONL-OBSERVATIONS
+    verdict: pass
+    notes: >-
+      Successful mocked-ROS runs emit one compact `PilotObservation` JSON object per line to stdout
+      by default or to `--out`, pass the explicit objective through `build_live_observation`, and
+      validate emitted rows with `contracts.PilotObservation`.
+  - id: ACC-BOUNDED-TERMINATION
+    verdict: pass
+    notes: >-
+      Tests now cover clean termination by optional snapshot count, readiness timeout,
+      `KeyboardInterrupt`, and duration-only expiry without `--count`. The new duration-only test
+      verifies a complete trailing newline, exactly one JSONL row, no stderr, and closed output
+      handle after the duration deadline.
+  - id: ACC-MANUAL-PROOF-DOCS
+    verdict: pass
+    notes: >-
+      `pilot/docs/pm3-live-observation.md` documents the manual `pilot observe --objective ...
+      --duration-s ...` command, required readiness topics, stdout and `--out` JSONL shape,
+      pass/fail signals, and no-motion evidence.
+  - id: ACC-REGRESSION-GATES
+    verdict: pass
+    notes: >-
+      Verified in this checkout: vertical `uv sync` for contracts, self_model_generator, pilot, and
+      robot/ros2-runtime; root `make test`; root `make validate`; root `make lint`; and focused
+      pilot `pytest tests/test_observe_cli.py tests/test_live_observation.py`, ruff check, and ruff
+      format check. A bare root `uv sync` is not a valid command in this checkout because the repo
+      root has no `pyproject.toml`; the project is driven by per-vertical uv environments.
+verdict: approve
+rework: []

@@ -1,0 +1,203 @@
+summary: >-
+  Add the PM3 observe-only `pilot observe` CLI that subscribes to read-only ROS JSON topics,
+  converts live evidence through the existing `pilot.live_observation` mapping API into
+  contract-valid `contracts.PilotObservation` snapshots, emits JSONL to stdout or `--out`, and exits
+  only by explicit bounds, interrupt, missing ROS dependencies, or strict topic-readiness failure.
+
+scope:
+  in:
+    - >-
+      Create a thin `pilot.observe` CLI module with argument parsing for `pilot observe --objective
+      "<text>" --duration-s <seconds>`, required `--objective`, optional `--out`, optional bounded
+      snapshot count, configurable readiness timeout if needed, and clear integer exit codes.
+    - >-
+      Keep `rclpy` and ROS message imports optional and isolated inside the observe runtime path so
+      `import pilot`, `import pilot.observe`, and parser/unit tests remain safe on development
+      machines without ROS 2 installed.
+    - >-
+      Subscribe only to read-only `std_msgs/String` JSON evidence topics: `/vision/agent_scene`,
+      `/vision/scene_map`, `/vision/object_tracks`, `/vex/telemetry`, `/vex/bridge_status`,
+      `/task_plan/current`, and `/operator/status`.
+    - >-
+      Enforce the PM3 strict manual proof threshold before emitting success: `/vision/agent_scene`,
+      `/vision/object_tracks`, `/vex/telemetry`, and `/vex/bridge_status` must all be observed
+      before the readiness timeout; missing or malformed required payloads cause a nonzero exit with
+      a clear reason.
+    - >-
+      Build each emitted snapshot by passing cached live payloads, the explicit objective, and the
+      observed timestamp to `build_live_observation` / `build_observation_snapshot`; write one
+      compact `PilotObservation` JSON object per line to stdout by default or to `--out`.
+    - >-
+      Handle bounded termination by wall-clock duration and optional snapshot count, and handle
+      `KeyboardInterrupt` cleanly after writing any complete snapshots already produced.
+    - >-
+      Add deterministic tests with mocked ROS boundaries for required-objective parsing, stdout
+      default, `--out`, duration/count termination, strict readiness success/failure, missing ROS
+      dependency error handling, JSONL contract validation, and proof that no motion command
+      publishers are created.
+    - >-
+      Add concise pilot-local manual proof documentation covering the live command, required topics,
+      stdout/file JSONL shape, expected success/failure signals, and evidence that no motion topics
+      are published.
+    - >-
+      Add package metadata or exports only as needed to support the repo's CLI style for invoking
+      `pilot observe`.
+  out:
+    - >-
+      Publishing to `/operator/command`, `/task_plan/request`, `/vex/cmd`, or any other
+      motion-producing or task-dispatch topic.
+    - >-
+      Reusing `robot/ros2-runtime/src/vexy_ros/observation_proof.py` behavior that publishes
+      `/task_plan/request`; that file is read-only context for this slice.
+    - >-
+      Skill execution, LLM calls, safety validation, full observe-decide-act loop orchestration,
+      run logging beyond observe JSONL output, task-plan requests, hardware motion, or perception
+      pipeline changes.
+    - >-
+      Contract schema changes, new schemas in `pilot`, edits under `contracts/`,
+      `robot/ros2-runtime/`, `robot/v5-brain/`, or `self_model_generator/`.
+    - >-
+      Changes to the existing `pilot.live_observation` mapping semantics except for minimal
+      compatibility fixes required by the CLI tests, if a defect is exposed.
+    - >-
+      `make demo`, which remains an m2 milestone concern rather than a per-slice gate.
+
+acceptance:
+  - id: ACC-CLI-ARGUMENTS
+    description: >-
+      Tests cover CLI parsing for the `observe` command, required `--objective`, `--duration-s`,
+      optional snapshot count, stdout default behavior, and `--out` file selection.
+  - id: ACC-ROS-OPTIONAL
+    description: >-
+      `pilot.observe` imports on a development machine without ROS 2, and attempting to run the live
+      observe path without `rclpy` exits nonzero with a clear ROS dependency error.
+  - id: ACC-READ-ONLY-SUBSCRIPTIONS
+    description: >-
+      Tests or code structure prove the observe path creates subscriptions only for the approved
+      read-only evidence topics and creates no publishers for `/operator/command`,
+      `/task_plan/request`, `/vex/cmd`, or other motion-producing topics.
+  - id: ACC-STRICT-READINESS
+    description: >-
+      The CLI exits nonzero with a clear missing-topic reason unless `/vision/agent_scene`,
+      `/vision/object_tracks`, `/vex/telemetry`, and `/vex/bridge_status` are all available before
+      readiness timeout.
+  - id: ACC-JSONL-OBSERVATIONS
+    description: >-
+      Given mocked live JSON payloads satisfying readiness, the CLI emits one compact
+      contract-valid `PilotObservation` JSON object per line to stdout or `--out`, using the
+      explicit objective and the existing live mapping API.
+  - id: ACC-BOUNDED-TERMINATION
+    description: >-
+      Tests cover clean termination by duration, optional snapshot count, readiness timeout, and
+      `KeyboardInterrupt` without leaving partial JSON lines or unclosed output handles.
+  - id: ACC-MANUAL-PROOF-DOCS
+    description: >-
+      Pilot-local documentation states the manual PM3 live command, required topics, expected
+      stdout/file shape, pass/fail criteria, and no-motion evidence for the strict proof threshold.
+  - id: ACC-REGRESSION-GATES
+    description: >-
+      Existing pilot tests remain green, and the required repo gates `uv sync`, `make test`,
+      `make validate`, and `make lint` are the implementation verification commands, with focused
+      pilot pytest/ruff commands run during development.
+
+decisions:
+  - id: DEC-OBSERVE-ONLY-CLI
+    status: closed
+    decision: >-
+      Implement this slice as an observe-only CLI that builds `PilotObservation` JSONL from live
+      evidence and never enters the online observe-decide-act command loop.
+    rationale: >-
+      PM3 proves live observation snapshots from ROS without commanding motion; LLM runtime,
+      skill execution, safety validation, and motion-producing behavior are explicitly out of scope
+      for this slice.
+    grounds: >-
+      `.ai-sdd/features/pm3-live-observation/requirements.md` Goal, In Scope, Out Of Scope,
+      Proposed Decisions PM3-003 and PM3-004; `.ai-sdd/features/pm3-live-observation/slices/observe-cli-proof.md`
+      What this slice delivers and Out of scope; MASTER_REQUIREMENTS Goal and Components
+      "Online-control harness"; `.ai-sdd/conventions/pilot.md` Boundary rules.
+  - id: DEC-READ-ONLY-ROS-TOPICS
+    status: closed
+    decision: >-
+      Subscribe to `/vision/agent_scene` as the preferred compact source and to the existing
+      read-only fallback JSON topics used by `agent_scene_node`; do not publish task-plan requests
+      or command messages.
+    rationale: >-
+      `agent_scene_node` already compacts scene map, object tracks, telemetry, bridge status,
+      task plan, and operator status for agent use, while the PM3 observe proof must demonstrate
+      no-motion live evidence collection.
+    grounds: >-
+      PM3 requirements Proposed Decision PM3-001 and Resolved Question PM3-O3;
+      `robot/ros2-runtime/src/vexy_ros/agent_scene_node.py`; `robot/ros2-runtime/src/vexy_ros/observation_proof.py`;
+      `.ai-sdd/conventions/pilot.md` Fixed control grammar only and Reuse command path boundary
+      rules.
+  - id: DEC-STRICT-READINESS
+    status: closed
+    decision: >-
+      Treat `/vision/agent_scene`, `/vision/object_tracks`, `/vex/telemetry`, and
+      `/vex/bridge_status` as required readiness inputs for CLI success; missing optional fallback
+      topics may still be cached when present but cannot relax that threshold.
+    rationale: >-
+      The approved PM3 threshold is strict and specifically requires agent-scene, bridge telemetry,
+      and object tracks to prove the live robot evidence path is present before snapshots are
+      accepted as proof.
+    grounds: >-
+      `.ai-sdd/features/pm3-live-observation/requirements.md` Acceptance, Constraints, and Resolved
+      Question PM3-O3; `.ai-sdd/features/pm3-live-observation/slices/observe-cli-proof.md`
+      Requirements and Acceptance.
+  - id: DEC-CONTRACT-OWNED-JSONL
+    status: closed
+    decision: >-
+      Emit only `contracts.PilotObservation` JSONL by delegating payload normalization to
+      `pilot.live_observation` and final validation to the existing observation builder; do not
+      introduce proof-specific schemas or ad hoc output bundles.
+    rationale: >-
+      `contracts/` is the schema owner and PM3 validates the exact observation boundary consumed by
+      later pilot prompts and run logging.
+    grounds: >-
+      MASTER_REQUIREMENTS Components boundary rule and Tech stacks `pilot`; PM3 requirements
+      Proposed Decision PM3-004 and Constraints; `.ai-sdd/schemas/task-telemetry.schema.yaml`,
+      `.ai-sdd/schemas/self-model.schema.yaml`, and `.ai-sdd/schemas/parts-catalog.schema.yaml`;
+      `pilot/src/pilot/live_observation.py`; `pilot/src/pilot/observation.py`.
+  - id: DEC-OPTIONAL-ROS-IMPORTS
+    status: closed
+    decision: >-
+      Keep ROS imports inside the live runtime boundary and expose parser/helper code that tests can
+      exercise without `rclpy`.
+    rationale: >-
+      The Pi runtime needs ROS subscriptions, but normal pilot development and unit tests must run
+      off-robot without ROS 2 Jazzy installed.
+    grounds: >-
+      PM3 requirements Proposed Decision PM3-002 and Constraints; `.ai-sdd/conventions/pilot.md`
+      Language and Build/test/lint/validate rows; `pilot/src/pilot/live_observation.py` import-safe
+      mapping layer.
+  - id: DEC-FILE-BOUNDARY
+    status: closed
+    decision: >-
+      Implementation may touch only `pilot/src/pilot/observe.py`, `pilot/src/pilot/__init__.py`,
+      `pilot/src/pilot/live_observation.py`, `pilot/pyproject.toml`,
+      `pilot/tests/test_observe_cli.py`, and `pilot/docs/pm3-live-observation.md`.
+    rationale: >-
+      The slice is scoped to a pilot-local observe CLI, optional package exports/entrypoint,
+      focused tests, and a pilot-local runbook; ROS runtime and contract files are context only.
+    grounds: >-
+      `.ai-sdd/features/pm3-live-observation/slices/observe-cli-proof.md` Files to create/change,
+      Requirements, and Out of scope; `.ai-sdd/conventions/pilot.md` Vertical and Boundary rules;
+      MASTER_REQUIREMENTS Tech stacks and Components boundary rule.
+
+files:
+  - pilot/src/pilot/observe.py
+  - pilot/src/pilot/__init__.py
+  - pilot/src/pilot/live_observation.py
+  - pilot/pyproject.toml
+  - pilot/tests/test_observe_cli.py
+  - pilot/docs/pm3-live-observation.md
+
+tests:
+  - uv sync
+  - make test
+  - make validate
+  - make lint
+  - cd pilot && uv sync
+  - cd pilot && PYTHONPATH=src:../contracts/src uv run pytest tests/test_observe_cli.py tests/test_live_observation.py -v
+  - cd pilot && PYTHONPATH=src:../contracts/src uv run ruff check src/ tests/
+  - cd pilot && PYTHONPATH=src:../contracts/src uv run ruff format --check src/ tests/

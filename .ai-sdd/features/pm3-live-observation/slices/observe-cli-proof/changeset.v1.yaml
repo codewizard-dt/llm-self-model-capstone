@@ -1,0 +1,15 @@
+summary: >-
+  Added the observe-only `pilot observe` CLI for PM3 live proof: optional isolated ROS imports,
+  read-only JSON topic subscriptions, strict required-topic readiness, contract-valid
+  `PilotObservation` JSONL to stdout or `--out`, bounded duration/count/interrupt termination,
+  explicit duration-only clean-shutdown coverage, focused mocked-ROS tests, console-script metadata,
+  and pilot-local manual proof documentation.
+satisfies:
+  - ACC-CLI-ARGUMENTS
+  - ACC-ROS-OPTIONAL
+  - ACC-READ-ONLY-SUBSCRIPTIONS
+  - ACC-STRICT-READINESS
+  - ACC-JSONL-OBSERVATIONS
+  - ACC-BOUNDED-TERMINATION
+  - ACC-MANUAL-PROOF-DOCS
+  - ACC-REGRESSION-GATES

@@ -8,6 +8,7 @@ import json
 import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from time import monotonic_ns
 from typing import TextIO
 
@@ -25,6 +26,14 @@ from contracts import (
     SurveySceneSkillCommand,
 )
 from pilot.executor import ExecutionResult, TransportBoundary, execute_validated_command
+from pilot.observe import (
+    DEFAULT_DURATION_S,
+    DEFAULT_READINESS_TIMEOUT_S,
+    DEFAULT_SNAPSHOT_INTERVAL_S,
+    ObserveConfig,
+    ObserveCliError,
+    run_observe,
+)
 from pilot.safety import ValidationMode, ValidationResult, validate_skill_command
 
 ClockMs = Callable[[], int]
@@ -75,6 +84,21 @@ def run(
 
     if args.command == "skill":
         return _run_skill(args, deps=deps or CliDependencies(), stdout=out, stderr=err)
+    if args.command == "observe":
+        try:
+            return run_observe(
+                ObserveConfig(
+                    objective=args.objective,
+                    duration_s=args.duration_s,
+                    count=args.count,
+                    out=args.out,
+                    readiness_timeout_s=args.readiness_timeout_s,
+                    snapshot_interval_s=args.snapshot_interval_s,
+                )
+            )
+        except ObserveCliError as exc:
+            print(f"pilot observe: {exc}", file=err)
+            return exc.exit_code
     parser.print_help(err)
     return 2
 
@@ -101,6 +125,45 @@ def _build_parser() -> argparse.ArgumentParser:
         "--no-supervision",
         action="store_true",
         help="withhold the hardware supervision signal before validation",
+    )
+
+    observe = subcommands.add_parser(
+        "observe",
+        help="emit observe-only PilotObservation JSONL from read-only ROS evidence topics",
+    )
+    observe.add_argument("--objective", required=True, help="live task objective for snapshots")
+    observe.add_argument(
+        "--duration-s",
+        type=_positive_duration_s,
+        default=DEFAULT_DURATION_S,
+        help=f"wall-clock observe bound in seconds (default: {DEFAULT_DURATION_S:g})",
+    )
+    observe.add_argument(
+        "--count",
+        type=_positive_int,
+        default=None,
+        help="optional maximum number of snapshots to emit",
+    )
+    observe.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="write JSONL to this file instead of stdout",
+    )
+    observe.add_argument(
+        "--readiness-timeout-s",
+        type=_positive_duration_s,
+        default=DEFAULT_READINESS_TIMEOUT_S,
+        help=(
+            "seconds to wait for /vision/agent_scene, /vision/object_tracks, "
+            "/vex/telemetry, and /vex/bridge_status"
+        ),
+    )
+    observe.add_argument(
+        "--snapshot-interval-s",
+        type=_positive_duration_s,
+        default=DEFAULT_SNAPSHOT_INTERVAL_S,
+        help=f"minimum seconds between snapshots (default: {DEFAULT_SNAPSHOT_INTERVAL_S:g})",
     )
     return parser
 
@@ -197,6 +260,16 @@ def _positive_duration_s(value: str) -> float:
         raise argparse.ArgumentTypeError("--duration-s must be a positive number") from exc
     if parsed <= 0:
         raise argparse.ArgumentTypeError("--duration-s must be greater than zero")
+    return parsed
+
+
+def _positive_int(value: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be an integer") from exc
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be greater than 0")
     return parsed
 
 
