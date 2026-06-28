@@ -99,6 +99,66 @@ def has_object_from_status(status: Mapping[str, Any] | None) -> bool:
     return bool(status and status.get("has_object") is True)
 
 
+def arm_position_deg_from_telemetry(
+    telemetry: Mapping[str, Any] | None,
+) -> float | None:
+    if telemetry is None:
+        return None
+    for sample in telemetry.get("motor_samples", []):
+        if not isinstance(sample, Mapping):
+            continue
+        device = str(sample.get("device") or "")
+        subsystem = str(sample.get("subsystem") or "")
+        if device != "arm" and subsystem != "arm":
+            continue
+        values = sample.get("values")
+        if isinstance(values, Mapping):
+            position = values.get("position_deg")
+            if position is not None:
+                return _float_or_none(position)
+        position = sample.get("position_deg")
+        if position is not None:
+            return _float_or_none(position)
+    arm = telemetry.get("arm")
+    if isinstance(arm, Mapping):
+        return _float_or_none(arm.get("position_deg"))
+    return None
+
+
+def lift_proof_from_positions(
+    before_deg: float | None,
+    after_deg: float | None,
+    *,
+    min_delta_deg: float,
+) -> tuple[bool, str]:
+    if before_deg is None:
+        return False, "missing_before_arm_position"
+    if after_deg is None:
+        return False, "missing_after_arm_position"
+    if after_deg - before_deg < min_delta_deg:
+        return False, "arm_delta_too_small"
+    return True, "arm_lift_confirmed"
+
+
+def ack_state_ok(ack: Mapping[str, Any] | None) -> bool:
+    return bool(ack and ack.get("state") == "ok")
+
+
+def ack_rejection_reason(ack: Mapping[str, Any] | None) -> str:
+    if ack is None:
+        return "missing_ack"
+    if ack.get("state") == "ok":
+        return "accepted"
+    return str(ack.get("fault") or ack.get("state") or "rejected")
+
+
+def _float_or_none(value: Any) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 class VisualPickupProbe(Node):
     def __init__(self, args: argparse.Namespace) -> None:
         super().__init__("visual_pickup_probe")
@@ -117,7 +177,9 @@ class VisualPickupProbe(Node):
         self.create_subscription(
             String, args.object_detections_topic, self._on_object_detections, 20
         )
-        self.create_subscription(String, args.operator_status_topic, self._on_status, 20)
+        self.create_subscription(
+            String, args.operator_status_topic, self._on_status, 20
+        )
         self.create_subscription(String, args.telemetry_topic, self._on_telemetry, 20)
 
     def _on_ack(self, msg: String) -> None:
@@ -156,14 +218,19 @@ class VisualPickupProbe(Node):
 
     def wait_for_subscriber(self, timeout_s: float) -> bool:
         deadline_s = time.monotonic() + max(0.0, timeout_s)
-        while self._cmd_pub.get_subscription_count() < 1 and time.monotonic() < deadline_s:
+        while (
+            self._cmd_pub.get_subscription_count() < 1 and time.monotonic() < deadline_s
+        ):
             self.spin_for(0.1)
         return self._cmd_pub.get_subscription_count() >= 1
 
     def fresh_detection(self) -> BallDetection | None:
         if self.latest_detection_seen_s is None:
             return None
-        if time.monotonic() - self.latest_detection_seen_s > self.args.max_detection_age_s:
+        if (
+            time.monotonic() - self.latest_detection_seen_s
+            > self.args.max_detection_age_s
+        ):
             return None
         return self.latest_detection
 
@@ -184,6 +251,18 @@ class VisualPickupProbe(Node):
         self.commands.append(packet)
         self.spin_for(0.04)
         return packet
+
+    def wait_for_ack(self, seq: int, timeout_s: float) -> dict[str, Any] | None:
+        deadline_s = time.monotonic() + max(0.0, timeout_s)
+        matched_ack: dict[str, Any] | None = None
+        while time.monotonic() < deadline_s:
+            matched_ack = next(
+                (ack for ack in self.acks if ack.get("ack") == seq), None
+            )
+            if matched_ack is not None:
+                break
+            self.spin_for(0.05)
+        return matched_ack
 
     def stop(self, reason: str) -> None:
         self.send("stop", ttl_ms=self.args.stop_ttl_ms, reason=reason)
@@ -227,15 +306,20 @@ class VisualPickupProbe(Node):
         self.stop(f"visual_probe_{candidate_index}_post_close_stop")
         self.spin_for(self.args.post_verify_s)
         terminal = self.fresh_detection()
+        grab_confirmed = has_object_from_status(self.latest_status)
+        lift_result = (
+            self._lift_after_grab(candidate_index)
+            if grab_confirmed
+            else {
+                "status": "skipped",
+                "reason": "grab_not_confirmed",
+            }
+        )
         return {
             "candidate": candidate_index,
             "target_px": target_px,
-            "status": "succeeded" if has_object_from_status(self.latest_status) else "failed",
-            "reason": (
-                "has_object_true"
-                if has_object_from_status(self.latest_status)
-                else "grab_not_confirmed"
-            ),
+            "status": "succeeded" if grab_confirmed else "failed",
+            "reason": ("has_object_true" if grab_confirmed else "grab_not_confirmed"),
             "initial_detection": None if initial is None else initial.to_json(),
             "align_samples": align_samples,
             "aligned_detection": None if aligned is None else aligned.to_json(),
@@ -247,9 +331,58 @@ class VisualPickupProbe(Node):
             "latest_telemetry": self.latest_telemetry,
             "latest_ack": self.latest_ack,
             "ack_tail": self.acks[-20:],
+            "lift_result": lift_result,
         }
 
-    def _align_to_target(self, target_px: float, candidate_index: int) -> list[dict[str, float]]:
+    def _lift_after_grab(self, candidate_index: int) -> dict[str, Any]:
+        if not self.args.lift_after_grab:
+            return {
+                "status": "skipped",
+                "reason": "lift_after_grab_disabled",
+            }
+        before_telemetry = self.latest_telemetry
+        before_position_deg = arm_position_deg_from_telemetry(before_telemetry)
+        packet = self.send(
+            "arm",
+            target_deg=self.args.lift_arm_target_deg,
+            ttl_ms=self.args.lift_arm_ttl_ms,
+            reason=f"visual_probe_{candidate_index}_lift_after_grab",
+        )
+        matched_ack = self.wait_for_ack(packet["seq"], self.args.lift_ack_timeout_s)
+        self.spin_for(self.args.lift_settle_s)
+        after_telemetry = self.latest_telemetry
+        after_position_deg = arm_position_deg_from_telemetry(after_telemetry)
+        if not ack_state_ok(matched_ack):
+            return {
+                "status": "failed",
+                "reason": f"arm_command_{ack_rejection_reason(matched_ack)}",
+                "sent_packet": packet,
+                "matched_ack": matched_ack,
+                "before_arm_position_deg": before_position_deg,
+                "after_arm_position_deg": after_position_deg,
+                "before_telemetry": before_telemetry,
+                "after_telemetry": after_telemetry,
+            }
+        lifted, reason = lift_proof_from_positions(
+            before_position_deg,
+            after_position_deg,
+            min_delta_deg=self.args.lift_min_arm_delta_deg,
+        )
+        return {
+            "status": "succeeded" if lifted else "failed",
+            "reason": reason,
+            "sent_packet": packet,
+            "matched_ack": matched_ack,
+            "before_arm_position_deg": before_position_deg,
+            "after_arm_position_deg": after_position_deg,
+            "min_arm_delta_deg": self.args.lift_min_arm_delta_deg,
+            "before_telemetry": before_telemetry,
+            "after_telemetry": after_telemetry,
+        }
+
+    def _align_to_target(
+        self, target_px: float, candidate_index: int
+    ) -> list[dict[str, float]]:
         samples: list[dict[str, float]] = []
         deadline_s = time.monotonic() + self.args.align_timeout_s
         while time.monotonic() < deadline_s:
@@ -311,7 +444,11 @@ class VisualPickupProbe(Node):
                 -self.args.approach_max_omega,
                 min(self.args.approach_max_omega, -self.args.approach_kp * error),
             )
-            vx = self.args.approach_vx if abs(error) <= self.args.approach_vx_error_px else self.args.approach_slow_vx
+            vx = (
+                self.args.approach_vx
+                if abs(error) <= self.args.approach_vx_error_px
+                else self.args.approach_slow_vx
+            )
             self.send(
                 "drive",
                 vx=vx,
@@ -332,11 +469,24 @@ class VisualPickupProbe(Node):
             self.run_candidate(target, index)
             for index, target in enumerate(targets, start=1)
         ]
-        success = next((attempt for attempt in attempts if attempt["status"] == "succeeded"), None)
+        success = next(
+            (attempt for attempt in attempts if attempt["status"] == "succeeded"), None
+        )
+        lift_success = success and success.get("lift_result", {}).get("status") in {
+            "succeeded",
+            "skipped",
+        }
+        if self.args.lift_after_grab:
+            lift_success = (
+                success and success.get("lift_result", {}).get("status") == "succeeded"
+            )
+        reason = "has_object_true" if success else "grab_not_confirmed"
+        if success and self.args.lift_after_grab:
+            reason = str(success.get("lift_result", {}).get("reason") or "lift_failed")
         return {
             "type": "visual_pickup_probe_result",
-            "status": "succeeded" if success else "failed",
-            "reason": "has_object_true" if success else "grab_not_confirmed",
+            "status": "succeeded" if lift_success else "failed",
+            "reason": reason,
             "subscriber_ready": subscriber_ready,
             "targets": targets,
             "attempts": attempts,
@@ -383,11 +533,19 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--stop-ttl-ms", type=int, default=200)
     parser.add_argument("--release-ms", type=int, default=650)
     parser.add_argument("--grab-ms", type=int, default=1500)
+    parser.add_argument("--lift-after-grab", action="store_true")
+    parser.add_argument("--lift-arm-target-deg", type=float, default=40.0)
+    parser.add_argument("--lift-arm-ttl-ms", type=int, default=4000)
+    parser.add_argument("--lift-ack-timeout-s", type=float, default=5.0)
+    parser.add_argument("--lift-settle-s", type=float, default=2.5)
+    parser.add_argument("--lift-min-arm-delta-deg", type=float, default=15.0)
     parser.add_argument("--seq-start", type=int, default=610000)
     parser.add_argument("--output", default="")
     parser.add_argument("--vex-command-topic", default="/vex/cmd")
     parser.add_argument("--ack-topic", default="/vex/ack")
-    parser.add_argument("--object-detections-topic", default="/vision/object_detections")
+    parser.add_argument(
+        "--object-detections-topic", default="/vision/object_detections"
+    )
     parser.add_argument("--operator-status-topic", default="/operator/status")
     parser.add_argument("--telemetry-topic", default="/vex/telemetry")
     return parser

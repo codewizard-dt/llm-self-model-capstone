@@ -9,8 +9,12 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from vexy_ros.visual_pickup_probe import (  # noqa: E402
+    ack_rejection_reason,
+    ack_state_ok,
+    arm_position_deg_from_telemetry,
     best_ball_detection,
     has_object_from_status,
+    lift_proof_from_positions,
     parse_float_list,
 )
 
@@ -52,7 +56,11 @@ class VisualPickupProbeHelperTests(unittest.TestCase):
             best_ball_detection(
                 {
                     "detections": [
-                        {"label": "yellow_ball", "confidence": 1.0, "bbox_xyxy": [1, 2]},
+                        {
+                            "label": "yellow_ball",
+                            "confidence": 1.0,
+                            "bbox_xyxy": [1, 2],
+                        },
                         {
                             "label": "yellow_ball",
                             "confidence": 1.0,
@@ -67,6 +75,55 @@ class VisualPickupProbeHelperTests(unittest.TestCase):
         self.assertTrue(has_object_from_status({"has_object": True}))
         self.assertFalse(has_object_from_status({"has_object": False}))
         self.assertFalse(has_object_from_status(None))
+
+    def test_arm_position_deg_from_motor_sample_values(self) -> None:
+        self.assertEqual(
+            arm_position_deg_from_telemetry(
+                {
+                    "motor_samples": [
+                        {
+                            "device": "left_drive",
+                            "values": {"position_deg": 123.0},
+                        },
+                        {
+                            "device": "arm",
+                            "values": {"position_deg": "41.5"},
+                        },
+                    ]
+                }
+            ),
+            41.5,
+        )
+
+    def test_arm_position_deg_from_nested_arm_fallback(self) -> None:
+        self.assertEqual(
+            arm_position_deg_from_telemetry({"arm": {"position_deg": 32}}),
+            32.0,
+        )
+
+    def test_lift_proof_requires_positive_arm_delta(self) -> None:
+        self.assertEqual(
+            lift_proof_from_positions(6.0, 24.0, min_delta_deg=15.0),
+            (True, "arm_lift_confirmed"),
+        )
+        self.assertEqual(
+            lift_proof_from_positions(6.0, 14.0, min_delta_deg=15.0),
+            (False, "arm_delta_too_small"),
+        )
+        self.assertEqual(
+            lift_proof_from_positions(None, 24.0, min_delta_deg=15.0),
+            (False, "missing_before_arm_position"),
+        )
+
+    def test_ack_helpers_surface_brain_rejections(self) -> None:
+        self.assertTrue(ack_state_ok({"state": "ok"}))
+        self.assertFalse(
+            ack_state_ok({"state": "rejected", "fault": "unknown_command"})
+        )
+        self.assertEqual(
+            ack_rejection_reason({"state": "rejected", "fault": "unknown_command"}),
+            "unknown_command",
+        )
 
 
 if __name__ == "__main__":
