@@ -14,6 +14,7 @@ from contracts import (
     LocalizationState,
     ManipulatorState,
     PilotAssertion,
+    PilotFailure,
     PilotObservation,
     PilotSkillResult,
     PilotTaskPhase,
@@ -33,6 +34,7 @@ from pilot.assertions import (
     build_unknown_assertion,
     evaluate_assertions,
 )
+from pilot.observation import ObservationCache, build_observation_snapshot
 
 
 def _observation(
@@ -86,6 +88,30 @@ def _context() -> AssertionContext:
 
 def _assertion_by_id(assertions: tuple[PilotAssertion, ...], assertion_id: str) -> PilotAssertion:
     return next(assertion for assertion in assertions if assertion.assertion_id == assertion_id)
+
+
+def _snapshot_with_current_assertions(
+    observation: PilotObservation,
+    assertions: tuple[PilotAssertion, ...],
+    *,
+    task_phase: PilotTaskPhase | None = None,
+    recent_failures: tuple[PilotFailure, ...] = (),
+    current_assertions: tuple[PilotAssertion, ...] | None = None,
+) -> PilotObservation:
+    cache = ObservationCache.from_inputs(
+        objective=observation.objective,
+        task_phase=task_phase or observation.task_phase,
+        robot_pose=observation.robot_pose,
+        localization=observation.localization,
+        visible_objects=tuple(reversed(observation.visible_objects)),
+        visible_tags=tuple(reversed(observation.visible_tags)),
+        manipulator=observation.manipulator,
+        bridge=observation.bridge,
+        last_result=observation.last_result,
+        recent_failures=recent_failures,
+        current_assertions=current_assertions or tuple(reversed(assertions)),
+    )
+    return build_observation_snapshot(cache, observed_ms=observation.observed_ms + 1)
 
 
 def test_default_context_is_deterministic_and_immutable() -> None:
@@ -288,6 +314,81 @@ def test_evaluate_assertions_returns_contract_valid_assertions_in_required_order
         assert 0.0 <= assertion.confidence <= 1.0
         assert assertion.observed_ms == observation.observed_ms
         assert PilotAssertion.model_validate(assertion.model_dump()) == assertion
+
+
+def test_evaluate_assertions_is_exactly_ordered_across_repeated_calls() -> None:
+    context = _context()
+    pose = Pose2D(x_m=0.8, y_m=1.9, heading_rad=0.05)
+    observation = _observation(
+        observed_ms=1300,
+        pose=pose,
+        localization=LocalizationState(pose=pose, confidence=0.91, age_ms=35),
+        visible_objects=[
+            _target_object(object_id="cube-1", label="red_cube", confidence=0.82),
+            _target_object(width_px=96, x_px=272),
+        ],
+        visible_tags=[
+            VisibleTag(tag_id=9, family="tag36h11", confidence=0.71),
+            VisibleTag(tag_id=3, family="tag25h9", confidence=0.95),
+        ],
+        manipulator=ManipulatorState(
+            arm_deg=12.0,
+            claw_state="holding",
+            held_object_id="ball-yellow-1",
+        ),
+        last_result=PilotSkillResult(
+            command_id="cmd-grasp",
+            skill="verify_grasp",
+            status=CommandStatus.OK,
+            completed_ms=1290,
+        ),
+    )
+
+    first = evaluate_assertions(observation, context)
+    second = evaluate_assertions(observation, context)
+
+    assert [assertion.assertion_id for assertion in first] == list(REQUIRED_ASSERTION_IDS)
+    assert [assertion.assertion_id for assertion in second] == list(REQUIRED_ASSERTION_IDS)
+    assert len(first) == len(set(assertion.assertion_id for assertion in first))
+    assert [assertion.model_dump() for assertion in second] == [
+        assertion.model_dump() for assertion in first
+    ]
+
+
+def test_assertions_round_trip_through_observation_cache_snapshot_contracts() -> None:
+    context = _context()
+    pose = Pose2D(x_m=1.04, y_m=2.02, heading_rad=0.0)
+    observation = _observation(
+        observed_ms=4000,
+        pose=pose,
+        localization=LocalizationState(pose=pose, confidence=0.94, age_ms=20),
+        visible_objects=[_target_object(width_px=80, x_px=280)],
+        manipulator=ManipulatorState(
+            arm_deg=15.0,
+            claw_state="closed",
+            held_object_id="ball-yellow-1",
+        ),
+        last_result=PilotSkillResult(
+            command_id="cmd-verify",
+            skill="verify_grasp",
+            status=CommandStatus.OK,
+            completed_ms=3990,
+        ),
+    )
+
+    assertions = evaluate_assertions(observation, context)
+    snapshot = _snapshot_with_current_assertions(observation, assertions)
+
+    assert PilotObservation.model_validate(snapshot.model_dump()) == snapshot
+    assert len(snapshot.current_assertions) == len(REQUIRED_ASSERTION_IDS)
+    assert {assertion.assertion_id for assertion in snapshot.current_assertions} == set(
+        REQUIRED_ASSERTION_IDS
+    )
+    for assertion in assertions:
+        round_tripped = PilotAssertion.model_validate(assertion.model_dump())
+        assert round_tripped == assertion
+        assert assertion.evidence
+        assert 0.0 <= assertion.confidence <= 1.0
 
 
 def test_evaluate_assertions_defaults_context() -> None:
@@ -684,20 +785,243 @@ def test_drop_and_final_delivery_conflicts_return_unknown_with_recovery_hint() -
     assert "conflicting" in (final.recovery_hint or "")
 
 
+def test_current_assertion_snapshots_are_deterministic_for_unsorted_inputs() -> None:
+    context = _context()
+    pose = Pose2D(x_m=1.05, y_m=2.03, heading_rad=0.1)
+    observation = _observation(
+        observed_ms=5100,
+        pose=pose,
+        localization=LocalizationState(pose=pose, confidence=0.92, age_ms=30),
+        visible_objects=[
+            _target_object(object_id="cube-red-1", label="red_cube", confidence=0.74),
+            _target_object(object_id="ball-yellow-2", confidence=0.83, x_px=240),
+            _target_object(confidence=0.95, width_px=72, x_px=284),
+        ],
+        visible_tags=[
+            VisibleTag(tag_id=7, family="tag36h11", confidence=0.88),
+            VisibleTag(tag_id=2, family="tag25h9", confidence=0.91),
+            VisibleTag(tag_id=2, family="tag36h11", confidence=0.65),
+        ],
+    )
+    assertions = evaluate_assertions(observation, context)
+    failures = (
+        PilotFailure(
+            failed_ms=4900,
+            source="vision",
+            summary="target briefly occluded",
+            command_id="cmd-face",
+        ),
+        PilotFailure(
+            failed_ms=5050,
+            source="assertion",
+            summary="pose confidence was low",
+            command_id="cmd-approach",
+        ),
+    )
+
+    first = _snapshot_with_current_assertions(
+        observation,
+        assertions,
+        recent_failures=tuple(reversed(failures)),
+        current_assertions=tuple(reversed(assertions)),
+    )
+    second = _snapshot_with_current_assertions(
+        observation,
+        assertions,
+        recent_failures=failures,
+        current_assertions=assertions,
+    )
+
+    assert PilotObservation.model_validate(first.model_dump()) == first
+    assert first.model_dump() == second.model_dump()
+    assert [obj.object_id for obj in first.visible_objects] == [
+        "ball-yellow-1",
+        "ball-yellow-2",
+        "cube-red-1",
+    ]
+    assert [(tag.family, tag.tag_id) for tag in first.visible_tags] == [
+        ("tag25h9", 2),
+        ("tag36h11", 2),
+        ("tag36h11", 7),
+    ]
+    assert [failure.failed_ms for failure in first.recent_failures] == [5050, 4900]
+    assert [assertion.assertion_id for assertion in first.current_assertions] == sorted(
+        REQUIRED_ASSERTION_IDS
+    )
+
+
+@pytest.mark.parametrize(
+    ("name", "task_phase", "observation", "expected_true"),
+    [
+        (
+            "visibility_pose",
+            PilotTaskPhase.SURVEY,
+            _observation(
+                observed_ms=6100,
+                pose=Pose2D(x_m=0.4, y_m=0.2, heading_rad=0.0),
+                localization=LocalizationState(
+                    pose=Pose2D(x_m=0.4, y_m=0.2, heading_rad=0.0),
+                    confidence=0.93,
+                    age_ms=25,
+                ),
+                visible_objects=[_target_object(width_px=92, x_px=276)],
+            ),
+            {"target_ball_visible", "robot_pose_reliable", "ball_reachable"},
+        ),
+        (
+            "grasp_carry",
+            PilotTaskPhase.MANIPULATE,
+            _observation(
+                observed_ms=7100,
+                visible_objects=[_target_object(width_px=96, x_px=272)],
+                manipulator=ManipulatorState(
+                    arm_deg=18.0,
+                    claw_state="holding",
+                    held_object_id="ball-yellow-1",
+                ),
+                last_result=PilotSkillResult(
+                    command_id="cmd-verify-grasp",
+                    skill="verify_grasp",
+                    status=CommandStatus.OK,
+                    completed_ms=7090,
+                ),
+            ),
+            {"target_ball_visible", "grasp_likely", "carrying_ball"},
+        ),
+        (
+            "destination_drop",
+            PilotTaskPhase.VERIFY,
+            _observation(
+                observed_ms=8100,
+                pose=Pose2D(x_m=1.02, y_m=2.03, heading_rad=0.0),
+                localization=LocalizationState(
+                    pose=Pose2D(x_m=1.02, y_m=2.03, heading_rad=0.0),
+                    confidence=0.91,
+                    age_ms=18,
+                ),
+                visible_objects=[_target_object(width_px=72, x_px=288)],
+                manipulator=ManipulatorState(
+                    arm_deg=12.0,
+                    claw_state="open",
+                    held_object_id=None,
+                ),
+                last_result=PilotSkillResult(
+                    command_id="cmd-verify-drop",
+                    skill="verify_drop",
+                    status=CommandStatus.OK,
+                    completed_ms=8090,
+                ),
+            ),
+            {"at_destination", "drop_likely", "ball_at_destination"},
+        ),
+    ],
+)
+def test_delivery_progress_assertions_embed_in_full_snapshots(
+    name: str,
+    task_phase: PilotTaskPhase,
+    observation: PilotObservation,
+    expected_true: set[str],
+) -> None:
+    assertions = evaluate_assertions(observation, _context())
+    snapshot = _snapshot_with_current_assertions(
+        observation,
+        assertions,
+        task_phase=task_phase,
+    )
+    assertions_by_id = {
+        assertion.assertion_id: assertion for assertion in snapshot.current_assertions
+    }
+
+    assert name
+    assert PilotObservation.model_validate(snapshot.model_dump()) == snapshot
+    assert snapshot.task_phase is task_phase
+    assert set(assertions_by_id) == set(REQUIRED_ASSERTION_IDS)
+    assert [assertion.assertion_id for assertion in snapshot.current_assertions] == sorted(
+        REQUIRED_ASSERTION_IDS
+    )
+    for assertion_id in expected_true:
+        assert assertions_by_id[assertion_id].state is AssertionState.TRUE
+        assert assertions_by_id[assertion_id].evidence
+
+
+def test_package_exports_assertions_observation_helpers_and_skills() -> None:
+    import pilot
+
+    expected_exports = {
+        "REQUIRED_ASSERTION_IDS",
+        "AssertionConfig",
+        "AssertionContext",
+        "AssertionDestination",
+        "AssertionId",
+        "AssertionTarget",
+        "ObservationCache",
+        "assertion_sort_key",
+        "build_assertion",
+        "build_observation_snapshot",
+        "build_unknown_assertion",
+        "evaluate_assertions",
+        "failure_sort_key",
+        "get_skill_definition",
+        "list_skill_definitions",
+        "sorted_assertions",
+        "sorted_failures",
+        "sorted_visible_objects",
+        "sorted_visible_tags",
+        "stale_bridge",
+        "unknown_localization",
+        "unknown_manipulator",
+        "visible_object_sort_key",
+        "visible_tag_sort_key",
+    }
+
+    assert expected_exports <= set(pilot.__all__)
+    assert pilot.REQUIRED_ASSERTION_IDS == REQUIRED_ASSERTION_IDS
+    assert pilot.AssertionContext is AssertionContext
+    assert pilot.ObservationCache is ObservationCache
+    assert pilot.build_observation_snapshot is build_observation_snapshot
+    assert pilot.evaluate_assertions is evaluate_assertions
+    assert pilot.get_skill_definition("survey_scene").name == "survey_scene"
+
+
 def test_package_assertion_exports_import_without_ros_packages(monkeypatch) -> None:
     class RejectRosImports:
         def find_spec(self, fullname: str, path: object, target: object = None) -> object:
-            if fullname == "rclpy" or fullname.startswith(("rclpy.", "std_msgs.", "sensor_msgs.")):
+            ros_roots = (
+                "rclpy",
+                "std_msgs",
+                "sensor_msgs",
+                "geometry_msgs",
+                "nav_msgs",
+                "tf2_ros",
+                "rosbag2_py",
+            )
+            if fullname in ros_roots or fullname.startswith(
+                tuple(f"{root}." for root in ros_roots)
+            ):
                 raise AssertionError(f"unexpected ROS import: {fullname}")
             return None
 
     monkeypatch.setattr(sys, "meta_path", [RejectRosImports(), *sys.meta_path])
-    sys.modules.pop("pilot.assertions", None)
-    sys.modules.pop("pilot", None)
+    for module_name in list(sys.modules):
+        if module_name == "pilot" or module_name.startswith("pilot."):
+            monkeypatch.delitem(sys.modules, module_name, raising=False)
 
-    module = importlib.import_module("pilot")
-    assertions = module.evaluate_assertions(_observation(observed_ms=1), module.AssertionContext())
+    assertions_module = importlib.import_module("pilot.assertions")
+    package_module = importlib.import_module("pilot")
+    direct = assertions_module.evaluate_assertions(
+        _observation(observed_ms=1),
+        assertions_module.AssertionContext(),
+    )
+    package = package_module.evaluate_assertions(
+        _observation(observed_ms=2),
+        package_module.AssertionContext(),
+    )
 
-    assert module.REQUIRED_ASSERTION_IDS == REQUIRED_ASSERTION_IDS
-    assert [assertion.assertion_id for assertion in assertions] == list(REQUIRED_ASSERTION_IDS)
-    assert "rclpy" not in sys.modules
+    assert assertions_module.REQUIRED_ASSERTION_IDS == REQUIRED_ASSERTION_IDS
+    assert package_module.REQUIRED_ASSERTION_IDS == REQUIRED_ASSERTION_IDS
+    assert [assertion.assertion_id for assertion in direct] == list(REQUIRED_ASSERTION_IDS)
+    assert [assertion.assertion_id for assertion in package] == list(REQUIRED_ASSERTION_IDS)
+    assert not any(
+        module_name in sys.modules
+        for module_name in ("rclpy", "std_msgs", "sensor_msgs", "geometry_msgs")
+    )

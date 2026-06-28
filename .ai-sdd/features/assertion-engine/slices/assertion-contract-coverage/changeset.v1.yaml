@@ -1,0 +1,13 @@
+summary: >-
+  Added final assertion contract coverage for deterministic required-id output,
+  contract round-trips through PilotAssertion and PilotObservation snapshots,
+  assertion embedding via ObservationCache.current_assertions, package-level
+  exports, no-ROS imports, and representative delivery-progress snapshots.
+satisfies:
+  - ACC-CONTRACT-ROUNDTRIP
+  - ACC-EXACT-ID-ORDER
+  - ACC-SNAPSHOT-DETERMINISM
+  - ACC-PUBLIC-EXPORTS
+  - ACC-NO-ROS-IMPORTS
+  - ACC-DELIVERY-PROGRESS-SNAPSHOTS
+  - ACC-SCOPE-AND-GATES

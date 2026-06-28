@@ -14,6 +14,7 @@ from pilot.assertions import (
 from pilot.observation import (
     ObservationCache,
     assertion_sort_key,
+    build_observation_snapshot,
     failure_sort_key,
     sorted_assertions,
     sorted_failures,
@@ -66,6 +67,7 @@ __all__ = [
     "SkillSuccessAssertion",
     "assertion_sort_key",
     "build_assertion",
+    "build_observation_snapshot",
     "build_unknown_assertion",
     "evaluate_assertions",
     "failure_sort_key",
