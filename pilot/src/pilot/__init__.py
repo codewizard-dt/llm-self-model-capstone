@@ -1,6 +1,22 @@
 """Online pilot loop scaffolding."""
 
-from pilot.assertions import (
+from pathlib import Path
+import sys
+
+
+def _ensure_repo_contracts_importable() -> None:
+    contracts_src = Path(__file__).resolve().parents[3] / "contracts" / "src"
+    if not (contracts_src / "contracts").is_dir():
+        return
+
+    contracts_path = str(contracts_src)
+    if contracts_path not in sys.path:
+        sys.path.insert(0, contracts_path)
+
+
+_ensure_repo_contracts_importable()
+
+from pilot.assertions import (  # noqa: E402
     REQUIRED_ASSERTION_IDS,
     AssertionConfig,
     AssertionContext,
@@ -11,7 +27,7 @@ from pilot.assertions import (
     build_unknown_assertion,
     evaluate_assertions,
 )
-from pilot.observation import (
+from pilot.observation import (  # noqa: E402
     ObservationCache,
     assertion_sort_key,
     build_observation_snapshot,
@@ -26,7 +42,7 @@ from pilot.observation import (
     visible_object_sort_key,
     visible_tag_sort_key,
 )
-from pilot.decision import (
+from pilot.decision import (  # noqa: E402
     DecisionAdapterError,
     DecisionAdapterResult,
     DecisionPromptClient,
@@ -36,7 +52,7 @@ from pilot.decision import (
     render_prompt,
     request_pilot_decision,
 )
-from pilot.executor import (
+from pilot.executor import (  # noqa: E402
     DEFAULT_EXECUTOR_POLICY,
     ExecutionResult,
     ExecutorDeadline,
@@ -49,7 +65,7 @@ from pilot.executor import (
     TransportRequest,
     execute_validated_command,
 )
-from pilot.safety import (
+from pilot.safety import (  # noqa: E402
     DEFAULT_SAFETY_POLICY,
     SafetyPolicy,
     ValidationMode,
@@ -59,7 +75,7 @@ from pilot.safety import (
     ValidationStatus,
     validate_skill_command,
 )
-from pilot.skills import (
+from pilot.skills import (  # noqa: E402
     BoundReference,
     MovementEnvelope,
     SkillDefault,

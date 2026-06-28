@@ -1,0 +1,26 @@
+summary: >-
+  Added the ROS-free `pilot skill` CLI entry point and console script for the
+  supervised `survey_scene` proof path. The CLI builds a contract-owned
+  SurveySceneSkillCommand from `--duration-s`, creates a contract-valid
+  observation, routes through `validate_skill_command` with hardware mode and
+  the supervision signal, and invokes the existing executor only for accepted
+  validation results. Reworked the packaged console-script import path so
+  running from `pilot/` can resolve the repo-local `contracts` source without
+  ROS packages or `PYTHONPATH`, while preserving the existing public pilot
+  exports. Added focused CLI tests covering parser behavior, command
+  construction, hardware/replay mode handling, supervision refusal, validation
+  refusal, accepted executor handoff, stable JSON output, and the exact
+  no-`PYTHONPATH` packaged command smoke path.
+satisfies:
+  - ACC-CLI-ENTRYPOINT
+  - ACC-SURVEY-COMMAND-CONTRACT
+  - ACC-SAFETY-PATH
+  - ACC-SUPERVISION-GATE
+  - ACC-EXECUTOR-INVOKED-ON-ACCEPTED
+  - ACC-VALIDATION-REFUSAL-NO-EXECUTE
+  - ACC-CLI-OUTPUT-STATUS
+  - ACC-PUBLIC-EXPORTS-STABLE
+  - ACC-ROS-FREE-CLI-TESTS
+  - ACC-FEATURE-ACCEPTANCE-REGRESSION
+  - ACC-GATES
+  - ACC-SCOPE-LIMITED
