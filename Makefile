@@ -1,5 +1,5 @@
 # Delegate to per-vertical Makefiles. Add a vertical's target once its Makefile exists.
-.PHONY: sync validate test lint schema schema-check catalog catalog-check m1 m1-judge send-task rebuild-pi sync-pi
+.PHONY: sync validate test lint schema schema-check catalog catalog-check m1 m1-judge send-task rebuild-pi sync-pi full-loop
 PI_REPO ?= ~/llm-self-model-capstone
 PI_ROS_WS ?= ~/ros2_ws
 
@@ -44,6 +44,10 @@ catalog-check:
 
 sync-telemetry:
 	bash scripts/sync_telemetry.sh
+
+full-loop:
+	@test -n "$(CONTRACT_JSONL)" || (echo "usage: make full-loop CONTRACT_JSONL=path/to/operator_results.jsonl OUT_DIR=/tmp/vexy-loop [PROVENANCE=live] [RUN_ID=run-id] [SESSION_ID=session-id]" >&2; exit 2)
+	$(MAKE) -C self_model_generator loop CONTRACT_JSONL="$(abspath $(CONTRACT_JSONL))" OUT_DIR="$(abspath $(or $(OUT_DIR),/tmp/vexy-full-loop-latest))" PROVENANCE="$(or $(PROVENANCE),live)" RUN_ID="$(RUN_ID)" SESSION_ID="$(SESSION_ID)"
 
 send-task:
 	@test -n "$(FILE)" || (echo "usage: make send-task FILE=path/to/task.json" >&2; exit 2)

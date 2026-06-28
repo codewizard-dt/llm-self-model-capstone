@@ -19,6 +19,7 @@ _GAP_ANALYZER_EXPORTS = {
 _LOOP_CLOSURE_EXPORTS = {
     "export_task_envelope",
     "generate_self_model_candidate",
+    "run_full_loop",
     "run_critic_panel",
 }
 _PACKET_BUILDER_EXPORTS = {
@@ -49,6 +50,8 @@ def __getattr__(name: str) -> Any:
     if name in _GAP_ANALYZER_EXPORTS:
         return getattr(import_module("self_model_generator.gap_analyzer"), name)
     if name in _LOOP_CLOSURE_EXPORTS:
+        if name == "run_full_loop":
+            return getattr(import_module("self_model_generator.loop_runner"), name)
         return getattr(import_module("self_model_generator.loop_closure"), name)
     if name in _PACKET_BUILDER_EXPORTS:
         return getattr(import_module("self_model_generator.packet_builder"), name)
