@@ -188,6 +188,18 @@ ros2 run vexy_ros vexy_pickup_goal_loop \
   --output /tmp/vexy-pickup-goal-loop.json
 ```
 
+To run a bounded tuning pass, provide comma-separated sweep values. The runner
+tries each candidate in order, stops after the first strict success, and records
+candidate-level JSON evidence:
+
+```bash
+ros2 run vexy_ros vexy_pickup_goal_loop \
+  --attempts 1 \
+  --sweep-ball-claw-lateral-target-m=-0.02,-0.05,-0.08,-0.12 \
+  --sweep-ball-close-forward-m=0.06,0.08,0.10 \
+  --output /tmp/vexy-pickup-sweep.json
+```
+
 The loop resets the operator, applies any supplied pickup tuning values, calls
 `pickup_ball` repeatedly until a terminal result, sends final stops, and writes
 JSON evidence. It reports success only when `/operator/results` returns

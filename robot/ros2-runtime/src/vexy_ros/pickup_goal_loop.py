@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
 import math
 import time
@@ -175,7 +176,9 @@ class PickupGoalLoop(Node):
         self.publish_operator_command({"action": "reset_operator"})
         self.spin_for(self.args.reset_settle_s)
 
-    def run_attempt(self, attempt_index: int) -> dict[str, Any]:
+    def run_attempt(
+        self, attempt_index: int, *, candidate_index: int
+    ) -> dict[str, Any]:
         started_s = time.monotonic()
         processed_result_index = len(self.results)
         next_command_s = 0.0
@@ -221,6 +224,7 @@ class PickupGoalLoop(Node):
         verification = self.verify_terminal_success(terminal)
         succeeded = bool(terminal) and verification["success"]
         return {
+            "candidate": candidate_index,
             "attempt": attempt_index,
             "status": "succeeded" if succeeded else "failed",
             "reason": "ball_grabbed" if succeeded else reason,
@@ -324,37 +328,66 @@ class PickupGoalLoop(Node):
                 )
         return outside
 
-    def run(self, config: Mapping[str, float]) -> dict[str, Any]:
+    def run(self, configs: list[Mapping[str, float]]) -> dict[str, Any]:
         started_wall_s = time.time()
         self.wait_for_status(self.args.status_timeout_s)
-        if self.args.reset:
-            self.reset_operator()
-        self.configure_pickup(config)
+        candidates: list[dict[str, Any]] = []
+        flat_attempts: list[dict[str, Any]] = []
         attempts: list[dict[str, Any]] = []
+        succeeded = False
+        reason = "no_attempts"
+        last_config: Mapping[str, float] = {}
         attempt_count = max(1, int(self.args.attempts))
         try:
-            for attempt_index in range(1, attempt_count + 1):
-                attempt = self.run_attempt(attempt_index)
-                attempts.append(attempt)
-                if attempt["status"] == "succeeded":
+            for candidate_index, config in enumerate(configs or [{}], start=1):
+                last_config = config
+                attempts = []
+                if self.args.reset:
+                    self.reset_operator()
+                self.configure_pickup(config)
+                for attempt_index in range(1, attempt_count + 1):
+                    attempt = self.run_attempt(
+                        attempt_index, candidate_index=candidate_index
+                    )
+                    attempts.append(attempt)
+                    flat_attempts.append(attempt)
+                    reason = str(attempt["reason"])
+                    if attempt["status"] == "succeeded":
+                        succeeded = True
+                        reason = "ball_grabbed"
+                        break
+                    if attempt_index < attempt_count:
+                        self.reset_operator()
+                        self.spin_for(self.args.between_attempts_s)
+
+                candidates.append(
+                    {
+                        "candidate": candidate_index,
+                        "status": "succeeded" if succeeded else "failed",
+                        "reason": "ball_grabbed" if succeeded else reason,
+                        "config": dict(config),
+                        "attempts": attempts,
+                    }
+                )
+                if succeeded:
                     break
-                if attempt_index < attempt_count:
+                if candidate_index < len(configs):
                     self.reset_operator()
                     self.spin_for(self.args.between_attempts_s)
         finally:
             self.stop("pickup_goal_loop_finally")
 
-        succeeded = any(attempt["status"] == "succeeded" for attempt in attempts)
         return {
             "type": "pickup_goal_loop_result",
             "status": "succeeded" if succeeded else "failed",
-            "reason": "ball_grabbed" if succeeded else attempts[-1]["reason"],
+            "reason": "ball_grabbed" if succeeded else reason,
             "started_wall_s": started_wall_s,
             "finished_wall_s": time.time(),
-            "attempts": attempts,
+            "candidates": candidates,
+            "attempts": flat_attempts,
             "commands_sent": self.commands_sent,
             "stops_sent": self.stops_sent,
-            "configured_pickup": dict(config),
+            "configured_pickup": dict(last_config),
             "active_pickup_config": self.active_pickup_config(),
         }
 
@@ -409,6 +442,64 @@ def collect_pickup_config(args: argparse.Namespace) -> dict[str, float]:
     return _validate_pickup_config(config)
 
 
+def collect_pickup_config_candidates(
+    args: argparse.Namespace,
+) -> list[dict[str, float]]:
+    base = collect_pickup_config(args)
+    candidates: list[dict[str, float]] = []
+
+    if args.sweep_json:
+        payload = json.loads(args.sweep_json)
+        if not isinstance(payload, list):
+            raise ValueError("--sweep-json must decode to a JSON array")
+        for item in payload:
+            if not isinstance(item, Mapping):
+                raise ValueError("--sweep-json entries must be JSON objects")
+            candidates.append(_validate_pickup_config({**base, **item}))
+
+    sweep_fields = {
+        "ball_claw_lateral_target_m": _parse_float_list(
+            args.sweep_ball_claw_lateral_target_m
+        ),
+        "ball_close_forward_m": _parse_float_list(args.sweep_ball_close_forward_m),
+        "ball_capture_lateral_m": _parse_float_list(args.sweep_ball_capture_lateral_m),
+    }
+    sweep_fields = {key: values for key, values in sweep_fields.items() if values}
+    if sweep_fields:
+        keys = tuple(sweep_fields)
+        for values in itertools.product(*(sweep_fields[key] for key in keys)):
+            updates = dict(zip(keys, values, strict=True))
+            candidates.append(_validate_pickup_config({**base, **updates}))
+
+    if not candidates:
+        candidates.append(base)
+    return _dedupe_configs(candidates)
+
+
+def _parse_float_list(raw: str) -> list[float]:
+    if not raw:
+        return []
+    values: list[float] = []
+    for part in raw.split(","):
+        text = part.strip()
+        if not text:
+            continue
+        values.append(float(text))
+    return values
+
+
+def _dedupe_configs(configs: list[dict[str, float]]) -> list[dict[str, float]]:
+    seen: set[str] = set()
+    unique: list[dict[str, float]] = []
+    for config in configs:
+        key = json.dumps(config, sort_keys=True, separators=(",", ":"))
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(config)
+    return unique
+
+
 def _validate_pickup_config(raw_config: Mapping[str, Any]) -> dict[str, float]:
     extra = sorted(set(raw_config) - set(PICKUP_CONFIG_FIELDS))
     if extra:
@@ -444,6 +535,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-reset", dest="reset", action="store_false")
     parser.set_defaults(reset=True)
     parser.add_argument("--config-json", default="")
+    parser.add_argument("--sweep-json", default="")
+    parser.add_argument("--sweep-ball-claw-lateral-target-m", default="")
+    parser.add_argument("--sweep-ball-close-forward-m", default="")
+    parser.add_argument("--sweep-ball-capture-lateral-m", default="")
     parser.add_argument("--output", default="")
     parser.add_argument("--seq-start", type=int, default=42000)
     parser.add_argument("--operator-command-topic", default="/operator/command")
@@ -466,11 +561,11 @@ def main(argv: list[str] | None = None) -> None:
         raise RuntimeError("rclpy is required to run vexy_pickup_goal_loop")
     parser = build_parser()
     args = parser.parse_args(argv)
-    config = collect_pickup_config(args)
+    configs = collect_pickup_config_candidates(args)
     rclpy.init(args=None)
     node = PickupGoalLoop(args)
     try:
-        summary = node.run(config)
+        summary = node.run(configs)
     finally:
         node.destroy_node()
         rclpy.shutdown()

@@ -251,6 +251,17 @@ ros2 run vexy_ros vexy_pickup_goal_loop \
   --output /tmp/vexy-pickup-goal-loop.json
 ```
 
+For a safe tuning pass after the single-candidate preflight, sweep the claw-mouth
+target and close distance. The loop stops after the first strict success:
+
+```bash
+ros2 run vexy_ros vexy_pickup_goal_loop \
+  --attempts 1 \
+  --sweep-ball-claw-lateral-target-m=-0.02,-0.05,-0.08,-0.12 \
+  --sweep-ball-close-forward-m=0.06,0.08,0.10 \
+  --output /tmp/vexy-pickup-sweep.json
+```
+
 The goal loop publishes `pickup_ball` repeatedly until the result is terminal,
 then sends final stops and writes JSON evidence. Success requires all three
 proof surfaces to agree:
