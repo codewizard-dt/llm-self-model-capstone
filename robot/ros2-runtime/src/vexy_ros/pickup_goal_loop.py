@@ -73,6 +73,9 @@ class PickupGoalLoop(Node):
         self.latest_operator_summary: dict[str, Any] | None = None
         self.latest_telemetry: dict[str, Any] | None = None
         self.latest_ack: dict[str, Any] | None = None
+        self.latest_operator_status_seen_s: float | None = None
+        self.latest_telemetry_seen_s: float | None = None
+        self.latest_ack_seen_s: float | None = None
         self.results: list[dict[str, Any]] = []
         self.events: list[dict[str, Any]] = []
         self.object_indications: list[dict[str, Any]] = []
@@ -85,6 +88,7 @@ class PickupGoalLoop(Node):
             return
         if payload.get("type") == "operator_status":
             self.latest_operator_status = payload
+            self.latest_operator_status_seen_s = time.monotonic()
         elif payload.get("type") == "operator_result":
             self.latest_operator_summary = payload
 
@@ -121,11 +125,13 @@ class PickupGoalLoop(Node):
         payload = _loads_json(msg.data)
         if payload is not None:
             self.latest_telemetry = payload
+            self.latest_telemetry_seen_s = time.monotonic()
 
     def _on_ack(self, msg: String) -> None:
         payload = _loads_json(msg.data)
         if payload is not None:
             self.latest_ack = payload
+            self.latest_ack_seen_s = time.monotonic()
 
     def spin_for(self, duration_s: float) -> None:
         deadline_s = time.monotonic() + max(0.0, duration_s)
@@ -165,6 +171,30 @@ class PickupGoalLoop(Node):
                 return True
             self.spin_for(0.1)
         return self.latest_operator_status is not None
+
+    def preflight(self) -> dict[str, Any]:
+        if not self.args.preflight:
+            return {"ok": True, "reason": "preflight_skipped", "checks": {}}
+        deadline_s = time.monotonic() + max(0.0, self.args.preflight_timeout_s)
+        result = self._evaluate_preflight_now()
+        while not result["ok"] and time.monotonic() < deadline_s:
+            self.spin_for(0.1)
+            result = self._evaluate_preflight_now()
+        return result
+
+    def _evaluate_preflight_now(self) -> dict[str, Any]:
+        now_s = time.monotonic()
+        return evaluate_preflight(
+            status=self.latest_operator_status,
+            status_age_s=_age_s(now_s, self.latest_operator_status_seen_s),
+            telemetry=self.latest_telemetry,
+            telemetry_age_s=_age_s(now_s, self.latest_telemetry_seen_s),
+            ack=self.latest_ack,
+            ack_age_s=_age_s(now_s, self.latest_ack_seen_s),
+            max_status_age_s=self.args.max_status_age_s,
+            max_telemetry_age_s=self.args.max_telemetry_age_s,
+            max_ack_age_s=self.args.max_ack_age_s,
+        )
 
     def configure_pickup(self, config: Mapping[str, float]) -> None:
         if not config:
@@ -331,6 +361,23 @@ class PickupGoalLoop(Node):
     def run(self, configs: list[Mapping[str, float]]) -> dict[str, Any]:
         started_wall_s = time.time()
         self.wait_for_status(self.args.status_timeout_s)
+        preflight = self.preflight()
+        if not preflight["ok"]:
+            self.stop("pickup_goal_loop_preflight_failed")
+            return {
+                "type": "pickup_goal_loop_result",
+                "status": "failed",
+                "reason": "preflight_failed",
+                "started_wall_s": started_wall_s,
+                "finished_wall_s": time.time(),
+                "preflight": preflight,
+                "candidates": [],
+                "attempts": [],
+                "commands_sent": self.commands_sent,
+                "stops_sent": self.stops_sent,
+                "configured_pickup": {},
+                "active_pickup_config": self.active_pickup_config(),
+            }
         candidates: list[dict[str, Any]] = []
         flat_attempts: list[dict[str, Any]] = []
         attempts: list[dict[str, Any]] = []
@@ -383,6 +430,7 @@ class PickupGoalLoop(Node):
             "reason": "ball_grabbed" if succeeded else reason,
             "started_wall_s": started_wall_s,
             "finished_wall_s": time.time(),
+            "preflight": preflight,
             "candidates": candidates,
             "attempts": flat_attempts,
             "commands_sent": self.commands_sent,
@@ -399,6 +447,85 @@ def _loads_json(raw: str) -> dict[str, Any] | list[Any] | None:
         return None
     if isinstance(payload, (dict, list)):
         return payload
+    return None
+
+
+def evaluate_preflight(
+    *,
+    status: Mapping[str, Any] | None,
+    status_age_s: float | None,
+    telemetry: Mapping[str, Any] | None,
+    telemetry_age_s: float | None,
+    ack: Mapping[str, Any] | None,
+    ack_age_s: float | None,
+    max_status_age_s: float,
+    max_telemetry_age_s: float,
+    max_ack_age_s: float,
+) -> dict[str, Any]:
+    motion_enabled = _first_bool("motion_enabled", telemetry, ack)
+    drive_ports_ok = _first_bool("drive_ports_ok", telemetry, ack)
+    estop = _first_bool("estop", telemetry, ack)
+    bridge_status = str(status.get("bridge_status", "")) if status else ""
+    bridge_fault = status.get("bridge_fault") if status else None
+    ack_state = str(ack.get("state", "")) if ack else ""
+    checks = {
+        "operator_status_seen": status is not None,
+        "operator_status_fresh": _fresh(status_age_s, max_status_age_s),
+        "telemetry_seen": telemetry is not None,
+        "telemetry_fresh": _fresh(telemetry_age_s, max_telemetry_age_s),
+        "ack_seen": ack is not None,
+        "ack_fresh": _fresh(ack_age_s, max_ack_age_s),
+        "brain_program_ready": bool(status.get("brain_program_ready"))
+        if status
+        else False,
+        "bridge_not_faulted": bridge_fault in {None, "", False}
+        and bridge_status not in {"fault", "serial_unavailable", "unavailable"},
+        "ack_ok": ack_state in {"", "ok"},
+        "motion_enabled": motion_enabled is True,
+        "drive_ports_ok": drive_ports_ok is True,
+        "estop_clear": estop is not True,
+    }
+    reason = next((name for name, ok in checks.items() if not ok), "ready")
+    return {
+        "ok": all(checks.values()),
+        "reason": reason,
+        "checks": checks,
+        "ages_s": {
+            "operator_status": status_age_s,
+            "telemetry": telemetry_age_s,
+            "ack": ack_age_s,
+        },
+        "samples": {
+            "operator_status": status,
+            "telemetry": telemetry,
+            "ack": ack,
+        },
+    }
+
+
+def _age_s(now_s: float, stamp_s: float | None) -> float | None:
+    return None if stamp_s is None else max(0.0, now_s - stamp_s)
+
+
+def _fresh(age_s: float | None, max_age_s: float) -> bool:
+    return age_s is not None and age_s <= max_age_s
+
+
+def _first_bool(key: str, *payloads: Mapping[str, Any] | None) -> bool | None:
+    for payload in payloads:
+        if payload is None or key not in payload:
+            continue
+        value = payload.get(key)
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return bool(value)
+        if isinstance(value, str):
+            lowered = value.strip().lower()
+            if lowered in {"true", "1", "yes", "ok"}:
+                return True
+            if lowered in {"false", "0", "no"}:
+                return False
     return None
 
 
@@ -529,11 +656,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--post-verify-s", type=float, default=0.8)
     parser.add_argument("--between-attempts-s", type=float, default=1.0)
     parser.add_argument("--status-timeout-s", type=float, default=3.0)
+    parser.add_argument("--preflight-timeout-s", type=float, default=5.0)
+    parser.add_argument("--max-status-age-s", type=float, default=2.0)
+    parser.add_argument("--max-telemetry-age-s", type=float, default=2.0)
+    parser.add_argument("--max-ack-age-s", type=float, default=2.0)
     parser.add_argument("--configure-settle-s", type=float, default=0.5)
     parser.add_argument("--reset-settle-s", type=float, default=0.5)
     parser.add_argument("--object-stale-s", type=float, default=1.0)
+    parser.add_argument("--no-preflight", dest="preflight", action="store_false")
     parser.add_argument("--no-reset", dest="reset", action="store_false")
-    parser.set_defaults(reset=True)
+    parser.set_defaults(preflight=True, reset=True)
     parser.add_argument("--config-json", default="")
     parser.add_argument("--sweep-json", default="")
     parser.add_argument("--sweep-ball-claw-lateral-target-m", default="")

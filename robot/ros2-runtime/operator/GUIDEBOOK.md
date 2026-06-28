@@ -204,7 +204,11 @@ The loop resets the operator, applies any supplied pickup tuning values, calls
 `pickup_ball` repeatedly until a terminal result, sends final stops, and writes
 JSON evidence. It reports success only when `/operator/results` returns
 `ball_grabbed`, `/operator/status` reports `has_object:true`, and no fresh
-yellow-ball indication is still outside the configured claw-mouth zone.
+yellow-ball indication is still outside the configured claw-mouth zone. Before
+any pickup command, it also requires fresh `/operator/status`, `/vex/telemetry`,
+and `/vex/ack`, with `brain_program_ready:true`, `motion_enabled:true`,
+`drive_ports_ok:true`, and no bridge fault. A `preflight_failed` result means
+the Pi/V5 bridge must be fixed before motion.
 
 ## Self-Model Task Files
 

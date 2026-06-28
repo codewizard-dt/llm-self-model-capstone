@@ -17,6 +17,7 @@ from vexy_ros.pickup_goal_loop import (  # noqa: E402
     build_parser,
     collect_pickup_config,
     collect_pickup_config_candidates,
+    evaluate_preflight,
 )
 from vexy_ros.vision_map import Pose2D  # noqa: E402
 
@@ -110,6 +111,51 @@ class PickupGoalLoopHelperTests(unittest.TestCase):
             _validate_pickup_config({"max_vx": 0.4})
         with self.assertRaises(ValueError):
             _validate_pickup_config({"ball_search_omega": 1.2})
+
+    def test_evaluate_preflight_requires_fresh_operator_brain_and_bridge(self) -> None:
+        result = evaluate_preflight(
+            status={
+                "brain_program_ready": True,
+                "bridge_status": "ok",
+                "bridge_fault": None,
+            },
+            status_age_s=0.1,
+            telemetry={
+                "motion_enabled": True,
+                "drive_ports_ok": True,
+                "estop": False,
+            },
+            telemetry_age_s=0.2,
+            ack={"state": "ok"},
+            ack_age_s=0.1,
+            max_status_age_s=2.0,
+            max_telemetry_age_s=2.0,
+            max_ack_age_s=2.0,
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["reason"], "ready")
+
+    def test_evaluate_preflight_rejects_serial_unavailable(self) -> None:
+        result = evaluate_preflight(
+            status={
+                "brain_program_ready": False,
+                "bridge_status": "serial_unavailable",
+                "bridge_fault": "serial_unavailable",
+            },
+            status_age_s=0.1,
+            telemetry=None,
+            telemetry_age_s=None,
+            ack=None,
+            ack_age_s=None,
+            max_status_age_s=2.0,
+            max_telemetry_age_s=2.0,
+            max_ack_age_s=2.0,
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["reason"], "telemetry_seen")
+        self.assertFalse(result["checks"]["bridge_not_faulted"])
 
     def test_ball_indication_name_accepts_yellow_ball_labels(self) -> None:
         self.assertTrue(_is_ball_indication({"name": "yellow_ball"}))

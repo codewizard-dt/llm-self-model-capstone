@@ -266,6 +266,10 @@ The goal loop publishes `pickup_ball` repeatedly until the result is terminal,
 then sends final stops and writes JSON evidence. Success requires all three
 proof surfaces to agree:
 
+- preflight: fresh `/operator/status`, `/vex/telemetry`, and `/vex/ack`, with
+  `brain_program_ready:true`, `motion_enabled:true`, `drive_ports_ok:true`, and
+  no bridge fault. `preflight_failed` means do not move the robot; fix the Pi/V5
+  bridge first.
 - success: `outcome.reason:"ball_grabbed"` plus final `/operator/status`
   `has_object:true` and camera evidence that the ball is not still outside the
   claw. A correct run may publish `outcome.reason:"verifying_grab"` first while
