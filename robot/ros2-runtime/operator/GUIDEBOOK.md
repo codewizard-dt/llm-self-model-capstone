@@ -126,6 +126,9 @@ The operator publishes structured JSON on `/operator/events`.
 | `ball_searching` | `pickup_ball()` has no fresh yellow-ball pose and is rotating in place with zero forward velocity. |
 | `ball_search_acquired` | `pickup_ball()` found a fresh yellow-ball pose and moved into visual approach. |
 | `ball_search_exhausted` | `pickup_ball()` finished its bounded rotation search without finding a ball and sent `stop`. |
+| `pickup_recovering` | A close/verify step did not prove possession, so `pickup_ball()` opened the claw and started its bounded retry sequence. |
+| `pickup_retry_backoff` | The retry sequence is backing away at low speed before rescanning. |
+| `pickup_retry_searching` | The retry sequence finished its reset motion and is returning to visual search. |
 | `grab_verifying` | The claw closed with provisional grip evidence; `pickup_ball()` is waiting for post-grab possession and vision to settle before reporting success. |
 | `pickup_config_updated` | A non-motion `configure_pickup` command changed the active pickup tuning values. |
 | `oriented` | The requested tag is within yaw tolerance and the operator sent `stop`. |
@@ -170,7 +173,7 @@ ros2 topic pub --once /operator/command std_msgs/msg/String \
   "{data: '{\"action\":\"pickup_ball\",\"duration_ms\":700}'}"
 
 ros2 topic pub --once /operator/command std_msgs/msg/String \
-  "{data: '{\"action\":\"configure_pickup\",\"config\":{\"ball_claw_lateral_target_m\":-0.03,\"ball_close_forward_m\":0.06}}'}"
+  "{data: '{\"action\":\"configure_pickup\",\"config\":{\"ball_claw_lateral_target_m\":-0.03,\"ball_close_forward_m\":0.06,\"pickup_max_attempts\":2,\"pickup_recovery_backoff_s\":0.8}}'}"
 ```
 
 Supported actions are `locate_nearest_apriltag`, `orient_to_tag`,

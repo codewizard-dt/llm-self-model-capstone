@@ -304,12 +304,14 @@ class OperatorConfig:
     ball_close_min_approach_s: float = 0.35
     ball_wall_contact_s: float = 3.4
     ball_wall_contact_vx: float = 0.10
+    pickup_recovery_backoff_s: float = 0.8
+    pickup_recovery_backoff_vx: float = -0.05
     end_effector_grip_current_amp: float = 0.45
     end_effector_current_object_amp: float = 0.25
     end_effector_low_velocity_rpm: float = 8.0
     end_effector_object_max_closed_deg: float = 430.0
     end_effector_open_max_deg: float = 80.0
-    pickup_max_attempts: int = 1
+    pickup_max_attempts: int = 2
 
 
 PICKUP_CONFIG_FIELDS = {
@@ -322,6 +324,9 @@ PICKUP_CONFIG_FIELDS = {
     "ball_search_segment_s": (0.2, 30.0),
     "ball_search_omega": (0.05, 0.45),
     "pickup_verify_settle_s": (0.0, 5.0),
+    "pickup_recovery_backoff_s": (0.0, 5.0),
+    "pickup_recovery_backoff_vx": (-0.14, 0.0),
+    "pickup_max_attempts": (1.0, 5.0),
 }
 
 
@@ -391,6 +396,8 @@ class Operator:
             "searching",
             "approaching",
             "closing",
+            "recovering_open",
+            "recovering_backoff",
             "verifying",
             "done",
             "failed",
@@ -1015,7 +1022,7 @@ class Operator:
     def pickup_ball(self, *, duration_ms: int = DEFAULT_GRAB_MS) -> OperatorResult:
         now_s = self.clock()
         if self.pickup_phase == "idle":
-            if self.pickup_attempts >= self.config.pickup_max_attempts:
+            if self.pickup_attempts >= self._pickup_max_attempts():
                 return OperatorResult(
                     False,
                     "grab_failed",
@@ -1096,7 +1103,7 @@ class Operator:
                 self._send(command)
                 self.pickup_phase = "failed"
                 self.pickup_phase_start_s = now_s
-                self.pickup_attempts = self.config.pickup_max_attempts
+                self.pickup_attempts = self._pickup_max_attempts()
                 self._emit(
                     "ball_search_exhausted",
                     {
@@ -1210,7 +1217,7 @@ class Operator:
                         self._send(command)
                         self.pickup_phase = "failed"
                         self.pickup_phase_start_s = now_s
-                        self.pickup_attempts = self.config.pickup_max_attempts
+                        self.pickup_attempts = self._pickup_max_attempts()
                         self._emit(
                             "ball_capture_zone_missing",
                             {
@@ -1261,7 +1268,7 @@ class Operator:
                     self._send(command)
                     self.pickup_phase = "failed"
                     self.pickup_phase_start_s = now_s
-                    self.pickup_attempts = self.config.pickup_max_attempts
+                    self.pickup_attempts = self._pickup_max_attempts()
                     self._emit(
                         "ball_capture_zone_missing",
                         {
@@ -1367,14 +1374,9 @@ class Operator:
                 or not visual_capture_confirmed
                 or ball_visible_outside_claw
             ):
-                self.pickup_phase = "failed"
-                self.pickup_phase_start_s = now_s
-                self.pickup_visual_capture_confirmed = False
-                self.pickup_grip_confirmed = False
-                self.pickup_attempts = self.config.pickup_max_attempts
-                self._emit(
-                    "grab_not_confirmed",
-                    {
+                return self._handle_pickup_grab_failure(
+                    now_s=now_s,
+                    detail={
                         "has_object": has_object,
                         "grip_confirmed": grip_confirmed,
                         "attempts": self.pickup_attempts,
@@ -1388,12 +1390,6 @@ class Operator:
                         if ball_after_close is None
                         else ball_after_close.left_m,
                     },
-                )
-                return OperatorResult(
-                    False,
-                    "grab_not_confirmed",
-                    map_pose=self.map_pose,
-                    localization_source=self.localization_source,
                     has_object=has_object,
                 )
             self.pickup_phase = "verifying"
@@ -1413,6 +1409,107 @@ class Operator:
                 map_pose=self.map_pose,
                 localization_source=self.localization_source,
                 has_object=has_object,
+            )
+
+        if self.pickup_phase == "recovering_open":
+            opened_for_s = now_s - float(self.pickup_phase_start_s or now_s)
+            required_s = (
+                self.config.pickup_open_ms / 1000.0 + self.config.pickup_open_settle_s
+            )
+            if opened_for_s < required_s:
+                return OperatorResult(
+                    False,
+                    "recovering_pickup",
+                    map_pose=self.map_pose,
+                    localization_source=self.localization_source,
+                    has_object=self.has_object(),
+                )
+            if self.config.pickup_recovery_backoff_s <= 0.0:
+                self.pickup_phase = "searching"
+                self.pickup_phase_start_s = now_s
+                self._emit(
+                    "pickup_retry_searching",
+                    {"attempt": self.pickup_attempts, "backoff_s": 0.0},
+                )
+                return OperatorResult(
+                    False,
+                    "recovering_pickup",
+                    map_pose=self.map_pose,
+                    localization_source=self.localization_source,
+                    has_object=self.has_object(),
+                )
+            command = PrimitiveCommand(
+                "drive",
+                vx=self.config.pickup_recovery_backoff_vx,
+                vy=0.0,
+                omega=0.0,
+                ttl_ms=self.config.drive_ttl_ms,
+                reason="pickup_retry_backoff",
+            )
+            self._send(command)
+            self.pickup_phase = "recovering_backoff"
+            self.pickup_phase_start_s = now_s
+            self._emit(
+                "pickup_retry_backoff",
+                {
+                    "attempt": self.pickup_attempts,
+                    "backoff_s": self.config.pickup_recovery_backoff_s,
+                    "vx": self.config.pickup_recovery_backoff_vx,
+                },
+            )
+            return OperatorResult(
+                False,
+                "recovering_pickup",
+                command=command,
+                map_pose=self.map_pose,
+                localization_source=self.localization_source,
+                has_object=self.has_object(),
+            )
+
+        if self.pickup_phase == "recovering_backoff":
+            recovered_for_s = now_s - float(self.pickup_phase_start_s or now_s)
+            if recovered_for_s < self.config.pickup_recovery_backoff_s:
+                command = PrimitiveCommand(
+                    "drive",
+                    vx=self.config.pickup_recovery_backoff_vx,
+                    vy=0.0,
+                    omega=0.0,
+                    ttl_ms=self.config.drive_ttl_ms,
+                    reason="pickup_retry_backoff",
+                )
+                self._send(command)
+                return OperatorResult(
+                    False,
+                    "recovering_pickup",
+                    command=command,
+                    map_pose=self.map_pose,
+                    localization_source=self.localization_source,
+                    has_object=self.has_object(),
+                )
+            command = PrimitiveCommand(
+                "stop",
+                ttl_ms=self.config.stop_ttl_ms,
+                reason="pickup_retry_rescan",
+            )
+            self._send(command)
+            self.pickup_phase = "searching"
+            self.pickup_phase_start_s = now_s
+            self.pickup_visual_capture_confirmed = False
+            self.pickup_grip_confirmed = False
+            self._emit(
+                "pickup_retry_searching",
+                {
+                    "attempt": self.pickup_attempts,
+                    "recovered_for_s": recovered_for_s,
+                },
+            )
+            return OperatorResult(
+                False,
+                "recovering_pickup",
+                command=command,
+                map_pose=self.map_pose,
+                localization_source=self.localization_source,
+                has_object=self.has_object(),
             )
 
         if self.pickup_phase == "verifying":
@@ -1437,14 +1534,9 @@ class Operator:
                 or not visual_capture_confirmed
                 or ball_visible_outside_claw
             ):
-                self.pickup_phase = "failed"
-                self.pickup_phase_start_s = now_s
-                self.pickup_visual_capture_confirmed = False
-                self.pickup_grip_confirmed = False
-                self.pickup_attempts = self.config.pickup_max_attempts
-                self._emit(
-                    "grab_not_confirmed",
-                    {
+                return self._handle_pickup_grab_failure(
+                    now_s=now_s,
+                    detail={
                         "has_object": has_object,
                         "grip_confirmed": grip_confirmed,
                         "attempts": self.pickup_attempts,
@@ -1459,12 +1551,6 @@ class Operator:
                         if ball_after_close is None
                         else ball_after_close.left_m,
                     },
-                )
-                return OperatorResult(
-                    False,
-                    "grab_not_confirmed",
-                    map_pose=self.map_pose,
-                    localization_source=self.localization_source,
                     has_object=has_object,
                 )
             self.pickup_phase = "done"
@@ -1504,6 +1590,62 @@ class Operator:
             map_pose=self.map_pose,
             localization_source=self.localization_source,
             has_object=True if self.pickup_grip_confirmed else self.has_object(),
+        )
+
+    def _pickup_max_attempts(self) -> int:
+        return max(1, int(round(float(self.config.pickup_max_attempts))))
+
+    def _handle_pickup_grab_failure(
+        self,
+        *,
+        now_s: float,
+        detail: Mapping[str, Any],
+        has_object: bool | None,
+    ) -> OperatorResult:
+        self._emit("grab_not_confirmed", detail)
+        max_attempts = self._pickup_max_attempts()
+        if self.pickup_attempts >= max_attempts:
+            self.pickup_phase = "failed"
+            self.pickup_phase_start_s = now_s
+            self.pickup_visual_capture_confirmed = False
+            self.pickup_grip_confirmed = False
+            self.pickup_attempts = max_attempts
+            return OperatorResult(
+                False,
+                "grab_not_confirmed",
+                map_pose=self.map_pose,
+                localization_source=self.localization_source,
+                has_object=has_object,
+            )
+
+        self.pickup_attempts += 1
+        self.pickup_phase = "recovering_open"
+        self.pickup_phase_start_s = now_s
+        self.pickup_visual_capture_confirmed = False
+        self.pickup_grip_confirmed = False
+        command = PrimitiveCommand(
+            "release",
+            ttl_ms=max(self.config.stop_ttl_ms, self.config.pickup_open_ms),
+            duration_ms=self.config.pickup_open_ms,
+            reason="open_claw_for_pickup_retry",
+        )
+        self._send(command)
+        self._emit(
+            "pickup_recovering",
+            {
+                "attempt": self.pickup_attempts,
+                "max_attempts": max_attempts,
+                "reason": "grab_not_confirmed",
+                "recovery": "open_backoff_rescan",
+            },
+        )
+        return OperatorResult(
+            False,
+            "recovering_pickup",
+            command=command,
+            map_pose=self.map_pose,
+            localization_source=self.localization_source,
+            has_object=has_object,
         )
 
     def lift(self, *, duration_ms: int = DEFAULT_LIFT_MS) -> OperatorResult:

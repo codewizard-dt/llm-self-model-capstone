@@ -370,6 +370,15 @@ def _launch_nodes(context, *args, **kwargs):
                     "operator_pickup_verify_settle_s": LaunchConfiguration(
                         "operator_pickup_verify_settle_s"
                     ),
+                    "operator_pickup_recovery_backoff_s": LaunchConfiguration(
+                        "operator_pickup_recovery_backoff_s"
+                    ),
+                    "operator_pickup_recovery_backoff_vx": LaunchConfiguration(
+                        "operator_pickup_recovery_backoff_vx"
+                    ),
+                    "operator_pickup_max_attempts": LaunchConfiguration(
+                        "operator_pickup_max_attempts"
+                    ),
                     "brain_program_slot": LaunchConfiguration("brain_program_slot"),
                     "require_brain_program_ready": LaunchConfiguration(
                         "require_brain_program_ready"
@@ -568,6 +577,13 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "operator_pickup_verify_settle_s", default_value="0.6"
             ),
+            DeclareLaunchArgument(
+                "operator_pickup_recovery_backoff_s", default_value="0.8"
+            ),
+            DeclareLaunchArgument(
+                "operator_pickup_recovery_backoff_vx", default_value="-0.05"
+            ),
+            DeclareLaunchArgument("operator_pickup_max_attempts", default_value="2"),
             DeclareLaunchArgument("agent_scene_publish_hz", default_value="3.0"),
             DeclareLaunchArgument(
                 "agent_scene_include_debug_tracks", default_value="false"

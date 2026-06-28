@@ -70,6 +70,8 @@ IN_PROGRESS_REASONS = {
     "opening_claw",
     "moving_to_ball",
     "closing_claw",
+    "recovering_pickup",
+    "verifying_grab",
     "grab_not_confirmed",
 }
 BRAIN_READY_REQUIRED_ACTIONS = {
@@ -176,6 +178,9 @@ class OperatorNode(Node):
         self.declare_parameter("operator_ball_search_segment_s", 8.0)
         self.declare_parameter("operator_ball_search_omega", 0.28)
         self.declare_parameter("operator_pickup_verify_settle_s", 0.6)
+        self.declare_parameter("operator_pickup_recovery_backoff_s", 0.8)
+        self.declare_parameter("operator_pickup_recovery_backoff_vx", -0.05)
+        self.declare_parameter("operator_pickup_max_attempts", 2)
         self.declare_parameter("brain_program_slot", 8)
         self.declare_parameter("require_brain_program_ready", False)
         self.declare_parameter("command_topic", "/operator/command")
@@ -390,6 +395,15 @@ class OperatorNode(Node):
             ball_search_omega=self._parameter_float("operator_ball_search_omega"),
             pickup_verify_settle_s=self._parameter_float(
                 "operator_pickup_verify_settle_s"
+            ),
+            pickup_recovery_backoff_s=self._parameter_float(
+                "operator_pickup_recovery_backoff_s"
+            ),
+            pickup_recovery_backoff_vx=self._parameter_float(
+                "operator_pickup_recovery_backoff_vx"
+            ),
+            pickup_max_attempts=max(
+                1, int(round(self._parameter_float("operator_pickup_max_attempts")))
             ),
         )
 
@@ -1248,6 +1262,8 @@ class OperatorNode(Node):
                 raise ValueError(
                     f"pickup config {key} must be between {minimum} and {maximum}"
                 )
+            if key == "pickup_max_attempts":
+                value = float(max(1, int(round(value))))
             updates[key] = value
 
         self.operator.config = replace(self.operator.config, **updates)

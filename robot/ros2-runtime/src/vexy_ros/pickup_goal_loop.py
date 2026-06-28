@@ -32,6 +32,7 @@ PICKUP_IN_PROGRESS_REASONS = {
     "opening_claw",
     "moving_to_ball",
     "closing_claw",
+    "recovering_pickup",
     "searching_for_ball",
     "verifying_grab",
     "no_fresh_apriltag",
@@ -563,7 +564,7 @@ def collect_pickup_config(args: argparse.Namespace) -> dict[str, float]:
             raise ValueError("--config-json must decode to a JSON object")
         config.update(_validate_pickup_config(payload))
     for key in CONFIG_FIELD_ORDER:
-        value = getattr(args, key)
+        value = getattr(args, key, None)
         if value is not None:
             config[key] = float(value)
     return _validate_pickup_config(config)

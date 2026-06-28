@@ -541,7 +541,9 @@ class OperatorCoreTests(unittest.TestCase):
             return now
 
         sink = PacketCommandSink()
-        operator = make_operator(sink, clock=clock)
+        operator = make_operator(
+            sink, clock=clock, config=OperatorConfig(pickup_max_attempts=1)
+        )
 
         result = operator.pickup_ball(duration_ms=700)
         self.assertFalse(result.success)
@@ -649,7 +651,9 @@ class OperatorCoreTests(unittest.TestCase):
             return now
 
         sink = PacketCommandSink()
-        operator = make_operator(sink, clock=clock)
+        operator = make_operator(
+            sink, clock=clock, config=OperatorConfig(pickup_max_attempts=1)
+        )
 
         operator.pickup_ball(duration_ms=700)
         now = 10.8
@@ -700,6 +704,90 @@ class OperatorCoreTests(unittest.TestCase):
         self.assertFalse(result.success)
         self.assertEqual(result.reason, "grab_failed")
         self.assertEqual(sink.packets[-1]["cmd"], "grab")
+
+    def test_pickup_ball_recovers_after_failed_close_then_rescans(self) -> None:
+        now = 10.0
+
+        def clock() -> float:
+            return now
+
+        events: list[OperatorEvent] = []
+        sink = PacketCommandSink()
+        operator = make_operator(
+            sink,
+            clock=clock,
+            config=OperatorConfig(
+                pickup_max_attempts=2,
+                pickup_recovery_backoff_s=0.4,
+                pickup_recovery_backoff_vx=-0.03,
+            ),
+            event_sink=events.append,
+        )
+
+        operator.pickup_ball(duration_ms=700)
+        now = 10.8
+        operator.update_vision(
+            VisionSnapshot(
+                stamp_s=now,
+                objects=(
+                    ObjectObservation(
+                        "yellow_ball",
+                        "yellow_ball",
+                        now,
+                        forward_m=0.10,
+                        left_m=-0.08,
+                    ),
+                ),
+            )
+        )
+        operator.pickup_ball(duration_ms=700)
+
+        now = 14.3
+        operator.pickup_ball(duration_ms=700)
+        self.assertEqual(sink.packets[-1]["cmd"], "grab")
+
+        now = 15.4
+        operator.update_telemetry(
+            TelemetrySnapshot(
+                stamp_s=now,
+                motor_samples=(
+                    MotorSample(
+                        device="effector_motor",
+                        subsystem="manipulator",
+                        sample_ms=100,
+                        position_deg=500.0,
+                        velocity_rpm=0.0,
+                        current_amp=0.0,
+                    ),
+                ),
+            )
+        )
+        result = operator.pickup_ball(duration_ms=700)
+        self.assertFalse(result.success)
+        self.assertEqual(result.reason, "recovering_pickup")
+        self.assertEqual(sink.packets[-1]["cmd"], "release")
+        self.assertEqual(sink.packets[-1]["reason"], "open_claw_for_pickup_retry")
+        self.assertIn("grab_not_confirmed", [event.name for event in events])
+        self.assertEqual(events[-1].name, "pickup_recovering")
+
+        now = 16.3
+        result = operator.pickup_ball(duration_ms=700)
+        self.assertEqual(result.reason, "recovering_pickup")
+        self.assertEqual(sink.packets[-1]["cmd"], "drive")
+        self.assertEqual(sink.packets[-1]["reason"], "pickup_retry_backoff")
+        self.assertLess(sink.packets[-1]["vx"], 0.0)
+
+        now = 16.8
+        result = operator.pickup_ball(duration_ms=700)
+        self.assertEqual(result.reason, "recovering_pickup")
+        self.assertEqual(sink.packets[-1]["cmd"], "stop")
+        self.assertEqual(sink.packets[-1]["reason"], "pickup_retry_rescan")
+
+        now = 16.8
+        result = operator.pickup_ball(duration_ms=700)
+        self.assertEqual(result.reason, "searching_for_ball")
+        self.assertEqual(sink.packets[-1]["cmd"], "drive")
+        self.assertEqual(sink.packets[-1]["reason"], "search_for_ball")
 
     def test_pickup_ball_latches_low_grip_current_during_close(self) -> None:
         now = 10.0
@@ -788,7 +876,9 @@ class OperatorCoreTests(unittest.TestCase):
             return now
 
         sink = PacketCommandSink()
-        operator = make_operator(sink, clock=clock)
+        operator = make_operator(
+            sink, clock=clock, config=OperatorConfig(pickup_max_attempts=1)
+        )
 
         operator.pickup_ball(duration_ms=700)
         now = 10.8
@@ -942,7 +1032,9 @@ class OperatorCoreTests(unittest.TestCase):
             return now
 
         sink = PacketCommandSink()
-        operator = make_operator(sink, clock=clock)
+        operator = make_operator(
+            sink, clock=clock, config=OperatorConfig(pickup_max_attempts=1)
+        )
 
         result = operator.pickup_ball(duration_ms=700)
         self.assertEqual(result.reason, "opening_claw")
@@ -1391,6 +1483,9 @@ class OperatorNodeTests(unittest.TestCase):
                             "ball_claw_lateral_target_m": -0.03,
                             "ball_close_forward_m": 0.06,
                             "pickup_verify_settle_s": 0.8,
+                            "pickup_recovery_backoff_s": 0.4,
+                            "pickup_recovery_backoff_vx": -0.03,
+                            "pickup_max_attempts": 3,
                         },
                     }
                 )
@@ -1400,6 +1495,9 @@ class OperatorNodeTests(unittest.TestCase):
         self.assertAlmostEqual(node.operator.config.ball_claw_lateral_target_m, -0.03)
         self.assertAlmostEqual(node.operator.config.ball_close_forward_m, 0.06)
         self.assertAlmostEqual(node.operator.config.pickup_verify_settle_s, 0.8)
+        self.assertAlmostEqual(node.operator.config.pickup_recovery_backoff_s, 0.4)
+        self.assertAlmostEqual(node.operator.config.pickup_recovery_backoff_vx, -0.03)
+        self.assertEqual(node.operator.config.pickup_max_attempts, 3)
         events = [json.loads(message.data) for message in node._event_pub.messages]
         self.assertEqual(events[-1]["name"], "pickup_config_updated")
         result_payload = json.loads(node._result_pub.messages[-1].data)
@@ -1412,6 +1510,7 @@ class OperatorNodeTests(unittest.TestCase):
             status["pickup_config"]["ball_claw_lateral_target_m"], -0.03
         )
         self.assertAlmostEqual(status["pickup_config"]["ball_close_forward_m"], 0.06)
+        self.assertAlmostEqual(status["pickup_config"]["pickup_max_attempts"], 3.0)
 
     def test_node_rejects_unknown_pickup_config_key(self) -> None:
         install_ros_stubs()
@@ -1957,6 +2056,9 @@ class OperatorNodeTests(unittest.TestCase):
             "operator_ball_close_forward_m": "0.06",
             "operator_ball_wall_contact_vx": "0.05",
             "operator_pickup_verify_settle_s": "0.9",
+            "operator_pickup_recovery_backoff_s": "0.5",
+            "operator_pickup_recovery_backoff_vx": "-0.04",
+            "operator_pickup_max_attempts": "4",
         }
         install_ros_stubs()
         node_module = importlib.import_module("vexy_ros.operator.node")
@@ -1966,6 +2068,9 @@ class OperatorNodeTests(unittest.TestCase):
         self.assertAlmostEqual(node.operator.config.ball_close_forward_m, 0.06)
         self.assertAlmostEqual(node.operator.config.ball_wall_contact_vx, 0.05)
         self.assertAlmostEqual(node.operator.config.pickup_verify_settle_s, 0.9)
+        self.assertAlmostEqual(node.operator.config.pickup_recovery_backoff_s, 0.5)
+        self.assertAlmostEqual(node.operator.config.pickup_recovery_backoff_vx, -0.04)
+        self.assertEqual(node.operator.config.pickup_max_attempts, 4)
 
     def test_node_rejects_bad_ad_hoc_command_with_event(self) -> None:
         install_ros_stubs()

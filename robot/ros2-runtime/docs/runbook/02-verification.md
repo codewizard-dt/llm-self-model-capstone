@@ -225,7 +225,9 @@ Only run this after camera, object detection, `/vex/ack`, `/vex/telemetry`, and
 Brain program readiness are green. `pickup_ball` owns its own search procedure:
 if no fresh yellow-ball indication is visible after the claw opens, it rotates in
 place with zero forward velocity, sweeps left/right/return, and fails closed with
-`ball_not_found` rather than driving forward blindly.
+`ball_not_found` rather than driving forward blindly. If a close or verify step
+does not prove possession and retry budget remains, it opens the claw, backs up
+slowly, stops, rescans, and tries again before reporting terminal failure.
 
 Preflight:
 
@@ -246,10 +248,16 @@ Run one bounded pickup attempt from a sourced shell:
 ```bash
 ros2 run vexy_ros vexy_pickup_goal_loop \
   --attempts 1 \
+  --pickup-max-attempts 2 \
+  --pickup-recovery-backoff-s 0.8 \
   --ball-claw-lateral-target-m -0.03 \
   --ball-close-forward-m 0.06 \
   --output /tmp/vexy-pickup-goal-loop.json
 ```
+
+`--attempts` is the outer goal-loop repetition count. `--pickup-max-attempts`
+configures the operator's internal open/backoff/rescan retry budget for each
+candidate.
 
 For a safe tuning pass after the single-candidate preflight, sweep the claw-mouth
 target and close distance. The loop stops after the first strict success:
@@ -257,6 +265,7 @@ target and close distance. The loop stops after the first strict success:
 ```bash
 ros2 run vexy_ros vexy_pickup_goal_loop \
   --attempts 1 \
+  --pickup-max-attempts 2 \
   --sweep-ball-claw-lateral-target-m=-0.02,-0.05,-0.08,-0.12 \
   --sweep-ball-close-forward-m=0.06,0.08,0.10 \
   --output /tmp/vexy-pickup-sweep.json
@@ -274,6 +283,10 @@ proof surfaces to agree:
   `has_object:true` and camera evidence that the ball is not still outside the
   claw. A correct run may publish `outcome.reason:"verifying_grab"` first while
   the operator waits for post-grab possession and vision to settle.
+- retry: `outcome.reason:"recovering_pickup"` and events `pickup_recovering`,
+  `pickup_retry_backoff`, then `pickup_retry_searching`. During this phase the
+  only drive command should be low-speed reverse with reason
+  `pickup_retry_backoff`.
 - clean no-target failure: `outcome.reason:"ball_not_found"` and event
   `ball_search_exhausted`; the robot should have sent only rotation commands
   during search
