@@ -5,7 +5,7 @@ import json
 import math
 import shutil
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Mapping
@@ -47,6 +47,7 @@ from ._core import (
     OperatorEvent,
     OperatorResult,
     OperatorTaskContract,
+    PICKUP_CONFIG_FIELDS,
     PrimitiveCommand,
     TagObservation,
     TelemetrySnapshot,
@@ -1162,6 +1163,8 @@ class OperatorNode(Node):
             self._survey_cancel_requested = True
             self._publish_command_log("reset")
             return OperatorResult(True, "operator_state_reset")
+        if action == "configure_pickup":
+            return self._configure_pickup(payload)
         not_ready = self._brain_program_not_ready_result(action)
         if not_ready is not None:
             return not_ready
@@ -1214,6 +1217,48 @@ class OperatorNode(Node):
         if action == "run_routine":
             return self._run_routine(payload)
         raise ValueError(f"unsupported operator action: {action}")
+
+    def _configure_pickup(self, payload: Mapping[str, Any]) -> OperatorResult:
+        raw_config = payload.get("config", payload.get("pickup_config"))
+        if raw_config is None:
+            raw_config = {
+                key: value
+                for key, value in payload.items()
+                if key in PICKUP_CONFIG_FIELDS
+            }
+        if not isinstance(raw_config, Mapping):
+            raise ValueError("configure_pickup requires a JSON object config")
+
+        extra = sorted(set(raw_config) - set(PICKUP_CONFIG_FIELDS))
+        if extra:
+            raise ValueError(f"unsupported pickup config keys: {extra}")
+        if not raw_config:
+            raise ValueError("configure_pickup requires at least one config value")
+
+        updates: dict[str, float] = {}
+        for key, raw_value in raw_config.items():
+            try:
+                value = float(raw_value)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(f"pickup config {key} must be numeric") from exc
+            if not math.isfinite(value):
+                raise ValueError(f"pickup config {key} must be finite")
+            minimum, maximum = PICKUP_CONFIG_FIELDS[key]
+            if value < minimum or value > maximum:
+                raise ValueError(
+                    f"pickup config {key} must be between {minimum} and {maximum}"
+                )
+            updates[key] = value
+
+        self.operator.config = replace(self.operator.config, **updates)
+        self._publish_event(
+            OperatorEvent(
+                name="pickup_config_updated",
+                stamp_s=time.monotonic(),
+                detail={"updates": updates, "config": self._pickup_config_payload()},
+            )
+        )
+        return OperatorResult(True, "pickup_config_updated")
 
     def _brain_program_not_ready_result(self, action: str) -> OperatorResult | None:
         if not self._require_brain_program_ready:
@@ -1471,10 +1516,15 @@ class OperatorNode(Node):
             "localization_source": self.operator.localization_source,
             "map_pose": None if pose is None else pose.to_json(),
             "has_object": self.operator.has_object(),
+            "pickup_config": self._pickup_config_payload(),
         }
         self._status_pub.publish(
             String(data=json.dumps(payload, separators=(",", ":"), sort_keys=True))
         )
+
+    def _pickup_config_payload(self) -> dict[str, float]:
+        config = self.operator.config
+        return {key: float(getattr(config, key)) for key in PICKUP_CONFIG_FIELDS}
 
 
 def _optional_float(value: Any) -> float | None:

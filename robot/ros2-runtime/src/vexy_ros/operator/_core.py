@@ -312,6 +312,19 @@ class OperatorConfig:
     pickup_max_attempts: int = 1
 
 
+PICKUP_CONFIG_FIELDS = {
+    "ball_claw_lateral_target_m": (-0.25, 0.25),
+    "ball_close_forward_m": (0.02, 0.30),
+    "ball_capture_forward_m": (0.03, 0.40),
+    "ball_capture_lateral_m": (0.01, 0.25),
+    "ball_wall_contact_vx": (0.0, 0.14),
+    "ball_search_s": (0.5, 90.0),
+    "ball_search_segment_s": (0.2, 30.0),
+    "ball_search_omega": (0.05, 0.45),
+    "pickup_verify_settle_s": (0.0, 5.0),
+}
+
+
 class PacketCommandSink:
     """Small command sink useful for tests and non-ROS callers."""
 

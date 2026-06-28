@@ -86,7 +86,8 @@ Example:
 Supported method names are `locate_nearest_apriltag`, `orient_to_tag`,
 `move_to_tag`, `pickup_ball`, `grab`, `lift`, and `release`. Ad-hoc SSH
 commands are accepted only when their `action` appears in the loaded task
-outline.
+outline, except for non-motion operator control actions such as
+`reset_operator` and `configure_pickup`.
 
 ## Vision Input
 
@@ -126,6 +127,7 @@ The operator publishes structured JSON on `/operator/events`.
 | `ball_search_acquired` | `pickup_ball()` found a fresh yellow-ball pose and moved into visual approach. |
 | `ball_search_exhausted` | `pickup_ball()` finished its bounded rotation search without finding a ball and sent `stop`. |
 | `grab_verifying` | The claw closed with provisional grip evidence; `pickup_ball()` is waiting for post-grab possession and vision to settle before reporting success. |
+| `pickup_config_updated` | A non-motion `configure_pickup` command changed the active pickup tuning values. |
 | `oriented` | The requested tag is within yaw tolerance and the operator sent `stop`. |
 | `arrived` | The requested tag is within distance, lateral, and yaw tolerances. |
 | `grabbed` | Manipulator current is elevated while manipulator velocity is low after `grab`. |
@@ -166,10 +168,31 @@ ros2 topic pub --once /operator/command std_msgs/msg/String \
 
 ros2 topic pub --once /operator/command std_msgs/msg/String \
   "{data: '{\"action\":\"pickup_ball\",\"duration_ms\":700}'}"
+
+ros2 topic pub --once /operator/command std_msgs/msg/String \
+  "{data: '{\"action\":\"configure_pickup\",\"config\":{\"ball_claw_lateral_target_m\":-0.03,\"ball_close_forward_m\":0.06}}'}"
 ```
 
 Supported actions are `locate_nearest_apriltag`, `orient_to_tag`,
-`move_to_tag`, `pickup_ball`, `grab`, `lift`, and `release`.
+`move_to_tag`, `pickup_ball`, `grab`, `lift`, `release`, and the non-motion
+control action `configure_pickup`.
+
+For live yellow-ball pickup tuning, prefer the supervised goal loop instead of a
+manual rate publisher:
+
+```bash
+ros2 run vexy_ros vexy_pickup_goal_loop \
+  --attempts 1 \
+  --ball-claw-lateral-target-m -0.03 \
+  --ball-close-forward-m 0.06 \
+  --output /tmp/vexy-pickup-goal-loop.json
+```
+
+The loop resets the operator, applies any supplied pickup tuning values, calls
+`pickup_ball` repeatedly until a terminal result, sends final stops, and writes
+JSON evidence. It reports success only when `/operator/results` returns
+`ball_grabbed`, `/operator/status` reports `has_object:true`, and no fresh
+yellow-ball indication is still outside the configured claw-mouth zone.
 
 ## Self-Model Task Files
 

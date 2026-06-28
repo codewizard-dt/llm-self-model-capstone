@@ -259,7 +259,7 @@ ros2 topic hz /camera/image_raw
 | `/task_plan/request` | `std_msgs/String` | sub (task_plan) | JSON target request, e.g. `tag:0`, `object:yellow_ball`, or `survey:all` |
 | `/task_plan/current` | `std_msgs/String` | pub (task_plan), sub (operator/user) | JSON bounded plan. Dispatchable steps are executed through `/operator/command`; object plans remain map targets until object motion is proven. |
 | `/operator/command` | `std_msgs/String` | sub (operator) | JSON operator action such as `align_to_tag`, `survey_scan`, `run_routine`, `move_to_tag`, or manipulator commands |
-| `/operator/status` | `std_msgs/String` | pub (operator) | JSON operator state, localization summary, known tags, object categories, and held-object state |
+| `/operator/status` | `std_msgs/String` | pub (operator) | JSON operator state, localization summary, known tags, object categories, held-object state, and active pickup tuning |
 | `/operator/events` | `std_msgs/String` | pub (operator) | JSON operator event stream |
 | `/operator/results` | `std_msgs/String` | pub (operator) | Contract-shaped result lines for operator actions |
 | `/align_to_tag/feedback` | `std_msgs/String` | pub (operator) | JSON feedback with tag errors, ack state, and fault state |

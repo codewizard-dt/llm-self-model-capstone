@@ -244,13 +244,16 @@ search before approach.
 Run one bounded pickup attempt from a sourced shell:
 
 ```bash
-ros2 topic echo /operator/events &
-ros2 topic echo /operator/results &
-ros2 topic pub --rate 10 /operator/command std_msgs/String \
-  '{"data":"{\"action\":\"pickup_ball\",\"duration_ms\":700}"}'
+ros2 run vexy_ros vexy_pickup_goal_loop \
+  --attempts 1 \
+  --ball-claw-lateral-target-m -0.03 \
+  --ball-close-forward-m 0.06 \
+  --output /tmp/vexy-pickup-goal-loop.json
 ```
 
-Stop publishing after the result is terminal:
+The goal loop publishes `pickup_ball` repeatedly until the result is terminal,
+then sends final stops and writes JSON evidence. Success requires all three
+proof surfaces to agree:
 
 - success: `outcome.reason:"ball_grabbed"` plus final `/operator/status`
   `has_object:true` and camera evidence that the ball is not still outside the
@@ -267,7 +270,7 @@ Always send a final stop before inspecting the scene:
 
 ```bash
 ros2 topic pub --once /vex/cmd std_msgs/String \
-  '{"data":"{\"kind\":\"drive\",\"vx\":0.0,\"vy\":0.0,\"omega\":0.0,\"duration_ms\":100,\"reason\":\"operator_pickup_stop\"}"}'
+  '{"data":"{\"v\":1,\"type\":\"cmd\",\"seq\":49001,\"cmd\":\"stop\",\"ttl_ms\":200,\"reason\":\"operator_pickup_stop\"}"}'
 ```
 
 Current measured VEXY default from static calibration: the claw capture center is

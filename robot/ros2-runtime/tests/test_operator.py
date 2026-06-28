@@ -1377,6 +1377,63 @@ class OperatorNodeTests(unittest.TestCase):
         self.assertEqual(cmd_packet["cmd"], "routine")
         self.assertEqual(cmd_packet["slot"], 3)
 
+    def test_node_updates_pickup_config_from_ad_hoc_command(self) -> None:
+        install_ros_stubs()
+        node_module = importlib.import_module("vexy_ros.operator.node")
+        node = node_module.OperatorNode()
+
+        node._on_command(
+            String(
+                data=json.dumps(
+                    {
+                        "action": "configure_pickup",
+                        "config": {
+                            "ball_claw_lateral_target_m": -0.03,
+                            "ball_close_forward_m": 0.06,
+                            "pickup_verify_settle_s": 0.8,
+                        },
+                    }
+                )
+            )
+        )
+
+        self.assertAlmostEqual(node.operator.config.ball_claw_lateral_target_m, -0.03)
+        self.assertAlmostEqual(node.operator.config.ball_close_forward_m, 0.06)
+        self.assertAlmostEqual(node.operator.config.pickup_verify_settle_s, 0.8)
+        events = [json.loads(message.data) for message in node._event_pub.messages]
+        self.assertEqual(events[-1]["name"], "pickup_config_updated")
+        result_payload = json.loads(node._result_pub.messages[-1].data)
+        self.assertTrue(result_payload["outcome"]["success"])
+        self.assertEqual(result_payload["outcome"]["reason"], "pickup_config_updated")
+
+        node._publish_status()
+        status = json.loads(node._status_pub.messages[-1].data)
+        self.assertAlmostEqual(
+            status["pickup_config"]["ball_claw_lateral_target_m"], -0.03
+        )
+        self.assertAlmostEqual(status["pickup_config"]["ball_close_forward_m"], 0.06)
+
+    def test_node_rejects_unknown_pickup_config_key(self) -> None:
+        install_ros_stubs()
+        node_module = importlib.import_module("vexy_ros.operator.node")
+        node = node_module.OperatorNode()
+
+        node._on_command(
+            String(
+                data=json.dumps(
+                    {
+                        "action": "configure_pickup",
+                        "config": {"ball_close_forward_m": 0.06, "max_vx": 0.2},
+                    }
+                )
+            )
+        )
+
+        self.assertAlmostEqual(node.operator.config.ball_close_forward_m, 0.08)
+        rejected = json.loads(node._event_pub.messages[-1].data)
+        self.assertEqual(rejected["name"], "command_rejected")
+        self.assertIn("unsupported pickup config keys", rejected["detail"]["error"])
+
     def test_node_accepts_arm_target_command(self) -> None:
         install_ros_stubs()
         node_module = importlib.import_module("vexy_ros.operator.node")
