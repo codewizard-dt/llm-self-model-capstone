@@ -22,13 +22,13 @@ class AlignToTagGoal:
     yaw_tolerance_rad: float = 0.05
     lateral_tolerance_m: float = 0.03
     distance_tolerance_m: float = 0.05
-    timeout_s: float = 8.0
+    timeout_s: float = 15.0
     max_step_ms: int = 150
     max_vx: float = 0.12
     max_vy: float = 0.08
-    max_omega: float = 0.25
+    max_omega: float = 0.18
     min_vx: float = 0.06
-    min_turn_omega: float = 0.35
+    min_turn_omega: float = 0.10
     tag_stale_s: float = 0.5
     ack_stale_s: float = 0.8
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 import json
 import math
+import os
 import sys
 import tempfile
 import time
@@ -32,6 +33,7 @@ from vexy_ros.operator._core import (  # noqa: E402
 from vexy_ros.operator_run_capture import (  # noqa: E402
     BAG_TOPICS,
     STRING_TELEMETRY_TOPICS,
+    prune_local_runs,
     start_operator_run_capture,
 )
 from vexy_ros.vision_map import Pose2D, TagAnchor  # noqa: E402
@@ -1835,6 +1837,9 @@ class OperatorRunCaptureTests(unittest.TestCase):
         writer_cmd = popen.call_args_list[0].args[0]
         image_cmd = popen.call_args_list[1].args[0]
         bag_cmd = popen.call_args_list[2].args[0]
+        self.assertTrue(popen.call_args_list[0].kwargs["start_new_session"])
+        self.assertTrue(popen.call_args_list[1].kwargs["start_new_session"])
+        self.assertTrue(popen.call_args_list[2].kwargs["start_new_session"])
         self.assertEqual(
             writer_cmd[:4],
             ["ros2", "run", "vexy_ros", "vexy_telemetry_writer_node"],
@@ -1847,8 +1852,46 @@ class OperatorRunCaptureTests(unittest.TestCase):
         self.assertEqual(bag_cmd[:3], ["ros2", "bag", "record"])
         self.assertIn("/operator/events", STRING_TELEMETRY_TOPICS)
         self.assertIn("/operator/command_log", STRING_TELEMETRY_TOPICS)
+        self.assertIn("/align_to_tag/feedback", STRING_TELEMETRY_TOPICS)
+        self.assertIn("/align_to_tag/result", STRING_TELEMETRY_TOPICS)
+        self.assertIn("/survey/feedback", STRING_TELEMETRY_TOPICS)
+        self.assertIn("/survey/result", STRING_TELEMETRY_TOPICS)
         self.assertIn("/camera/image_rect", BAG_TOPICS)
         self.assertIn("/vision/object_detections", bag_cmd)
+
+    def test_prune_local_runs_keeps_newest_ten_run_directories(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            parent = Path(tmp)
+            for index in range(12):
+                run_dir = parent / f"run-{index:02d}"
+                run_dir.mkdir()
+                mtime = 1_700_000_000 + index
+                os.utime(run_dir, (mtime, mtime))
+
+            prune_local_runs(parent, keep=10)
+
+            remaining = sorted(path.name for path in parent.iterdir())
+
+        self.assertEqual(remaining, [f"run-{index:02d}" for index in range(2, 12)])
+
+    def test_prune_local_runs_ignores_unremovable_old_run(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            parent = Path(tmp)
+            for index in range(11):
+                run_dir = parent / f"run-{index:02d}"
+                run_dir.mkdir()
+                mtime = 1_700_000_000 + index
+                os.utime(run_dir, (mtime, mtime))
+
+            def rmtree_requires_ignore_errors(path, *, ignore_errors=False):
+                if not ignore_errors:
+                    raise OSError("directory not empty")
+
+            with patch(
+                "vexy_ros.operator_run_capture.shutil.rmtree",
+                side_effect=rmtree_requires_ignore_errors,
+            ):
+                prune_local_runs(parent, keep=10)
 
 
 if __name__ == "__main__":
