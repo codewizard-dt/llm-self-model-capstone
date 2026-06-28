@@ -65,6 +65,13 @@ from pilot.executor import (  # noqa: E402
     TransportRequest,
     execute_validated_command,
 )
+from pilot.run_logger import (  # noqa: E402
+    STOP_REASONS,
+    RunLogger,
+    RunLoggerConfig,
+    RunLoggerError,
+    default_session_id,
+)
 from pilot.safety import (  # noqa: E402
     DEFAULT_SAFETY_POLICY,
     SafetyPolicy,
@@ -108,12 +115,16 @@ __all__ = [
     "MovementEnvelope",
     "ObservationCache",
     "PROMPT_SECTION_ORDER",
+    "RunLogger",
+    "RunLoggerConfig",
+    "RunLoggerError",
     "SafetyPolicy",
     "SkillDefault",
     "SkillDefinition",
     "SkillExecutor",
     "SkillInput",
     "SkillSuccessAssertion",
+    "STOP_REASONS",
     "TransportBoundary",
     "TransportRequest",
     "ValidationMode",
@@ -131,6 +142,7 @@ __all__ = [
     "get_skill_definition",
     "build_decision_prompt",
     "build_prompt_payload",
+    "default_session_id",
     "list_skill_definitions",
     "request_pilot_decision",
     "render_prompt",

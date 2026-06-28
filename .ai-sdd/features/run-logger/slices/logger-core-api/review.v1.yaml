@@ -1,0 +1,70 @@
+items:
+  - id: ACC-RL-ROS-FREE-IMPORT
+    verdict: pass
+    notes: >-
+      `pilot.run_logger` imports only Python stdlib, pydantic, and
+      contract-owned types. The focused import test rejects ROS package imports
+      while importing both `pilot.run_logger` and additive package exports.
+  - id: ACC-RL-CONFIG-SESSION
+    verdict: pass
+    notes: >-
+      `RunLoggerConfig` is frozen and accepts caller-supplied session ids;
+      `RunLogger` keeps one stable session id per instance and generates a
+      non-empty `run-<uuid>` default without ROS or hardware state.
+  - id: ACC-RL-SEQUENCE
+    verdict: pass
+    notes: >-
+      `start_seq` defaults to zero, accepts explicit non-negative integer
+      values, and `RunLogger._build_record` advances `_next_seq` only after the
+      full trace record validates and is returned.
+  - id: ACC-RL-DETERMINISTIC_TIME
+    verdict: pass
+    notes: >-
+      `monotonic_ms` is resolved from an explicit caller value or injected
+      `monotonic_clock`; without either, the logger raises `RunLoggerError`
+      without advancing sequence state. No hidden wall-clock source is used.
+  - id: ACC-RL-SIX_VARIANTS
+    verdict: pass
+    notes: >-
+      The public append-oriented helpers construct observation, decision,
+      command, result, assertion, and stop records using the contract-owned
+      payload models and the existing stop reason vocabulary.
+  - id: ACC-RL-CONTRACT_VALIDATION
+    verdict: pass
+    notes: >-
+      Every helper funnels through `_TRACE_RECORD_ADAPTER =
+      TypeAdapter(PilotTraceRecord)` before returning. Tests round-trip each
+      returned record through the same contract union.
+  - id: ACC-RL-INVALID_REJECTED
+    verdict: pass
+    notes: >-
+      Invalid payloads, stop reasons, timestamps, session ids, start sequence
+      values, and clock configuration raise `RunLoggerError`; tests verify no
+      trace record is returned and `next_seq` is unchanged.
+  - id: ACC-RL-APPEND_SKELETON_ONLY
+    verdict: pass
+    notes: >-
+      The core API only builds in-memory records. The implementation contains
+      no file path, open, flush, fsync, parse, or readback logic, and tests
+      monkeypatch `open` to fail if file I/O is attempted.
+  - id: ACC-RL-NO_SCHEMA_DRIFT
+    verdict: pass
+    notes: >-
+      The implementation imports pilot contracts from `contracts` and defines
+      only plain helper/configuration/error types in `pilot`. No contract
+      files, generated schemas, fixtures, or pilot-local pydantic models were
+      added or changed.
+  - id: ACC-RL-SCOPE_LIMITED_FILES
+    verdict: pass
+    notes: >-
+      Current implementation changes are limited to the scoped files:
+      `pilot/src/pilot/run_logger.py`, additive exports in
+      `pilot/src/pilot/__init__.py`, and `pilot/tests/test_run_logger.py`.
+  - id: ACC-RL-GATES
+    verdict: pass
+    notes: >-
+      Verified `make -C pilot sync`, `make -C pilot test`, `make -C pilot lint`,
+      root `make sync`, root `make test`, root `make validate`, and root
+      `make lint`; all completed successfully.
+verdict: approve
+rework: []

@@ -1,0 +1,22 @@
+summary: >-
+  Added the ROS-free pilot run-logger core API in `pilot.run_logger`. The new
+  `RunLogger` keeps stable session metadata, supports explicit starting
+  sequence values, resolves monotonic timestamps from caller input or an
+  injected deterministic clock, builds all six contract-owned
+  `PilotTraceRecord` event variants, validates each full record through the
+  contracts union before returning it, and raises `RunLoggerError` without
+  consuming sequence state for invalid payloads or metadata. Added additive
+  package exports and focused tests proving ROS-free imports, contract
+  round-trips, invalid rejection behavior, and absence of durable file I/O.
+satisfies:
+  - ACC-RL-ROS-FREE-IMPORT
+  - ACC-RL-CONFIG-SESSION
+  - ACC-RL-SEQUENCE
+  - ACC-RL-DETERMINISTIC_TIME
+  - ACC-RL-SIX_VARIANTS
+  - ACC-RL-CONTRACT_VALIDATION
+  - ACC-RL-INVALID_REJECTED
+  - ACC-RL-APPEND_SKELETON_ONLY
+  - ACC-RL-NO_SCHEMA_DRIFT
+  - ACC-RL-SCOPE_LIMITED_FILES
+  - ACC-RL-GATES
