@@ -1,0 +1,15 @@
+summary: >-
+  Added final run-logger package-boundary exports for readback and recent-history helpers, then
+  closed acceptance coverage around all PilotTraceRecord event variants, every supported stop
+  reason, unsupported stop rejection, replay-ready typed readback ordering, decision-prompt
+  recent-history handoff, and bounded prompt-safe logger-derived surfaces.
+satisfies:
+  - ACC-RL-PUBLIC-EXPORTS
+  - ACC-RL-ALL-VARIANTS-ROUNDTRIP
+  - ACC-RL-STOP-REASONS
+  - ACC-RL-REPLAY-READY-READBACK
+  - ACC-RL-RECENT-HISTORY-DECISION-READY
+  - ACC-RL-PROMPT-SAFE-HISTORY
+  - ACC-RL-TEMP-TRACE-OUTPUTS
+  - ACC-RL-SCOPE-LIMITED
+  - ACC-RL-GATES

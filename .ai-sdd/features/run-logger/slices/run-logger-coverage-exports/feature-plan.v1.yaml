@@ -1,0 +1,165 @@
+summary: >-
+  Close the run-logger feature with additive public exports and acceptance-level coverage: prove every
+  `contracts.PilotTraceRecord` event variant can be written, read back as typed records, summarized
+  into bounded `pilot.decision` recent-history context, and kept free of raw images, binary blobs,
+  secrets, environment dumps, and unbounded provider logs.
+
+scope:
+  in:
+    - >-
+      Add only missing additive package exports for the existing ROS-free run logger API in
+      `pilot/src/pilot/__init__.py`, preserving current imports and `__all__` entries.
+    - >-
+      Polish `pilot/src/pilot/run_logger.py` only if an export or acceptance-coverage gap exposes a
+      small public API issue; keep behavior contract-validated through `contracts.PilotTraceRecord`.
+    - >-
+      Add deterministic tests in `pilot/tests/test_run_logger.py` proving observation, decision,
+      command, result, assertion, and stop records are written as JSONL and read back as typed
+      `contracts.PilotTraceRecord` values without schema conversion.
+    - >-
+      Cover every contract-owned stop reason: `success`, `failure`, `operator`, `fault`, and
+      `request_human`.
+    - >-
+      Prove readback records are directly usable by later replay-mode consumers as typed contract
+      records and preserve file order, sequence numbers, session id, and monotonic timestamps.
+    - >-
+      Prove recent-history output can be passed as `pilot.decision` recent-history prompt input using
+      only typed trace records, without ROS, hardware, or a real LLM provider.
+    - >-
+      Prove logger API, trace lines, readback, and recent-history tests do not add raw images, binary
+      blobs, committed runtime traces, provider secrets, environment variables, full transcripts, or
+      unbounded provider/ROS logs.
+  out:
+    - >-
+      Replay-mode implementation, task recipe orchestration, skill-baseline capture, supervised
+      hardware runs, live ROS integration, LLM provider calls, or Brain firmware changes.
+    - >-
+      Schema additions or changes in `contracts/`, `.ai-sdd/schemas/`, or pilot-local durable
+      pydantic trace schemas.
+    - >-
+      Decision adapter rewrites beyond verifying that existing `pilot.decision` prompt builders can
+      receive the bounded recent-history string.
+    - >-
+      Changes outside `pilot/src/pilot/run_logger.py`, `pilot/src/pilot/__init__.py`, and
+      `pilot/tests/test_run_logger.py`.
+
+acceptance:
+  - id: ACC-RL-PUBLIC-EXPORTS
+    description: >-
+      `pilot` exposes the public run logger API needed by downstream callers without removing or
+      renaming existing package exports; tests import the logger API from both `pilot.run_logger` and
+      the package boundary.
+  - id: ACC-RL-ALL-VARIANTS-ROUNDTRIP
+    description: >-
+      Tests append representative `PilotObservation`, `PilotDecision`, `PilotSkillCommand`,
+      `PilotSkillResult`, `PilotAssertion`, and stop records, then read the JSONL back and assert the
+      returned values are typed, contract-valid `contracts.PilotTraceRecord` variants in append order.
+  - id: ACC-RL-STOP-REASONS
+    description: >-
+      Tests cover all supported stop reasons, exactly `success`, `failure`, `operator`, `fault`, and
+      `request_human`, and reject unsupported reasons before writing or consuming sequence state.
+  - id: ACC-RL-REPLAY-READY-READBACK
+    description: >-
+      Readback output preserves durable trace metadata and payload types without requiring replay
+      callers to parse raw dictionaries, convert schemas, sort records, renumber records, or repair
+      trace state.
+  - id: ACC-RL-RECENT-HISTORY-DECISION-READY
+    description: >-
+      Recent-history output produced from readback records can be supplied to the existing
+      `pilot.decision` prompt payload/path as the recent-history value without importing ROS packages,
+      using hardware, or calling a provider.
+  - id: ACC-RL-PROMPT-SAFE-HISTORY
+    description: >-
+      Tests prove recent-history output is bounded and excludes raw JSONL tails, raw images, binary
+      data, environment-variable dumps, provider secrets, full provider transcripts, and unbounded
+      provider or ROS logs.
+  - id: ACC-RL-TEMP-TRACE-OUTPUTS
+    description: >-
+      Tests write generated traces only under temporary directories or clean up any default-path
+      trace they create; no runtime JSONL outputs are committed.
+  - id: ACC-RL-SCOPE-LIMITED
+    description: >-
+      Implementation changes stay within `pilot/src/pilot/run_logger.py`,
+      `pilot/src/pilot/__init__.py`, and `pilot/tests/test_run_logger.py`; no schemas, replay runner,
+      ROS code, firmware, CLI delivery recipe, or hardware orchestration files are edited.
+  - id: ACC-RL-GATES
+    description: >-
+      The implementer runs `uv sync`, `make -C pilot test`, `make -C pilot lint`, root `make test`,
+      root `make validate`, and root `make lint`, documenting any pre-existing unrelated failure.
+
+decisions:
+  - id: DEC-RL-FINAL-SLICE-COVERAGE-FIRST
+    status: closed
+    decision: >-
+      Treat this final slice primarily as export polish and acceptance-level coverage over the
+      existing logger API, not as a new behavior slice.
+    rationale: >-
+      Prior run-logger slices already created the core API, JSONL writer, readback, and history
+      utilities; the rendered slice asks to close integration and coverage gaps only.
+    grounds:
+      - ".ai-sdd/features/run-logger/slices/run-logger-coverage-exports.md: What this slice delivers"
+      - ".ai-sdd/features/run-logger/requirements.md: Acceptance"
+      - "MASTER_REQUIREMENTS.md: Tech stacks -> pilot"
+  - id: DEC-RL-PACKAGE-EXPORTS-ADDITIVE
+    status: closed
+    decision: >-
+      Public package exports may be added from `pilot.run_logger` into `pilot.__init__`, but existing
+      imports, names, and `__all__` entries must remain stable.
+    rationale: >-
+      Downstream pilot components and future replay-mode callers need a stable ROS-free package
+      boundary, while this slice must not disturb existing pilot imports.
+    grounds:
+      - ".ai-sdd/features/run-logger/slices/run-logger-coverage-exports.md: Requirements"
+      - ".ai-sdd/features/run-logger/requirements.md: Acceptance -> ROS-free run logger API"
+      - "MASTER_REQUIREMENTS.md: Components -> Online-control harness"
+  - id: DEC-RL-CONTRACT-RECORDS-ONLY
+    status: closed
+    decision: >-
+      Round-trip coverage must validate through the existing contract-owned `PilotTraceRecord` union
+      and must not introduce pilot-local durable schemas or schema conversion shims.
+    rationale: >-
+      `contracts/` owns all cross-vertical schemas, and the logger is the replay/audit boundary for
+      physical runs, replay runs, supervised proofs, and later calibration work.
+    grounds:
+      - ".ai-sdd/features/run-logger/requirements.md: Goal and Constraints"
+      - ".ai-sdd/conventions/pilot.md: Boundary rules -> No schema defined here"
+      - "MASTER_REQUIREMENTS.md: Components -> Boundary rule"
+  - id: DEC-RL-READBACK-AND-HISTORY-ARE-REPLAY-INPUTS-NOT-REPLAY-MODE
+    status: closed
+    decision: >-
+      Tests may prove readback and recent-history outputs are usable by future replay-mode and
+      `pilot.decision` inputs, but they must not implement a replay runner or change loop
+      orchestration.
+    rationale: >-
+      The run logger supplies typed traces and compact history; replay execution, task recipes, live
+      supervision, and provider decisions are explicitly out of scope for this final slice.
+    grounds:
+      - ".ai-sdd/features/run-logger/slices/run-logger-coverage-exports.md: Out Of Scope"
+      - ".ai-sdd/features/run-logger/requirements.md: Out Of Scope"
+      - "PILOT_MASTER_REQUIREMENTS.md: Prompt Contract"
+  - id: DEC-RL-SAFE-BOUNDED-TRACE-DERIVATIVES
+    status: closed
+    decision: >-
+      Acceptance tests must check that logger-derived history and traces remain bounded and do not
+      expose raw images, binary blobs, secrets, environment variables, provider transcripts, or
+      unbounded ROS/provider logs.
+    rationale: >-
+      The logger is intended for diagnosis and prompt context, but the approved feature forbids raw
+      artifacts and unbounded sensitive logs in trace/history surfaces.
+    grounds:
+      - ".ai-sdd/features/run-logger/requirements.md: Constraints and Proposed Decision RL-009"
+      - ".ai-sdd/features/run-logger/slices/run-logger-coverage-exports.md: Acceptance"
+      - "MASTER_REQUIREMENTS.md: Tech stacks -> pilot"
+
+files:
+  - pilot/src/pilot/run_logger.py
+  - pilot/src/pilot/__init__.py
+  - pilot/tests/test_run_logger.py
+
+tests:
+  - uv sync
+  - make -C pilot test
+  - make -C pilot lint
+  - make test
+  - make validate
+  - make lint

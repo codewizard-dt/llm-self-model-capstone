@@ -10,10 +10,14 @@ import sys
 import pytest
 from contracts import (
     AssertionState,
+    AssertionTraceRecord,
     BridgeHealth,
+    CommandTraceRecord,
     CommandStatus,
+    DecisionTraceRecord,
     LocalizationState,
     ManipulatorState,
+    ObservationTraceRecord,
     PilotAssertion,
     PilotDecision,
     PilotDecisionAction,
@@ -23,6 +27,8 @@ from contracts import (
     PilotSkillResult,
     PilotTaskPhase,
     PilotTraceRecord,
+    ResultTraceRecord,
+    StopTraceRecord,
     SurveySceneSkillCommand,
 )
 from pydantic import TypeAdapter
@@ -40,6 +46,25 @@ from pilot.run_logger import (
 )
 
 TRACE_RECORD_ADAPTER = TypeAdapter(PilotTraceRecord)
+TRACE_RECORD_TYPES = (
+    ObservationTraceRecord,
+    DecisionTraceRecord,
+    CommandTraceRecord,
+    ResultTraceRecord,
+    AssertionTraceRecord,
+    StopTraceRecord,
+)
+PROMPT_UNSAFE_MARKERS = (
+    "data:image",
+    "base64,",
+    "BEGIN PRIVATE KEY",
+    "OPENAI_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "os.environ",
+    "\x00",
+    "Human:",
+    "full provider transcript",
+)
 
 
 def _observation() -> PilotObservation:
@@ -136,8 +161,21 @@ def test_run_logger_module_imports_without_ros_packages_and_exports_public_api(m
 
     assert module.RunLogger is not None
     assert module.RunLoggerConfig is not None
-    assert "RunLogger" in pilot.__all__
-    assert "RunLoggerConfig" in pilot.__all__
+    assert pilot.RunLogger.__name__ == module.RunLogger.__name__
+    assert pilot.RunLoggerConfig.__name__ == module.RunLoggerConfig.__name__
+    assert pilot.RunLoggerReadbackError.__name__ == module.RunLoggerReadbackError.__name__
+    assert callable(pilot.default_trace_path)
+    assert callable(pilot.format_recent_history)
+    assert callable(pilot.read_trace_records)
+    for export in (
+        "RunLogger",
+        "RunLoggerConfig",
+        "RunLoggerReadbackError",
+        "default_trace_path",
+        "format_recent_history",
+        "read_trace_records",
+    ):
+        assert export in pilot.__all__
     assert ros_roots.isdisjoint(sys.modules)
 
 
@@ -248,6 +286,47 @@ def test_all_six_variants_write_in_order_as_contract_valid_compact_jsonl(tmp_pat
     assert [line["seq"] for line in written] == list(range(6))
     for line, record in zip(written, records, strict=True):
         assert TRACE_RECORD_ADAPTER.validate_python(line) == record
+
+    readback = read_trace_records(trace_path)
+
+    assert readback == records
+    assert all(isinstance(record, TRACE_RECORD_TYPES) for record in readback)
+    assert [type(record) for record in readback] == [
+        ObservationTraceRecord,
+        DecisionTraceRecord,
+        CommandTraceRecord,
+        ResultTraceRecord,
+        AssertionTraceRecord,
+        StopTraceRecord,
+    ]
+
+
+@pytest.mark.parametrize("reason", STOP_REASONS)
+def test_all_stop_reasons_round_trip_as_contract_values(tmp_path: Path, reason: str) -> None:
+    trace_path = tmp_path / f"{reason}.jsonl"
+    logger = RunLogger(RunLoggerConfig(session_id=f"session-{reason}", trace_path=trace_path))
+
+    record = logger.append_stop(reason, message=f"{reason} stop", monotonic_ms=10)
+    logger.close()
+
+    assert record.reason == reason
+    assert logger.next_seq == 1
+    assert read_trace_records(trace_path) == [record]
+
+
+def test_unsupported_stop_reason_rejects_before_writing_or_consuming_sequence(
+    tmp_path: Path,
+) -> None:
+    trace_path = tmp_path / "unsupported-stop.jsonl"
+    logger = RunLogger(
+        RunLoggerConfig(session_id="session-unsupported-stop", trace_path=trace_path)
+    )
+
+    with pytest.raises(RunLoggerError, match="invalid stop trace record"):
+        logger.append_stop("unsafe", monotonic_ms=1)
+
+    assert logger.next_seq == 0
+    assert not trace_path.exists()
 
 
 def test_invalid_payloads_stop_reasons_and_metadata_raise_without_writing_or_consuming_sequence(
@@ -365,6 +444,9 @@ def test_read_trace_records_returns_typed_records_from_path_and_stream_in_file_o
     assert [record.seq for record in path_records] == [0, 1, 2]
     assert [record.monotonic_ms for record in path_records] == [30, 10, 20]
     assert path_records == stream_records
+    assert path_records[0] is not stream_records[0]
+    assert all(isinstance(record, TRACE_RECORD_TYPES) for record in path_records)
+    assert all(not isinstance(record, dict) for record in path_records)
     assert all(
         TRACE_RECORD_ADAPTER.validate_python(record.model_dump()) == record
         for record in path_records
@@ -484,3 +566,59 @@ def test_format_recent_history_summarizes_relevant_events_without_raw_prompt_uns
     assert '{"' not in history
     assert "\x00" not in history
     assert "Human:" not in history
+
+
+def test_recent_history_feeds_decision_prompt_without_ros_hardware_or_provider(
+    tmp_path: Path,
+) -> None:
+    import pilot
+
+    trace_path = tmp_path / "prompt-history.jsonl"
+    logger = RunLogger(RunLoggerConfig(session_id="session-prompt-history", trace_path=trace_path))
+    logger.append_observation(_observation(), monotonic_ms=1)
+    logger.append_decision(_decision(), monotonic_ms=2)
+    logger.append_command(_command(), monotonic_ms=3)
+    logger.append_result(_result(), monotonic_ms=4)
+    logger.close()
+
+    recent_history = pilot.format_recent_history(pilot.read_trace_records(trace_path))
+    payload = pilot.build_prompt_payload(
+        _observation(),
+        recent_history=recent_history,
+        allowed_skills=[],
+    )
+    prompt = pilot.render_prompt(payload)
+
+    assert payload["recent_history"] == recent_history
+    assert "## recent history" in prompt
+    assert "seq=0 observation" in prompt
+    assert "\\nseq=1 decision" in prompt
+    assert all(root not in sys.modules for root in ("rclpy", "openai", "anthropic"))
+
+
+def test_logger_derived_surfaces_are_bounded_temporary_and_prompt_safe(tmp_path: Path) -> None:
+    trace_path = tmp_path / "safe-surfaces.jsonl"
+    logger = RunLogger(RunLoggerConfig(session_id="session-safe-surfaces", trace_path=trace_path))
+    logger.append_result(
+        _result().model_copy(
+            update={
+                "message": "provider summary stored without raw image bytes or transcript",
+                "fault": "operator-visible fault summary",
+            }
+        ),
+        monotonic_ms=1,
+    )
+    logger.append_stop("failure", message="bounded stop summary", monotonic_ms=2)
+    logger.close()
+
+    raw_trace = trace_path.read_text(encoding="utf-8")
+    readback = read_trace_records(trace_path)
+    history = format_recent_history(readback, max_records=10, max_chars=400)
+
+    assert trace_path.is_relative_to(tmp_path)
+    assert len(raw_trace) < 2_000
+    assert len(history) <= 400
+    assert all(isinstance(record, TRACE_RECORD_TYPES) for record in readback)
+    for surface in (raw_trace, history):
+        for marker in PROMPT_UNSAFE_MARKERS:
+            assert marker not in surface

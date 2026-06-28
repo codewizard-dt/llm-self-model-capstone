@@ -1,0 +1,66 @@
+items:
+  - id: ACC-RL-PUBLIC-EXPORTS
+    verdict: pass
+    notes: >-
+      Package exports were added additively for `RunLoggerReadbackError`,
+      `default_trace_path`, `format_recent_history`, and `read_trace_records`
+      while preserving existing run logger exports. Tests import the API from
+      both `pilot.run_logger` and the `pilot` package boundary and assert the
+      new names are present in `pilot.__all__`.
+  - id: ACC-RL-ALL-VARIANTS-ROUNDTRIP
+    verdict: pass
+    notes: >-
+      Tests append observation, decision, command, result, assertion, and stop
+      trace records, assert compact JSONL append order, validate each persisted
+      line through `TypeAdapter(PilotTraceRecord)`, and read the file back as
+      typed contract-owned trace record variants in the same order.
+  - id: ACC-RL-STOP-REASONS
+    verdict: pass
+    notes: >-
+      Parametrized coverage exercises all supported stop reasons exactly:
+      `success`, `failure`, `operator`, `fault`, and `request_human`. A separate
+      test proves an unsupported reason raises before the trace file is created
+      or `next_seq` is advanced.
+  - id: ACC-RL-REPLAY-READY-READBACK
+    verdict: pass
+    notes: >-
+      Readback returns `PilotTraceRecord` union members rather than dictionaries,
+      preserves file order, session metadata, sequence numbers, monotonic
+      timestamps, and payload types, and performs no sorting, renumbering, or
+      schema conversion for future replay consumers.
+  - id: ACC-RL-RECENT-HISTORY-DECISION-READY
+    verdict: pass
+    notes: >-
+      Tests build recent history from typed readback records via the public
+      package boundary and pass it into `pilot.build_prompt_payload` /
+      `pilot.render_prompt` as the `recent_history` value without importing ROS
+      packages, touching hardware, or calling OpenAI/Anthropic provider SDKs.
+  - id: ACC-RL-PROMPT-SAFE-HISTORY
+    verdict: pass
+    notes: >-
+      Recent-history tests prove bounded output and assert logger-derived
+      surfaces exclude raw JSON fragments, raw image markers, binary/null data,
+      secret markers, environment dump markers, transcript markers, and
+      unbounded provider or ROS log text.
+  - id: ACC-RL-TEMP-TRACE-OUTPUTS
+    verdict: pass
+    notes: >-
+      Added coverage writes generated JSONL traces under `tmp_path`; the
+      existing default-path test removes its default trace in a `finally` block.
+      `git status --short` shows no committed runtime JSONL outputs.
+  - id: ACC-RL-SCOPE-LIMITED
+    verdict: pass
+    notes: >-
+      `git diff` for this slice is limited to `pilot/src/pilot/__init__.py` and
+      `pilot/tests/test_run_logger.py`; `pilot/src/pilot/run_logger.py` is
+      unchanged. No schemas, replay runner, ROS code, firmware, CLI delivery
+      recipe, or hardware orchestration files were edited.
+  - id: ACC-RL-GATES
+    verdict: pass
+    notes: >-
+      Changeset lists `uv sync`, `make -C pilot test`, `make -C pilot lint`,
+      root `make test`, root `make validate`, and root `make lint`. Reviewer
+      reran `make -C pilot test`, `make -C pilot lint`, `make test`,
+      `make validate`, and `make lint`; all exited successfully.
+verdict: approve
+rework: []
