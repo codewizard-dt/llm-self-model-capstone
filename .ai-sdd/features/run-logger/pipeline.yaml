@@ -1,0 +1,14 @@
+apiVersion: ai-sdd/v1
+kind: Pipeline
+metadata: { name: run-logger, version: 1 }
+spec:
+  semantics: enabler
+  nodes:
+    - { id: logger-core-api, kind: pipeline, pipeline: ../.., stack: pilot }
+    - { id: trace-append-writer, kind: pipeline, pipeline: ../.., stack: pilot }
+    - { id: trace-readback-history, kind: pipeline, pipeline: ../.., stack: pilot }
+    - { id: run-logger-coverage-exports, kind: pipeline, pipeline: ../.., stack: pilot }
+  edges:
+    - { from: logger-core-api, to: trace-append-writer }
+    - { from: trace-append-writer, to: trace-readback-history }
+    - { from: trace-readback-history, to: run-logger-coverage-exports }
