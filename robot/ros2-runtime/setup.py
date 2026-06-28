@@ -53,6 +53,7 @@ setup(
             "vexy_localization_benchmark = vexy_ros.localization_benchmark:main",
             "vexy_pickup_goal_loop = vexy_ros.pickup_goal_loop:main",
             "vexy_visual_pickup_probe = vexy_ros.visual_pickup_probe:main",
+            "vexy_verify_visual_pickup_proof = vexy_ros.visual_pickup_proof_verify:main",
             "vexy_bridge_capability_probe = vexy_ros.bridge_capability_probe:main",
         ],
     },

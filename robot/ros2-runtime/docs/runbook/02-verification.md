@@ -319,6 +319,20 @@ not partial success. Inspect `capture.last_image`, `images/`, `/operator/status`
 JSONL, `/vex/telemetry` JSONL, and `bag/metadata.yaml` before claiming the ball
 was held and lifted.
 
+After reviewing the saved image and confirming the ball is visibly held in the
+claw and lifted, write a machine-readable verdict:
+
+```bash
+ros2 run vexy_ros vexy_verify_visual_pickup_proof \
+  --result "/tmp/$RUN_ID/probe-result.json" \
+  --visual-confirmed \
+  --output "/tmp/$RUN_ID/proof-verdict.json"
+```
+
+Do not pass `--visual-confirmed` unless the saved frame actually shows the ball
+held in the claw after lift. Without that flag, the verifier intentionally fails
+with `reason:"visual_confirmed"` even if telemetry and files are present.
+
 Always send a final stop before inspecting the scene:
 
 ```bash
