@@ -1,0 +1,12 @@
+apiVersion: ai-sdd/v1
+kind: Pipeline
+metadata: { name: pm4-one-skill-execution, version: 1 }
+spec:
+  semantics: enabler
+  nodes:
+    - { id: executor-core-and-trace, kind: pipeline, pipeline: ../.., stack: pilot }
+    - { id: hardware-proof-transport, kind: pipeline, pipeline: ../.., stack: pilot }
+    - { id: proof-docs-and-coverage, kind: pipeline, pipeline: ../.., stack: pilot }
+  edges:
+    - { from: executor-core-and-trace, to: hardware-proof-transport }
+    - { from: hardware-proof-transport, to: proof-docs-and-coverage }
