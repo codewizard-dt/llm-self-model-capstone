@@ -10,6 +10,7 @@ from self_model_generator.loop_closure import (
     run_critic_panel,
 )
 from self_model_generator.gap_analyzer import build_gap_summary_from_jsonl, write_gap_summary
+from self_model_generator.loop_runner import run_full_loop
 from self_model_generator.packet_builder import (
     BLOCKED_F10_GAP,
     BLOCKED_HARDWARE_PROOF,
@@ -108,6 +109,24 @@ def validate_loop_closure_fixture() -> None:
         raise AssertionError("exported task envelope must carry the candidate generation")
 
 
+def validate_full_loop_fixture() -> None:
+    with TemporaryDirectory() as tmpdir:
+        manifest = run_full_loop(
+            self_model_path=DEFAULT_SELF_MODEL,
+            parts_catalog_path=DEFAULT_PARTS,
+            contract_jsonl_path=DEFAULT_CONTRACT_JSONL,
+            out_dir=Path(tmpdir),
+            provenance="fixture",
+        )
+        task_path = Path(manifest["artifacts"]["task_envelope"])
+        if not task_path.exists():
+            raise AssertionError("full loop must write a task envelope artifact")
+        if manifest["success"] is not True:
+            raise AssertionError("full loop manifest must report success")
+        if manifest["critic_approved"] is not True:
+            raise AssertionError("full loop manifest must record critic approval")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Validate self-model packet-builder fixtures.")
     parser.add_argument("--out", type=Path, default=None)
@@ -115,6 +134,7 @@ def main(argv: list[str] | None = None) -> int:
 
     contract_packet, ros_packet, gap_packet = validate_fixture_packets()
     validate_loop_closure_fixture()
+    validate_full_loop_fixture()
     if args.out is not None:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(
