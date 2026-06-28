@@ -1,0 +1,18 @@
+summary: >-
+  Added the supervised `pilot skill` hardware CLI, lazy PM4 ROS transport, approved-skill command
+  normalization, read-only live observation capture before dispatch, survey/operator topic mappings,
+  read-only verification behavior, trace JSONL output, focused tests, and hardened `pilot observe`
+  delegation under the same console command so observe CLI exit-code errors remain process return
+  codes even across test module reload boundaries.
+satisfies:
+  - ACC-CLI-HARDWARE-GATE
+  - ACC-APPROVED-SKILLS-ONLY
+  - ACC-CONTRACT-COMMANDS
+  - ACC-LIVE-OBSERVATION
+  - ACC-SURVEY-ROS-MAPPING
+  - ACC-CLAW-ROS-MAPPING-OR-UNSUPPORTED
+  - ACC-VERIFY-READ-ONLY
+  - ACC-TRACE-AND-EXIT
+  - ACC-ROS-OPTIONAL-IMPORTS
+  - ACC-OBSERVE-PRESERVED
+  - ACC-REGRESSION-GATES

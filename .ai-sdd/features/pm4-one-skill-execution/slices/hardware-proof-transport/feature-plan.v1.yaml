@@ -1,0 +1,248 @@
+summary: >-
+  Add the PM4 supervised hardware transport and CLI for exactly one approved pilot skill:
+  `survey_scene`, `claw_open`, `claw_close`, `verify_grasp`, or `verify_drop`. The CLI must require
+  explicit `--hardware` and `--human-supervised` before constructing a ROS transport, convert CLI or
+  JSON input into contract-owned `PilotSkillCommand` objects, obtain a live `PilotObservation`, call
+  the existing one-skill executor, map current ROS terminal evidence into `PilotSkillResult`, write a
+  contract-valid trace JSONL, and stop after that one skill attempt.
+
+scope:
+  in:
+    - >-
+      Add a `pilot skill ...` CLI path equivalent to
+      `pilot skill --hardware --human-supervised --skill survey_scene --duration-s 3.0 --out
+      <trace.jsonl>`, while preserving the existing `pilot observe ...` command behavior under the
+      same console command.
+    - >-
+      Support only the approved PM4 hardware proof skill set:
+      `survey_scene`, `claw_open`, `claw_close`, `verify_grasp`, and `verify_drop`; reject every
+      other skill at CLI validation time before hardware transport construction.
+    - >-
+      Require both `--hardware` and `--human-supervised` plus an explicit output path before any ROS
+      publisher, subscriber, node, or transport is constructed.
+    - >-
+      Convert CLI convenience flags and/or a contract JSON command input into
+      `contracts.PilotSkillCommand` instances without defining any new pilot-local pydantic schema.
+    - >-
+      Build the current `contracts.PilotObservation` from the existing read-only ROS evidence topics
+      and `pilot.live_observation` helpers before dispatch, then pass it to
+      `pilot.execution.execute_one_skill(..., mode=ValidationMode.HARDWARE,
+      human_supervised=True, ...)`.
+    - >-
+      Implement `pilot.ros_execution` as the only module that may import `rclpy` and ROS message
+      packages; `pilot`, `pilot.execution`, `pilot.trace`, and parser tests must remain importable
+      on a development machine without ROS 2 installed.
+    - >-
+      Map `survey_scene` dispatch to `/survey/goal`, terminal wait to `/survey/result`, and cancel to
+      `/survey/cancel`; convert terminal survey payloads into `TransportTerminalOutcome` or
+      contract-valid `PilotSkillResult` statuses `ok`, `rejected`, `failed`, or `stale`.
+    - >-
+      Map `claw_open` and `claw_close` only to a current safe ROS/Brain surface when available:
+      publish `/operator/command` actions `release` and `grab` respectively, wait for the matching
+      `/operator/results` terminal payload, and cancel/stop through the safest current operator or
+      survey cancel/stop path available to the transport.
+    - >-
+      Implement `verify_grasp` and `verify_drop` as read-only verification skills against the live
+      observation/assertion evidence available in this repo; if the required observation evidence is
+      unavailable or stale, return a contract-valid rejected/stale result before publishing any
+      motion-producing ROS message.
+    - >-
+      For any approved ball-handling skill whose live ROS surface cannot be proven safe in the
+      current repo, return a clear unsupported/unavailable result before dispatch, write trace stop
+      evidence, and document the missing surface in the failure message rather than inventing
+      fallback motion.
+    - >-
+      Add focused tests for CLI supervision gates, command construction, optional ROS import behavior,
+      mocked ROS topic mapping, terminal result normalization, cancel/timeout behavior, unsupported
+      ball-handling behavior, and preservation of existing observe CLI behavior.
+  out:
+    - Full observe-decide-act loop execution, LLM calls, decision parsing, retries, recovery policy,
+      autonomous task recipes, or chaining a second skill after the PM4 proof command.
+    - Skill baseline capture, calibration memory, destination navigation, approach/centering
+      execution, or physical proof execution inside automated tests.
+    - Changes to `contracts/` schemas, new pilot-local pydantic schemas, PROS firmware, Brain
+      watchdog behavior, low-level serial packet definitions, or ROS runtime nodes under
+      `robot/ros2-runtime/`.
+    - Broad registry-to-ROS coverage beyond the approved PM4 skill set.
+    - Manual proof documentation, which belongs to the later `proof-docs-and-coverage` slice.
+    - >-
+      `make demo`, which remains an m2 offline-loop milestone concern.
+
+acceptance:
+  - id: ACC-CLI-HARDWARE-GATE
+    description: >-
+      CLI tests prove `pilot skill` fails before hardware transport construction when `--hardware`,
+      `--human-supervised`, a valid approved skill name, or `--out` is missing; failures produce a
+      clear nonzero exit and no ROS publisher/subscriber/node creation.
+  - id: ACC-APPROVED-SKILLS-ONLY
+    description: >-
+      Tests cover command construction for exactly `survey_scene`, `claw_open`, `claw_close`,
+      `verify_grasp`, and `verify_drop`, and prove other contract skill names are rejected by the
+      PM4 CLI before dispatch.
+  - id: ACC-CONTRACT-COMMANDS
+    description: >-
+      CLI convenience flags and command JSON inputs are normalized into contract-valid
+      `PilotSkillCommand` objects with stable command ids, issued timestamps, and bounded parameter
+      values, without adding new schemas outside `contracts/`.
+  - id: ACC-LIVE-OBSERVATION
+    description: >-
+      The hardware CLI obtains a current `PilotObservation` from the existing live-observation path
+      before dispatch, passes it to `execute_one_skill` in hardware mode with explicit human
+      supervision, and propagates validation rejection without publishing motion-producing messages.
+  - id: ACC-SURVEY-ROS-MAPPING
+    description: >-
+      Mocked transport tests prove `survey_scene` publishes one `/survey/goal` payload, waits for the
+      matching `/survey/result`, maps success/rejected/failed/stale payloads to contract
+      `PilotSkillResult` semantics, and publishes `/survey/cancel` on timeout or interrupt.
+  - id: ACC-CLAW-ROS-MAPPING-OR-UNSUPPORTED
+    description: >-
+      Tests prove `claw_open` and `claw_close` use the current operator command surface only when it
+      is explicitly available and safe (`/operator/command` actions `release` and `grab` with
+      `/operator/results` terminal evidence); otherwise the transport returns unsupported before
+      dispatch and does not publish fallback motion.
+  - id: ACC-VERIFY-READ-ONLY
+    description: >-
+      Tests prove `verify_grasp` and `verify_drop` are read-only checks over observation/assertion
+      evidence and never publish motion-producing ROS messages; missing or stale evidence returns a
+      rejected/stale terminal result with an actionable message.
+  - id: ACC-TRACE-AND-EXIT
+    description: >-
+      Successful and failed `pilot skill` runs write contract-valid `PilotTraceRecord` JSONL to
+      `--out`, including command/result/stop records where dispatch occurs and explanatory stop
+      records where validation or unsupported-surface rejection prevents dispatch; process exit codes
+      distinguish success from rejection, timeout, interrupt, missing ROS dependencies, and runtime
+      errors.
+  - id: ACC-ROS-OPTIONAL-IMPORTS
+    description: >-
+      Unit tests prove parser modules and existing `pilot observe` code import and run without ROS 2
+      packages installed; only `pilot.ros_execution` performs lazy ROS imports after the hardware gate
+      has passed.
+  - id: ACC-OBSERVE-PRESERVED
+    description: >-
+      Existing `pilot observe` behavior and tests remain green or are migrated cleanly under the same
+      `pilot` console command without adding command-topic subscriptions to observe-only runs.
+  - id: ACC-REGRESSION-GATES
+    description: >-
+      Focused pilot tests and ruff checks pass for this slice, and the repo-required gates remain
+      `uv sync`, `make test`, `make validate`, and `make lint`.
+
+decisions:
+  - id: DEC-PM4-HARDWARE-CLI-SCOPE
+    status: closed
+    decision: >-
+      This slice owns only the PM4 hardware CLI and optional ROS transport for one supervised skill
+      attempt over the approved proof set.
+    rationale: >-
+      PM4 proves one validated skill execution and safe stop, not a full pilot loop, baseline capture,
+      or broad registry-to-ROS implementation.
+    citations:
+      - .ai-sdd/features/pm4-one-skill-execution/requirements.md#goal
+      - .ai-sdd/features/pm4-one-skill-execution/requirements.md#in-scope
+      - .ai-sdd/features/pm4-one-skill-execution/slices/hardware-proof-transport.md#what-this-slice-delivers
+      - PILOT_MASTER_REQUIREMENTS.md#milestones
+  - id: DEC-APPROVED-PM4-SKILL-SET
+    status: closed
+    decision: >-
+      The only PM4 hardware proof skills are `survey_scene`, `claw_open`, `claw_close`,
+      `verify_grasp`, and `verify_drop`; all other skill names are rejected before hardware dispatch.
+    rationale: >-
+      The PM4 requirements and slice brief explicitly close this set so the first motion-producing
+      proof stays bounded and auditable.
+    citations:
+      - .ai-sdd/features/pm4-one-skill-execution/requirements.md#in-scope
+      - .ai-sdd/features/pm4-one-skill-execution/requirements.md#proposed-decisions
+      - .ai-sdd/features/pm4-one-skill-execution/slices/hardware-proof-transport.md#requirements
+      - contracts/src/contracts/pilot.py
+  - id: DEC-HARDWARE-SUPERVISION-GATE
+    status: closed
+    decision: >-
+      The CLI must require both `--hardware` and `--human-supervised`, then pass
+      `mode=ValidationMode.HARDWARE` and `human_supervised=True` into the existing executor and
+      safety validator.
+    rationale: >-
+      PM4 hardware execution can move the robot, so the supervision signal must be explicit and must
+      be checked before any motion-producing ROS message can be published.
+    citations:
+      - PILOT_MASTER_REQUIREMENTS.md#constraints
+      - .ai-sdd/features/pm4-one-skill-execution/requirements.md#constraints
+      - .ai-sdd/features/pm4-one-skill-execution/requirements.md#open-questions-and-proposed-resolutions
+      - .ai-sdd/features/pm4-one-skill-execution/slices/hardware-proof-transport.md#requirements
+      - pilot/src/pilot/execution.py
+  - id: DEC-ROS-IMPORT-BOUNDARY
+    status: closed
+    decision: >-
+      `rclpy` and ROS message imports are isolated to `pilot.ros_execution` and are performed lazily
+      only after CLI gating succeeds; core executor, trace, parser, and package exports remain
+      ROS-free at import time.
+    rationale: >-
+      PM4 tests must run on development machines without ROS 2 Jazzy installed, while live hardware
+      runs still need a concrete ROS transport on the Pi.
+    citations:
+      - .ai-sdd/conventions/pilot.md#boundary-rules
+      - .ai-sdd/features/pm4-one-skill-execution/requirements.md#constraints
+      - .ai-sdd/features/pm4-one-skill-execution/slices/hardware-proof-transport.md#requirements
+      - .ai-sdd/features/pm4-one-skill-execution/slices/executor-core-and-trace/review.v1.yaml
+  - id: DEC-CURRENT-ROS-SURFACES
+    status: closed
+    decision: >-
+      `survey_scene` uses the existing `/survey/goal`, `/survey/result`, and `/survey/cancel`
+      surface. `claw_open` and `claw_close` may use `/operator/command` actions `release` and `grab`
+      with `/operator/results` terminal evidence because those actions are already exposed by the
+      operator node and bridge protocol; verification skills remain read-only over observation and
+      assertion evidence.
+    rationale: >-
+      The repo currently exposes dedicated survey topics, operator command/result topics, and Brain
+      protocol commands for `grab` and `release`, but no separate safe live motion fallback should be
+      invented for unsupported or unverifiable ball-handling behavior.
+    citations:
+      - robot/ros2-runtime/src/vexy_ros/survey_scan_node.py
+      - robot/ros2-runtime/src/vexy_ros/operator/node.py
+      - robot/ros2-runtime/src/vexy_ros/operator/_core.py
+      - robot/ros2-runtime/src/vexy_ros/bridge_protocol.py
+      - .ai-sdd/features/pm4-one-skill-execution/slices/hardware-proof-transport.md#requirements
+  - id: DEC-UNSUPPORTED-BEFORE-DISPATCH
+    status: closed
+    decision: >-
+      When a PM4 ball-handling skill lacks a current safe live ROS surface or the required
+      observation evidence, the transport returns a contract-valid rejected/stale result and writes
+      trace evidence before dispatch instead of publishing an alternate movement command.
+    rationale: >-
+      PM4 is a supervised proof boundary. Unsafe fallback motion would violate fixed-skill execution,
+      contract validation, and the slice requirement to avoid inventing live ball-handling behavior
+      when the repo lacks a safe surface.
+    citations:
+      - PILOT_MASTER_REQUIREMENTS.md#execution-checklist
+      - PILOT_MASTER_REQUIREMENTS.md#constraints
+      - .ai-sdd/features/pm4-one-skill-execution/requirements.md#constraints
+      - .ai-sdd/features/pm4-one-skill-execution/slices/hardware-proof-transport.md#requirements
+  - id: DEC-CONTRACT-TRACE-ONLY
+    status: closed
+    decision: >-
+      The CLI writes the existing contract-owned `PilotTraceRecord` JSONL through
+      `PilotTraceWriter`; no PM4-specific proof-log schema is introduced.
+    rationale: >-
+      PM4 proof artifacts must remain consumable by later replay and run-logger work, and schemas
+      belong only in `contracts/`.
+    citations:
+      - MASTER_REQUIREMENTS.md#components
+      - PILOT_MASTER_REQUIREMENTS.md#components
+      - .ai-sdd/conventions/pilot.md#boundary-rules
+      - .ai-sdd/features/pm4-one-skill-execution/requirements.md#constraints
+      - pilot/src/pilot/trace.py
+
+files:
+  - pilot/src/pilot/skill_cli.py
+  - pilot/src/pilot/ros_execution.py
+  - pilot/pyproject.toml
+  - pilot/tests/test_skill_cli.py
+  - pilot/tests/test_ros_execution.py
+
+tests:
+  - uv sync
+  - make test
+  - make validate
+  - make lint
+  - cd pilot && uv sync
+  - cd pilot && PYTHONPATH=src:../contracts/src uv run pytest tests/test_skill_cli.py tests/test_ros_execution.py tests/test_observe_cli.py -v
+  - cd pilot && PYTHONPATH=src:../contracts/src uv run ruff check src/pilot/skill_cli.py src/pilot/ros_execution.py tests/test_skill_cli.py tests/test_ros_execution.py
+  - cd pilot && PYTHONPATH=src:../contracts/src uv run ruff format --check src/pilot/skill_cli.py src/pilot/ros_execution.py tests/test_skill_cli.py tests/test_ros_execution.py

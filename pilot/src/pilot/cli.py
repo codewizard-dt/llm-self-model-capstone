@@ -40,6 +40,22 @@ ClockMs = Callable[[], int]
 Validator = Callable[..., ValidationResult]
 Executor = Callable[[ValidationResult], ExecutionResult]
 ObservationFactory = Callable[[int], PilotObservation]
+PM4_SKILL_FLAGS = frozenset(
+    (
+        "--command-id",
+        "--command-json",
+        "--destination-id",
+        "--grip-force-n",
+        "--human-supervised",
+        "--min-confidence",
+        "--object-id",
+        "--opening-pct",
+        "--out",
+        "--readiness-timeout-s",
+        "--timeout-ms",
+        "--yaw-span-deg",
+    )
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,7 +77,12 @@ class _UnavailableTransport:
 def main(argv: Sequence[str] | None = None) -> int:
     """Console script entry point."""
 
-    return run(argv)
+    args = list(sys.argv[1:] if argv is None else argv)
+    if _is_pm4_skill_invocation(args):
+        from pilot import skill_cli
+
+        return skill_cli.main(args)
+    return run(args)
 
 
 def run(
@@ -271,6 +292,12 @@ def _positive_int(value: str) -> int:
     if parsed <= 0:
         raise argparse.ArgumentTypeError("must be greater than 0")
     return parsed
+
+
+def _is_pm4_skill_invocation(argv: Sequence[str]) -> bool:
+    if argv[:1] != ["skill"]:
+        return False
+    return any(arg in PM4_SKILL_FLAGS or arg.partition("=")[0] in PM4_SKILL_FLAGS for arg in argv)
 
 
 def _validation_output(validation: ValidationResult) -> dict[str, object]:

@@ -1,0 +1,75 @@
+items:
+  - id: ACC-CLI-HARDWARE-GATE
+    verdict: pass
+    notes: >-
+      `pilot skill` validates `--hardware`, `--human-supervised`, approved skill scope, and `--out`
+      before `_build_transport` is called. Focused CLI tests use an injected factory and prove each
+      gate exits nonzero without constructing a transport, node, publisher, or subscriber.
+  - id: ACC-APPROVED-SKILLS-ONLY
+    verdict: pass
+    notes: >-
+      The PM4 CLI allowlist is exactly `survey_scene`, `claw_open`, `claw_close`, `verify_grasp`,
+      and `verify_drop`. Tests construct commands for all five and prove both unknown names and
+      other contract skill names are rejected before dispatch.
+  - id: ACC-CONTRACT-COMMANDS
+    verdict: pass
+    notes: >-
+      CLI flags and `--command-json` are normalized through `TypeAdapter(PilotSkillCommand)`, with
+      generated stable command ids, issued timestamps from the injected clock, and contract-bounded
+      argparse/pydantic parameters. No pilot-local pydantic schema was added.
+  - id: ACC-LIVE-OBSERVATION
+    verdict: pass
+    notes: >-
+      The hardware CLI obtains a live `PilotObservation` via `transport.read_observation`, binds it,
+      checks preflight, and calls `execute_one_skill` with `mode=ValidationMode.HARDWARE` and
+      `human_supervised=True`. Validation rejection writes a stop record and does not dispatch.
+  - id: ACC-SURVEY-ROS-MAPPING
+    verdict: pass
+    notes: >-
+      `survey_scene` publishes one `/survey/goal`, waits on `/survey/result`, normalizes
+      success/rejected/failed/stale payloads to `PilotSkillResult` semantics, and publishes
+      `/survey/cancel` on timeout. The permissive no-command-id match is compatible with the
+      existing survey node, which does not echo `command_id` in result payloads.
+  - id: ACC-CLAW-ROS-MAPPING-OR-UNSUPPORTED
+    verdict: pass
+    notes: >-
+      `claw_open` and `claw_close` map only to `/operator/command` actions `release` and `grab` and
+      wait for `/operator/results` method evidence. When the operator claw surface is marked
+      unavailable, preflight returns a rejected terminal outcome before publishing and no fallback
+      motion is sent.
+  - id: ACC-VERIFY-READ-ONLY
+    verdict: pass
+    notes: >-
+      `verify_grasp` and `verify_drop` dispatch as read-only no-ops and terminally succeed only after
+      executor safety validation accepts current manipulator/assertion evidence. Existing safety
+      tests cover missing/stale verification evidence rejection, and ROS transport tests prove no
+      motion-producing publisher receives verify messages.
+  - id: ACC-TRACE-AND-EXIT
+    verdict: pass
+    notes: >-
+      Successful runs emit contract-valid command/result/stop JSONL; preflight unsupported-surface
+      rejection emits result/stop; validation rejection emits explanatory stop without dispatch.
+      CLI exit codes distinguish success, usage, rejection/stale, timeout, interrupt, ROS dependency
+      failure, output failure, and runtime failure.
+  - id: ACC-ROS-OPTIONAL-IMPORTS
+    verdict: pass
+    notes: >-
+      `pilot.skill_cli`, parser code, executor, trace, and `pilot.ros_execution` import without ROS 2
+      installed. ROS package imports are lazy in `load_ros_runtime`, and the hardware path reaches
+      that call only after supervision/output/skill gates pass. Existing observe imports and missing
+      ROS dependency behavior remain covered.
+  - id: ACC-OBSERVE-PRESERVED
+    verdict: pass
+    notes: >-
+      The console command now delegates `pilot observe ...` through `pilot.skill_cli` while preserving
+      observe exit-code errors. Existing observe tests pass, including read-only topic subscriptions
+      and no command-topic publishers/subscribers during observe-only runs.
+  - id: ACC-REGRESSION-GATES
+    verdict: pass
+    notes: >-
+      Verified locally: `cd pilot && uv sync`; focused pilot pytest for skill/ROS/observe passed
+      32 tests; focused ruff check and format check passed; root `make test`, `make validate`, and
+      `make lint` all passed. Root `uv sync` is not applicable because this repo has no root
+      `pyproject.toml`; dependencies are vertical-scoped.
+verdict: approve
+rework: []
