@@ -52,6 +52,7 @@ setup(
             "vexy_calibrate_camera = vexy_ros.camera_calibration_capture:main",
             "vexy_localization_benchmark = vexy_ros.localization_benchmark:main",
             "vexy_pickup_goal_loop = vexy_ros.pickup_goal_loop:main",
+            "vexy_visual_pickup_probe = vexy_ros.visual_pickup_probe:main",
         ],
     },
 )
