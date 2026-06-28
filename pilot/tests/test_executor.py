@@ -66,6 +66,23 @@ def _accepted_validation(command: object | None = None) -> ValidationResult:
     )
 
 
+class _FakeTerminalTransport:
+    def __init__(self, terminal_payloads: list[object] | None = None) -> None:
+        self.requests: list[TransportRequest] = []
+        self.waits_ms: list[int] = []
+        self._terminal_payloads = list(terminal_payloads or [])
+
+    def send(self, request: TransportRequest) -> dict[str, object]:
+        self.requests.append(request)
+        return {"published": True}
+
+    def receive_result(self, request: TransportRequest, timeout_ms: int) -> object | None:
+        self.waits_ms.append(timeout_ms)
+        if not self._terminal_payloads:
+            return None
+        return self._terminal_payloads.pop(0)
+
+
 def _motion_command() -> ApproachTargetSkillCommand:
     return ApproachTargetSkillCommand(
         command_id="cmd-approach",
@@ -203,22 +220,25 @@ def test_executor_public_helper_types_are_immutable_and_use_contract_status() ->
 
 def test_accepted_validation_hands_normalized_command_to_transport_once() -> None:
     command = _motion_command()
-    calls: list[TransportRequest] = []
-
-    def fake_transport(request: TransportRequest) -> dict[str, object]:
-        calls.append(request)
-        return {"queued": True, "route": request.route.command_path}
+    terminal_payload = {
+        "command_id": "cmd-approach",
+        "skill": PilotSkillName.APPROACH_TARGET.value,
+        "status": "ok",
+        "completed_ms": 180,
+        "message": "standoff reached",
+    }
+    transport = _FakeTerminalTransport([terminal_payload])
 
     result = execute_validated_command(
         _accepted_validation(command),
-        fake_transport,
+        transport,
         policy=ExecutorPolicy(transport_grace_ms=25),
         clock_ms=lambda: 175,
     )
 
     definition = get_skill_definition(PilotSkillName.APPROACH_TARGET)
-    assert len(calls) == 1
-    request = calls[0]
+    assert len(transport.requests) == 1
+    request = transport.requests[0]
     assert request.command == command
     assert request.command_id == "cmd-approach"
     assert request.skill is PilotSkillName.APPROACH_TARGET
@@ -226,32 +246,28 @@ def test_accepted_validation_hands_normalized_command_to_transport_once() -> Non
     assert request.route.expected_result_source == definition.expected_result_source
     assert request.route.max_duration_ms == definition.max_duration_ms
     assert request.deadline.max_duration_ms == definition.max_duration_ms
+    assert request.deadline.effective_timeout_ms == 10_000
     assert request.deadline.transport_grace_ms == 25
-    assert request.deadline.deadline_ms == 100 + definition.max_duration_ms + 25
+    assert request.deadline.deadline_ms == 175 + definition.max_duration_ms + 25
     assert request.payload["route"] == BOUNDED_CONTROL_ROUTE
     assert request.payload["action"] == "approach_target"
     assert request.payload["command_id"] == "cmd-approach"
     assert request.payload["skill"] == PilotSkillName.APPROACH_TARGET.value
+    assert request.payload["effective_timeout_ms"] == 10_000
     assert request.payload["parameters"] == command.params.model_dump(mode="json")
-    assert result.status is CommandStatus.QUEUED
-    assert result.reason_code == ExecutorReasonCode.QUEUED.value
+    assert transport.waits_ms == [10_025]
+    assert result.status is CommandStatus.OK
+    assert result.reason_code == ExecutorReasonCode.TERMINAL_OK.value
     assert result.command_id == "cmd-approach"
     assert result.skill is PilotSkillName.APPROACH_TARGET
     assert result.issued_ms == 100
-    assert result.completed_ms == 175
-    assert result.raw_transport_payload == {"queued": True, "route": definition.command_path}
+    assert result.completed_ms == 180
+    assert result.message == "terminal transport result ok: standoff reached"
+    assert result.raw_transport_payload == terminal_payload
 
 
 def test_executor_accepts_transport_object_protocol() -> None:
-    class FakeTransport:
-        def __init__(self) -> None:
-            self.requests: list[TransportRequest] = []
-
-        def send(self, request: TransportRequest) -> object | None:
-            self.requests.append(request)
-            return None
-
-    transport = FakeTransport()
+    transport = _FakeTerminalTransport([{"command_id": "cmd-stop", "status": "ok"}])
     result = SkillExecutor(transport, clock_ms=lambda: 250).execute(
         _accepted_validation(_stop_command())
     )
@@ -261,8 +277,183 @@ def test_executor_accepts_transport_object_protocol() -> None:
     assert transport.requests[0].payload["route"] == BOUNDED_CONTROL_ROUTE
     assert transport.requests[0].payload["action"] == "halt"
     assert transport.requests[0].payload["reason"] == "unsafe"
-    assert result.status is CommandStatus.QUEUED
+    assert result.status is CommandStatus.OK
+    assert result.reason_code == ExecutorReasonCode.TERMINAL_OK.value
     assert result.completed_ms == 250
+
+
+def test_publish_return_is_not_skill_success_and_missing_terminal_times_out() -> None:
+    command = _command_for_skill(PilotSkillName.FACE_TARGET)
+    transport = _FakeTerminalTransport()
+
+    result = execute_validated_command(
+        _accepted_validation(command),
+        transport,
+        policy=ExecutorPolicy(transport_grace_ms=50),
+        clock_ms=lambda: 1_000,
+    )
+
+    assert len(transport.requests) == 1
+    request = transport.requests[0]
+    assert request.deadline.effective_timeout_ms == 2_500
+    assert request.deadline.deadline_ms == 3_550
+    assert transport.waits_ms == [2_550]
+    assert result.status is CommandStatus.STALE
+    assert result.reason_code == ExecutorReasonCode.TRANSPORT_TIMEOUT.value
+    assert result.message == "no matching terminal transport result before deadline"
+    assert result.completed_ms == 3_550
+
+
+@pytest.mark.parametrize(
+    ("payload", "expected_status", "expected_reason", "message_fragment"),
+    [
+        (
+            {"command_id": "cmd-approach", "status": "rejected", "message": "operator rejected"},
+            CommandStatus.REJECTED,
+            ExecutorReasonCode.TERMINAL_REJECTED.value,
+            "operator rejected",
+        ),
+        (
+            {"command_id": "cmd-approach", "success": False, "reason": "motor fault"},
+            CommandStatus.FAILED,
+            ExecutorReasonCode.TERMINAL_FAILED.value,
+            "motor fault",
+        ),
+        (
+            {"command_id": "cmd-approach", "status": "stale", "fault": "bridge stale"},
+            CommandStatus.STALE,
+            ExecutorReasonCode.TERMINAL_STALE.value,
+            "bridge stale",
+        ),
+    ],
+)
+def test_terminal_rejected_failed_and_stale_payloads_are_parsed(
+    payload: dict[str, object],
+    expected_status: CommandStatus,
+    expected_reason: str,
+    message_fragment: str,
+) -> None:
+    transport = _FakeTerminalTransport([payload])
+
+    result = execute_validated_command(
+        _accepted_validation(_motion_command()),
+        transport,
+        clock_ms=lambda: 2_000,
+    )
+
+    assert result.status is expected_status
+    assert result.reason_code == expected_reason
+    assert message_fragment in result.message
+    assert result.raw_transport_payload == payload
+
+
+def test_terminal_json_payload_is_parsed_into_success_result() -> None:
+    payload = json.dumps(
+        {
+            "command_id": "cmd-approach",
+            "status": "ok",
+            "completed_ms": 2_345,
+            "message": "arrived",
+        }
+    )
+    transport = _FakeTerminalTransport([payload])
+
+    result = execute_validated_command(
+        _accepted_validation(_motion_command()),
+        transport,
+        clock_ms=lambda: 2_000,
+    )
+
+    assert result.status is CommandStatus.OK
+    assert result.reason_code == ExecutorReasonCode.TERMINAL_OK.value
+    assert result.completed_ms == 2_345
+    assert result.raw_transport_payload == payload
+
+
+def test_command_id_correlation_ignores_nonmatching_terminal_payloads() -> None:
+    transport = _FakeTerminalTransport(
+        [
+            {"command_id": "cmd-other", "status": "ok", "message": "wrong command"},
+            {"command_id": "cmd-approach", "status": "ok", "message": "matched"},
+        ]
+    )
+
+    result = execute_validated_command(
+        _accepted_validation(_motion_command()),
+        transport,
+        clock_ms=lambda: 3_000,
+    )
+
+    assert len(transport.requests) == 1
+    assert transport.waits_ms == [10_000, 10_000]
+    assert result.status is CommandStatus.OK
+    assert result.message == "terminal transport result ok: matched"
+    assert result.command_id == "cmd-approach"
+
+
+def test_ordered_terminal_payload_without_command_id_matches_active_request() -> None:
+    transport = _FakeTerminalTransport(
+        [
+            {
+                "outcome": {"success": True, "reason": "operator_complete"},
+                "source": {"brain_end_ms": 4_200},
+            }
+        ]
+    )
+
+    result = execute_validated_command(
+        _accepted_validation(_motion_command()),
+        transport,
+        clock_ms=lambda: 4_000,
+    )
+
+    assert result.status is CommandStatus.OK
+    assert result.reason_code == ExecutorReasonCode.TERMINAL_OK.value
+    assert result.command_id == "cmd-approach"
+    assert result.completed_ms == 4_200
+    assert result.message == "terminal transport result ok: operator_complete"
+
+
+def test_deadline_uses_min_command_timeout_and_registry_max_plus_grace() -> None:
+    command = _command_for_skill(PilotSkillName.FACE_TARGET)
+    transport = _FakeTerminalTransport([{"command_id": "cmd-face", "status": "ok"}])
+
+    execute_validated_command(
+        _accepted_validation(command),
+        transport,
+        policy=ExecutorPolicy(transport_grace_ms=75),
+        clock_ms=lambda: 5_000,
+    )
+
+    request = transport.requests[0]
+    assert get_skill_definition(PilotSkillName.FACE_TARGET).max_duration_ms == 4_000
+    assert request.deadline.max_duration_ms == 4_000
+    assert request.deadline.effective_timeout_ms == 2_500
+    assert request.deadline.deadline_ms == 7_575
+    assert request.payload["effective_timeout_ms"] == 2_500
+    assert request.payload["deadline_ms"] == 7_575
+    assert transport.waits_ms == [2_575]
+
+
+def test_stop_halt_timeout_returns_deterministic_ok_after_prior_timeout() -> None:
+    transport = _FakeTerminalTransport()
+    executor = SkillExecutor(transport, clock_ms=lambda: 10_000)
+
+    failed = executor.execute(_accepted_validation(_motion_command()))
+    stopped = executor.execute(_accepted_validation(_stop_command()))
+
+    assert [request.skill for request in transport.requests] == [
+        PilotSkillName.APPROACH_TARGET,
+        PilotSkillName.STOP,
+    ]
+    assert failed.status is CommandStatus.STALE
+    assert failed.reason_code == ExecutorReasonCode.TRANSPORT_TIMEOUT.value
+    assert stopped.status is CommandStatus.OK
+    assert stopped.reason_code == ExecutorReasonCode.STOP_POLICY_TIMEOUT.value
+    assert (
+        stopped.message == "stop halt request sent; no terminal evidence before stop policy timeout"
+    )
+    assert stopped.completed_ms == 10_500
 
 
 def test_all_contract_skills_have_mapping_or_assertion_only_executor_outcome() -> None:
@@ -321,7 +512,12 @@ def test_all_contract_skills_have_mapping_or_assertion_only_executor_outcome() -
             "max_duration_ms": definition.max_duration_ms,
             "success_assertion": definition.success_assertion.assertion_id,
         }
-        assert result.status is CommandStatus.QUEUED
+        if skill is PilotSkillName.STOP:
+            assert result.status is CommandStatus.OK
+            assert result.reason_code == ExecutorReasonCode.STOP_POLICY_TIMEOUT.value
+            continue
+        assert result.status is CommandStatus.STALE
+        assert result.reason_code == ExecutorReasonCode.TRANSPORT_TIMEOUT.value
 
 
 def test_transport_payloads_are_json_compatible_plain_data() -> None:

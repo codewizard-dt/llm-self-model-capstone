@@ -1,0 +1,97 @@
+items:
+  - id: ACC-TRANSPORT-SEND-ONCE
+    verdict: pass
+    notes: >-
+      Accepted non-assertion skills build one `TransportRequest` and call the
+      transport boundary exactly once. Tests assert the request preserves
+      command id, skill, route metadata, payload parameters, registry metadata,
+      effective timeout, grace, and computed deadline.
+  - id: ACC-NO-PUBLISH-SUCCESS
+    verdict: pass
+    notes: >-
+      `_send()` return values are ignored for result classification; the
+      executor waits for terminal evidence when a receiver exists and otherwise
+      returns deterministic stale or stop-policy timeout results. The missing
+      terminal test proves publish success is not reported as skill success.
+  - id: ACC-TERMINAL-OK-RESULT
+    verdict: pass
+    notes: >-
+      Mapping and JSON terminal payloads with matching command ids and ok-like
+      status values become `CommandStatus.OK`, preserve request command id and
+      skill, carry issued/completed timing, use the stable `terminal_ok` reason,
+      and retain the raw terminal payload.
+  - id: ACC-TERMINAL-REJECTED-FAILED
+    verdict: pass
+    notes: >-
+      Rejected and failed terminal payloads are covered by parametrized tests and
+      map to contract-owned `CommandStatus.REJECTED` and `CommandStatus.FAILED`
+      with stable executor reason codes and diagnostic message text.
+  - id: ACC-TIMEOUT-STALE
+    verdict: pass
+    notes: >-
+      Missing matching terminal feedback before the effective deadline returns
+      `CommandStatus.STALE` with `transport_timeout`, a deterministic timeout
+      message, and no success classification.
+  - id: ACC-DEADLINE-MIN-BOUND
+    verdict: pass
+    notes: >-
+      `_transport_request()` computes `effective_timeout_ms` as the smaller of
+      command `timeout_ms` and registry `max_duration_ms`, then adds
+      `ExecutorPolicy.transport_grace_ms` to the absolute deadline. Tests assert
+      this for the shorter command-timeout path and for default registry bounds.
+  - id: ACC-COMMAND-ID-CORRELATION
+    verdict: pass
+    notes: >-
+      `_wait_for_terminal_result()` ignores terminal payloads whose
+      `command_id`, `pilot_command_id`, or nested result/outcome command id does
+      not match the active request, then keeps waiting until a matching payload
+      arrives or the deadline expires.
+  - id: ACC-ORDERED-FALLBACK
+    verdict: pass
+    notes: >-
+      Terminal payloads without any pilot command id are consumed as the next
+      ordered result for the active request. The test preserves the request
+      command id in the returned `ExecutionResult` while taking status and
+      completion timing from the operator-style payload.
+  - id: ACC-FAKE-TRANSPORT
+    verdict: pass
+    notes: >-
+      Executor tests use `_FakeTerminalTransport`, an in-memory transport with
+      request capture, deterministic wait recording, and queued terminal payloads
+      to cover success, rejection, failure, timeout, command-id correlation,
+      ordered fallback, stop behavior, and send-once behavior without ROS.
+  - id: ACC-ROS-FREE-IMPORTS
+    verdict: pass
+    notes: >-
+      `pilot.executor` imports only standard library, `contracts`, and pilot
+      modules. The ROS import guard test passes, no `pilot.ros_executor` adapter
+      was introduced, and `make -C pilot test` runs without ROS packages or a
+      live ROS graph.
+  - id: ACC-STOP-HALT-RESULT
+    verdict: pass
+    notes: >-
+      `stop` still publishes one halt request when transport is available.
+      Terminal ok evidence returns `terminal_ok`; missing terminal evidence
+      returns deterministic `CommandStatus.OK` with `stop_policy_timeout`, and
+      tests cover stop after a prior stale transport result.
+  - id: ACC-VALIDATION-GATE-PRESERVED
+    verdict: pass
+    notes: >-
+      Malformed validation inputs, non-accepted validation statuses, and accepted
+      results without commands return deterministic rejected results before
+      transport construction. Existing refusal tests assert no transport calls.
+  - id: ACC-ASSERTION-ONLY-PRESERVED
+    verdict: pass
+    notes: >-
+      `verify_grasp` and `verify_drop` remain assertion-only outcomes: accepted
+      validation evidence returns deterministic OK with `assertion_validated`,
+      no request is sent, and no raw transport payload is attached.
+  - id: ACC-SCOPE-LIMITED-FILES
+    verdict: pass
+    notes: >-
+      `git diff --name-only` shows implementation changes only in
+      `pilot/src/pilot/executor.py` and `pilot/tests/test_executor.py`; no
+      contracts, registry, safety validator, package export, ROS runtime,
+      firmware, CLI, logger, replay, or recipe files are edited.
+verdict: approve
+rework: []

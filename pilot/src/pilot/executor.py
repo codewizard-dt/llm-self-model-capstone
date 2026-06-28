@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
@@ -31,6 +32,12 @@ class ExecutorReasonCode(StrEnum):
     MISSING_COMMAND = "missing_command"
     MALFORMED_VALIDATION = "malformed_validation"
     TRANSPORT_FAILED = "transport_failed"
+    TRANSPORT_TIMEOUT = "transport_timeout"
+    TERMINAL_OK = "terminal_ok"
+    TERMINAL_REJECTED = "terminal_rejected"
+    TERMINAL_FAILED = "terminal_failed"
+    TERMINAL_STALE = "terminal_stale"
+    STOP_POLICY_TIMEOUT = "stop_policy_timeout"
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,6 +56,7 @@ class ExecutorDeadline:
     """Deadline metadata derived from the skill registry."""
 
     max_duration_ms: int
+    effective_timeout_ms: int
     transport_grace_ms: int
     deadline_ms: int | None
 
@@ -167,9 +175,10 @@ class SkillExecutor:
                 completed_ms=self._clock_ms(),
             )
 
-        request = _transport_request(command, definition, policy=self._policy)
+        sent_ms = self._clock_ms()
+        request = _transport_request(command, definition, policy=self._policy, sent_ms=sent_ms)
         try:
-            raw_payload = _send(self._transport, request)
+            _send(self._transport, request)
         except Exception as exc:  # pragma: no cover - defensive boundary for later adapters.
             return ExecutionResult(
                 command_id=command.command_id,
@@ -181,16 +190,10 @@ class SkillExecutor:
                 completed_ms=self._clock_ms(),
             )
 
-        return ExecutionResult(
-            command_id=command.command_id,
-            skill=command_skill,
-            status=CommandStatus.QUEUED,
-            reason_code=ExecutorReasonCode.QUEUED.value,
-            message="command queued at executor boundary",
-            issued_ms=command.issued_ms,
-            completed_ms=self._clock_ms(),
-            raw_transport_payload=raw_payload,
-        )
+        terminal = _wait_for_terminal_result(self._transport, request, clock_ms=self._clock_ms)
+        if terminal is not None:
+            return terminal
+        return _timeout_result(request)
 
 
 def execute_validated_command(
@@ -210,13 +213,15 @@ def _transport_request(
     definition: SkillDefinition,
     *,
     policy: ExecutorPolicy,
+    sent_ms: int,
 ) -> TransportRequest:
-    issued_ms = command.issued_ms
     max_duration_ms = definition.max_duration_ms
+    effective_timeout_ms = min(_command_timeout_ms(command), max_duration_ms)
     deadline = ExecutorDeadline(
         max_duration_ms=max_duration_ms,
+        effective_timeout_ms=effective_timeout_ms,
         transport_grace_ms=policy.transport_grace_ms,
-        deadline_ms=issued_ms + max_duration_ms + policy.transport_grace_ms,
+        deadline_ms=sent_ms + effective_timeout_ms + policy.transport_grace_ms,
     )
     route = ExecutorRoute(
         command_path=definition.command_path,
@@ -252,6 +257,7 @@ def _transport_payload(
         "command_path": route.command_path,
         "expected_result_source": route.expected_result_source,
         "max_duration_ms": route.max_duration_ms,
+        "effective_timeout_ms": deadline.effective_timeout_ms,
         "deadline_ms": deadline.deadline_ms,
         "parameters": mapping["parameters"],
         "registry": {
@@ -376,6 +382,15 @@ def _command_parameters(command: PilotSkillCommand) -> ExecutorPayload:
     return command.params.model_dump(mode="json")
 
 
+def _command_timeout_ms(command: PilotSkillCommand) -> int:
+    timeout_ms = getattr(command.params, "timeout_ms", None)
+    return (
+        int(timeout_ms)
+        if timeout_ms is not None
+        else get_skill_definition(command.skill).max_duration_ms
+    )
+
+
 def _without_none(values: Mapping[str, JsonValue]) -> ExecutorPayload:
     return {key: value for key, value in values.items() if value is not None}
 
@@ -397,6 +412,229 @@ def _send(transport: TransportBoundary, request: TransportRequest) -> object | N
     if callable(transport):
         return transport(request)
     return transport.send(request)
+
+
+def _wait_for_terminal_result(
+    transport: TransportBoundary,
+    request: TransportRequest,
+    *,
+    clock_ms: ClockMs,
+) -> ExecutionResult | None:
+    receiver = _result_receiver(transport)
+    if receiver is None:
+        return None
+
+    while True:
+        timeout_ms = _remaining_timeout_ms(request.deadline, clock_ms())
+        if timeout_ms <= 0:
+            return None
+        raw_payload = receiver(request, timeout_ms)
+        if raw_payload is None:
+            return None
+
+        payload = _terminal_mapping(raw_payload)
+        payload_command_id = _payload_command_id(payload)
+        if payload_command_id is not None and payload_command_id != request.command_id:
+            continue
+        return _execution_result_from_terminal(raw_payload, payload, request, clock_ms=clock_ms)
+
+
+def _result_receiver(
+    transport: TransportBoundary,
+) -> Callable[[TransportRequest, int], object | None] | None:
+    for name in ("receive_result", "wait_for_result", "receive"):
+        receiver = getattr(transport, name, None)
+        if callable(receiver):
+            return receiver
+    return None
+
+
+def _remaining_timeout_ms(deadline: ExecutorDeadline, now_ms: int) -> int:
+    if deadline.deadline_ms is None:
+        return 0
+    return max(0, deadline.deadline_ms - now_ms)
+
+
+def _terminal_mapping(raw_payload: object) -> Mapping[str, object] | None:
+    if isinstance(raw_payload, str):
+        try:
+            decoded = json.loads(raw_payload)
+        except json.JSONDecodeError:
+            return None
+        return decoded if isinstance(decoded, Mapping) else None
+    return raw_payload if isinstance(raw_payload, Mapping) else None
+
+
+def _payload_command_id(payload: Mapping[str, object] | None) -> str | None:
+    if payload is None:
+        return None
+    for candidate in (
+        payload.get("command_id"),
+        payload.get("pilot_command_id"),
+        _mapping_value(payload.get("result"), "command_id"),
+        _mapping_value(payload.get("outcome"), "command_id"),
+    ):
+        if candidate is not None:
+            return str(candidate)
+    return None
+
+
+def _execution_result_from_terminal(
+    raw_payload: object,
+    payload: Mapping[str, object] | None,
+    request: TransportRequest,
+    *,
+    clock_ms: ClockMs,
+) -> ExecutionResult:
+    if payload is None:
+        return ExecutionResult(
+            command_id=request.command_id,
+            skill=request.skill,
+            status=CommandStatus.FAILED,
+            reason_code=ExecutorReasonCode.TERMINAL_FAILED.value,
+            message="terminal transport payload is not valid JSON object data",
+            issued_ms=request.command.issued_ms,
+            completed_ms=clock_ms(),
+            raw_transport_payload=raw_payload,
+        )
+
+    status = _terminal_status(payload)
+    return ExecutionResult(
+        command_id=request.command_id,
+        skill=request.skill,
+        status=status,
+        reason_code=_terminal_reason_code(status),
+        message=_terminal_message(payload, status),
+        issued_ms=request.command.issued_ms,
+        completed_ms=_terminal_completed_ms(payload, clock_ms()),
+        raw_transport_payload=raw_payload,
+    )
+
+
+def _terminal_status(payload: Mapping[str, object]) -> CommandStatus:
+    status_value = _first_text(
+        payload.get("status"),
+        payload.get("command_status"),
+        _mapping_value(payload.get("result"), "status"),
+        _mapping_value(payload.get("outcome"), "status"),
+        payload.get("state"),
+    )
+    reason = _terminal_reason(payload).lower()
+    success = _first_bool(
+        payload.get("success"),
+        _mapping_value(payload.get("result"), "success"),
+        _mapping_value(payload.get("outcome"), "success"),
+    )
+
+    if status_value is not None:
+        normalized = status_value.lower()
+        if normalized in {"ok", "success", "succeeded", "done"}:
+            return CommandStatus.OK
+        if normalized in {"rejected", "reject"}:
+            return CommandStatus.REJECTED
+        if normalized in {"stale", "timeout", "timed_out"}:
+            return CommandStatus.STALE
+        if normalized in {"failed", "failure", "fault", "error"}:
+            return CommandStatus.FAILED
+
+    if success is True:
+        return CommandStatus.OK
+    if "reject" in reason:
+        return CommandStatus.REJECTED
+    if "stale" in reason or "timeout" in reason or "timed_out" in reason:
+        return CommandStatus.STALE
+    return CommandStatus.FAILED
+
+
+def _terminal_reason_code(status: CommandStatus) -> str:
+    match status:
+        case CommandStatus.OK:
+            return ExecutorReasonCode.TERMINAL_OK.value
+        case CommandStatus.REJECTED:
+            return ExecutorReasonCode.TERMINAL_REJECTED.value
+        case CommandStatus.STALE:
+            return ExecutorReasonCode.TERMINAL_STALE.value
+        case _:
+            return ExecutorReasonCode.TERMINAL_FAILED.value
+
+
+def _terminal_message(payload: Mapping[str, object], status: CommandStatus) -> str:
+    text = _first_text(
+        payload.get("message"),
+        payload.get("fault"),
+        payload.get("reason"),
+        _mapping_value(payload.get("result"), "message"),
+        _mapping_value(payload.get("result"), "fault"),
+        _mapping_value(payload.get("result"), "reason"),
+        _mapping_value(payload.get("outcome"), "message"),
+        _mapping_value(payload.get("outcome"), "fault"),
+        _mapping_value(payload.get("outcome"), "reason"),
+    )
+    if text:
+        return f"terminal transport result {status.value}: {text}"
+    return f"terminal transport result {status.value}"
+
+
+def _terminal_reason(payload: Mapping[str, object]) -> str:
+    return _terminal_message(payload, CommandStatus.FAILED)
+
+
+def _terminal_completed_ms(payload: Mapping[str, object], fallback_ms: int) -> int:
+    for candidate in (
+        payload.get("completed_ms"),
+        _mapping_value(payload.get("result"), "completed_ms"),
+        _mapping_value(payload.get("outcome"), "completed_ms"),
+        _mapping_value(payload.get("source"), "brain_end_ms"),
+        _mapping_value(payload.get("source"), "pi_received_ms"),
+    ):
+        if isinstance(candidate, int):
+            return candidate
+        if isinstance(candidate, str) and candidate.isdecimal():
+            return int(candidate)
+    return fallback_ms
+
+
+def _mapping_value(value: object, key: str) -> object | None:
+    if isinstance(value, Mapping):
+        return value.get(key)
+    return None
+
+
+def _first_text(*values: object) -> str | None:
+    for value in values:
+        if isinstance(value, str) and value:
+            return value
+    return None
+
+
+def _first_bool(*values: object) -> bool | None:
+    for value in values:
+        if isinstance(value, bool):
+            return value
+    return None
+
+
+def _timeout_result(request: TransportRequest) -> ExecutionResult:
+    completed_ms = request.deadline.deadline_ms or request.command.issued_ms
+    if request.skill is PilotSkillName.STOP:
+        return ExecutionResult(
+            command_id=request.command_id,
+            skill=request.skill,
+            status=CommandStatus.OK,
+            reason_code=ExecutorReasonCode.STOP_POLICY_TIMEOUT.value,
+            message="stop halt request sent; no terminal evidence before stop policy timeout",
+            issued_ms=request.command.issued_ms,
+            completed_ms=completed_ms,
+        )
+    return ExecutionResult(
+        command_id=request.command_id,
+        skill=request.skill,
+        status=CommandStatus.STALE,
+        reason_code=ExecutorReasonCode.TRANSPORT_TIMEOUT.value,
+        message="no matching terminal transport result before deadline",
+        issued_ms=request.command.issued_ms,
+        completed_ms=completed_ms,
+    )
 
 
 def _validation_skill(validation: ValidationResult) -> PilotSkillName | None:

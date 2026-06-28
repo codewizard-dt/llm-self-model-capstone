@@ -1,0 +1,301 @@
+summary: >-
+  Extend the completed pilot executor API and skill-command mapping baseline
+  with deterministic transport execution, terminal operator result parsing,
+  command correlation, timeout classification, and ROS-free fake transport
+  coverage, while keeping `pilot.executor` importable without ROS and limiting
+  any concrete ROS adapter to a narrow optional boundary.
+
+scope:
+  in:
+    - >-
+      Extend `pilot/src/pilot/executor.py` so accepted motion and manipulator
+      validations publish exactly one `TransportRequest` and then wait for a
+      matching terminal result instead of returning `CommandStatus.QUEUED` on
+      publish alone.
+    - >-
+      Add or refine executor-local transport protocol helpers so unit tests can
+      run an in-memory fake transport with queued terminal payloads and no ROS
+      packages installed.
+    - >-
+      Preserve the completed validation gate: malformed, rejected, stopped, or
+      accepted-without-command `pilot.safety.ValidationResult` objects never
+      publish and still return deterministic refusal results.
+    - >-
+      Parse terminal transport payloads from mapping-like objects or JSON
+      strings into `ExecutionResult` values using contract-owned
+      `contracts.CommandStatus` values: `ok`, `rejected`, `failed`, and
+      `stale` for timeout/stale cases.
+    - >-
+      Correlate terminal results by `command_id` when present, and fall back to
+      ordered terminal result matching for current operator payloads that do not
+      yet include pilot command ids.
+    - >-
+      Compute an effective wait bound from the smaller of any command
+      `timeout_ms` parameter and the `pilot.skills` registry
+      `max_duration_ms`, then apply `ExecutorPolicy.transport_grace_ms`
+      deterministically.
+    - >-
+      Keep `verify_grasp` and `verify_drop` as assertion-only no-transport
+      outcomes inherited from the prior mapping slice.
+    - >-
+      Preserve `stop` as a halt transport request that is legal after prior
+      failures/timeouts and returns a deterministic stopped/ok outcome according
+      to terminal evidence or the executor stop policy timeout.
+    - >-
+      Add `pilot/src/pilot/ros_executor.py` only as a narrow adapter boundary
+      for hardware mode if the implementation needs a concrete ROS transport;
+      all `rclpy` and ROS message imports must remain isolated from
+      `pilot.executor` and ordinary unit tests.
+    - >-
+      Add focused executor tests for successful terminal result parsing,
+      rejected result parsing, failed result parsing, timeout/stale
+      classification, command-id correlation, ordered fallback matching, stop
+      behavior, send-once behavior, validation refusal preservation, and
+      ROS-free imports.
+  out:
+    - >-
+      Live robot proof runs, calibration baselines, supervised hardware CLI
+      commands, or `pilot skill --hardware` wiring.
+    - >-
+      Rich assertion-engine implementation, fused grasp/drop/drop-off judgment,
+      observation-builder changes, run-logger integration, replay-loop
+      orchestration, delivery recipe work, or baseline memory.
+    - >-
+      Safety validation policy changes, numeric clamping/envelope changes,
+      skill registry vocabulary changes, or new pilot/contract schemas.
+    - >-
+      Modifying `robot/ros2-runtime` operator nodes, PROS firmware, bridge
+      packet formats, low-level motor controllers, or ROS topic contracts.
+    - >-
+      Adding package exports from `pilot/src/pilot/__init__.py` unless a new
+      stable public helper is demonstrably required by tests or later slices.
+    - >-
+      Editing implementation files outside `pilot/src/pilot/executor.py`,
+      optional `pilot/src/pilot/ros_executor.py`, and
+      `pilot/tests/test_executor.py`.
+
+acceptance:
+  - id: ACC-TRANSPORT-SEND-ONCE
+    description: >-
+      For every non-assertion accepted motion/manipulator skill execution,
+      tests prove the executor sends exactly one `TransportRequest` preserving
+      command id, skill, route metadata, payload, and effective deadline data.
+  - id: ACC-NO-PUBLISH-SUCCESS
+    description: >-
+      Publishing or queueing a transport request is never classified as skill
+      success for motion/manipulator skills; the final `ExecutionResult` is
+      derived from terminal evidence or a deterministic timeout.
+  - id: ACC-TERMINAL-OK-RESULT
+    description: >-
+      A matching successful terminal operator result is parsed into
+      `CommandStatus.OK`, preserving command id, skill, issued/completed timing,
+      a stable reason code/message, and the raw terminal payload for diagnostics.
+  - id: ACC-TERMINAL-REJECTED-FAILED
+    description: >-
+      Matching rejected and failed terminal payloads are parsed into
+      `CommandStatus.REJECTED` and `CommandStatus.FAILED` respectively with
+      stable executor reason codes and diagnostic messages.
+  - id: ACC-TIMEOUT-STALE
+    description: >-
+      Missing terminal feedback before the effective wait bound plus configured
+      grace returns `CommandStatus.STALE` with a stable timeout reason code and
+      does not report success.
+  - id: ACC-DEADLINE-MIN-BOUND
+    description: >-
+      Tests prove the wait timeout uses the smaller applicable value from a
+      command `timeout_ms` parameter and the registry `max_duration_ms`, with
+      `ExecutorPolicy.transport_grace_ms` applied separately and
+      deterministically.
+  - id: ACC-COMMAND-ID-CORRELATION
+    description: >-
+      When terminal payloads include `command_id`, nonmatching payloads are
+      ignored until a matching payload arrives or the deadline expires.
+  - id: ACC-ORDERED-FALLBACK
+    description: >-
+      For current operator payloads that lack a pilot command id, tests prove
+      the executor can consume the next ordered terminal result for the active
+      request while still preserving the request command id in the returned
+      `ExecutionResult`.
+  - id: ACC-FAKE-TRANSPORT
+    description: >-
+      Executor tests use a deterministic in-memory fake transport or equivalent
+      test helper to exercise success, rejection, failure, timeout, command-id
+      correlation, ordered fallback, and send-once behavior without ROS.
+  - id: ACC-ROS-FREE-IMPORTS
+    description: >-
+      `pilot.executor` imports and all executor unit tests run without `rclpy`,
+      ROS message packages, or live ROS graph dependencies; any
+      `pilot.ros_executor` adapter keeps ROS imports isolated to that module or
+      runtime construction path.
+  - id: ACC-STOP-HALT-RESULT
+    description: >-
+      `stop` publishes a halt request when a transport is available and returns
+      a deterministic stopped/ok result from terminal evidence or stop-policy
+      timeout, including when the preceding command state was failed or timed
+      out.
+  - id: ACC-VALIDATION-GATE-PRESERVED
+    description: >-
+      Existing refusal behavior is preserved: malformed validation inputs,
+      non-accepted validation statuses, and accepted results without commands do
+      not call transport and continue to return deterministic rejected results.
+  - id: ACC-ASSERTION-ONLY-PRESERVED
+    description: >-
+      `verify_grasp` and `verify_drop` remain assertion-only executor outcomes
+      that do not call transport and still return deterministic results based on
+      accepted safety validation evidence.
+  - id: ACC-SCOPE-LIMITED-FILES
+    description: >-
+      Implementation changes stay limited to `pilot/src/pilot/executor.py`,
+      optional `pilot/src/pilot/ros_executor.py`, and
+      `pilot/tests/test_executor.py`; no contracts, skill registry, safety
+      validator, package export, ROS runtime, firmware, CLI, logger, replay, or
+      recipe files are edited unless a failing test demonstrates a strictly
+      necessary boundary fix.
+
+decisions:
+  - id: DEC-EXTEND-EXECUTOR-CORE
+    status: closed
+    decision: >-
+      Implement transport result waiting as an incremental extension of the
+      existing `pilot.executor` core, preserving the public
+      `SkillExecutor.execute()` and `execute_validated_command()` entry points.
+    rationale: >-
+      The completed `executor-core-api` and `skill-command-mapping` slices
+      already established validation gating, request construction, mapping
+      coverage, and immutable execution result objects; this slice changes the
+      post-send behavior from queue-only to terminal-result outcomes.
+    grounds:
+      - ".ai-sdd/features/ros-skill-executor/slices/transport-results-timeouts.md: What this slice delivers"
+      - ".ai-sdd/features/ros-skill-executor/requirements.md: RSE-001 and RSE-003"
+      - "PILOT_MASTER_REQUIREMENTS.md: Components -> Skill executor"
+  - id: DEC-TRANSPORT-PROTOCOL-WAITS
+    status: closed
+    decision: >-
+      Extend the executor transport boundary so concrete transports can publish
+      once and then provide terminal payloads to the executor; callables may
+      remain test-friendly send shorthands only where tests explicitly model
+      timeout behavior.
+    rationale: >-
+      Publish success is not skill success. Waiting belongs in the deterministic
+      executor core so fake transports, future ROS adapters, run logging, and
+      replay all observe the same result classification semantics.
+    grounds:
+      - ".ai-sdd/features/ros-skill-executor/slices/transport-results-timeouts.md: Requirements"
+      - ".ai-sdd/features/ros-skill-executor/requirements.md: RSE-006 and RSE-007"
+      - ".ai-sdd/programs/pilot-online-task-loop/requirements.md: Shared Constraints"
+  - id: DEC-PLAIN-DATA-TERMINAL-PAYLOADS
+    status: closed
+    decision: >-
+      Parse terminal results from JSON-compatible plain data or JSON strings
+      into executor-local `ExecutionResult` objects rather than defining a new
+      pydantic schema in `pilot`.
+    rationale: >-
+      Current operator results are JSON payloads and the pilot convention keeps
+      schema ownership in `contracts/`; `ExecutionResult` is an executor-local
+      helper that mirrors contract-owned statuses for later logging and replay.
+    grounds:
+      - ".ai-sdd/conventions/pilot.md: Boundary rules -> No schema defined here"
+      - ".ai-sdd/features/ros-skill-executor/requirements.md: Constraints and RSE-003"
+      - "contracts/src/contracts/pilot.py: CommandStatus"
+  - id: DEC-STATUS-MAPPING
+    status: closed
+    decision: >-
+      Map successful terminal payloads to `CommandStatus.OK`, explicit
+      rejections to `CommandStatus.REJECTED`, terminal unsuccessful/fault
+      payloads to `CommandStatus.FAILED`, and missing terminal evidence or
+      terminal stale/timeout reasons to `CommandStatus.STALE`.
+    rationale: >-
+      The loop, logger, replay mode, and safety validator need stable,
+      contract-compatible result statuses that distinguish robot failure,
+      command rejection, and missing or stale feedback.
+    grounds:
+      - ".ai-sdd/features/ros-skill-executor/requirements.md: Acceptance"
+      - ".ai-sdd/features/ros-skill-executor/slices/transport-results-timeouts.md: Acceptance"
+      - "PILOT_MASTER_REQUIREMENTS.md: Execution Checklist -> Safety"
+  - id: DEC-CORRELATE-THEN-FALLBACK
+    status: closed
+    decision: >-
+      Prefer `command_id` correlation whenever terminal payloads carry a pilot
+      command id; when the current operator result lacks that id, consume the
+      next ordered terminal payload for the active request.
+    rationale: >-
+      The approved feature requirements explicitly close this compatibility
+      path because current `/operator/results` payloads may not yet include
+      pilot command ids.
+    grounds:
+      - ".ai-sdd/features/ros-skill-executor/requirements.md: RSE-006"
+      - ".ai-sdd/features/ros-skill-executor/slices/transport-results-timeouts.md: Requirements"
+      - "robot/ros2-runtime/src/vexy_ros/operator/node.py: /operator/results publication"
+  - id: DEC-DEADLINE-SEMANTICS
+    status: closed
+    decision: >-
+      Compute the terminal wait duration from the smaller of command
+      `timeout_ms` when present and registry `max_duration_ms`, use the
+      executor send-time clock as the wait start, and add
+      `transport_grace_ms` only as a deterministic transport grace period.
+    rationale: >-
+      Registry metadata defines the upper bound, command parameters may request
+      a shorter bound, and using executor send time avoids shortening a fresh
+      hardware wait because the validated command's issued timestamp was
+      created earlier in the pilot loop.
+    grounds:
+      - ".ai-sdd/features/ros-skill-executor/requirements.md: RSE-007"
+      - ".ai-sdd/features/ros-skill-executor/slices/transport-results-timeouts.md: Requirements"
+      - "pilot/src/pilot/skills.py: SkillDefinition.max_duration_ms"
+  - id: DEC-STOP-POLICY-OUTCOME
+    status: closed
+    decision: >-
+      Treat `stop` as a special halt policy path: send the halt request once
+      when transport is available, honor terminal failure/rejection evidence if
+      received, and otherwise return a deterministic stopped/ok result after
+      the stop policy timeout rather than blocking the loop.
+    rationale: >-
+      Stop must remain usable after failures or timeouts and must leave the
+      pilot in a stopped state without depending on a richer future assertion
+      engine or manual hardware proof.
+    grounds:
+      - ".ai-sdd/features/ros-skill-executor/requirements.md: Acceptance -> stop behavior"
+      - ".ai-sdd/features/ros-skill-executor/slices/transport-results-timeouts.md: Acceptance"
+      - "PILOT_MASTER_REQUIREMENTS.md: Execution Checklist -> Safety"
+  - id: DEC-ROS-ADAPTER-ISOLATED
+    status: closed
+    decision: >-
+      Keep `pilot.executor` ROS-free; if this slice adds `pilot.ros_executor`,
+      implement only a narrow topic publish/subscribe transport adapter whose
+      `rclpy` and message imports are isolated from package import and unit
+      tests.
+    rationale: >-
+      The executor core must be replayable and testable on a development
+      machine without ROS, while hardware mode still needs a clean future path
+      to `/operator/command` and `/operator/results`.
+    grounds:
+      - ".ai-sdd/features/ros-skill-executor/requirements.md: RSE-001"
+      - ".ai-sdd/features/ros-skill-executor/slices/transport-results-timeouts.md: Files to create / change"
+      - ".ai-sdd/conventions/pilot.md: Boundary rules -> Reuse command path"
+  - id: DEC-SCOPE-NO-EXPORT-CHURN
+    status: closed
+    decision: >-
+      Avoid `pilot.__init__` export changes and any contract, registry, safety,
+      ROS runtime, firmware, CLI, logger, replay, or recipe edits unless the
+      existing tests reveal a strictly necessary compatibility fix.
+    rationale: >-
+      The rendered worker instruction scopes this slice narrowly to executor
+      transport/result behavior after prior slices completed the public API and
+      mapping baseline.
+    grounds:
+      - ".ai-sdd/features/ros-skill-executor/slices/transport-results-timeouts.md: Files to create / change"
+      - ".ai-sdd/features/ros-skill-executor/requirements.md: Out Of Scope"
+      - ".ai-sdd/conventions/pilot.md: Boundary rules"
+
+files:
+  - pilot/src/pilot/executor.py
+  - pilot/src/pilot/ros_executor.py
+  - pilot/tests/test_executor.py
+
+tests:
+  - uv sync
+  - make -C pilot test
+  - make -C pilot lint
+  - make test
+  - make validate
+  - make lint
