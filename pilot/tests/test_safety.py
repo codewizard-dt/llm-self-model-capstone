@@ -3,18 +3,46 @@ from __future__ import annotations
 import dataclasses
 import importlib
 import sys
+from dataclasses import replace
 
 import pytest
 from contracts import (
     ApproachTargetParams,
     ApproachTargetSkillCommand,
+    ArmToAngleParams,
+    ArmToAngleSkillCommand,
+    AssertionEvidence,
+    AssertionState,
     BridgeHealth,
+    CenterObjectInGripperParams,
+    CenterObjectInGripperSkillCommand,
+    ClawCloseParams,
+    ClawCloseSkillCommand,
+    ClawOpenSkillCommand,
+    FaceTargetParams,
+    FaceTargetSkillCommand,
+    GoToDestinationParams,
+    GoToDestinationSkillCommand,
     LocalizationState,
     ManipulatorState,
+    MAX_ARM_RPM,
+    MAX_CLAW_GRIP_FORCE_N,
+    MAX_LINEAR,
+    MAX_OMEGA,
+    PilotAssertion,
     PilotObservation,
+    PilotSkillName,
     PilotTaskPhase,
+    Pose2D,
     StopSkillCommand,
     StopSkillParams,
+    SurveySceneSkillCommand,
+    VisibleObject,
+    VisibleTag,
+    VerifyDropParams,
+    VerifyDropSkillCommand,
+    VerifyGraspParams,
+    VerifyGraspSkillCommand,
 )
 
 from pilot.safety import (
@@ -24,7 +52,7 @@ from pilot.safety import (
     ValidationStatus,
     validate_skill_command,
 )
-from pilot.skills import get_skill_definition
+from pilot.skills import MovementEnvelope, get_skill_definition
 
 
 def _motion_command() -> ApproachTargetSkillCommand:
@@ -43,13 +71,29 @@ def _stop_command() -> StopSkillCommand:
     )
 
 
-def _observation(*, bridge: BridgeHealth | None = None) -> PilotObservation:
+def _observation(
+    *,
+    bridge: BridgeHealth | None = None,
+    localization: LocalizationState | None = None,
+    robot_pose: Pose2D | None = None,
+    include_robot_pose: bool = True,
+    visible_objects: list[VisibleObject] | None = None,
+    visible_tags: list[VisibleTag] | None = None,
+    manipulator: ManipulatorState | None = None,
+    current_assertions: list[PilotAssertion] | None = None,
+) -> PilotObservation:
+    pose = robot_pose or Pose2D(x_m=0.4, y_m=0.2, heading_rad=0.1)
     return PilotObservation(
         observed_ms=120,
         task_phase=PilotTaskPhase.MANIPULATE,
         objective="pick up block-1",
-        localization=LocalizationState(pose=None, confidence=0.8, age_ms=25),
-        manipulator=ManipulatorState(arm_deg=20.0, claw_state="open"),
+        robot_pose=pose if include_robot_pose else None,
+        localization=localization or LocalizationState(pose=pose, confidence=0.8, age_ms=25),
+        visible_objects=visible_objects
+        if visible_objects is not None
+        else [VisibleObject(object_id="block-1", label="block", confidence=0.9)],
+        visible_tags=visible_tags if visible_tags is not None else [],
+        manipulator=manipulator or ManipulatorState(arm_deg=20.0, claw_state="open"),
         bridge=bridge
         or BridgeHealth(
             state="ok",
@@ -57,11 +101,37 @@ def _observation(*, bridge: BridgeHealth | None = None) -> PilotObservation:
             estop=False,
             battery_pct=80.0,
         ),
+        current_assertions=current_assertions if current_assertions is not None else [],
     )
 
 
 def _reason_codes(result: object) -> tuple[ValidationReasonCode, ...]:
     return tuple(reason.code for reason in result.reasons)
+
+
+def _assertion(
+    assertion_id: str,
+    *,
+    predicate: str,
+    confidence: float = 0.9,
+    age_ms: int = 25,
+    summary: str | None = None,
+) -> PilotAssertion:
+    return PilotAssertion(
+        assertion_id=assertion_id,
+        predicate=predicate,
+        state=AssertionState.TRUE,
+        confidence=confidence,
+        age_ms=age_ms,
+        evidence=[
+            AssertionEvidence(
+                source="vision",
+                summary=summary or predicate,
+                confidence=confidence,
+                age_ms=age_ms,
+            )
+        ],
+    )
 
 
 def test_safety_module_imports_without_ros_packages_and_exports_public_api(monkeypatch) -> None:
@@ -242,3 +312,466 @@ def test_invalid_command_returns_stable_rejection_reason() -> None:
     assert result.status is ValidationStatus.REJECTED
     assert result.command is None
     assert result.reason_code is ValidationReasonCode.INVALID_COMMAND
+
+
+def test_contract_invalid_oversized_raw_command_stays_invalid_command() -> None:
+    result = validate_skill_command(
+        {
+            "v": 1,
+            "command_id": "bad-speed",
+            "issued_ms": 1,
+            "skill": "approach_target",
+            "params": {"target_id": "block-1", "max_speed_mps": MAX_LINEAR + 1.0},
+        },
+        _observation(),
+        mode=ValidationMode.REPLAY,
+    )
+
+    assert result.status is ValidationStatus.REJECTED
+    assert result.reason_code is ValidationReasonCode.INVALID_COMMAND
+
+
+def test_missing_registry_definition_returns_stable_registry_reason(monkeypatch) -> None:
+    def missing_definition(name: PilotSkillName | str) -> object:
+        raise KeyError(name)
+
+    monkeypatch.setitem(
+        validate_skill_command.__globals__, "get_skill_definition", missing_definition
+    )
+
+    result = validate_skill_command(_motion_command(), _observation(), mode=ValidationMode.REPLAY)
+
+    assert result.status is ValidationStatus.REJECTED
+    assert result.skill is PilotSkillName.APPROACH_TARGET
+    assert result.reason_code is ValidationReasonCode.REGISTRY_MISSING
+
+
+def test_timeout_above_registry_duration_rejects_with_duration_reason() -> None:
+    command = FaceTargetSkillCommand(
+        command_id="cmd-face",
+        issued_ms=100,
+        params=FaceTargetParams(target_id="block-1", timeout_ms=4001),
+    )
+
+    result = validate_skill_command(command, _observation(), mode=ValidationMode.REPLAY)
+
+    assert result.status is ValidationStatus.REJECTED
+    assert result.reason_code is ValidationReasonCode.DURATION_ENVELOPE
+
+
+@pytest.mark.parametrize(
+    "command,strict_movement",
+    [
+        (
+            FaceTargetSkillCommand(
+                command_id="cmd-turn",
+                issued_ms=100,
+                params=FaceTargetParams(target_id="block-1", max_turn_rad_s=MAX_OMEGA),
+            ),
+            MovementEnvelope(omega_rad_s=MAX_OMEGA / 2),
+        ),
+        (
+            ApproachTargetSkillCommand(
+                command_id="cmd-drive",
+                issued_ms=100,
+                params=ApproachTargetParams(target_id="block-1", max_speed_mps=MAX_LINEAR),
+            ),
+            MovementEnvelope(linear_mps=MAX_LINEAR / 2, omega_rad_s=MAX_OMEGA),
+        ),
+        (
+            ArmToAngleSkillCommand(
+                command_id="cmd-arm-angle",
+                issued_ms=100,
+                params=ArmToAngleParams(deg=40.0),
+            ),
+            MovementEnvelope(arm_deg_min=0.0, arm_deg_max=30.0, arm_rpm=MAX_ARM_RPM),
+        ),
+        (
+            ArmToAngleSkillCommand(
+                command_id="cmd-arm-velocity",
+                issued_ms=100,
+                params=ArmToAngleParams(deg=20.0, vel_rpm=MAX_ARM_RPM),
+            ),
+            MovementEnvelope(arm_deg_min=0.0, arm_deg_max=90.0, arm_rpm=MAX_ARM_RPM / 2),
+        ),
+        (
+            ClawCloseSkillCommand(
+                command_id="cmd-claw-force",
+                issued_ms=100,
+                params=ClawCloseParams(grip_force_n=MAX_CLAW_GRIP_FORCE_N),
+            ),
+            MovementEnvelope(claw_grip_force_n=MAX_CLAW_GRIP_FORCE_N / 2),
+        ),
+    ],
+)
+def test_registry_stricter_movement_envelopes_reject(
+    monkeypatch,
+    command: object,
+    strict_movement: MovementEnvelope,
+) -> None:
+    base_definition = get_skill_definition(command.skill)
+    strict_definition = replace(base_definition, movement=strict_movement)
+    monkeypatch.setitem(
+        validate_skill_command.__globals__,
+        "get_skill_definition",
+        lambda name: strict_definition,
+    )
+
+    result = validate_skill_command(command, _observation(), mode=ValidationMode.REPLAY)
+
+    assert result.status is ValidationStatus.REJECTED
+    assert result.reason_code is ValidationReasonCode.MOVEMENT_ENVELOPE
+
+
+@pytest.mark.parametrize(
+    "command,observation,expected_code",
+    [
+        (
+            FaceTargetSkillCommand(
+                command_id="cmd-face-missing",
+                issued_ms=100,
+                params=FaceTargetParams(target_id="missing-block"),
+            ),
+            _observation(),
+            ValidationReasonCode.TARGET_EVIDENCE,
+        ),
+        (
+            CenterObjectInGripperSkillCommand(
+                command_id="cmd-center-missing",
+                issued_ms=100,
+                params=CenterObjectInGripperParams(object_id="missing-block"),
+            ),
+            _observation(),
+            ValidationReasonCode.TARGET_EVIDENCE,
+        ),
+        (
+            GoToDestinationSkillCommand(
+                command_id="cmd-dest-missing",
+                issued_ms=100,
+                params=GoToDestinationParams(destination_id="drop-zone"),
+            ),
+            _observation(),
+            ValidationReasonCode.DESTINATION_EVIDENCE,
+        ),
+    ],
+)
+def test_target_and_destination_skills_require_current_evidence(
+    command: object,
+    observation: PilotObservation,
+    expected_code: ValidationReasonCode,
+) -> None:
+    result = validate_skill_command(command, observation, mode=ValidationMode.REPLAY)
+
+    assert result.status is ValidationStatus.REJECTED
+    assert result.reason_code is expected_code
+
+
+def test_destination_id_accepts_current_assertion_evidence() -> None:
+    command = GoToDestinationSkillCommand(
+        command_id="cmd-dest",
+        issued_ms=100,
+        params=GoToDestinationParams(destination_id="drop-zone"),
+    )
+    observation = _observation(
+        current_assertions=[
+            _assertion(
+                "assert.destination.visible",
+                predicate="drop-zone destination is visible",
+            )
+        ]
+    )
+
+    result = validate_skill_command(command, observation, mode=ValidationMode.REPLAY)
+
+    assert result.status is ValidationStatus.ACCEPTED
+    assert result.reason_code is ValidationReasonCode.OK
+
+
+def test_symbolic_destination_navigation_rejects_stale_localization() -> None:
+    pose = Pose2D(x_m=0.4, y_m=0.2, heading_rad=0.1)
+    command = GoToDestinationSkillCommand(
+        command_id="cmd-dest-stale-localization",
+        issued_ms=100,
+        params=GoToDestinationParams(destination_id="drop-zone"),
+    )
+    observation = _observation(
+        localization=LocalizationState(pose=pose, confidence=0.9, age_ms=251),
+        robot_pose=pose,
+        current_assertions=[
+            _assertion(
+                "assert.destination.visible",
+                predicate="drop-zone destination is visible",
+            )
+        ],
+    )
+
+    result = validate_skill_command(command, observation, mode=ValidationMode.REPLAY)
+
+    assert result.status is ValidationStatus.REJECTED
+    assert result.reason_code is ValidationReasonCode.LOCALIZATION_STALE
+
+
+@pytest.mark.parametrize(
+    "localization,expected_code",
+    [
+        (
+            LocalizationState(pose=None, confidence=0.9, age_ms=20),
+            ValidationReasonCode.LOCALIZATION_MISSING,
+        ),
+        (
+            LocalizationState(
+                pose=Pose2D(x_m=0.4, y_m=0.2, heading_rad=0.1),
+                confidence=0.9,
+                age_ms=251,
+            ),
+            ValidationReasonCode.LOCALIZATION_STALE,
+        ),
+        (
+            LocalizationState(
+                pose=Pose2D(x_m=0.4, y_m=0.2, heading_rad=0.1),
+                confidence=0.59,
+                age_ms=20,
+            ),
+            ValidationReasonCode.LOCALIZATION_LOW_CONFIDENCE,
+        ),
+    ],
+)
+def test_coordinate_navigation_rejects_bad_localization(
+    localization: LocalizationState,
+    expected_code: ValidationReasonCode,
+) -> None:
+    command = GoToDestinationSkillCommand(
+        command_id="cmd-coordinates",
+        issued_ms=100,
+        params=GoToDestinationParams(x_m=1.0, y_m=1.5),
+    )
+    observation = _observation(localization=localization, include_robot_pose=False)
+
+    result = validate_skill_command(command, observation, mode=ValidationMode.REPLAY)
+
+    assert result.status is ValidationStatus.REJECTED
+    assert result.reason_code is expected_code
+
+
+def test_policy_controls_localization_thresholds() -> None:
+    pose = Pose2D(x_m=0.4, y_m=0.2, heading_rad=0.1)
+    command = GoToDestinationSkillCommand(
+        command_id="cmd-coordinates",
+        issued_ms=100,
+        params=GoToDestinationParams(x_m=1.0, y_m=1.5),
+    )
+    observation = _observation(
+        localization=LocalizationState(pose=pose, confidence=0.65, age_ms=300),
+        robot_pose=pose,
+    )
+
+    accepted = validate_skill_command(
+        command,
+        observation,
+        mode=ValidationMode.REPLAY,
+        policy=SafetyPolicy(localization_stale_after_ms=300, localization_min_confidence=0.65),
+    )
+    stale = validate_skill_command(
+        command,
+        observation,
+        mode=ValidationMode.REPLAY,
+        policy=SafetyPolicy(localization_stale_after_ms=299, localization_min_confidence=0.65),
+    )
+
+    assert accepted.status is ValidationStatus.ACCEPTED
+    assert stale.status is ValidationStatus.REJECTED
+    assert stale.reason_code is ValidationReasonCode.LOCALIZATION_STALE
+
+
+def test_verification_skills_use_manipulator_and_assertion_evidence_only() -> None:
+    grasp = VerifyGraspSkillCommand(
+        command_id="cmd-verify-grasp",
+        issued_ms=100,
+        params=VerifyGraspParams(object_id="block-1", min_confidence=0.7),
+    )
+    holding_observation = _observation(
+        manipulator=ManipulatorState(
+            arm_deg=20.0,
+            claw_state="holding",
+            held_object_id="block-1",
+        )
+    )
+    missing_observation = _observation(
+        manipulator=ManipulatorState(arm_deg=20.0, claw_state="closed")
+    )
+    assertion_observation = _observation(
+        manipulator=ManipulatorState(arm_deg=20.0, claw_state="closed"),
+        current_assertions=[
+            _assertion(
+                "assert.object_held",
+                predicate="object is held",
+                confidence=0.8,
+            )
+        ],
+    )
+
+    assert validate_skill_command(grasp, holding_observation, mode=ValidationMode.REPLAY).accepted
+    assert validate_skill_command(grasp, assertion_observation, mode=ValidationMode.REPLAY).accepted
+
+    rejected = validate_skill_command(grasp, missing_observation, mode=ValidationMode.REPLAY)
+    assert rejected.status is ValidationStatus.REJECTED
+    assert rejected.reason_code is ValidationReasonCode.VERIFICATION_EVIDENCE
+
+
+def test_verify_drop_rejects_held_object_and_accepts_release_evidence() -> None:
+    command = VerifyDropSkillCommand(command_id="cmd-verify-drop", issued_ms=100)
+    holding_observation = _observation(
+        manipulator=ManipulatorState(
+            arm_deg=20.0,
+            claw_state="holding",
+            held_object_id="block-1",
+        )
+    )
+    released_observation = _observation(
+        manipulator=ManipulatorState(arm_deg=20.0, claw_state="open")
+    )
+
+    rejected = validate_skill_command(command, holding_observation, mode=ValidationMode.REPLAY)
+    accepted = validate_skill_command(command, released_observation, mode=ValidationMode.REPLAY)
+
+    assert rejected.status is ValidationStatus.REJECTED
+    assert rejected.reason_code is ValidationReasonCode.VERIFICATION_EVIDENCE
+    assert accepted.status is ValidationStatus.ACCEPTED
+
+
+@pytest.mark.parametrize(
+    "current_assertions",
+    [
+        [],
+        [
+            _assertion(
+                "assert.destination.visible",
+                predicate="drop-zone destination is visible",
+                age_ms=1001,
+            )
+        ],
+        [
+            _assertion(
+                "assert.destination.visible",
+                predicate="drop-zone destination is visible",
+                confidence=0.6,
+            )
+        ],
+    ],
+)
+def test_destination_specific_verify_drop_requires_current_destination_evidence(
+    current_assertions: list[PilotAssertion],
+) -> None:
+    command = VerifyDropSkillCommand(
+        command_id="cmd-verify-drop-destination",
+        issued_ms=100,
+        params=VerifyDropParams(destination_id="drop-zone", min_confidence=0.7),
+    )
+    observation = _observation(
+        manipulator=ManipulatorState(arm_deg=20.0, claw_state="open"),
+        current_assertions=current_assertions,
+    )
+
+    result = validate_skill_command(command, observation, mode=ValidationMode.REPLAY)
+
+    assert result.status is ValidationStatus.REJECTED
+    assert result.reason_code is ValidationReasonCode.VERIFICATION_EVIDENCE
+
+
+def test_destination_specific_verify_drop_accepts_current_destination_evidence() -> None:
+    command = VerifyDropSkillCommand(
+        command_id="cmd-verify-drop-destination-ok",
+        issued_ms=100,
+        params=VerifyDropParams(destination_id="drop-zone", min_confidence=0.7),
+    )
+    observation = _observation(
+        manipulator=ManipulatorState(arm_deg=20.0, claw_state="open"),
+        current_assertions=[
+            _assertion(
+                "assert.destination.visible",
+                predicate="drop-zone destination is visible",
+                confidence=0.8,
+            )
+        ],
+    )
+
+    result = validate_skill_command(command, observation, mode=ValidationMode.REPLAY)
+
+    assert result.status is ValidationStatus.ACCEPTED
+    assert result.reason_code is ValidationReasonCode.OK
+
+
+@pytest.mark.parametrize(
+    "command,observation",
+    [
+        (
+            StopSkillCommand(
+                command_id="cmd-stop-ok",
+                issued_ms=100,
+                params=StopSkillParams(reason="operator"),
+            ),
+            _observation(),
+        ),
+        (SurveySceneSkillCommand(command_id="cmd-survey", issued_ms=100), _observation()),
+        (
+            FaceTargetSkillCommand(
+                command_id="cmd-face-ok",
+                issued_ms=100,
+                params=FaceTargetParams(target_id="tag-3"),
+            ),
+            _observation(
+                visible_objects=[],
+                visible_tags=[VisibleTag(tag_id=3, confidence=0.95)],
+            ),
+        ),
+        (_motion_command(), _observation()),
+        (
+            CenterObjectInGripperSkillCommand(
+                command_id="cmd-center-ok",
+                issued_ms=100,
+                params=CenterObjectInGripperParams(object_id="block-1"),
+            ),
+            _observation(),
+        ),
+        (
+            ArmToAngleSkillCommand(
+                command_id="cmd-arm-ok",
+                issued_ms=100,
+                params=ArmToAngleParams(deg=20.0),
+            ),
+            _observation(),
+        ),
+        (ClawOpenSkillCommand(command_id="cmd-open-ok", issued_ms=100), _observation()),
+        (ClawCloseSkillCommand(command_id="cmd-close-ok", issued_ms=100), _observation()),
+        (
+            VerifyGraspSkillCommand(command_id="cmd-grasp-ok", issued_ms=100),
+            _observation(
+                manipulator=ManipulatorState(
+                    arm_deg=20.0,
+                    claw_state="holding",
+                    held_object_id="block-1",
+                )
+            ),
+        ),
+        (
+            GoToDestinationSkillCommand(
+                command_id="cmd-go-ok",
+                issued_ms=100,
+                params=GoToDestinationParams(x_m=1.0, y_m=1.5),
+            ),
+            _observation(),
+        ),
+        (
+            VerifyDropSkillCommand(command_id="cmd-drop-ok", issued_ms=100),
+            _observation(manipulator=ManipulatorState(arm_deg=20.0, claw_state="open")),
+        ),
+    ],
+)
+def test_every_pilot_skill_has_an_accepting_validation_path(
+    command: object,
+    observation: PilotObservation,
+) -> None:
+    result = validate_skill_command(command, observation, mode=ValidationMode.REPLAY)
+
+    assert result.status is ValidationStatus.ACCEPTED
+    assert result.reason_code is ValidationReasonCode.OK

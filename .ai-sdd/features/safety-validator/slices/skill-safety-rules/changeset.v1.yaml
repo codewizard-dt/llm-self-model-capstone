@@ -1,0 +1,35 @@
+apiVersion: ai-sdd/v1
+kind: Changeset
+metadata:
+  feature: safety-validator
+  slice: skill-safety-rules
+  stack: pilot
+
+summary: >-
+  Extended the ROS-free pilot safety validator with registry-backed validation
+  for every PilotSkillName value. The validator now rejects missing or
+  mismatched registry definitions, enforces registry max duration and movement
+  envelopes without clamping, checks target and destination evidence from the
+  current PilotObservation, applies policy-controlled localization freshness and
+  confidence thresholds for approach plus every go_to_destination navigation
+  path, and keeps verification skills no-motion by using only current
+  manipulator, destination, and assertion evidence. Destination-specific
+  verify_drop no longer passes on an open/unknown claw alone; stale or
+  low-confidence destination evidence rejects with the stable verification
+  evidence reason. Expanded pilot safety tests cover accepted paths for the
+  closed skill vocabulary plus deterministic rejection reasons for oversized
+  values, missing evidence, symbolic and coordinate bad localization,
+  destination-specific verification evidence failures, registry failures, and
+  contract-invalid raw payloads.
+
+satisfies:
+  - SV-RULES-001
+  - SV-RULES-002
+  - SV-RULES-003
+  - SV-RULES-004
+  - SV-RULES-005
+  - SV-RULES-006
+  - SV-RULES-007
+  - SV-RULES-008
+  - SV-RULES-009
+  - SV-RULES-010

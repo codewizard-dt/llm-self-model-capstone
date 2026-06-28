@@ -1,0 +1,211 @@
+summary: >-
+  Extend the existing ROS-free pilot safety validator with concrete,
+  registry-backed rules for the closed MVP skill vocabulary: skill-specific
+  target and destination evidence checks, stale localization rejection for
+  navigation families, strict numeric envelope rejection for duration, speed,
+  turn, arm, claw, and no-motion verification skills, while preserving replay
+  support and avoiding ROS, executor, assertion-engine, and schema work.
+
+scope:
+  in:
+    - >-
+      Validate every normalized `contracts.PilotSkillCommand` against the
+      existing `pilot.skills` registry definition before applying skill-specific
+      safety rules.
+    - >-
+      Add deterministic rejection paths for missing or unregistered skill
+      definitions with stable machine-readable reason codes.
+    - >-
+      Enforce the stricter of contract-validated command parameters and
+      registry metadata for per-skill max duration and movement envelopes.
+    - >-
+      Reject oversized user or LLM numeric requests rather than silently
+      clamping duration, drive speed, turn rate, arm angle, arm velocity, claw
+      force, and verification confidence inputs.
+    - >-
+      Require current observation evidence for target-dependent skills:
+      `face_target`, `approach_target`, `center_object_in_gripper`, and
+      `go_to_destination`.
+    - >-
+      Reject navigation and approach commands that require coordinates or robot
+      pose when localization is stale, missing, or below policy confidence.
+    - >-
+      Keep verification skills ROS-free and no-motion by checking only current
+      observation, manipulator, and assertion evidence.
+    - >-
+      Preserve replay-mode validation without requiring live hardware
+      supervision.
+    - >-
+      Add focused unit tests in `pilot/tests/test_safety.py` for accepted and
+      rejected cases across all skill families.
+  out:
+    - >-
+      ROS command publishing, ROS action/result waiting, executor feedback
+      handling, or changes under `robot/ros2-runtime/`.
+    - >-
+      Assertion-engine implementation, fused semantic grasp/drop classification,
+      or new task-progress predicates beyond checking existing observation
+      fields.
+    - >-
+      LLM decision parsing, prompt rendering, run logging, replay-loop
+      orchestration, delivery recipe, or skill baseline capture.
+    - >-
+      Changing contract schemas, adding new skill names, or defining pydantic
+      schema surfaces in `pilot/`.
+    - >-
+      PROS firmware, Brain clamps, or low-level command packet changes.
+    - >-
+      Editing implementation files outside `pilot/src/pilot/safety.py` and
+      `pilot/tests/test_safety.py`.
+
+acceptance:
+  - id: SV-RULES-001
+    description: >-
+      Every `contracts.PilotSkillName` value has an explicit validation path
+      that starts from `pilot.skills.get_skill_definition()`, and missing or
+      unknown registry definitions reject with deterministic reason codes.
+  - id: SV-RULES-002
+    description: >-
+      Commands whose `timeout_ms` or skill duration request exceeds the
+      registry definition's `max_duration_ms` reject with a stable
+      duration-envelope reason, while commands within the registry duration are
+      still accepted when other gates pass.
+  - id: SV-RULES-003
+    description: >-
+      Drive and turn families reject numeric requests outside the registry
+      movement envelope: `survey_scene` and `face_target` for turn rate,
+      `approach_target`, `center_object_in_gripper`, and `go_to_destination`
+      for drive speed, and all no-motion verification skills for any movement
+      attempt.
+  - id: SV-RULES-004
+    description: >-
+      Manipulator families reject numeric requests outside registry and
+      contract bounds: `arm_to_angle` for arm angle and optional velocity,
+      `claw_close` for grip force, and `claw_open` for opening percentage or
+      any unsupported force-like movement request.
+  - id: SV-RULES-005
+    description: >-
+      Target-dependent skills reject missing or stale evidence:
+      `face_target` and `approach_target` require a matching visible object or
+      tag/destination evidence, `center_object_in_gripper` requires the named
+      visible object, and `go_to_destination` requires either a known
+      destination evidence item or coordinate parameters.
+  - id: SV-RULES-006
+    description: >-
+      Coordinate navigation and approach validation rejects stale, missing, or
+      low-confidence localization according to safety policy thresholds, without
+      weakening replay-mode support.
+  - id: SV-RULES-007
+    description: >-
+      `verify_grasp` and `verify_drop` remain no-motion validation paths that
+      inspect only current observation/manipulator/assertion evidence and reject
+      stale or insufficient evidence with stable reason codes.
+  - id: SV-RULES-008
+    description: >-
+      Existing validator behavior from the prior slice is preserved: healthy
+      replay commands can pass, hardware non-stop commands still require human
+      supervision, bridge/estop/heartbeat gates still reject unsafe motion, and
+      `stop` remains admissible under unsafe health.
+  - id: SV-RULES-009
+    description: >-
+      Tests cover representative accepted and rejected cases for each skill
+      family, including oversized duration/speed/turn/arm/claw values, missing
+      target or destination evidence, stale localization, verification evidence
+      failures, unknown registry lookup failures, and stable reason strings.
+  - id: SV-RULES-010
+    description: >-
+      Implementation changes are limited to `pilot/src/pilot/safety.py` and
+      `pilot/tests/test_safety.py`; no contracts, ROS runtime, executor,
+      assertion-engine, or package export files are edited.
+
+decisions:
+  - id: SV-RULES-PLAN-001
+    status: closed
+    decision: >-
+      Implement skill-specific safety rules inside the existing ROS-free
+      `pilot.safety` validator instead of adding a separate rule engine or
+      executor-layer checks.
+    grounded_in:
+      - "PILOT_MASTER_REQUIREMENTS.md: Components -> Skill validator"
+      - ".ai-sdd/features/safety-validator/requirements.md: Goal and SV-001"
+      - ".ai-sdd/conventions/pilot.md: Boundary rules"
+    rationale: >-
+      The validator is the deterministic gate before any command reaches the
+      future ROS executor, and this slice is scoped to validation only.
+  - id: SV-RULES-PLAN-002
+    status: closed
+    decision: >-
+      Treat `pilot.skills` registry metadata as the source of per-skill
+      duration, movement, input, precondition, and success-evidence constraints
+      consumed by the validator.
+    grounded_in:
+      - "PILOT_MASTER_REQUIREMENTS.md: Skill Model -> Skill contract"
+      - ".ai-sdd/features/safety-validator/slices/skill-safety-rules.md: Requirements"
+      - "MASTER_REQUIREMENTS.md: Components -> Online-control harness"
+    rationale: >-
+      The pilot loop executes named skills from a closed registry, so the
+      safety layer must reject commands that do not fit the registry metadata
+      rather than relying only on broad contract bounds.
+  - id: SV-RULES-PLAN-003
+    status: closed
+    decision: >-
+      Prefer deterministic rejection over silent clamping for numeric values
+      that exceed registry or contract-owned envelopes.
+    grounded_in:
+      - ".ai-sdd/features/safety-validator/requirements.md: SV-003"
+      - ".ai-sdd/features/safety-validator/slices/skill-safety-rules.md: Requirements"
+      - "PILOT_MASTER_REQUIREMENTS.md: Execution Checklist -> Safety"
+    rationale: >-
+      Rejecting oversized LLM intent keeps run logs honest and prevents the
+      validator from converting unsafe requested behavior into silently executed
+      motion.
+  - id: SV-RULES-PLAN-004
+    status: closed
+    decision: >-
+      Enforce only evidence checks derivable from current
+      `contracts.PilotObservation` fields and registry metadata; leave fused
+      semantic task assertions to the future assertion-engine feature.
+    grounded_in:
+      - ".ai-sdd/features/safety-validator/requirements.md: SV-005"
+      - ".ai-sdd/features/safety-validator/slices/skill-safety-rules.md: Out Of Scope"
+      - "PILOT_MASTER_REQUIREMENTS.md: Components -> Assertion engine"
+    rationale: >-
+      This slice can require visible objects, tags, destinations, localization,
+      manipulator state, and existing assertions, but it must not implement the
+      semantic classifier that decides task success.
+  - id: SV-RULES-PLAN-005
+    status: closed
+    decision: >-
+      Preserve the existing replay/hardware mode split and require no live
+      hardware supervision in replay mode.
+    grounded_in:
+      - ".ai-sdd/features/safety-validator/requirements.md: SV-002"
+      - ".ai-sdd/features/safety-validator/slices/skill-safety-rules.md: Requirements"
+      - "PILOT_MASTER_REQUIREMENTS.md: Scope cut -> dry-run/replay mode"
+    rationale: >-
+      Replay must remain useful for tests and diagnosis, while hardware mode
+      remains bounded, supervised, and interruptible.
+  - id: SV-RULES-PLAN-006
+    status: closed
+    decision: >-
+      Do not edit contracts, the skill registry, package exports, ROS runtime,
+      or executor/assertion modules for this slice.
+    grounded_in:
+      - ".ai-sdd/features/safety-validator/slices/skill-safety-rules.md: Files to create / change"
+      - ".ai-sdd/features/safety-validator/requirements.md: Out Of Scope and Constraints"
+      - ".ai-sdd/conventions/pilot.md: No schema defined here"
+    rationale: >-
+      The rendered instruction and slice file constrain implementation to an
+      extension of existing safety behavior and focused tests.
+
+files:
+  - pilot/src/pilot/safety.py
+  - pilot/tests/test_safety.py
+
+tests:
+  - uv sync
+  - make -C pilot test
+  - make -C pilot lint
+  - make test
+  - make validate
+  - make lint
