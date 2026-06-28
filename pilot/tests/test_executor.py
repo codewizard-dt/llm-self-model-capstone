@@ -2,23 +2,45 @@ from __future__ import annotations
 
 import dataclasses
 import importlib
+import json
 import sys
 
 import pytest
 from contracts import (
     ApproachTargetParams,
     ApproachTargetSkillCommand,
+    ArmToAngleParams,
+    ArmToAngleSkillCommand,
+    CenterObjectInGripperParams,
+    CenterObjectInGripperSkillCommand,
+    ClawCloseParams,
+    ClawCloseSkillCommand,
+    ClawOpenParams,
+    ClawOpenSkillCommand,
     CommandStatus,
+    FaceTargetParams,
+    FaceTargetSkillCommand,
+    GoToDestinationParams,
+    GoToDestinationSkillCommand,
     PilotSkillName,
     StopSkillParams,
     StopSkillCommand,
+    SurveySceneParams,
+    SurveySceneSkillCommand,
+    VerifyDropParams,
+    VerifyDropSkillCommand,
+    VerifyGraspParams,
+    VerifyGraspSkillCommand,
 )
 
 from pilot.executor import (
     DEFAULT_EXECUTOR_POLICY,
+    ASSERTION_ONLY_ROUTE,
+    BOUNDED_CONTROL_ROUTE,
     ExecutionResult,
     ExecutorPolicy,
     ExecutorReasonCode,
+    OPERATOR_COMMAND_ROUTE,
     SkillExecutor,
     TransportRequest,
     execute_validated_command,
@@ -30,7 +52,7 @@ from pilot.safety import (
     ValidationResult,
     ValidationStatus,
 )
-from pilot.skills import get_skill_definition
+from pilot.skills import get_skill_definition, list_skill_definitions
 
 
 def _accepted_validation(command: object | None = None) -> ValidationResult:
@@ -58,6 +80,78 @@ def _stop_command() -> StopSkillCommand:
         issued_ms=200,
         params=StopSkillParams(reason="unsafe"),
     )
+
+
+def _command_for_skill(skill: PilotSkillName):
+    commands = {
+        PilotSkillName.STOP: _stop_command(),
+        PilotSkillName.SURVEY_SCENE: SurveySceneSkillCommand(
+            command_id="cmd-survey",
+            issued_ms=210,
+            params=SurveySceneParams(yaw_span_deg=90.0, timeout_ms=3000),
+        ),
+        PilotSkillName.FACE_TARGET: FaceTargetSkillCommand(
+            command_id="cmd-face",
+            issued_ms=220,
+            params=FaceTargetParams(target_id="tag-7", max_turn_rad_s=0.4, timeout_ms=2500),
+        ),
+        PilotSkillName.APPROACH_TARGET: ApproachTargetSkillCommand(
+            command_id="cmd-approach-tag",
+            issued_ms=230,
+            params=ApproachTargetParams(
+                target_id="tag-7",
+                standoff_m=0.35,
+                max_speed_mps=0.2,
+                timeout_ms=4500,
+            ),
+        ),
+        PilotSkillName.CENTER_OBJECT_IN_GRIPPER: CenterObjectInGripperSkillCommand(
+            command_id="cmd-center",
+            issued_ms=240,
+            params=CenterObjectInGripperParams(
+                object_id="block-1",
+                image_tolerance_px=12,
+                timeout_ms=3500,
+            ),
+        ),
+        PilotSkillName.ARM_TO_ANGLE: ArmToAngleSkillCommand(
+            command_id="cmd-arm",
+            issued_ms=250,
+            params=ArmToAngleParams(deg=45.0, vel_rpm=60.0),
+        ),
+        PilotSkillName.CLAW_OPEN: ClawOpenSkillCommand(
+            command_id="cmd-claw-open",
+            issued_ms=260,
+            params=ClawOpenParams(opening_pct=80.0),
+        ),
+        PilotSkillName.CLAW_CLOSE: ClawCloseSkillCommand(
+            command_id="cmd-claw-close",
+            issued_ms=270,
+            params=ClawCloseParams(grip_force_n=15.0),
+        ),
+        PilotSkillName.VERIFY_GRASP: VerifyGraspSkillCommand(
+            command_id="cmd-verify-grasp",
+            issued_ms=280,
+            params=VerifyGraspParams(object_id="block-1", min_confidence=0.7),
+        ),
+        PilotSkillName.GO_TO_DESTINATION: GoToDestinationSkillCommand(
+            command_id="cmd-go",
+            issued_ms=290,
+            params=GoToDestinationParams(
+                destination_id="tag-7",
+                position_tolerance_m=0.15,
+                max_speed_mps=0.2,
+                timeout_ms=5000,
+            ),
+        ),
+        PilotSkillName.VERIFY_DROP: VerifyDropSkillCommand(
+            command_id="cmd-verify-drop",
+            issued_ms=300,
+            params=VerifyDropParams(destination_id="drop-zone", min_confidence=0.75),
+        ),
+    }
+    assert set(commands) == set(PilotSkillName)
+    return commands[skill]
 
 
 def test_executor_module_imports_without_ros_packages_and_exports_public_api(monkeypatch) -> None:
@@ -134,6 +228,11 @@ def test_accepted_validation_hands_normalized_command_to_transport_once() -> Non
     assert request.deadline.max_duration_ms == definition.max_duration_ms
     assert request.deadline.transport_grace_ms == 25
     assert request.deadline.deadline_ms == 100 + definition.max_duration_ms + 25
+    assert request.payload["route"] == BOUNDED_CONTROL_ROUTE
+    assert request.payload["action"] == "approach_target"
+    assert request.payload["command_id"] == "cmd-approach"
+    assert request.payload["skill"] == PilotSkillName.APPROACH_TARGET.value
+    assert request.payload["parameters"] == command.params.model_dump(mode="json")
     assert result.status is CommandStatus.QUEUED
     assert result.reason_code == ExecutorReasonCode.QUEUED.value
     assert result.command_id == "cmd-approach"
@@ -159,8 +258,100 @@ def test_executor_accepts_transport_object_protocol() -> None:
 
     assert len(transport.requests) == 1
     assert transport.requests[0].skill is PilotSkillName.STOP
+    assert transport.requests[0].payload["route"] == BOUNDED_CONTROL_ROUTE
+    assert transport.requests[0].payload["action"] == "halt"
+    assert transport.requests[0].payload["reason"] == "unsafe"
     assert result.status is CommandStatus.QUEUED
     assert result.completed_ms == 250
+
+
+def test_all_contract_skills_have_mapping_or_assertion_only_executor_outcome() -> None:
+    expected = {
+        PilotSkillName.STOP: (BOUNDED_CONTROL_ROUTE, "halt"),
+        PilotSkillName.SURVEY_SCENE: (OPERATOR_COMMAND_ROUTE, "survey_scan"),
+        PilotSkillName.FACE_TARGET: (OPERATOR_COMMAND_ROUTE, "align_to_tag"),
+        PilotSkillName.APPROACH_TARGET: (OPERATOR_COMMAND_ROUTE, "move_to_tag"),
+        PilotSkillName.CENTER_OBJECT_IN_GRIPPER: (
+            BOUNDED_CONTROL_ROUTE,
+            "center_object_in_gripper",
+        ),
+        PilotSkillName.ARM_TO_ANGLE: (OPERATOR_COMMAND_ROUTE, "arm"),
+        PilotSkillName.CLAW_OPEN: (OPERATOR_COMMAND_ROUTE, "release"),
+        PilotSkillName.CLAW_CLOSE: (OPERATOR_COMMAND_ROUTE, "grab"),
+        PilotSkillName.VERIFY_GRASP: (ASSERTION_ONLY_ROUTE, "assertion_validated"),
+        PilotSkillName.GO_TO_DESTINATION: (OPERATOR_COMMAND_ROUTE, "move_to_tag"),
+        PilotSkillName.VERIFY_DROP: (ASSERTION_ONLY_ROUTE, "assertion_validated"),
+    }
+    assert set(expected) == set(PilotSkillName)
+    assert {definition.name for definition in list_skill_definitions()} == set(PilotSkillName)
+
+    for skill in PilotSkillName:
+        command = _command_for_skill(skill)
+        calls: list[TransportRequest] = []
+
+        result = execute_validated_command(
+            _accepted_validation(command),
+            calls.append,
+            clock_ms=lambda: 10_000,
+        )
+
+        route, action = expected[skill]
+        if route == ASSERTION_ONLY_ROUTE:
+            assert calls == []
+            assert result.status is CommandStatus.OK
+            assert result.reason_code == ExecutorReasonCode.ASSERTION_VALIDATED.value
+            assert "accepted safety validation evidence" in result.message
+            assert result.raw_transport_payload is None
+            continue
+
+        assert len(calls) == 1
+        payload = calls[0].payload
+        definition = get_skill_definition(skill)
+        assert payload["route"] == route
+        assert payload["action"] == action
+        assert payload["command_id"] == command.command_id
+        assert payload["skill"] == skill.value
+        assert payload["command_path"] == definition.command_path
+        assert payload["expected_result_source"] == definition.expected_result_source
+        assert payload["max_duration_ms"] == definition.max_duration_ms
+        assert payload["parameters"] == command.params.model_dump(mode="json")
+        assert payload["registry"] == {
+            "command_path": definition.command_path,
+            "expected_result_source": definition.expected_result_source,
+            "max_duration_ms": definition.max_duration_ms,
+            "success_assertion": definition.success_assertion.assertion_id,
+        }
+        assert result.status is CommandStatus.QUEUED
+
+
+def test_transport_payloads_are_json_compatible_plain_data() -> None:
+    command = _command_for_skill(PilotSkillName.FACE_TARGET)
+    calls: list[TransportRequest] = []
+
+    execute_validated_command(_accepted_validation(command), calls.append)
+
+    payload = calls[0].payload
+    encoded = json.dumps(payload, sort_keys=True)
+    assert json.loads(encoded) == payload
+    assert payload["route"] == OPERATOR_COMMAND_ROUTE
+    assert payload["action"] == "align_to_tag"
+    assert payload["tag_id"] == 7
+    assert payload["tag_index"] == 7
+    assert payload["timeout_s"] == 2.5
+    assert payload["max_omega"] == 0.4
+    assert isinstance(payload["parameters"], dict)
+
+
+def test_non_tag_targets_use_bounded_control_payloads() -> None:
+    command = _motion_command()
+    calls: list[TransportRequest] = []
+
+    execute_validated_command(_accepted_validation(command), calls.append)
+
+    assert calls[0].payload["route"] == BOUNDED_CONTROL_ROUTE
+    assert calls[0].payload["action"] == "approach_target"
+    assert calls[0].payload["target_id"] == "block-1"
+    assert "tag_id" not in calls[0].payload
 
 
 @pytest.mark.parametrize("status", [ValidationStatus.REJECTED, ValidationStatus.STOPPED])

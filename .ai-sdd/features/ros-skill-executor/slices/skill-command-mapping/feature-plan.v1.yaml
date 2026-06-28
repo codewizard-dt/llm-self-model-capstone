@@ -1,0 +1,246 @@
+summary: >-
+  Add deterministic skill-command mapping on top of the existing ROS-free pilot
+  executor core: every contract-owned MVP skill is either converted into a
+  compact JSON-compatible operator/control payload derived from the validated
+  command model and skill registry, or handled as an explicit assertion-only
+  non-motion result for verification skills.
+
+scope:
+  in:
+    - >-
+      Extend `pilot/src/pilot/executor.py` with an executor-local payload shape
+      or helper that converts accepted `contracts.PilotSkillCommand` objects into
+      JSON-compatible plain data for the existing operator command surface or a
+      bounded control route.
+    - >-
+      Keep using the completed executor-core-api validation gate: only accepted
+      `pilot.safety.ValidationResult` objects with a present command may reach
+      mapping or transport.
+    - >-
+      Provide explicit mapping coverage for every `contracts.PilotSkillName`
+      member, with tests that fail when a new contract skill is added without an
+      executor mapping or explicit assertion-only path.
+    - >-
+      Preserve the pilot `command_id`, skill name, symbolic route/action,
+      registry metadata, bounded timing, and command parameters in the payload
+      whenever a transport request is sent.
+    - >-
+      Prefer `/operator/command` payloads for existing operator actions:
+      `survey_scan`, tag facing/alignment, tag navigation, `arm`, `grab`, and
+      `release`; use bounded control-route payloads only where the current
+      operator surface has no direct named action for the pilot skill.
+    - >-
+      Map `stop` to an operator/control halt payload without issuing raw motor
+      fields from the LLM-facing command.
+    - >-
+      Implement `verify_grasp` and `verify_drop` as assertion-only executor
+      outcomes that publish nothing, return deterministic `contracts.CommandStatus`
+      values, and rely on the accepted safety validation as evidence that the
+      current observation/assertion state was sufficient for this slice.
+    - >-
+      Add focused tests in `pilot/tests/test_executor.py` for per-skill mapping,
+      JSON-compatible payload shape, command-id preservation, stop mapping,
+      assertion-only no-publish behavior, accepted-validation gating reuse, and
+      ROS-free importability.
+  out:
+    - >-
+      Concrete ROS node implementation, `rclpy` imports, topic publish/subscribe
+      code, or real hardware publication.
+    - >-
+      Waiting for `/operator/results`, parsing terminal feedback/result payloads,
+      command correlation, timeout classification, fake transport result queues,
+      or ROS adapter implementation; those belong to `transport-results-timeouts`.
+    - >-
+      CLI wiring, console scripts, supervised hardware proof commands, final
+      package export cleanup, or feature-wide acceptance closure; those belong to
+      `cli-tests-and-exports`.
+    - >-
+      Rich fused assertion logic for grasp/drop verification, assertion-engine
+      changes, observation-builder changes, or run-logger/replay integration.
+    - >-
+      Safety validation policy changes, numeric clamping changes, skill registry
+      vocabulary changes, contract/schema changes, generated contract JSON schema
+      changes, ROS operator node changes, PROS firmware changes, or low-level
+      Brain packet changes.
+    - >-
+      Edits outside `pilot/src/pilot/executor.py` and
+      `pilot/tests/test_executor.py` unless a narrowly required package export
+      gap is discovered during implementation.
+
+acceptance:
+  - id: ACC-SKILL-MAPPING-COVERAGE
+    description: >-
+      Tests prove every current `contracts.PilotSkillName` is either mapped to a
+      transport payload or explicitly classified as assertion-only; adding a new
+      enum member without executor coverage fails a test.
+  - id: ACC-PAYLOAD-JSON-SHAPE
+    description: >-
+      Each transport payload is JSON-compatible plain data and includes at least
+      route, action, command_id, skill, and a bounded parameters object derived
+      from the validated command model rather than raw LLM dictionaries.
+  - id: ACC-REGISTRY-ALIGNED-MAPPING
+    description: >-
+      Mapping uses `pilot.skills.get_skill_definition()` metadata for command
+      path, expected result source, and max duration/deadline data, and tests
+      assert that executor mapping coverage stays aligned with the registry.
+  - id: ACC-OPERATOR-ROUTE-FIRST
+    description: >-
+      Mapped movement and manipulator skills prefer `/operator/command` and use
+      `/task_plan/request` only if a skill registry route explicitly requires a
+      task-plan path.
+  - id: ACC-STOP-HALT-PAYLOAD
+    description: >-
+      `stop` maps to a deterministic halt payload that preserves command id,
+      skill, and reason, and does not expose unbounded raw motor control fields.
+  - id: ACC-MOTION-MANIPULATOR-ACTIONS
+    description: >-
+      Tests cover expected actions or bounded control routes for
+      `survey_scene`, `face_target`, `approach_target`,
+      `center_object_in_gripper`, `go_to_destination`, `arm_to_angle`,
+      `claw_open`, and `claw_close`.
+  - id: ACC-ASSERTION-ONLY-NO-PUBLISH
+    description: >-
+      `verify_grasp` and `verify_drop` do not call the transport boundary, return
+      deterministic executor results using contract-owned command statuses, and
+      explain that the accepted safety validation supplied the current
+      observation/assertion evidence for this slice.
+  - id: ACC-VALIDATION-GATE-PRESERVED
+    description: >-
+      Existing refusal behavior remains intact: malformed, rejected, stopped, or
+      accepted-without-command validation results never build payloads and never
+      call transport.
+  - id: ACC-ROS-FREE-MAPPING
+    description: >-
+      `pilot.executor` and the mapping tests run without ROS packages installed;
+      no `rclpy`, ROS message, or concrete provider import is introduced at
+      module import time.
+  - id: ACC-SCOPE-LIMITED-FILES
+    description: >-
+      Implementation changes stay limited to `pilot/src/pilot/executor.py` and
+      `pilot/tests/test_executor.py` unless an export is genuinely required; no
+      contract, registry, safety, ROS runtime, firmware, CLI, logger, or replay
+      files are edited.
+
+decisions:
+  - id: DEC-INCREMENTAL-EXECUTOR-ONLY
+    status: closed
+    decision: >-
+      Implement this slice as an incremental change to the existing
+      `pilot.executor` core and its tests, not as a new module or a ROS adapter.
+    rationale: >-
+      The completed executor-core-api slice already established the public
+      validation gate, immutable result surface, route/deadline helpers, and
+      ROS-free transport boundary; this slice only fills in per-skill mapping and
+      assertion-only behavior.
+    grounds: >-
+      `skill-command-mapping.md` Files to create / change; current
+      `pilot/src/pilot/executor.py`; ROS Skill Executor Feature Requirements
+      RSE-001; `.ai-sdd/conventions/pilot.md` Boundary rules.
+  - id: DEC-PAYLOADS-ARE-PLAIN-DATA
+    status: closed
+    decision: >-
+      Represent mapped executor payloads as JSON-compatible plain data, attached
+      to the existing `TransportRequest` path or a small executor-local helper,
+      rather than defining a new pydantic schema in `pilot`.
+    rationale: >-
+      The executor needs deterministic payloads for fake transport tests and
+      later ROS publication, while `contracts/` remains the only schema-owning
+      vertical.
+    grounds: >-
+      ROS Skill Executor Feature Requirements Constraints and RSE-003;
+      `PILOT_MASTER_REQUIREMENTS.md` Components and Skill contract;
+      `.ai-sdd/conventions/pilot.md` "No schema defined here"; frozen
+      `.ai-sdd/schemas/task-telemetry.schema.yaml`,
+      `.ai-sdd/schemas/self-model.schema.yaml`, and
+      `.ai-sdd/schemas/parts-catalog.schema.yaml`.
+  - id: DEC-OPERATOR-COMMAND-FIRST
+    status: closed
+    decision: >-
+      Map skills to `/operator/command` first when the current operator has a
+      matching action: `survey_scene` -> `survey_scan`; tag-facing skills ->
+      `align_to_tag` or `orient_to_tag`; tag/destination navigation ->
+      `move_to_tag`; `arm_to_angle` -> `arm`; `claw_close` -> `grab`; and
+      `claw_open` -> `release`. For object/pose skills without a current named
+      operator action, emit a bounded control-route payload keyed by the registry
+      command path instead of inventing a ROS topic.
+    rationale: >-
+      The program allows current operator actions to back MVP skills, but the
+      pilot vocabulary must remain skill-based and reusable; bounded control
+      routes keep unsupported shapes explicit without publishing raw motor
+      packets from LLM output.
+    grounds: >-
+      ROS Skill Executor Feature Requirements RSE-004 and Constraints;
+      `skill-command-mapping.md` Requirements and Acceptance;
+      `.ai-sdd/programs/pilot-online-task-loop/requirements.md` PPROG-012 and
+      Shared Constraints; `robot/ros2-runtime/operator/GUIDEBOOK.md` Operator
+      Abstractions and Ad-Hoc Commands.
+  - id: DEC-REGISTRY-IS-MAPPING-AUTHORITY
+    status: closed
+    decision: >-
+      The executor mapping must use `pilot.skills.get_skill_definition()` for
+      command path, expected result source, and max-duration metadata, with tests
+      that compare mapping coverage against `PilotSkillName` and registry
+      definitions.
+    rationale: >-
+      Duplicating registry duration and route metadata in the executor would make
+      skill behavior drift across pilot features.
+    grounds: >-
+      ROS Skill Executor Feature Requirements Constraints; `skill-command-mapping.md`
+      Requirements; `pilot/src/pilot/skills.py`; `PILOT_MASTER_REQUIREMENTS.md`
+      Skill Model.
+  - id: DEC-VERIFY-SKILLS-ARE-NON-MOTION
+    status: closed
+    decision: >-
+      `verify_grasp` and `verify_drop` are handled inside the executor as
+      assertion-only accepted outcomes that never call transport; they may return
+      `CommandStatus.OK` for accepted validation because the safety validator has
+      already checked the current observation/assertion evidence.
+    rationale: >-
+      These skills should not command robot motion, and the richer fused
+      confidence model belongs to the later assertion-engine feature rather than
+      this executor mapping slice.
+    grounds: >-
+      ROS Skill Executor Feature Requirements RSE-005; `skill-command-mapping.md`
+      Requirements and Out Of Scope; `pilot/src/pilot/safety.py` verification
+      evidence checks; `.ai-sdd/programs/pilot-online-task-loop/requirements.md`
+      O1 and P7 assertion-engine sequencing.
+  - id: DEC-TRANSPORT-RESULTS-DEFERRED
+    status: closed
+    decision: >-
+      Continue returning deterministic boundary results for mapped payloads in
+      this slice, and defer terminal result parsing, timeout status, correlation,
+      and fake transport result queues to the `transport-results-timeouts` slice.
+    rationale: >-
+      The current slice is about command mapping coverage and no-publish
+      verification paths; conflating result waiting here would expand the file
+      scope and duplicate the next slice.
+    grounds: >-
+      `skill-command-mapping.md` Out Of Scope; `transport-results-timeouts.md`
+      What this slice delivers and Requirements; ROS Skill Executor Feature
+      Requirements RSE-006 and RSE-007.
+  - id: DEC-GATE-SET
+    status: closed
+    decision: >-
+      The implementer must run `uv sync`, focused pilot checks
+      `make -C pilot test` and `make -C pilot lint`, then root `make test`,
+      `make validate`, and `make lint`; `make demo` remains excluded.
+    rationale: >-
+      The plan-feature worker requires the root gates, the feature requirements
+      require pilot-local and root checks, and `make demo` is a separate m2
+      milestone concern rather than an executor slice gate.
+    grounds: >-
+      `.ai-sdd/skills/plan-feature/SKILL.md`; AGENTS.md Build / verify; ROS Skill
+      Executor Feature Requirements Acceptance; root Makefile; pilot Makefile;
+      `MASTER_REQUIREMENTS.md` Milestones m2.
+
+files:
+  - pilot/src/pilot/executor.py
+  - pilot/tests/test_executor.py
+
+tests:
+  - uv sync
+  - make -C pilot test
+  - make -C pilot lint
+  - make test
+  - make validate
+  - make lint

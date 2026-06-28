@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from time import monotonic_ns
@@ -13,12 +13,21 @@ from pilot.safety import ValidationResult, ValidationStatus
 from pilot.skills import SkillDefinition, get_skill_definition
 
 ClockMs: TypeAlias = Callable[[], int]
+JsonScalar: TypeAlias = str | int | float | bool | None
+JsonValue: TypeAlias = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
+ExecutorPayload: TypeAlias = dict[str, JsonValue]
+
+OPERATOR_COMMAND_ROUTE = "/operator/command"
+BOUNDED_CONTROL_ROUTE = "bounded_control"
+ASSERTION_ONLY_ROUTE = "assertion_only"
+_ASSERTION_ONLY_SKILLS = frozenset({PilotSkillName.VERIFY_GRASP, PilotSkillName.VERIFY_DROP})
 
 
 class ExecutorReasonCode(StrEnum):
     """Stable executor-local reason codes for boundary outcomes."""
 
     QUEUED = "queued"
+    ASSERTION_VALIDATED = "assertion_validated"
     MISSING_COMMAND = "missing_command"
     MALFORMED_VALIDATION = "malformed_validation"
     TRANSPORT_FAILED = "transport_failed"
@@ -62,6 +71,7 @@ class TransportRequest:
     skill: PilotSkillName
     route: ExecutorRoute
     deadline: ExecutorDeadline
+    payload: ExecutorPayload
 
 
 @dataclass(frozen=True, slots=True)
@@ -143,6 +153,20 @@ class SkillExecutor:
 
         command_skill = PilotSkillName(str(command.skill))
         definition = get_skill_definition(command_skill)
+        if command_skill in _ASSERTION_ONLY_SKILLS:
+            return ExecutionResult(
+                command_id=command.command_id,
+                skill=command_skill,
+                status=CommandStatus.OK,
+                reason_code=ExecutorReasonCode.ASSERTION_VALIDATED.value,
+                message=(
+                    "assertion-only skill satisfied by accepted safety validation evidence; "
+                    "no transport request issued"
+                ),
+                issued_ms=command.issued_ms,
+                completed_ms=self._clock_ms(),
+            )
+
         request = _transport_request(command, definition, policy=self._policy)
         try:
             raw_payload = _send(self._transport, request)
@@ -189,21 +213,184 @@ def _transport_request(
 ) -> TransportRequest:
     issued_ms = command.issued_ms
     max_duration_ms = definition.max_duration_ms
+    deadline = ExecutorDeadline(
+        max_duration_ms=max_duration_ms,
+        transport_grace_ms=policy.transport_grace_ms,
+        deadline_ms=issued_ms + max_duration_ms + policy.transport_grace_ms,
+    )
+    route = ExecutorRoute(
+        command_path=definition.command_path,
+        expected_result_source=definition.expected_result_source,
+        max_duration_ms=max_duration_ms,
+    )
     return TransportRequest(
         command=command,
         command_id=command.command_id,
         skill=definition.name,
-        route=ExecutorRoute(
-            command_path=definition.command_path,
-            expected_result_source=definition.expected_result_source,
-            max_duration_ms=max_duration_ms,
-        ),
-        deadline=ExecutorDeadline(
-            max_duration_ms=max_duration_ms,
-            transport_grace_ms=policy.transport_grace_ms,
-            deadline_ms=issued_ms + max_duration_ms + policy.transport_grace_ms,
-        ),
+        route=route,
+        deadline=deadline,
+        payload=_transport_payload(command, definition, route=route, deadline=deadline),
     )
+
+
+def _transport_payload(
+    command: PilotSkillCommand,
+    definition: SkillDefinition,
+    *,
+    route: ExecutorRoute,
+    deadline: ExecutorDeadline,
+) -> ExecutorPayload:
+    command_skill = PilotSkillName(str(command.skill))
+    mapping = _skill_transport_mapping(command_skill, _command_parameters(command))
+    payload: ExecutorPayload = {
+        "v": 1,
+        "route": mapping["route"],
+        "action": mapping["action"],
+        "command_id": command.command_id,
+        "skill": command_skill.value,
+        "issued_ms": command.issued_ms,
+        "command_path": route.command_path,
+        "expected_result_source": route.expected_result_source,
+        "max_duration_ms": route.max_duration_ms,
+        "deadline_ms": deadline.deadline_ms,
+        "parameters": mapping["parameters"],
+        "registry": {
+            "command_path": definition.command_path,
+            "expected_result_source": definition.expected_result_source,
+            "max_duration_ms": definition.max_duration_ms,
+            "success_assertion": definition.success_assertion.assertion_id,
+        },
+    }
+    payload.update(mapping["publish_fields"])
+    return payload
+
+
+def _skill_transport_mapping(
+    skill: PilotSkillName,
+    parameters: ExecutorPayload,
+) -> ExecutorPayload:
+    match skill:
+        case PilotSkillName.STOP:
+            return _bounded_control_mapping("halt", parameters)
+        case PilotSkillName.SURVEY_SCENE:
+            return _operator_mapping(
+                "survey_scan",
+                parameters,
+                {
+                    "duration_s": _ms_to_s(parameters["timeout_ms"]),
+                    "omega_rad_s": None,
+                },
+            )
+        case PilotSkillName.FACE_TARGET:
+            tag_id = _tag_id_from_identifier(parameters["target_id"])
+            if tag_id is None:
+                return _bounded_control_mapping("face_target", parameters)
+            return _operator_mapping(
+                "align_to_tag",
+                parameters,
+                {
+                    "tag_id": tag_id,
+                    "tag_index": tag_id,
+                    "timeout_s": _ms_to_s(parameters["timeout_ms"]),
+                    "max_omega": parameters["max_turn_rad_s"],
+                },
+            )
+        case PilotSkillName.APPROACH_TARGET:
+            tag_id = _tag_id_from_identifier(parameters["target_id"])
+            if tag_id is None:
+                return _bounded_control_mapping("approach_target", parameters)
+            return _operator_mapping(
+                "move_to_tag",
+                parameters,
+                {
+                    "tag_id": tag_id,
+                    "tag_index": tag_id,
+                    "target_distance_m": parameters["standoff_m"],
+                },
+            )
+        case PilotSkillName.CENTER_OBJECT_IN_GRIPPER:
+            return _bounded_control_mapping("center_object_in_gripper", parameters)
+        case PilotSkillName.ARM_TO_ANGLE:
+            return _operator_mapping(
+                "arm",
+                parameters,
+                {
+                    "target_deg": parameters["deg"],
+                    "vel_rpm": parameters["vel_rpm"],
+                },
+            )
+        case PilotSkillName.CLAW_OPEN:
+            return _operator_mapping("release", parameters, {})
+        case PilotSkillName.CLAW_CLOSE:
+            return _operator_mapping("grab", parameters, {})
+        case PilotSkillName.GO_TO_DESTINATION:
+            destination_id = parameters["destination_id"]
+            tag_id = _tag_id_from_identifier(destination_id) if destination_id is not None else None
+            if tag_id is None:
+                return _bounded_control_mapping("go_to_destination", parameters)
+            return _operator_mapping(
+                "move_to_tag",
+                parameters,
+                {
+                    "tag_id": tag_id,
+                    "tag_index": tag_id,
+                    "target_distance_m": parameters["position_tolerance_m"],
+                },
+            )
+        case PilotSkillName.VERIFY_GRASP | PilotSkillName.VERIFY_DROP:
+            return _assertion_only_mapping(parameters)
+
+
+def _operator_mapping(
+    action: str,
+    parameters: ExecutorPayload,
+    publish_fields: Mapping[str, JsonValue],
+) -> ExecutorPayload:
+    return {
+        "route": OPERATOR_COMMAND_ROUTE,
+        "action": action,
+        "parameters": parameters,
+        "publish_fields": _without_none({**parameters, **dict(publish_fields)}),
+    }
+
+
+def _bounded_control_mapping(action: str, parameters: ExecutorPayload) -> ExecutorPayload:
+    return {
+        "route": BOUNDED_CONTROL_ROUTE,
+        "action": action,
+        "parameters": parameters,
+        "publish_fields": parameters,
+    }
+
+
+def _assertion_only_mapping(parameters: ExecutorPayload) -> ExecutorPayload:
+    return {
+        "route": ASSERTION_ONLY_ROUTE,
+        "action": "assertion_validated",
+        "parameters": parameters,
+        "publish_fields": {},
+    }
+
+
+def _command_parameters(command: PilotSkillCommand) -> ExecutorPayload:
+    return command.params.model_dump(mode="json")
+
+
+def _without_none(values: Mapping[str, JsonValue]) -> ExecutorPayload:
+    return {key: value for key, value in values.items() if value is not None}
+
+
+def _tag_id_from_identifier(value: object) -> int | None:
+    if isinstance(value, int):
+        return value
+    if not isinstance(value, str):
+        return None
+    candidate = value.removeprefix("tag-").removeprefix("tag_").removeprefix("apriltag-")
+    return int(candidate) if candidate.isdecimal() else None
+
+
+def _ms_to_s(value: JsonValue) -> float:
+    return int(value) / 1000.0
 
 
 def _send(transport: TransportBoundary, request: TransportRequest) -> object | None:
