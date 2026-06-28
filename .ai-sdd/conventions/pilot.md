@@ -27,7 +27,7 @@ self-model / gap model) — i.e. the offline loop tightens the model; the online
 | Change type | Evidence | Convention | Status |
 |---|---|---|---|
 | Purpose | Maintainer brief (stage c); REPO BRAIN_INTERFACE §2.4 (Mode A real-time) | Online LLM control loop over live telemetry + vision. | confirmed |
-| Language | REQ ADR-05 (Pi = Python) | **Python 3.11** on the Pi. | confirmed |
+| Language | REQ ADR-05 (Pi = Python); PILOT_MASTER_REQUIREMENTS Tech stacks | **Python 3.12** on the Pi. | confirmed |
 | LLM runtime | REQ ADR-08 (Claude Code interactive, dev machine) · ADR-03 (no API keys) | **⚠️ Open / contradicts ADR-03 & ADR-08.** Real-time on-device control needs an LLM callable from a loop on the Pi (Claude API / Agent SDK, or Claude Code headless) — which implies network + an API key, contradicting ADR-03 ("no keys") and ADR-08 ("interactive dev-machine"). Decide the runtime + key/network posture. | open gap |
 | Control interface | `contracts` control grammar (`control-command`) | Issue only **fixed-grammar** clamped commands via the `TelemetrySource`/command path; never raw motor writes. | confirmed |
 | Build / test / lint / validate | REQ Tech stacks; ADR-15/16/06 | `uv`; `make test/lint/validate`. | confirmed |
