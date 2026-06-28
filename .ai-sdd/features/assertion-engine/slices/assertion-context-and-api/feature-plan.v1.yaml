@@ -1,0 +1,216 @@
+summary: >-
+  Add the ROS-free assertion-engine foundation for the pilot vertical: immutable task assertion
+  context/configuration, the required delivery assertion id vocabulary, contract-valid assertion
+  builders, and a stable public `evaluate_assertions(observation, context)` API that returns
+  placeholder unknown assertions for downstream evaluator slices to replace.
+
+scope:
+  in:
+    - >-
+      Add `pilot/src/pilot/assertions.py` with immutable pilot-local context/configuration for
+      target object selection, destination selection, confidence thresholds, localization freshness,
+      reachability distance, and image-center/grasp-corridor tolerance.
+    - >-
+      Define the required MVP assertion ids exactly and in stable order:
+      `target_ball_visible`, `robot_pose_reliable`, `ball_reachable`,
+      `ball_centered_for_grasp`, `grasp_likely`, `carrying_ball`, `at_destination`,
+      `drop_likely`, and `ball_at_destination`.
+    - >-
+      Provide helper functions or internal builders that create contract-valid
+      `contracts.PilotAssertion` records with bounded confidence, at least one
+      `contracts.AssertionEvidence`, observed-time or age metadata, and optional recovery hints.
+    - >-
+      Expose a public ROS-free entrypoint such as `evaluate_assertions(observation, context)` that
+      accepts `contracts.PilotObservation` plus the pilot-local context and returns the required
+      assertion records in stable order.
+    - >-
+      Keep evaluator behavior intentionally minimal for this foundation slice: placeholder
+      `unknown` assertions for all required ids are acceptable when they validate and include
+      explicit evidence that full heuristics are deferred.
+    - >-
+      Add only additive package exports in `pilot/src/pilot/__init__.py` for the assertion API
+      surface delivered by this slice.
+    - >-
+      Add focused tests in `pilot/tests/test_assertions.py` covering immutable/default/explicit
+      context values, required id coverage and order, helper validation, public entrypoint output,
+      and importability without ROS packages installed.
+  out:
+    - >-
+      Final true/false evaluator heuristics for object visibility, pose reliability, reachability,
+      centering, grasp, carry, arrival, drop, or final delivery success.
+    - >-
+      ROS subscription nodes, live topic wiring, camera/object tracker implementation, AprilTag
+      mapping, motor-current drivers, concrete provider adapters, or any dependency on ROS message
+      classes.
+    - >-
+      LLM prompting, LLM judging, prompt construction, decision parsing, retry orchestration,
+      safety-validator stop policy, command clamping, skill execution, ROS publishing, ack waiting,
+      run logging, replay-loop orchestration, skill-baseline capture, delivery recipes, or hardware
+      motion.
+    - >-
+      Contract schema changes, generated schema changes, fixture rewrites, pilot-local pydantic
+      schemas, or any schema-bearing assertion duplicate outside `contracts/`.
+    - >-
+      Changes to `self_model_generator/`, `robot/ros2-runtime/`, `robot/v5-brain/`, docs, CI,
+      root Makefile delegation, or dependency-management tools.
+    - >-
+      Adding `make demo` as a per-slice gate; it remains an m2 milestone concern.
+
+acceptance:
+  - id: ACC-ASSERTION-CONTEXT-IMMUTABLE
+    description: >-
+      `pilot.assertions` defines immutable pilot-local context/configuration types for target
+      selection, destination selection, confidence thresholds, localization age limits,
+      reachability distance, and image-center/grasp-corridor tolerance; tests prove defaults and
+      explicit values are deterministic, immutable, and task-configurable.
+  - id: ACC-REQUIRED-ASSERTION-IDS
+    description: >-
+      The module exposes the nine required MVP assertion ids exactly once and in this stable order:
+      `target_ball_visible`, `robot_pose_reliable`, `ball_reachable`,
+      `ball_centered_for_grasp`, `grasp_likely`, `carrying_ball`, `at_destination`,
+      `drop_likely`, and `ball_at_destination`.
+  - id: ACC-CONTRACT-VALID-BUILDERS
+    description: >-
+      Helper-created assertions validate through `contracts.PilotAssertion`, use
+      `contracts.AssertionEvidence`, carry bounded confidence, include observed-time or age
+      metadata, and include at least one evidence entry explaining the source used or missing.
+  - id: ACC-PUBLIC-EVALUATE-API
+    description: >-
+      `evaluate_assertions(observation, context)` accepts a `contracts.PilotObservation` and returns
+      a tuple or list containing exactly one contract-valid assertion for each required id in the
+      stable vocabulary order.
+  - id: ACC-PLACEHOLDER-UNCERTAINTY
+    description: >-
+      Foundation behavior may return `unknown` for every required id, but each placeholder
+      assertion must make uncertainty explicit in confidence, evidence summary, and recovery hint
+      or predicate text rather than fabricating true/false progress.
+  - id: ACC-NO-SCHEMA-DRIFT
+    description: >-
+      The implementation imports `contracts.PilotObservation`, `contracts.PilotAssertion`, and
+      `contracts.AssertionEvidence` and does not define pilot-local pydantic schemas, edit
+      `contracts/`, or regenerate JSON schemas/fixtures.
+  - id: ACC-NO-ROS-DEPENDENCY
+    description: >-
+      Tests prove `pilot.assertions` and the package-level assertion exports can be imported and
+      exercised without `rclpy`, ROS message packages, ROS topic classes, or concrete provider
+      implementations installed.
+  - id: ACC-PACKAGE-EXPORTS
+    description: >-
+      `pilot/src/pilot/__init__.py` additively exports only the assertion ids, context/configuration
+      types, builders or public API functions needed by this slice while preserving existing
+      observation and skill-registry exports.
+  - id: ACC-SCOPE-LIMITED-FILES
+    description: >-
+      Implementation changes are limited to `pilot/src/pilot/assertions.py`,
+      `pilot/src/pilot/__init__.py`, and `pilot/tests/test_assertions.py`; no evaluator heuristics,
+      contracts, ROS wiring, run-loop, replay, logger, or feature-source files are edited.
+  - id: ACC-REGRESSION-GATES
+    description: >-
+      The implementer runs focused pilot checks and required repo gates: `make sync`,
+      `make -C pilot test`, `make -C pilot lint`, `make test`, `make validate`, and `make lint`.
+
+decisions:
+  - id: DEC-ASSERTIONS-MODULE
+    status: closed
+    decision: >-
+      Implement the assertion-engine foundation in `pilot/src/pilot/assertions.py` and expose only
+      additive public API exports from `pilot/src/pilot/__init__.py`.
+    rationale: >-
+      The slice explicitly delivers the ROS-free assertion context, ids, helpers, and public API
+      foundation under the pilot vertical, while keeping evaluator logic for later slices.
+    grounds: >-
+      assertion-context-and-api slice Files to create / change and What this slice delivers;
+      assertion-engine requirements Proposed Decision AE-001; PILOT_MASTER_REQUIREMENTS.md
+      Components `Assertion engine`.
+  - id: DEC-CONTRACTS-OWN-SCHEMAS
+    status: closed
+    decision: >-
+      Use `contracts.PilotObservation` as the public input shape and `contracts.PilotAssertion` with
+      `contracts.AssertionEvidence` as the only output/evidence schema; define only plain
+      pilot-local immutable context/configuration data in `pilot`.
+    rationale: >-
+      The repo boundary rule says schemas live in `contracts`, and the pilot convention forbids
+      redefining schema-bearing models in the pilot vertical.
+    grounds: >-
+      MASTER_REQUIREMENTS.md Components boundary rule and Tech stacks `contracts`; `.ai-sdd/conventions/pilot.md`
+      Boundary rules; assertion-engine requirements Constraints and Proposed Decisions AE-002 and
+      AE-003; `.ai-sdd/schemas/task-telemetry.schema.yaml`, `.ai-sdd/schemas/self-model.schema.yaml`,
+      and `.ai-sdd/schemas/parts-catalog.schema.yaml`.
+  - id: DEC-STABLE-ID-VOCABULARY
+    status: closed
+    decision: >-
+      Expose the nine required MVP assertion ids exactly as named in the feature requirements and
+      return them in that order from the foundation API.
+    rationale: >-
+      Downstream observations, replay mode, run logging, LLM prompts, skill baselines, and delivery
+      recipes need stable assertion ids and stable ordering before evaluator heuristics land.
+    grounds: >-
+      PILOT_MASTER_REQUIREMENTS.md Observation and Assertions; assertion-engine requirements In
+      Scope and Proposed Decision AE-004; assertion-context-and-api slice Requirements and
+      Acceptance.
+  - id: DEC-UNKNOWN-FOUNDATION
+    status: closed
+    decision: >-
+      Keep this slice's `evaluate_assertions` behavior as deterministic contract-valid `unknown`
+      placeholders for all required ids, with explicit evidence and recovery/context text, leaving
+      true/false fused heuristics to downstream evaluator slices.
+    rationale: >-
+      The rendered slice allows unknown placeholders as foundation behavior, while the feature's
+      final fused-evidence rules require separate evaluator work and broader tests.
+    grounds: >-
+      assertion-context-and-api slice Requirements and Out Of Scope; assertion-engine requirements
+      Acceptance and Proposed Decisions AE-005, AE-006, and AE-007; PILOT_MASTER_REQUIREMENTS.md
+      LLM Role and Observation and Assertions.
+  - id: DEC-ROS-FREE-DETERMINISTIC-API
+    status: closed
+    decision: >-
+      Keep `pilot.assertions` pure Python, replay-friendly, and free of ROS imports or wall-clock
+      reads; timing metadata must come from the supplied `PilotObservation` or caller-provided
+      context.
+    rationale: >-
+      The assertion engine must run in unit tests and replay mode without live hardware, and core
+      evaluation must remain deterministic for later logs and prompts.
+    grounds: >-
+      assertion-engine requirements Goal and Constraints; assertion-context-and-api slice
+      Requirements; `.ai-sdd/conventions/pilot.md` Boundary rules; MASTER_REQUIREMENTS.md ADR-20
+      adapter pipeline model.
+  - id: DEC-NO-SIDE-EFFECTS-OR-SAFETY-ACTIONS
+    status: closed
+    decision: >-
+      Do not execute commands, publish stops, enforce safety policy, call the LLM, or write run logs
+      from this module.
+    rationale: >-
+      Assertion computation is a deterministic progress signal; safety validation, execution,
+      LLM adapter behavior, replay, and logging are separate program features.
+    grounds: >-
+      assertion-engine requirements Out Of Scope and Proposed Decision AE-008;
+      PILOT_MASTER_REQUIREMENTS.md Components and Constraints; `.ai-sdd/conventions/pilot.md`
+      Boundary rules.
+  - id: DEC-GATE-SET
+    status: closed
+    decision: >-
+      The implementer must run the maintained dependency sync gate `make sync`, focused
+      `make -C pilot test` and `make -C pilot lint`, then root `make test`, `make validate`, and
+      `make lint`; `make demo` is excluded.
+    rationale: >-
+      The root repository uses per-vertical uv projects and `make sync` delegates the sync operation
+      into each vertical, including `pilot`. The pilot slice acceptance requires focused checks, the
+      root gates are the reviewer contract, and `make demo` is reserved for m2 rather than a
+      per-slice gate.
+    grounds: >-
+      assertion-engine requirements Acceptance and Proposed Decision AE-009; plan-feature SKILL.md
+      tests requirement; AGENTS.md Build / verify; root Makefile sync target; MASTER_REQUIREMENTS.md
+      Tech stacks and Milestones m2.
+
+files:
+  - pilot/src/pilot/assertions.py
+  - pilot/src/pilot/__init__.py
+  - pilot/tests/test_assertions.py
+
+tests:
+  - make sync
+  - make -C pilot test
+  - make -C pilot lint
+  - make test
+  - make validate
+  - make lint

@@ -1,0 +1,58 @@
+items:
+  - id: ACC-ASSERTION-CONTEXT-IMMUTABLE
+    verdict: pass
+    notes: >-
+      pilot.assertions defines frozen slot dataclasses for target, destination, config, and
+      aggregate context; tests cover defaults, explicit task configuration, immutability, and
+      invalid threshold/selector rejection.
+  - id: ACC-REQUIRED-ASSERTION-IDS
+    verdict: pass
+    notes: >-
+      REQUIRED_ASSERTION_IDS exposes the nine required MVP ids exactly once in the feature-plan
+      order, and the tests assert exact tuple equality and uniqueness.
+  - id: ACC-CONTRACT-VALID-BUILDERS
+    verdict: pass
+    notes: >-
+      build_assertion and build_unknown_assertion return contracts.PilotAssertion values with
+      contracts.AssertionEvidence, bounded confidence delegated to contract validation, at least
+      one evidence entry, and observed_ms/age_ms metadata.
+  - id: ACC-PUBLIC-EVALUATE-API
+    verdict: pass
+    notes: >-
+      evaluate_assertions accepts contracts.PilotObservation plus an optional AssertionContext and
+      returns a tuple with exactly one contract-valid assertion per required id in stable order.
+  - id: ACC-PLACEHOLDER-UNCERTAINTY
+    verdict: pass
+    notes: >-
+      Foundation assertions are explicitly unknown with zero confidence, deferred-heuristics
+      predicate/evidence text, and recovery hints telling callers to collect fused telemetry and
+      vision evidence before marking true or false.
+  - id: ACC-NO-SCHEMA-DRIFT
+    verdict: pass
+    notes: >-
+      The implementation imports PilotObservation, PilotAssertion, AssertionEvidence, and
+      AssertionState from contracts, defines only plain pilot-local dataclasses, and does not edit
+      contracts, schemas, or fixtures.
+  - id: ACC-NO-ROS-DEPENDENCY
+    verdict: pass
+    notes: >-
+      The assertion module contains no ROS imports; tests install an import hook that fails on ROS
+      package imports and exercise package-level assertion exports successfully.
+  - id: ACC-PACKAGE-EXPORTS
+    verdict: pass
+    notes: >-
+      pilot.__init__ additively exports the assertion ids, context/configuration types, and builder
+      or evaluation functions while preserving existing observation and skill-registry exports.
+  - id: ACC-SCOPE-LIMITED-FILES
+    verdict: pass
+    notes: >-
+      The working tree changes for this slice are limited to pilot/src/pilot/assertions.py,
+      pilot/src/pilot/__init__.py, and pilot/tests/test_assertions.py; no heuristics, contracts,
+      ROS wiring, run-loop, replay, logger, or feature-source files are edited.
+  - id: ACC-REGRESSION-GATES
+    verdict: pass
+    notes: >-
+      Independently ran make sync, make -C pilot test, make -C pilot lint, make test,
+      make validate, and make lint; all passed.
+verdict: approve
+rework: []

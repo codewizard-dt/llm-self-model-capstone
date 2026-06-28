@@ -1,5 +1,16 @@
 """Online pilot loop scaffolding."""
 
+from pilot.assertions import (
+    REQUIRED_ASSERTION_IDS,
+    AssertionConfig,
+    AssertionContext,
+    AssertionDestination,
+    AssertionId,
+    AssertionTarget,
+    build_assertion,
+    build_unknown_assertion,
+    evaluate_assertions,
+)
 from pilot.observation import (
     ObservationCache,
     assertion_sort_key,
@@ -36,6 +47,12 @@ from pilot.skills import (
 )
 
 __all__ = [
+    "REQUIRED_ASSERTION_IDS",
+    "AssertionConfig",
+    "AssertionContext",
+    "AssertionDestination",
+    "AssertionId",
+    "AssertionTarget",
     "BoundReference",
     "DecisionAdapterError",
     "DecisionAdapterResult",
@@ -48,6 +65,9 @@ __all__ = [
     "SkillInput",
     "SkillSuccessAssertion",
     "assertion_sort_key",
+    "build_assertion",
+    "build_unknown_assertion",
+    "evaluate_assertions",
     "failure_sort_key",
     "get_skill_definition",
     "build_decision_prompt",
