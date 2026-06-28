@@ -2,6 +2,14 @@
 .PHONY: sync validate test lint schema schema-check catalog catalog-check m1 m1-judge send-task rebuild-pi sync-pi
 PI_REPO ?= ~/llm-self-model-capstone
 PI_ROS_WS ?= ~/ros2_ws
+SEND_TASK_FILE := $(or $(FILE),$(word 2,$(MAKECMDGOALS)))
+
+ifeq ($(firstword $(MAKECMDGOALS)),send-task)
+ifneq ($(word 2,$(MAKECMDGOALS)),)
+$(eval .PHONY: $(word 2,$(MAKECMDGOALS)))
+$(eval $(word 2,$(MAKECMDGOALS)):;@:)
+endif
+endif
 
 # m1 contracts-frozen milestone gate (delegates into contracts/).
 m1:
@@ -46,8 +54,8 @@ sync-telemetry:
 	bash scripts/sync_telemetry.sh
 
 send-task:
-	@test -n "$(FILE)" || (echo "usage: make send-task FILE=path/to/task.json" >&2; exit 2)
-	bash scripts/send_task_to_pi.sh "$(FILE)"
+	@test -n "$(SEND_TASK_FILE)" || (echo "usage: make send-task path/to/task.json" >&2; exit 2)
+	bash scripts/send_task_to_pi.sh "$(SEND_TASK_FILE)"
 
 sync-pi:
 	bash scripts/sync_pi_runtime.sh

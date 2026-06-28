@@ -6,6 +6,50 @@ own self-model from telemetry and vision evidence.
 
 If you are new here, start with this page, then drill into the linked docs.
 
+## Send A Task To The Robot
+
+With the Pi runtime already running and the V5 Brain program in slot 8, drop a
+validated task envelope into the operator inbox from the repo root:
+
+```bash
+make send-task robot/ros2-runtime/fixtures/task_deliver_ball.json
+```
+
+`scripts/send_task_to_pi.sh` loads SSH settings from repo-root `.env`, validates
+the file as [`contracts.TaskEnvelope`](contracts/src/contracts/task_envelope.py),
+copies it to `/vexy/tasks/inbox` on the Pi, and prints the newest
+`/home/vexy/telemetry/run-*` folder. The older `FILE=...` form still works:
+
+```bash
+make send-task FILE=robot/ros2-runtime/fixtures/task_deliver_ball.json
+```
+
+A task envelope has exactly two top-level fields: `contract`, the frozen
+`ContractLine` evidence/prediction record, and `outline`, the ordered operator
+method calls the robot will execute.
+
+Very small example:
+
+```json
+{
+  "contract": {
+    "schema_version": "1.0",
+    "session_id": "manual-grab",
+    "generation": 0,
+    "round": 0,
+    "task": "manual_grab",
+    "motor_samples": [{ "device": "left_drive" }],
+    "predicted": { "success": true },
+    "gap": { "distance_error_m": 0.0 }
+  },
+  "outline": [["grab", [], { "duration_ms": 700 }]]
+}
+```
+
+If multiple task files are sent, the operator consumes one `*.json` file at a
+time and does not start the next inbox task until the active task completes or
+fails.
+
 ## What To Read First
 
 1. [MASTER_REQUIREMENTS.md](MASTER_REQUIREMENTS.md) - the authoritative product
