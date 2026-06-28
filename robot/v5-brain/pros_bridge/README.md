@@ -14,6 +14,10 @@ This bridge is intentionally conservative for physical proof:
 - `set_goal` is rejected by the Brain; higher-level goals stay in ROS.
 - A separate telemetry task emits `type:"telemetry"` records every 500 ms so the ROS bridge can prove `/vex/telemetry` independently from `/vex/ack`.
 - Telemetry includes `motor_samples` for `left_drive`, `right_drive`, and `arm` using the same field names required by the contract JSONL exporter.
+- New bridge builds identify themselves in `ack`, `bridge_status`, and
+  `telemetry` with `bridge_build`, `supported_commands`, and
+  `supported_routines`. Use these fields to prove the Brain is running firmware
+  that accepts direct `arm` commands before attempting arm-height pickup tests.
 
 ## Brain routine slots
 
@@ -64,3 +68,34 @@ pros v5 run 4
 
 See `../SLOT_MANIFEST.md` for the full physical fact-check checklist before
 claiming slot 4 is loaded.
+
+## Arm command capability proof
+
+The yellow-ball pickup/lift proof needs either a stable direct `arm` command or
+a separate, bounded Brain routine that holds the arm at pickup height. Before
+debugging pickup geometry, prove which Brain firmware is live from the Pi:
+
+```bash
+ros2 run vexy_ros vexy_bridge_capability_probe \
+  --seq 912345 \
+  --arm-target-deg 40 \
+  --output /tmp/vexy-bridge-capability.json
+```
+
+Expected current-build success shape:
+
+```json
+{
+  "status": "succeeded",
+  "arm_command_supported": true,
+  "matched_ack": {
+    "ack": 912345,
+    "state": "ok",
+    "supported_commands": ["stop", "drive", "turn", "routine", "grab", "lift", "release", "arm"]
+  }
+}
+```
+
+If the probe returns `fault:"unknown_command"`, the Brain is running stale bridge
+firmware. Rebuild/upload/run this PROS project, then rerun the probe before any
+pickup/lift claim.

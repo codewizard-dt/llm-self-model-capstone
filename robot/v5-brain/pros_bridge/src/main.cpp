@@ -22,6 +22,10 @@ namespace {
 constexpr int WATCHDOG_MS = 250;
 constexpr int TELEMETRY_MS = 500;
 constexpr int MAX_LINE_BYTES = 2048;
+constexpr const char* BRIDGE_BUILD_ID = "pros_bridge_arm_direct_2026_06_27";
+constexpr const char* SUPPORTED_COMMANDS_JSON =
+    "[\"stop\",\"drive\",\"turn\",\"routine\",\"grab\",\"lift\",\"release\",\"arm\"]";
+constexpr const char* SUPPORTED_ROUTINES_JSON = "[2,3,4]";
 constexpr int LEFT_DRIVE_PORT = 1;
 constexpr int RIGHT_DRIVE_PORT = 10;
 constexpr int ARM_PORT = 8;
@@ -367,6 +371,7 @@ void emit_ack(int seq, const char* state, const char* fault_json = "null") {
 	char slot_buf[8];
 	emit_json(
 	    "{\"v\":1,\"ack\":%d,\"type\":\"ack\",\"state\":\"%s\",\"recv_ms\":%lu,"
+	    "\"bridge_build\":\"%s\",\"supported_commands\":%s,\"supported_routines\":%s,"
 	    "\"battery_mv\":%ld,\"battery_pct\":%.1f,\"watchdog_age_ms\":%lu,"
 	    "\"estop\":%s,\"motion_enabled\":%s,\"drive_ports_ok\":%s,\"arm_port_ok\":%s,"
 	    "\"routine_active\":%s,\"routine_slot\":%s,\"motor_ports\":%s,"
@@ -374,6 +379,9 @@ void emit_ack(int seq, const char* state, const char* fault_json = "null") {
 	    seq,
 	    state,
 	    static_cast<unsigned long>(pros::millis()),
+	    BRIDGE_BUILD_ID,
+	    SUPPORTED_COMMANDS_JSON,
+	    SUPPORTED_ROUTINES_JSON,
 	    static_cast<long>(pros::battery::get_voltage()),
 	    pros::battery::get_capacity(),
 	    static_cast<unsigned long>(packet_age_ms()),
@@ -390,11 +398,15 @@ void emit_ack(int seq, const char* state, const char* fault_json = "null") {
 void emit_status(const char* state, const char* reason, const char* message) {
 	emit_json(
 	    "{\"v\":1,\"type\":\"bridge_status\",\"state\":\"%s\",\"reason\":\"%s\","
-	    "\"message\":\"%s\",\"observed_ms\":%lu}",
+	    "\"message\":\"%s\",\"observed_ms\":%lu,\"bridge_build\":\"%s\","
+	    "\"supported_commands\":%s,\"supported_routines\":%s}",
 	    state,
 	    reason,
 	    message,
-	    static_cast<unsigned long>(pros::millis()));
+	    static_cast<unsigned long>(pros::millis()),
+	    BRIDGE_BUILD_ID,
+	    SUPPORTED_COMMANDS_JSON,
+	    SUPPORTED_ROUTINES_JSON);
 }
 
 void emit_telemetry() {
@@ -402,6 +414,7 @@ void emit_telemetry() {
 	char slot_buf[8];
 	emit_json(
 	    "{\"v\":1,\"type\":\"telemetry\",\"t_ms\":%lu,\"battery_mv\":%ld,"
+	    "\"bridge_build\":\"%s\",\"supported_commands\":%s,\"supported_routines\":%s,"
 	    "\"battery_current_ma\":%ld,\"battery_pct\":%.1f,\"battery_temp_c\":%.1f,"
 	    "\"watchdog_age_ms\":%lu,\"motion_ttl_overrun_ms\":%lu,\"estop\":%s,"
 	    "\"motion_enabled\":%s,\"drive_ports_ok\":%s,\"arm_port_ok\":%s,"
@@ -410,6 +423,9 @@ void emit_telemetry() {
 	    "\"left_vel_rpm\":%.1f,\"right_vel_rpm\":%.1f,\"motor_samples\":%s}",
 	    static_cast<unsigned long>(sample_ms),
 	    static_cast<long>(pros::battery::get_voltage()),
+	    BRIDGE_BUILD_ID,
+	    SUPPORTED_COMMANDS_JSON,
+	    SUPPORTED_ROUTINES_JSON,
 	    static_cast<long>(pros::battery::get_current()),
 	    pros::battery::get_capacity(),
 	    pros::battery::get_temperature(),
