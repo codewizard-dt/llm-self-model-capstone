@@ -1,0 +1,17 @@
+summary: >-
+  Added the PM4 supervised one-skill execution runbook with hardware setup,
+  human-supervision semantics, approved skill command examples, ROS topic
+  surfaces, contract PilotTraceRecord JSONL examples, pass/fail criteria,
+  unsupported-surface behavior, and final gate commands. Added a focused CLI
+  regression that keeps the runbook's PM4 commands, topics, trace events, and
+  gates aligned with the implemented surface.
+satisfies:
+  - ACC-PM4-RUNBOOK-COMMANDS
+  - ACC-HUMAN-SUPERVISED-MEANING
+  - ACC-ROS-SURFACE-DOCS
+  - ACC-TRACE-SHAPES-DOCS
+  - ACC-PASS-FAIL-CRITERIA
+  - ACC-UNSUPPORTED-BEHAVIOR
+  - ACC-ACCEPTANCE-COVERAGE
+  - ACC-EXPORTS-IMPORT-SAFE
+  - ACC-FINAL-GATES

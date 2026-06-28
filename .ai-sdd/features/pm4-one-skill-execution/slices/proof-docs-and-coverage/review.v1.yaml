@@ -1,0 +1,67 @@
+items:
+  - id: ACC-PM4-RUNBOOK-COMMANDS
+    verdict: pass
+    notes: >-
+      The runbook gives operator-ready PM4 commands for all five approved skills:
+      `survey_scene`, `claw_open`, `claw_close`, `verify_grasp`, and `verify_drop`.
+      Required parameters are shown for survey duration, claw open/close, and verification
+      evidence, and `--command-json` is documented as a contract `PilotSkillCommand` path.
+  - id: ACC-HUMAN-SUPERVISED-MEANING
+    verdict: pass
+    notes: >-
+      `--human-supervised` is explicitly defined as a safety gate: the operator is physically
+      present, has prepared a bounded workspace, can interrupt or estop, and does not teleoperate,
+      steer, recover, or chain the bounded skill.
+  - id: ACC-ROS-SURFACE-DOCS
+    verdict: pass
+    notes: >-
+      The runbook lists required observation topics `/vision/agent_scene`,
+      `/vision/object_tracks`, `/vex/telemetry`, and `/vex/bridge_status`; optional read-only
+      context topics; and the implemented command/result/cancel surfaces `/survey/goal`,
+      `/survey/result`, `/survey/cancel`, `/operator/command`, and `/operator/results`.
+  - id: ACC-TRACE-SHAPES-DOCS
+    verdict: pass
+    notes: >-
+      The runbook documents newline-delimited contract `PilotTraceRecord` JSON for successful
+      command/result/stop output, validation rejection, missing human supervision, unsupported
+      surface rejection, timeout, and operator interrupt paths. The focused runbook regression
+      checks that command/result/stop examples remain present.
+  - id: ACC-PASS-FAIL-CRITERIA
+    verdict: pass
+    notes: >-
+      Pass/fail criteria cover exactly one approved skill, required PM4 gates, pre-dispatch live
+      observation readiness, contract-valid trace JSONL, terminal result and stop semantics, CLI
+      exit-code interpretation, and ROS evidence proving no second motion-producing publish or
+      fallback command.
+  - id: ACC-UNSUPPORTED-BEHAVIOR
+    verdict: pass
+    notes: >-
+      Unsupported or unavailable ball-handling surfaces are documented as pre-dispatch
+      rejected/stale evidence, not alternate motion. Existing transport and CLI tests prove the
+      unavailable operator claw surface yields a rejected result/stop trace without publishing
+      `/operator/command`.
+  - id: ACC-ACCEPTANCE-COVERAGE
+    verdict: pass
+    notes: >-
+      Focused coverage spans hardware supervision gates, approved skill construction, runbook
+      commands/topics/trace/gates, contract-valid trace JSONL, result and stop records,
+      validation rejection, timeout and interrupt stop behavior, unsupported surface behavior,
+      ROS-free imports, and preservation of observe CLI behavior.
+  - id: ACC-EXPORTS-IMPORT-SAFE
+    verdict: pass
+    notes: >-
+      Public PM4 surfaces remain additive and import-safe without ROS 2. `pilot.skill_cli`,
+      `pilot.execution`, `pilot.trace`, `pilot.ros_execution`, and the `pilot` package import
+      tests reject accidental `rclpy` or `std_msgs` imports at module import time; ROS loading
+      stays lazy in `load_ros_runtime`.
+  - id: ACC-FINAL-GATES
+    verdict: pass
+    notes: >-
+      The changeset records focused pilot pytest/ruff commands plus `uv sync`, `make test`,
+      `make validate`, and `make lint`, while excluding `make demo` as required. I locally
+      verified the focused pilot command:
+      `PYTHONPATH=src:../contracts/src uv run pytest tests/test_skill_cli.py
+      tests/test_ros_execution.py tests/test_execution.py tests/test_observe_cli.py -q`
+      passed 47 tests.
+verdict: approve
+rework: []

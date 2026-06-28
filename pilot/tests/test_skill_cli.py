@@ -168,6 +168,37 @@ def test_command_construction_covers_exact_approved_skill_set() -> None:
     assert tuple(str(skill) for skill in built) == skill_cli.APPROVED_PM4_SKILL_VALUES
 
 
+def test_pm4_runbook_documents_approved_commands_topics_traces_and_gates() -> None:
+    runbook = Path(__file__).parents[1] / "docs" / "pm4-one-skill-execution.md"
+    text = runbook.read_text(encoding="utf-8")
+
+    assert (
+        "pilot skill --hardware --human-supervised --skill survey_scene --duration-s 3.0 "
+        "--out traces/pm4-survey.jsonl"
+    ) in text
+    for skill in skill_cli.APPROVED_PM4_SKILL_VALUES:
+        assert f"--skill {skill}" in text
+    for topic in (
+        "/survey/goal",
+        "/survey/result",
+        "/survey/cancel",
+        "/operator/command",
+        "/operator/results",
+        "/vision/agent_scene",
+        "/vision/object_tracks",
+        "/vex/telemetry",
+        "/vex/bridge_status",
+    ):
+        assert topic in text
+    for event in ('"event":"command"', '"event":"result"', '"event":"stop"'):
+        assert event in text
+    assert "operator_surface_unavailable" in text
+    assert "does not teleoperate" in text
+    assert "make test" in text
+    assert "make validate" in text
+    assert "make lint" in text
+
+
 def test_command_json_is_normalized_and_checked_against_pm4_scope(tmp_path: Path) -> None:
     command_json = tmp_path / "command.json"
     command_json.write_text(
