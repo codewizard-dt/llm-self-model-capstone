@@ -42,8 +42,8 @@ from pilot.observation import (  # noqa: E402
     visible_object_sort_key,
     visible_tag_sort_key,
 )
-from pilot.live_observation import build_live_observation, build_live_observation_cache
-from pilot.decision import (
+from pilot.live_observation import build_live_observation, build_live_observation_cache  # noqa: E402
+from pilot.decision import (  # noqa: E402
     DecisionAdapterError,
     DecisionAdapterResult,
     DecisionPromptClient,
@@ -105,7 +105,7 @@ from pilot.skills import (  # noqa: E402
     get_skill_definition,
     list_skill_definitions,
 )
-from pilot.trace import PilotTraceWriter, TraceSink, monotonic_ms
+from pilot.trace import PilotTraceWriter, TraceSink, monotonic_ms  # noqa: E402
 
 __all__ = [
     "REQUIRED_ASSERTION_IDS",
