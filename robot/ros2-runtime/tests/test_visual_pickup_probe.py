@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from vexy_ros.visual_pickup_probe import (  # noqa: E402
     ack_state_ok,
     arm_position_deg_from_telemetry,
     best_ball_detection,
+    capture_artifact_summary,
     has_object_from_status,
     lift_proof_from_positions,
     parse_float_list,
@@ -124,6 +126,30 @@ class VisualPickupProbeHelperTests(unittest.TestCase):
             ack_rejection_reason({"state": "rejected", "fault": "unknown_command"}),
             "unknown_command",
         )
+
+    def test_capture_artifact_summary_counts_evidence_files(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            out_dir = Path(tmp)
+            images_dir = out_dir / "images"
+            images_dir.mkdir()
+            (images_dir / "001.jpg").write_bytes(b"jpg")
+            (images_dir / "002.ppm").write_bytes(b"ppm")
+            (out_dir / "vex_telemetry.jsonl").write_text("{}\n{}\n")
+            (out_dir / "operator_status.jsonl").write_text("{}\n")
+            (out_dir / "image-writer.log").write_text("ok\n")
+            bag_dir = out_dir / "bag"
+            bag_dir.mkdir()
+            (bag_dir / "metadata.yaml").write_text("rosbag2_bagfile_information: {}\n")
+
+            summary = capture_artifact_summary(out_dir)
+
+        self.assertEqual(summary["image_count"], 2)
+        self.assertTrue(str(summary["first_image"]).endswith("001.jpg"))
+        self.assertTrue(str(summary["last_image"]).endswith("002.ppm"))
+        self.assertEqual(summary["jsonl_files"]["vex_telemetry.jsonl"], 2)
+        self.assertEqual(summary["jsonl_files"]["operator_status.jsonl"], 1)
+        self.assertEqual(summary["bag_files"], ["metadata.yaml"])
+        self.assertEqual(summary["log_files"], ["image-writer.log"])
 
 
 if __name__ == "__main__":

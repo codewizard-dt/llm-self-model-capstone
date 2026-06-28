@@ -152,6 +152,39 @@ def ack_rejection_reason(ack: Mapping[str, Any] | None) -> str:
     return str(ack.get("fault") or ack.get("state") or "rejected")
 
 
+def capture_artifact_summary(out_dir: Path) -> dict[str, Any]:
+    images_dir = out_dir / "images"
+    image_files = sorted(
+        path
+        for path in images_dir.glob("*")
+        if path.is_file() and path.suffix.lower() in {".jpg", ".jpeg", ".ppm", ".png"}
+    )
+    jsonl_files: dict[str, int] = {}
+    for path in sorted(out_dir.glob("*.jsonl")):
+        jsonl_files[path.name] = _line_count(path)
+    bag_dir = out_dir / "bag"
+    bag_files = sorted(path.name for path in bag_dir.glob("*") if path.is_file())
+    log_files = sorted(path.name for path in out_dir.glob("*.log") if path.is_file())
+    return {
+        "out_dir": str(out_dir),
+        "image_count": len(image_files),
+        "first_image": str(image_files[0]) if image_files else None,
+        "last_image": str(image_files[-1]) if image_files else None,
+        "jsonl_files": jsonl_files,
+        "bag_dir": str(bag_dir) if bag_dir.exists() else None,
+        "bag_files": bag_files,
+        "log_files": log_files,
+    }
+
+
+def _line_count(path: Path) -> int:
+    count = 0
+    with path.open("rb") as fh:
+        for _ in fh:
+            count += 1
+    return count
+
+
 def _float_or_none(value: Any) -> float | None:
     try:
         return float(value)
@@ -539,6 +572,23 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--lift-ack-timeout-s", type=float, default=5.0)
     parser.add_argument("--lift-settle-s", type=float, default=2.5)
     parser.add_argument("--lift-min-arm-delta-deg", type=float, default=15.0)
+    parser.add_argument(
+        "--capture-dir",
+        type=Path,
+        default=None,
+        help="Optional evidence directory for JSONL telemetry, images, and MCAP bag.",
+    )
+    parser.add_argument(
+        "--capture-label",
+        default="visual_pickup_probe",
+        help="Label written into the capture bundle when --capture-dir is set.",
+    )
+    parser.add_argument(
+        "--capture-warmup-s",
+        type=float,
+        default=1.0,
+        help="Seconds to let capture subscribers start before commanding the robot.",
+    )
     parser.add_argument("--seq-start", type=int, default=610000)
     parser.add_argument("--output", default="")
     parser.add_argument("--vex-command-topic", default="/vex/cmd")
@@ -556,6 +606,22 @@ def main(argv: list[str] | None = None) -> None:
         raise RuntimeError("rclpy is required to run visual_pickup_probe")
     parser = build_parser()
     args = parser.parse_args(argv)
+    capture_processes = []
+    capture_dir: Path | None = (
+        args.capture_dir.expanduser() if args.capture_dir else None
+    )
+    if capture_dir is not None:
+        from .operator_run_capture import (
+            start_operator_run_capture,
+            stop_operator_run_capture,
+        )
+
+        capture_processes = start_operator_run_capture(
+            capture_dir,
+            run_id=capture_dir.name,
+            label=args.capture_label,
+        )
+        time.sleep(max(0.0, args.capture_warmup_s))
     rclpy.init(args=None)
     node = VisualPickupProbe(args)
     try:
@@ -563,6 +629,10 @@ def main(argv: list[str] | None = None) -> None:
     finally:
         node.destroy_node()
         rclpy.shutdown()
+        if capture_processes:
+            stop_operator_run_capture(capture_processes)
+    if capture_dir is not None:
+        summary["capture"] = capture_artifact_summary(capture_dir)
     output = json.dumps(summary, indent=2, sort_keys=True) + "\n"
     if args.output:
         Path(args.output).expanduser().write_text(output)

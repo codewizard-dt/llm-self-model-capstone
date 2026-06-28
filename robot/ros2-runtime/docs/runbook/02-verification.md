@@ -294,6 +294,31 @@ proof surfaces to agree:
   missing visual capture, missing grip confirmation, or ball still visible
   outside the claw
 
+For the current yellow-ball proof gate, prefer the visual pickup probe with an
+evidence capture directory. This creates the probe JSON, image snapshots, JSONL
+telemetry, and an MCAP bag under the same run directory:
+
+```bash
+RUN_ID="vexy-visual-pickup-lift-$(date +%Y%m%d-%H%M%S)"
+ros2 run vexy_ros vexy_visual_pickup_probe \
+  --target-px 360,400,430 \
+  --approach-width-px 76 \
+  --lift-after-grab \
+  --lift-arm-target-deg 40 \
+  --lift-min-arm-delta-deg 15 \
+  --capture-dir "/tmp/$RUN_ID" \
+  --capture-label "yellow_ball_grab_lift_visual_truth" \
+  --output "/tmp/$RUN_ID/probe-result.json"
+```
+
+With `--lift-after-grab`, top-level `"status":"succeeded"` requires
+`has_object:true`, an accepted arm command, and arm telemetry moving upward by
+at least `--lift-min-arm-delta-deg`. `"grab_not_confirmed"`,
+`"arm_command_unknown_command"`, or `"arm_delta_too_small"` are failed proofs,
+not partial success. Inspect `capture.last_image`, `images/`, `/operator/status`
+JSONL, `/vex/telemetry` JSONL, and `bag/metadata.yaml` before claiming the ball
+was held and lifted.
+
 Always send a final stop before inspecting the scene:
 
 ```bash
