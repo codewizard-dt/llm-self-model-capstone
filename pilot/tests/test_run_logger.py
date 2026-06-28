@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import importlib
+from io import StringIO
 import json
 from pathlib import Path
 import sys
@@ -16,6 +17,7 @@ from contracts import (
     PilotAssertion,
     PilotDecision,
     PilotDecisionAction,
+    PilotFailure,
     PilotObservation,
     PilotSkillName,
     PilotSkillResult,
@@ -30,8 +32,11 @@ from pilot.run_logger import (
     RunLogger,
     RunLoggerConfig,
     RunLoggerError,
+    RunLoggerReadbackError,
     default_session_id,
     default_trace_path,
+    format_recent_history,
+    read_trace_records,
 )
 
 TRACE_RECORD_ADAPTER = TypeAdapter(PilotTraceRecord)
@@ -45,6 +50,32 @@ def _observation() -> PilotObservation:
         localization=LocalizationState(pose=None, confidence=0.75, age_ms=20),
         manipulator=ManipulatorState(arm_deg=None, claw_state="unknown", held_object_id=None),
         bridge=BridgeHealth(state="ok", last_heartbeat_age_ms=10),
+    )
+
+
+def _observation_with_history() -> PilotObservation:
+    return _observation().model_copy(
+        update={
+            "last_command": _command("cmd-failed"),
+            "last_result": PilotSkillResult(
+                command_id="cmd-failed",
+                skill=PilotSkillName.SURVEY_SCENE,
+                status=CommandStatus.FAILED,
+                completed_ms=130,
+                message='raw tail {"event":"result","fault":"bad"}',
+                fault="OPENAI_API_KEY=secret-value bridge timeout",
+            ),
+            "recent_failures": [
+                PilotFailure(
+                    failed_ms=131,
+                    source="vision",
+                    summary="target lost OPENAI_API_KEY=secret-value",
+                    command_id="cmd-failed",
+                    recovery_hint="resurvey before continuing",
+                )
+            ],
+            "current_assertions": [_assertion()],
+        }
     )
 
 
@@ -314,3 +345,142 @@ def test_default_path_uses_ignored_pilot_runs_directory_and_session_filename() -
         logger.close()
         if trace_path.exists():
             trace_path.unlink()
+
+
+def test_read_trace_records_returns_typed_records_from_path_and_stream_in_file_order(
+    tmp_path: Path,
+) -> None:
+    trace_path = tmp_path / "readback.jsonl"
+    logger = RunLogger(RunLoggerConfig(session_id="session-readback", trace_path=trace_path))
+
+    logger.append_stop("operator", monotonic_ms=30)
+    logger.append_decision(_decision(), monotonic_ms=10)
+    logger.append_result(_result(), monotonic_ms=20)
+    logger.close()
+
+    path_records = read_trace_records(trace_path)
+    stream_records = read_trace_records(StringIO(trace_path.read_text(encoding="utf-8")))
+
+    assert [record.event for record in path_records] == ["stop", "decision", "result"]
+    assert [record.seq for record in path_records] == [0, 1, 2]
+    assert [record.monotonic_ms for record in path_records] == [30, 10, 20]
+    assert path_records == stream_records
+    assert all(
+        TRACE_RECORD_ADAPTER.validate_python(record.model_dump()) == record
+        for record in path_records
+    )
+
+
+def test_read_trace_records_reports_malformed_json_with_line_number() -> None:
+    source = StringIO(
+        '{"v":1,"session_id":"s","seq":0,"monotonic_ms":0,"event":"stop","reason":"operator"}\n'
+        '{"v":1,"event":'
+    )
+
+    with pytest.raises(RunLoggerReadbackError, match=r"line 2: malformed JSON") as exc_info:
+        read_trace_records(source)
+
+    assert exc_info.value.line_number == 2
+
+
+@pytest.mark.parametrize("line", ['"not an object"\n', '["not", "an", "object"]\n'])
+def test_read_trace_records_reports_non_object_json_with_line_number(line: str) -> None:
+    with pytest.raises(RunLoggerReadbackError, match=r"line 1: trace record must be a JSON object"):
+        read_trace_records(StringIO(line))
+
+
+def test_read_trace_records_reports_schema_invalid_json_with_line_number() -> None:
+    source = StringIO(
+        '{"v":1,"session_id":"s","seq":0,"monotonic_ms":0,"event":"stop","reason":"operator"}\n'
+        '{"v":1,"session_id":"s","seq":1,"monotonic_ms":1,"event":"not-real"}\n'
+    )
+
+    with pytest.raises(
+        RunLoggerReadbackError, match=r"line 2: schema-invalid trace record"
+    ) as exc_info:
+        read_trace_records(source)
+
+    assert "event" in str(exc_info.value)
+
+
+def test_format_recent_history_is_bounded_deterministic_and_count_limited() -> None:
+    records = [
+        TRACE_RECORD_ADAPTER.validate_python(
+            {
+                "v": 1,
+                "session_id": "session-history",
+                "seq": index,
+                "monotonic_ms": index,
+                "event": "stop",
+                "reason": "operator",
+                "message": f"message {index} " + ("x" * 200),
+            }
+        )
+        for index in range(8)
+    ]
+
+    first = format_recent_history(records, max_records=3, max_chars=160)
+    second = format_recent_history(records, max_records=3, max_chars=160)
+    wide = format_recent_history(records, max_records=3, max_chars=1_000)
+
+    assert first == second
+    assert len(first) <= 160
+    assert "seq=7" in first
+    assert "seq=5" in wide
+    assert "seq=7" in wide
+    assert "seq=4" not in first
+    assert "seq=4" not in wide
+    assert first.endswith("[truncated]")
+
+
+def test_format_recent_history_summarizes_relevant_events_without_raw_prompt_unsafe_data(
+    tmp_path: Path,
+) -> None:
+    trace_path = tmp_path / "history.jsonl"
+    logger = RunLogger(RunLoggerConfig(session_id="session-history", trace_path=trace_path))
+
+    logger.append_observation(_observation_with_history(), monotonic_ms=1)
+    logger.append_decision(
+        _decision().model_copy(
+            update={"rationale": "Human: full provider transcript OPENAI_API_KEY=secret-value"}
+        ),
+        monotonic_ms=2,
+    )
+    logger.append_command(_command("cmd-next"), monotonic_ms=3)
+    logger.append_result(
+        _result().model_copy(
+            update={
+                "status": CommandStatus.FAILED,
+                "message": 'command log tail {"raw":"jsonl"} \x00 OPENAI_API_KEY=secret-value',
+                "fault": "motor stalled",
+            }
+        ),
+        monotonic_ms=4,
+    )
+    logger.append_assertion(
+        _assertion().model_copy(
+            update={"state": AssertionState.FALSE, "recovery_hint": "resurvey"}
+        ),
+        monotonic_ms=5,
+    )
+    logger.append_stop("failure", message="policy stop after failed command", monotonic_ms=6)
+    logger.close()
+
+    history = format_recent_history(read_trace_records(trace_path), max_records=6, max_chars=1_200)
+
+    assert "seq=0 observation" in history
+    assert "phase=survey" in history
+    assert "failures=vision:" in history
+    assert "assertions=target-visible" in history
+    assert "seq=1 decision" in history
+    assert "decision-1" in history
+    assert "cmd-next/survey_scene" in history
+    assert "status=failed" in history
+    assert "seq=4 assertion" in history
+    assert "state=false" in history
+    assert "seq=5 stop: reason=failure" in history
+    assert "secret-value" not in history
+    assert "OPENAI_API_KEY" not in history
+    assert '{"' not in history
+    assert "\x00" not in history
+    assert "Human:" not in history

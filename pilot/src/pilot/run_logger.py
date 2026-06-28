@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
+import json
+from json import JSONDecodeError
 from os import PathLike
 from pathlib import Path
+import re
 from typing import Callable, Final, Literal, TextIO, TypeAlias, cast
 from uuid import uuid4
 
@@ -27,6 +31,20 @@ from contracts import (
 
 SESSION_ID_MAX_LENGTH: Final = 80
 STOP_REASONS: Final = ("success", "failure", "operator", "fault", "request_human")
+DEFAULT_HISTORY_MAX_RECORDS: Final = 12
+DEFAULT_HISTORY_MAX_CHARS: Final = 2_000
+_SUMMARY_FIELD_MAX_CHARS: Final = 96
+_SUMMARY_LIST_LIMIT: Final = 3
+_TRUNCATION_SUFFIX: Final = " ... [truncated]"
+_SECRET_ASSIGNMENT_RE: Final = re.compile(
+    r"\b[A-Z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)[A-Z0-9_]*\s*=\s*[^\s,;|]+",
+    re.IGNORECASE,
+)
+_JSON_FRAGMENT_RE: Final = re.compile(r"[\[{][^\[\]{}]{2,240}[\]}]")
+_TRANSCRIPT_MARKER_RE: Final = re.compile(
+    r"\b(?:system|user|assistant|human)\s*:\s*[^|;]+",
+    re.IGNORECASE,
+)
 
 MonotonicClock: TypeAlias = Callable[[], int]
 StopReason: TypeAlias = Literal["success", "failure", "operator", "fault", "request_human"]
@@ -36,6 +54,14 @@ _TRACE_RECORD_ADAPTER: Final[TypeAdapter[PilotTraceRecord]] = TypeAdapter(PilotT
 
 class RunLoggerError(ValueError):
     """Raised when a trace record cannot be built without consuming sequence state."""
+
+
+class RunLoggerReadbackError(RunLoggerError):
+    """Raised when a persisted JSONL trace line cannot be read as a trace record."""
+
+    def __init__(self, line_number: int, message: str) -> None:
+        self.line_number = line_number
+        super().__init__(f"line {line_number}: {message}")
 
 
 @dataclass(frozen=True, slots=True)
@@ -248,6 +274,34 @@ def default_trace_path(session_id: str) -> Path:
     return Path(__file__).resolve().parents[2] / "runs" / f"{session_id}.jsonl"
 
 
+def read_trace_records(source: str | PathLike[str] | TextIO) -> list[PilotTraceRecord]:
+    """Read contract-validated pilot trace records from a JSONL path or text stream."""
+
+    if _is_text_stream(source):
+        return _read_trace_record_lines(source)
+
+    with Path(source).open(encoding="utf-8") as trace_file:
+        return _read_trace_record_lines(trace_file)
+
+
+def format_recent_history(
+    records: Sequence[PilotTraceRecord],
+    *,
+    max_records: int = DEFAULT_HISTORY_MAX_RECORDS,
+    max_chars: int = DEFAULT_HISTORY_MAX_CHARS,
+) -> str:
+    """Return compact deterministic prompt history derived from typed trace records."""
+
+    _validate_history_bound("max_records", max_records)
+    _validate_history_bound("max_chars", max_chars)
+    if max_records == 0 or max_chars == 0:
+        return ""
+
+    recent_records = records[-max_records:]
+    summaries = [_summarize_trace_record(record) for record in recent_records]
+    return _fit_recent_summaries(summaries, max_chars)
+
+
 def _resolve_trace_path(session_id: str, trace_path: str | PathLike[str] | None) -> Path:
     if trace_path is None:
         return default_trace_path(session_id)
@@ -281,12 +335,206 @@ def _validate_monotonic_ms(monotonic_ms: int) -> int:
     return monotonic_ms
 
 
+def _is_text_stream(source: object) -> bool:
+    return hasattr(source, "read") and callable(source.read)
+
+
+def _read_trace_record_lines(lines: Iterable[str]) -> list[PilotTraceRecord]:
+    records: list[PilotTraceRecord] = []
+    for line_number, line in enumerate(lines, start=1):
+        if not line.strip():
+            continue
+        records.append(_read_trace_record_line(line, line_number))
+    return records
+
+
+def _read_trace_record_line(line: str, line_number: int) -> PilotTraceRecord:
+    try:
+        raw_record = json.loads(line)
+    except JSONDecodeError as exc:
+        raise RunLoggerReadbackError(line_number, f"malformed JSON: {exc.msg}") from exc
+
+    if not isinstance(raw_record, dict):
+        raise RunLoggerReadbackError(line_number, "trace record must be a JSON object")
+
+    try:
+        return _TRACE_RECORD_ADAPTER.validate_python(raw_record)
+    except ValidationError as exc:
+        raise RunLoggerReadbackError(
+            line_number,
+            f"schema-invalid trace record: {_format_validation_error(exc)}",
+        ) from exc
+
+
+def _format_validation_error(exc: ValidationError) -> str:
+    formatted_errors: list[str] = []
+    for error in exc.errors()[:3]:
+        loc = ".".join(str(part) for part in error.get("loc", ())) or "record"
+        message = str(error.get("msg", "invalid value"))
+        formatted_errors.append(f"{loc}: {message}")
+    return "; ".join(formatted_errors)
+
+
+def _validate_history_bound(name: str, value: int) -> None:
+    if type(value) is not int or value < 0:
+        raise RunLoggerError(f"{name} must be a non-negative integer")
+
+
+def _fit_recent_summaries(summaries: Sequence[str], max_chars: int) -> str:
+    selected: list[str] = []
+    used_chars = 0
+    for summary in reversed(summaries):
+        separator_chars = 1 if selected else 0
+        next_chars = len(summary) + separator_chars
+        if used_chars + next_chars <= max_chars:
+            selected.append(summary)
+            used_chars += next_chars
+            continue
+        if not selected:
+            selected.append(_clip_text(summary, max_chars))
+        break
+    return "\n".join(reversed(selected))
+
+
+def _summarize_trace_record(record: PilotTraceRecord) -> str:
+    prefix = f"seq={record.seq} {record.event}"
+    if isinstance(record, ObservationTraceRecord):
+        return _summarize_observation(prefix, record.observation)
+    if isinstance(record, DecisionTraceRecord):
+        return _summarize_decision(prefix, record.decision)
+    if isinstance(record, CommandTraceRecord):
+        return f"{prefix}: {_summarize_command(record.command)}"
+    if isinstance(record, ResultTraceRecord):
+        return f"{prefix}: {_summarize_result(record.result)}"
+    if isinstance(record, AssertionTraceRecord):
+        return f"{prefix}: {_summarize_assertion(record.assertion)}"
+    return _summarize_stop(prefix, cast(StopTraceRecord, record))
+
+
+def _summarize_observation(prefix: str, observation: PilotObservation) -> str:
+    parts = [
+        f"phase={_value(observation.task_phase)}",
+        f"objective={_safe_text(observation.objective)}",
+        f"bridge={observation.bridge.state}",
+        f"claw={observation.manipulator.claw_state}",
+    ]
+    if observation.last_command is not None:
+        parts.append(f"last_command={_summarize_command(observation.last_command)}")
+    if observation.last_result is not None:
+        parts.append(f"last_result={_summarize_result(observation.last_result)}")
+    if observation.current_assertions:
+        assertions = ", ".join(
+            _summarize_assertion(assertion)
+            for assertion in observation.current_assertions[:_SUMMARY_LIST_LIMIT]
+        )
+        parts.append(f"assertions={assertions}")
+    if observation.recent_failures:
+        failures = ", ".join(
+            _summarize_failure(failure)
+            for failure in observation.recent_failures[:_SUMMARY_LIST_LIMIT]
+        )
+        parts.append(f"failures={failures}")
+    return f"{prefix}: {'; '.join(parts)}"
+
+
+def _summarize_decision(prefix: str, decision: PilotDecision) -> str:
+    parts = [
+        f"id={_safe_text(decision.decision_id)}",
+        f"action={_value(decision.action)}",
+        f"confidence={decision.confidence:.2f}",
+    ]
+    if decision.command is not None:
+        parts.append(f"command={_summarize_command(decision.command)}")
+    if decision.retry_of_command_id is not None:
+        parts.append(f"retry_of={_safe_text(decision.retry_of_command_id)}")
+    if decision.stop_reason is not None:
+        parts.append(f"stop_reason={_safe_text(decision.stop_reason)}")
+    parts.append(f"rationale={_safe_text(decision.rationale)}")
+    return f"{prefix}: {'; '.join(parts)}"
+
+
+def _summarize_command(command: PilotSkillCommand) -> str:
+    return f"{_safe_text(command.command_id)}/{command.skill} issued_ms={command.issued_ms}"
+
+
+def _summarize_result(result: PilotSkillResult) -> str:
+    parts = [
+        f"{_safe_text(result.command_id)}/{_value(result.skill)}",
+        f"status={_value(result.status)}",
+    ]
+    if result.completed_ms is not None:
+        parts.append(f"completed_ms={result.completed_ms}")
+    if result.message is not None:
+        parts.append(f"message={_safe_text(result.message)}")
+    if result.fault is not None:
+        parts.append(f"fault={_safe_text(result.fault)}")
+    return " ".join(parts)
+
+
+def _summarize_assertion(assertion: PilotAssertion) -> str:
+    parts = [
+        _safe_text(assertion.assertion_id),
+        f"state={_value(assertion.state)}",
+        f"confidence={assertion.confidence:.2f}",
+        f"predicate={_safe_text(assertion.predicate)}",
+    ]
+    if assertion.recovery_hint is not None:
+        parts.append(f"recovery={_safe_text(assertion.recovery_hint)}")
+    return " ".join(parts)
+
+
+def _summarize_failure(failure: object) -> str:
+    source = _safe_text(str(getattr(failure, "source", "unknown")))
+    summary = _safe_text(str(getattr(failure, "summary", "failure")))
+    command_id = getattr(failure, "command_id", None)
+    recovery_hint = getattr(failure, "recovery_hint", None)
+    parts = [f"{source}: {summary}"]
+    if command_id is not None:
+        parts.append(f"command_id={_safe_text(str(command_id))}")
+    if recovery_hint is not None:
+        parts.append(f"recovery={_safe_text(str(recovery_hint))}")
+    return " ".join(parts)
+
+
+def _summarize_stop(prefix: str, record: StopTraceRecord) -> str:
+    parts = [f"reason={record.reason}"]
+    if record.message is not None:
+        parts.append(f"message={_safe_text(record.message)}")
+    return f"{prefix}: {'; '.join(parts)}"
+
+
+def _safe_text(value: str, max_chars: int = _SUMMARY_FIELD_MAX_CHARS) -> str:
+    text = "".join(char if char.isprintable() else " " for char in value)
+    text = " ".join(text.split())
+    text = _SECRET_ASSIGNMENT_RE.sub("[redacted-secret]", text)
+    text = _TRANSCRIPT_MARKER_RE.sub("[redacted-transcript]", text)
+    text = _JSON_FRAGMENT_RE.sub("[redacted-json]", text)
+    return _clip_text(text, max_chars)
+
+
+def _clip_text(text: str, max_chars: int) -> str:
+    if len(text) <= max_chars:
+        return text
+    if max_chars <= len(_TRUNCATION_SUFFIX):
+        return _TRUNCATION_SUFFIX[:max_chars]
+    return f"{text[: max_chars - len(_TRUNCATION_SUFFIX)]}{_TRUNCATION_SUFFIX}"
+
+
+def _value(value: object) -> object:
+    return getattr(value, "value", value)
+
+
 __all__ = [
+    "DEFAULT_HISTORY_MAX_CHARS",
+    "DEFAULT_HISTORY_MAX_RECORDS",
     "STOP_REASONS",
     "RunLogger",
     "RunLoggerConfig",
     "RunLoggerError",
+    "RunLoggerReadbackError",
     "StopReason",
     "default_session_id",
     "default_trace_path",
+    "format_recent_history",
+    "read_trace_records",
 ]

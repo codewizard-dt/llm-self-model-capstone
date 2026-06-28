@@ -1,0 +1,25 @@
+summary: >-
+  Added validated JSONL readback and bounded recent-history formatting to the
+  ROS-free pilot run logger. Trace readback accepts a path or text stream,
+  validates every non-empty line through the contract-owned PilotTraceRecord
+  union, preserves file order exactly, and raises line-numbered readback errors
+  for malformed JSON, non-object JSON, and schema-invalid records. Recent
+  history now formats typed trace records into deterministic prompt-safe text
+  with explicit record and character bounds, summarizing decisions, commands,
+  results, assertions, stop records, and observation failures/assertions without
+  emitting raw JSONL tails, secrets, binary-like control characters, or full
+  transcript text. Added focused tests for valid readback, ordering, line
+  failures, deterministic bounds, prompt-safety, and ROS-free imports.
+satisfies:
+  - ACC-RL-READBACK-TYPED
+  - ACC-RL-READBACK-ORDER
+  - ACC-RL-MALFORMED-JSON-LINE
+  - ACC-RL-NON-OBJECT-LINE
+  - ACC-RL-SCHEMA-INVALID-LINE
+  - ACC-RL-HISTORY-BOUNDED
+  - ACC-RL-HISTORY-DETERMINISTIC
+  - ACC-RL-HISTORY-RELEVANT-EVENTS
+  - ACC-RL-HISTORY-PROMPT-SAFE
+  - ACC-RL-ROS-FREE
+  - ACC-RL-SCOPE-LIMITED-FILES
+  - ACC-RL-GATES

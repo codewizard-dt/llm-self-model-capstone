@@ -1,0 +1,86 @@
+items:
+  - id: ACC-RL-READBACK-TYPED
+    verdict: pass
+    notes: >-
+      `read_trace_records` accepts a path or text stream and validates each
+      non-empty JSONL object through `TypeAdapter(PilotTraceRecord)`, returning
+      typed contract-owned records. No pilot-local schema or durable record model
+      was added.
+  - id: ACC-RL-READBACK-ORDER
+    verdict: pass
+    notes: >-
+      Readback appends records as lines are enumerated and performs no sorting,
+      renumbering, or deduplication. Tests write stop, decision, and result
+      records in non-monotonic timestamp order and assert exact event, seq, and
+      timestamp readback order.
+  - id: ACC-RL-MALFORMED-JSON-LINE
+    verdict: pass
+    notes: >-
+      Malformed non-empty JSON raises `RunLoggerReadbackError` with a 1-based
+      line number and JSON parsing context. The test covers a malformed second
+      line and asserts the error line number.
+  - id: ACC-RL-NON-OBJECT-LINE
+    verdict: pass
+    notes: >-
+      Syntactically valid non-object JSON is rejected before schema validation
+      with `line N: trace record must be a JSON object`. Tests cover both string
+      and array JSONL lines.
+  - id: ACC-RL-SCHEMA-INVALID-LINE
+    verdict: pass
+    notes: >-
+      Contract validation failures are wrapped as line-numbered readback errors
+      with concise pydantic context. The test covers an invalid event value and
+      asserts both the line number and event-related diagnostic text.
+  - id: ACC-RL-HISTORY-BOUNDED
+    verdict: pass
+    notes: >-
+      `format_recent_history` requires explicit non-negative `max_records` and
+      `max_chars` bounds, selects only the recent bounded suffix, and clips the
+      rendered text to the character budget. Tests prove long records and long
+      fields cannot produce output beyond the requested bound.
+  - id: ACC-RL-HISTORY-DETERMINISTIC
+    verdict: pass
+    notes: >-
+      History formatting is a pure transformation over supplied typed records
+      and bounds, using stable ordering and truncation with no clock, random,
+      filesystem, ROS, or provider dependency. Tests call it repeatedly and
+      assert identical output.
+  - id: ACC-RL-HISTORY-RELEVANT-EVENTS
+    verdict: pass
+    notes: >-
+      The formatter summarizes observations, decisions, commands, results,
+      assertions, failures, and stop records with useful sequence, event,
+      status, confidence, command, reason, and recovery fields while avoiding
+      full observation dumps.
+  - id: ACC-RL-HISTORY-PROMPT-SAFE
+    verdict: pass
+    notes: >-
+      History output is derived from typed fields rather than raw JSONL tails,
+      normalizes non-printable characters, redacts secret assignments and
+      transcript markers, clips individual fields, and redacts JSON fragments.
+      Tests assert raw JSON, provider-secret text, transcript markers, and null
+      bytes do not appear in the output.
+  - id: ACC-RL-ROS-FREE
+    verdict: pass
+    notes: >-
+      `pilot.run_logger` remains ROS-free and provider-free, importing only
+      stdlib, pydantic, and contract-owned types. Existing and added tests import
+      the module while rejecting ROS package imports.
+  - id: ACC-RL-SCOPE-LIMITED-FILES
+    verdict: pass
+    notes: >-
+      `git diff --name-only` shows only `pilot/src/pilot/run_logger.py` and
+      `pilot/tests/test_run_logger.py`. No schemas, generated artifacts, replay
+      runner, decision adapter, ROS, CLI, or hardware integration files were
+      edited for this slice.
+  - id: ACC-RL-GATES
+    verdict: pass
+    notes: >-
+      Changeset claims `uv sync`, `make -C pilot test`, `make -C pilot lint`,
+      root `make test`, root `make validate`, and root `make lint`. Reviewer
+      reran the non-mutating verification subset: `make -C pilot test`,
+      `make -C pilot lint`, root `make test`, root `make validate`, and root
+      `make lint`; all passed. `uv sync` was not rerun here to respect this
+      node's artifact-only write scope.
+verdict: approve
+rework: []

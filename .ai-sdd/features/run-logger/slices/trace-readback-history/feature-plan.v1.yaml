@@ -1,0 +1,199 @@
+summary: >-
+  Extend the ROS-free `pilot.run_logger` module with trace readback and recent-history utilities:
+  JSONL files are parsed back into ordered, contract-validated `contracts.PilotTraceRecord` values
+  with line-numbered failures, and selected recent trace outcomes are summarized into bounded,
+  deterministic text suitable for `pilot.decision` prompt context.
+
+scope:
+  in:
+    - >-
+      Add a JSONL readback utility in `pilot/src/pilot/run_logger.py` that accepts a trace path or
+      text stream, reads records in file order, and returns typed `contracts.PilotTraceRecord`
+      instances validated by the existing contract-owned trace union.
+    - >-
+      Report malformed JSON, syntactically valid non-object JSON, and schema-invalid trace objects
+      with useful 1-based line-number context while avoiding silent skips of bad non-empty lines.
+    - >-
+      Preserve record order exactly as written; readback must not sort, renumber, deduplicate, or
+      reinterpret sequence metadata.
+    - >-
+      Provide a bounded deterministic recent-history selector or formatter over typed trace records
+      for downstream `pilot.decision` prompt input.
+    - >-
+      Include compact summaries of useful recent decisions, commands, results, assertions, failures,
+      and stop records when present.
+    - >-
+      Keep history output bounded by explicit count and/or character policy, deterministic across
+      repeated calls, and safe for prompt input without exposing raw JSONL tails.
+    - >-
+      Exclude raw JSONL lines, binary data, provider secrets, environment variables, full provider
+      transcripts, and unbounded terminal/ROS logs from readback-derived prompt history.
+    - >-
+      Add focused tests in `pilot/tests/test_run_logger.py` for valid readback, malformed JSON,
+      non-object JSON, schema invalid records, order preservation, deterministic history bounds,
+      relevant event summaries, and ROS-free imports.
+  out:
+    - >-
+      Replay runner behavior, task recipe execution, selecting the next skill, command execution,
+      safety validation, assertion computation, LLM calls, prompt adapter rewrites beyond providing a
+      reusable history input utility, or changes to the loop orchestration.
+    - >-
+      Any schema definition or schema change in `pilot/`, `contracts/`, generated schema artifacts,
+      fixtures outside the focused logger tests, or pilot-local pydantic durable-record models.
+    - >-
+      Hardware proof runs, ROS publishers/subscribers, `rclpy` imports, MCAP/ROS bag export,
+      `robot/ros2-runtime` behavior, or `robot/v5-brain` behavior.
+    - >-
+      Passing raw unbounded logs, raw JSONL tails, camera frames, binary payloads, provider secrets,
+      environment variables, or complete provider transcripts to the LLM.
+    - >-
+      Multi-process trace repair, corrupted-file recovery beyond fail-fast line errors, file
+      compaction, compression, rotation, or resume sequence policy changes.
+
+acceptance:
+  - id: ACC-RL-READBACK-TYPED
+    description: >-
+      Reading a trace file written by `RunLogger` returns a list of typed,
+      contract-valid `contracts.PilotTraceRecord` values using the contract-owned union, with no
+      pilot-local schema or untyped durable record format.
+  - id: ACC-RL-READBACK-ORDER
+    description: >-
+      Readback preserves JSONL line order exactly; tests write multiple event variants in a known
+      order and assert that returned `event` and `seq` values match that order without sorting or
+      renumbering.
+  - id: ACC-RL-MALFORMED-JSON-LINE
+    description: >-
+      A malformed non-empty JSONL line raises the run-logger readback error type with the 1-based
+      line number and parsing context, and the implementation does not silently skip the bad line.
+  - id: ACC-RL-NON-OBJECT-LINE
+    description: >-
+      A syntactically valid non-object JSON line, such as a string or array, raises a line-numbered
+      readback error explaining that trace records must be JSON objects before schema validation.
+  - id: ACC-RL-SCHEMA-INVALID-LINE
+    description: >-
+      A JSON object that fails `contracts.PilotTraceRecord` validation raises a line-numbered
+      readback error with useful validation context, including enough detail to identify the invalid
+      event or field.
+  - id: ACC-RL-HISTORY-BOUNDED
+    description: >-
+      Recent-history selection or formatting is bounded by explicit deterministic policy, such as
+      maximum records and maximum characters; tests prove long traces and long text fields cannot
+      produce unbounded prompt history.
+  - id: ACC-RL-HISTORY-DETERMINISTIC
+    description: >-
+      Calling the recent-history utility repeatedly with the same typed records and bounds returns
+      identical output, with stable truncation and no wall-clock, random, filesystem, or ROS
+      dependency.
+  - id: ACC-RL-HISTORY-RELEVANT-EVENTS
+    description: >-
+      History output can summarize recent decisions, commands, results, assertions, failures, and
+      stop records with useful identifiers/status/reasons where available, while omitting unrelated
+      full observation dumps and raw JSONL text.
+  - id: ACC-RL-HISTORY-PROMPT-SAFE
+    description: >-
+      Tests prove history output does not embed raw JSONL lines, binary-like payloads, environment
+      variable dumps, provider secrets, full provider transcripts, or unbounded log tails; it uses
+      compact human-readable summaries derived from typed fields.
+  - id: ACC-RL-ROS-FREE
+    description: >-
+      The readback and history utilities remain importable and testable on a development machine
+      without `rclpy`, ROS message packages, live hardware, provider SDKs, or concrete transport
+      implementations.
+  - id: ACC-RL-SCOPE-LIMITED-FILES
+    description: >-
+      Implementation changes stay within `pilot/src/pilot/run_logger.py` and
+      `pilot/tests/test_run_logger.py`; no source schemas, replay runner, decision adapter behavior,
+      ROS code, CLI wiring, or hardware integration files are edited for this slice.
+  - id: ACC-RL-GATES
+    description: >-
+      The implementer runs the maintained sync and verification gates for this repo layout:
+      `uv sync`, `make -C pilot test`, `make -C pilot lint`, root `make test`, root `make validate`,
+      and root `make lint`.
+
+decisions:
+  - id: DEC-RL-READBACK-IN-RUN-LOGGER
+    status: closed
+    decision: >-
+      Add readback and recent-history helpers to the existing `pilot/src/pilot/run_logger.py` module
+      rather than creating a replay module or changing the decision adapter in this slice.
+    rationale: >-
+      The approved run-logger feature owns trace consumption utilities, the rendered slice names
+      `pilot.run_logger` as the file to change, and replay/prompt adapter behavior is explicitly
+      out of scope beyond a reusable history input utility.
+    grounds:
+      - ".ai-sdd/features/run-logger/requirements.md: Proposed Decisions RL-007 and RL-008"
+      - ".ai-sdd/features/run-logger/slices/trace-readback-history.md: Files to create / change"
+      - "pilot/src/pilot/run_logger.py: existing ROS-free logger API"
+  - id: DEC-RL-CONTRACT-VALIDATED-READBACK
+    status: closed
+    decision: >-
+      Parse each JSONL line as JSON, require a JSON object, and validate it through
+      `contracts.PilotTraceRecord` before returning it to callers.
+    rationale: >-
+      `contracts/` owns all schemas, replay-mode consumers need typed records, and invalid durable
+      lines must fail with actionable line context rather than being accepted as dictionaries.
+    grounds:
+      - ".ai-sdd/features/run-logger/requirements.md: Constraints and Proposed Decisions RL-002/RL-007"
+      - ".ai-sdd/conventions/pilot.md: Boundary rules -> No schema defined here"
+      - "contracts/src/contracts/pilot.py: PilotTraceRecord"
+  - id: DEC-RL-FAIL-FAST-LINE-ERRORS
+    status: closed
+    decision: >-
+      Treat malformed JSON, non-object JSON, and schema-invalid objects as fail-fast readback errors
+      carrying 1-based line numbers and concise parse/validation context.
+    rationale: >-
+      A trace is an audit/replay boundary; silently skipping malformed lines would hide data loss and
+      make replay behavior non-diagnosable.
+    grounds:
+      - ".ai-sdd/features/run-logger/requirements.md: Acceptance -> line-numbered readback errors"
+      - ".ai-sdd/features/run-logger/slices/trace-readback-history.md: Requirements"
+  - id: DEC-RL-HISTORY-SUMMARY-NOT-RAW-TAIL
+    status: closed
+    decision: >-
+      Build recent history from typed records into concise summaries of decisions, commands,
+      results, assertions, failures, and stops, bounded by explicit count and/or character limits,
+      instead of passing raw JSONL tails to the LLM.
+    rationale: >-
+      The pilot prompt contract requires a recent-history section, but the run-logger requirements
+      forbid raw unbounded logs, binary artifacts, secrets, environment variables, and full provider
+      transcript exposure.
+    grounds:
+      - ".ai-sdd/features/run-logger/requirements.md: Constraints and Proposed Decisions RL-008/RL-009"
+      - ".ai-sdd/features/run-logger/slices/trace-readback-history.md: Requirements"
+      - "PILOT_MASTER_REQUIREMENTS.md: Prompt Contract -> recent history"
+  - id: DEC-RL-NO-ORDER-MUTATION
+    status: closed
+    decision: >-
+      Readback returns records in file order and the history utility selects from that ordered list
+      deterministically; it must not sort by timestamps, fix sequence gaps, deduplicate, or mutate
+      records.
+    rationale: >-
+      The logger records the harness event order, and preserving that order is required for audit,
+      prompt context, and later replay-mode consumption.
+    grounds:
+      - ".ai-sdd/features/run-logger/requirements.md: Goal and Acceptance -> preserve event order"
+      - ".ai-sdd/features/run-logger/slices/trace-readback-history.md: Requirements"
+  - id: DEC-RL-ROS-FREE-UTILITY-ONLY
+    status: closed
+    decision: >-
+      Keep readback and history utilities pure Python and ROS-free, with no hardware, ROS, LLM
+      provider, assertion-engine, command-executor, or replay-runner dependencies.
+    rationale: >-
+      The run logger is an audit/replay boundary, not the control loop; this slice must be usable by
+      tests and later replay inputs without importing ROS or executing commands.
+    grounds:
+      - ".ai-sdd/features/run-logger/requirements.md: Goal and Out Of Scope"
+      - ".ai-sdd/features/run-logger/slices/trace-readback-history.md: Out Of Scope"
+      - ".ai-sdd/conventions/pilot.md: Boundary rules"
+
+files:
+  - pilot/src/pilot/run_logger.py
+  - pilot/tests/test_run_logger.py
+
+tests:
+  - uv sync
+  - make -C pilot test
+  - make -C pilot lint
+  - make test
+  - make validate
+  - make lint
