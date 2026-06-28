@@ -1,0 +1,195 @@
+summary: >-
+  Replace the pilot assertion foundation placeholders with deterministic fused-evidence evaluators
+  for the first delivery task, keeping the public ROS-free API intact while producing contract-valid
+  true, false, or unknown `contracts.PilotAssertion` results for all nine required assertion ids.
+
+scope:
+  in:
+    - >-
+      Update `pilot/src/pilot/assertions.py` so `evaluate_assertions(observation, context)` computes
+      real evaluator outcomes for `target_ball_visible`, `robot_pose_reliable`, `ball_reachable`,
+      `ball_centered_for_grasp`, `grasp_likely`, `carrying_ball`, `at_destination`, `drop_likely`,
+      and `ball_at_destination` in the existing stable order.
+    - >-
+      Use only existing `contracts.PilotObservation` evidence and existing pilot-local
+      `AssertionContext` / `AssertionConfig` thresholds for target selection, destination selection,
+      confidence gates, freshness gates, reachability, and image-center or grasp-corridor tolerance.
+    - >-
+      Evaluate target visibility from matching object id or label and configured confidence; evaluate
+      pose reliability from pose presence, localization confidence and age, bridge heartbeat age, and
+      bridge fault/stale/estop state.
+    - >-
+      Evaluate reachability and centering from available visible-object evidence, including bbox
+      evidence when present and pose/heuristic evidence when supported by the current contract shape;
+      return `unknown` when required evidence is absent.
+    - >-
+      Evaluate grasp and carry with fused evidence classes: manipulator or skill-result evidence plus
+      either vision/object state or held-object state; conflicting evidence must produce `unknown`
+      instead of confident success.
+    - >-
+      Evaluate destination arrival, drop likelihood, and final ball-at-destination state from
+      destination context, robot pose or destination tag evidence, manipulator state, last skill
+      result, and visible object evidence.
+    - >-
+      Extend `pilot/tests/test_assertions.py` with focused deterministic examples covering true,
+      false, and unknown outcomes, conflict handling, evidence entries, confidence bounds, recovery
+      hints, stable ordering, and contract validation.
+  out:
+    - >-
+      New public schemas, contract edits, generated schema edits, fixture rewrites outside the
+      assertion tests, or pilot-local pydantic assertion models.
+    - >-
+      Package export changes in `pilot/src/pilot/__init__.py`; the current assertion API is already
+      exported and this slice should only change exports if implementation proves it is truly
+      required.
+    - >-
+      ROS subscriptions, live topic wiring, camera/object tracker implementation, AprilTag mapping,
+      motor-current drivers, concrete provider adapters, or imports of ROS packages.
+    - >-
+      LLM judging, prompt construction, decision parsing, safety-validator stop policy, command
+      clamping, skill execution, ROS publishing, ack waiting, replay-loop orchestration, run logging,
+      skill-baseline capture, delivery recipe orchestration, or hardware verification.
+    - >-
+      Changes to `self_model_generator/`, `contracts/`, `robot/ros2-runtime/`, `robot/v5-brain/`,
+      docs, CI, root Makefile delegation, dependency-management tooling, or `make demo` gates.
+
+acceptance:
+  - id: ACC-TARGET-VISIBILITY
+    description: >-
+      `target_ball_visible` returns `true` only for a visible object matching the configured target id
+      or label and meeting `visible_confidence_min`; returns `false` when fresh usable vision evidence
+      excludes the target; and returns `unknown` when object evidence is absent, stale, unsafe to
+      trust, or below threshold. Tests cover true, false, and unknown cases.
+  - id: ACC-POSE-RELIABILITY
+    description: >-
+      `robot_pose_reliable` reflects robot pose presence, localization confidence, localization age,
+      bridge heartbeat age, bridge state, faults, and estop without fabricating certainty. Tests cover
+      reliable, stale/faulted false, and insufficient-evidence unknown cases.
+  - id: ACC-REACHABLE-CENTERED
+    description: >-
+      `ball_reachable` and `ball_centered_for_grasp` use configured reachability and
+      image-center/grasp-corridor thresholds when object pose or bbox evidence exists, include
+      evidence explaining the signal used, and return `unknown` when required evidence is absent.
+      Tests cover reachable/not-reachable, centered/not-centered, and missing-evidence unknown
+      outcomes.
+  - id: ACC-GRASP-CARRY-FUSION
+    description: >-
+      `grasp_likely` and `carrying_ball` require at least two evidence classes: manipulator or
+      skill-result evidence plus vision/object state or held-object state. A claw-close or
+      verify-grasp success alone is not enough, and conflicting evidence returns `unknown`. Tests
+      cover true, false, unknown, and conflicting-evidence cases for both assertions.
+  - id: ACC-DESTINATION-DROP-FINAL
+    description: >-
+      `at_destination`, `drop_likely`, and `ball_at_destination` use configured destination context,
+      robot pose or tag-relative evidence, manipulator state, last skill result, and visible object
+      evidence. Ambiguous or conflicting evidence returns `unknown` with a recovery hint. Tests cover
+      destination arrival, likely/unknown drop, and final object-at-destination classification.
+  - id: ACC-UNCERTAINTY-EVIDENCE
+    description: >-
+      Every evaluator output includes at least one meaningful `contracts.AssertionEvidence`, bounded
+      confidence, observed-time or age metadata, and a recovery hint when the next bounded recovery
+      step is apparent; stale, missing, unsafe, or contradictory evidence is represented as
+      `unknown`, not optimistic true/false.
+  - id: ACC-DETERMINISTIC-CONTRACT-ORDER
+    description: >-
+      `evaluate_assertions` remains pure Python, ROS-free, deterministic, and replay-friendly;
+      returns exactly one `contracts.PilotAssertion` for each required id in
+      `REQUIRED_ASSERTION_IDS` order; and every returned assertion round-trips through
+      `contracts.PilotAssertion.model_validate`.
+  - id: ACC-SCOPE-AND-GATES
+    description: >-
+      Implementation changes are limited to `pilot/src/pilot/assertions.py` and
+      `pilot/tests/test_assertions.py` unless a package export change is proven necessary. The
+      implementer runs `make sync`, `make -C pilot test`, `make -C pilot lint`, `make test`,
+      `make validate`, and `make lint`.
+
+decisions:
+  - id: DEC-EVALUATORS-IN-ASSERTIONS-MODULE
+    status: closed
+    decision: >-
+      Implement the evaluator heuristics in the existing `pilot/src/pilot/assertions.py` module and
+      keep tests in `pilot/tests/test_assertions.py`.
+    rationale: >-
+      The assertion foundation already owns the ROS-free API, context, stable ids, and contract-valid
+      builders; this slice only replaces placeholder outcomes with deterministic evaluator behavior.
+    grounds: >-
+      `.ai-sdd/features/assertion-engine/slices/assertion-evaluators.md` Files to create/change;
+      `.ai-sdd/features/assertion-engine/requirements.md` Proposed Decision AE-001;
+      `PILOT_MASTER_REQUIREMENTS.md` Components `Assertion engine`.
+  - id: DEC-NO_EXPORT_CHANGE_BY_DEFAULT
+    status: closed
+    decision: >-
+      Do not include `pilot/src/pilot/__init__.py` in the allowed file set because the existing
+      package already exports the assertion API needed by this slice.
+    rationale: >-
+      The user explicitly scoped the implementation to `pilot/src/pilot/assertions.py` and
+      `pilot/tests/test_assertions.py` unless package exports are truly needed; no new public symbol
+      is required to deliver evaluator behavior through `evaluate_assertions`.
+    grounds: >-
+      User node instruction; current `pilot/src/pilot/__init__.py` assertion exports;
+      assertion-evaluators slice Files to create/change.
+  - id: DEC-CONTRACT_EVIDENCE_ONLY
+    status: closed
+    decision: >-
+      Base evaluator inputs and outputs on existing contract-owned pilot models and pilot-local
+      context only; do not add or modify schemas for destination, object, assertion, or evidence
+      shapes.
+    rationale: >-
+      The repo boundary rule keeps durable schemas in `contracts`, while the feature requires a
+      deterministic evaluator over compact observations rather than schema expansion.
+    grounds: >-
+      `MASTER_REQUIREMENTS.md` Components boundary rule; `.ai-sdd/conventions/pilot.md` Boundary
+      rules; `.ai-sdd/features/assertion-engine/requirements.md` Constraints and Proposed Decisions
+      AE-002 and AE-003.
+  - id: DEC_FUSED_UNKNOWN_ON_CONFLICT
+    status: closed
+    decision: >-
+      Treat grasp, carry, drop, and final delivery success as fused assertions that require multiple
+      compatible evidence classes; missing, stale, unsafe, or contradictory evidence returns
+      `unknown` with evidence and recovery guidance.
+    rationale: >-
+      The pilot requirements explicitly reject single-sensor certainty for grasp and delivery, and
+      deterministic assertions must expose uncertainty so the loop can recover safely.
+    grounds: >-
+      `PILOT_MASTER_REQUIREMENTS.md` Observation and Assertions plus Execution Checklist;
+      `.ai-sdd/features/assertion-engine/requirements.md` Acceptance and Proposed Decisions AE-005,
+      AE-006, and AE-007.
+  - id: DEC_ROS_FREE_NO_SIDE_EFFECTS
+    status: closed
+    decision: >-
+      Keep assertion evaluation pure Python, ROS-free, deterministic, and side-effect free: no LLM
+      calls, command execution, stop publication, wall-clock reads, run-log writes, or hardware
+      access.
+    rationale: >-
+      The assertion engine is the progress classifier for replay and live loops; loop control,
+      safety, execution, logging, and hardware integration are separate pilot features.
+    grounds: >-
+      `.ai-sdd/features/assertion-engine/requirements.md` Goal, Out Of Scope, Constraints, and
+      Proposed Decision AE-008; `.ai-sdd/conventions/pilot.md` Boundary rules;
+      `PILOT_MASTER_REQUIREMENTS.md` LLM Role and Components.
+  - id: DEC_GATE_SET
+    status: closed
+    decision: >-
+      Use the maintained dependency sync command `make sync`, focused pilot gates, and root gates:
+      `make -C pilot test`, `make -C pilot lint`, `make test`, `make validate`, and `make lint`;
+      exclude `make demo`.
+    rationale: >-
+      The approved assertion-engine requirements identify `make sync` as the repo's per-vertical uv
+      sync gate, the slice requires focused pilot checks, root gates remain the reviewer contract,
+      and `make demo` is an m2 milestone concern rather than a per-slice gate.
+    grounds: >-
+      `.ai-sdd/features/assertion-engine/requirements.md` Acceptance and Proposed Decision AE-009;
+      `AGENTS.md` Build / verify; `MASTER_REQUIREMENTS.md` Tech stacks and Milestones m2;
+      `PILOT_MASTER_REQUIREMENTS.md` Verification.
+
+files:
+  - pilot/src/pilot/assertions.py
+  - pilot/tests/test_assertions.py
+
+tests:
+  - make sync
+  - make -C pilot test
+  - make -C pilot lint
+  - make test
+  - make validate
+  - make lint

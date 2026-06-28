@@ -1,0 +1,13 @@
+summary: >-
+  Replaced pilot assertion placeholders with deterministic ROS-free fused-evidence evaluators for
+  the nine required delivery-task assertions, including conservative unknown handling for missing,
+  stale, unsafe, and contradictory evidence plus focused true/false/unknown regression coverage.
+satisfies:
+  - ACC-TARGET-VISIBILITY
+  - ACC-POSE-RELIABILITY
+  - ACC-REACHABLE-CENTERED
+  - ACC-GRASP-CARRY-FUSION
+  - ACC-DESTINATION-DROP-FINAL
+  - ACC-UNCERTAINTY-EVIDENCE
+  - ACC-DETERMINISTIC-CONTRACT-ORDER
+  - ACC-SCOPE-AND-GATES
