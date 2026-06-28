@@ -1,0 +1,16 @@
+summary: >-
+  Added a ROS-free pilot live-observation mapper that normalizes agent-scene and fallback JSON-style
+  payloads into ObservationCache, delegates final PilotObservation construction to the existing
+  snapshot builder, exports the new API additively, preserves explicit zero localization and bridge
+  heartbeat ages, and covers pose aliases, fallback sources, stale/unknown evidence, objective
+  validation, builder delegation, and ROS-free imports with deterministic tests.
+satisfies:
+  - ACC-AGENT-SCENE-SNAPSHOT
+  - ACC-POSE-HEADING-ALIASES
+  - ACC-FALLBACK-PAYLOADS
+  - ACC-OBJECT-TAG-MAPPING
+  - ACC-STALE-UNKNOWN-EVIDENCE
+  - ACC-OBJECTIVE-REQUIRED
+  - ACC-ROS-FREE-IMPORT
+  - ACC-OBSERVATION-BUILDER-PRESERVED
+  - ACC-REGRESSION-GATES

@@ -1,0 +1,62 @@
+items:
+  - id: ACC-AGENT-SCENE-SNAPSHOT
+    verdict: pass
+    notes: >-
+      `build_live_observation` accepts representative `/vision/agent_scene`-style mappings,
+      constructs an `ObservationCache`, and delegates final validation to
+      `build_observation_snapshot`. The covered snapshot includes the requested objective,
+      observed timestamp, task phase, robot pose, localization confidence and age, visible
+      objects, visible tags, bridge health, and manipulator state, then round-trips through
+      `PilotObservation`.
+  - id: ACC-POSE-HEADING-ALIASES
+    verdict: pass
+    notes: >-
+      `_pose_from_mapping` normalizes `heading_rad`, `yaw_rad`, `heading`, and `heading_deg`
+      into contract `heading_rad` values. The parameterized test exercises all four aliases for
+      robot and tag poses without modifying the contract model.
+  - id: ACC-FALLBACK-PAYLOADS
+    verdict: pass
+    notes: >-
+      Fallback payloads build a contract-valid snapshot without `agent_scene`, using scene map,
+      object tracks, telemetry, bridge status, task plan, and operator status through the same
+      public API.
+  - id: ACC-OBJECT-TAG-MAPPING
+    verdict: pass
+    notes: >-
+      Object and tag mapping stays within existing `contracts.PilotObservation` fields. Tests
+      cover stable IDs, labels or families, confidence, tag pose, optional object image boxes,
+      filtering of non-visible or candidate evidence, and omission of live metadata that has no
+      current contract field.
+  - id: ACC-STALE-UNKNOWN-EVIDENCE
+    verdict: pass
+    notes: >-
+      The previous zero-age defect is fixed: localization and bridge heartbeat age selection now
+      uses first-non-None semantics instead of falsy `or` chaining. Focused tests prove
+      localization `age_ms: 0` and bridge `last_heartbeat_age_ms: 0` are preserved, while missing
+      or unavailable pose, object, tag, bridge, and manipulator evidence remains unknown, stale,
+      empty, or `None` rather than fabricated.
+  - id: ACC-OBJECTIVE-REQUIRED
+    verdict: pass
+    notes: >-
+      Missing, empty, and whitespace-only objectives are rejected via the existing
+      `build_observation_snapshot` objective validation path.
+  - id: ACC-ROS-FREE-IMPORT
+    verdict: pass
+    notes: >-
+      `pilot.live_observation` imports only standard-library helpers, contract models, and
+      `pilot.observation`; it has no ROS, ROS message, or `vexy_ros` dependency. The import-safety
+      test blocks ROS imports and still imports and exercises the mapper.
+  - id: ACC-OBSERVATION-BUILDER-PRESERVED
+    verdict: pass
+    notes: >-
+      The mapper constructs `ObservationCache` and calls `build_observation_snapshot` for final
+      sorting, truncation, and validation. Existing observation-builder tests remain green.
+  - id: ACC-REGRESSION-GATES
+    verdict: pass
+    notes: >-
+      Verified in this checkout: `make sync`, `make test`, `make validate`, `make lint`, and
+      `cd pilot && PYTHONPATH=src:../contracts/src uv run pytest tests/test_live_observation.py
+      tests/test_observation_builder.py` all exited 0. A bare root `uv sync` is not a valid command
+      for the current repository layout because the root has no `pyproject.toml`; the root Makefile
+      delegates `uv sync` into each vertical, and that path passed.
+verdict: approve

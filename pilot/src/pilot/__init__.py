@@ -42,7 +42,8 @@ from pilot.observation import (  # noqa: E402
     visible_object_sort_key,
     visible_tag_sort_key,
 )
-from pilot.decision import (  # noqa: E402
+from pilot.live_observation import build_live_observation, build_live_observation_cache
+from pilot.decision import (
     DecisionAdapterError,
     DecisionAdapterResult,
     DecisionPromptClient,
@@ -138,6 +139,8 @@ __all__ = [
     "ValidationResult",
     "ValidationStatus",
     "assertion_sort_key",
+    "build_live_observation",
+    "build_live_observation_cache",
     "build_assertion",
     "build_observation_snapshot",
     "build_unknown_assertion",

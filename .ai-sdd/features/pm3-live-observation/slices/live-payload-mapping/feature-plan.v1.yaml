@@ -1,0 +1,205 @@
+summary: >-
+  Add a ROS-free live payload mapping layer in `pilot` that accepts compact JSON-style evidence from
+  `/vision/agent_scene` or its fallback source payloads, normalizes it into `ObservationCache`, and
+  returns contract-valid `contracts.PilotObservation` snapshots through the existing
+  `build_observation_snapshot` path.
+
+scope:
+  in:
+    - >-
+      Create `pilot.live_observation` with pure mapping helpers that accept an agent-scene mapping
+      plus optional fallback mappings for scene map, object tracks, telemetry, bridge status, task
+      plan, and operator status, along with required `objective`, required `observed_ms`, and
+      optional task phase.
+    - >-
+      Convert live robot pose payloads using `yaw_rad`, `heading_rad`, `heading`, or `heading_deg`
+      aliases into contract `Pose2D.heading_rad`, preserving unknown pose when coordinates are
+      absent instead of fabricating a position.
+    - >-
+      Convert localization source payloads into `LocalizationState` using the existing contract
+      fields `pose`, `confidence`, and `age_ms`, including seconds-to-milliseconds conversion for
+      live `pose_age_s` style values.
+    - >-
+      Convert visible object and tag evidence into existing `VisibleObject` and `VisibleTag`
+      contract entries with stable identifiers, labels/families, confidence, optional poses for
+      tags, and optional image boxes for objects when source payloads provide contract-compatible
+      data.
+    - >-
+      Convert bridge, telemetry, and operator evidence into existing `BridgeHealth` and
+      `ManipulatorState` fields, surfacing stale, fault, estop, battery, heartbeat age, arm angle,
+      claw state, and held-object values where available.
+    - >-
+      Preserve `build_observation_snapshot` validation, sorting, and truncation behavior by
+      constructing an `ObservationCache` and delegating final snapshot construction to that existing
+      function.
+    - >-
+      Add deterministic unit tests for representative `/vision/agent_scene` payloads, fallback
+      source payloads, missing/stale evidence, objective validation, schema validation, and
+      import-safety without ROS packages.
+    - >-
+      Optionally add additive public exports from `pilot.__init__` for the new mapping API if doing
+      so matches existing pilot package export conventions.
+  out:
+    - >-
+      ROS node/subscription code, `rclpy` imports, ROS message class imports, CLI entrypoints,
+      command publishers, task-plan request publishers, output files, manual proof docs, LLM
+      decisions, skill execution, run logging, or hardware motion.
+    - >-
+      Contract schema changes, new schema definitions in `pilot`, changes to `contracts/`, or
+      attempts to persist live metadata that has no field in the current `PilotObservation`
+      contract.
+    - >-
+      Reworking existing `pilot.observation` sorting/truncation semantics except for using its
+      public cache and snapshot APIs.
+    - >-
+      Changes under `robot/ros2-runtime/`, `robot/v5-brain/`, `self_model_generator/`, docs,
+      Makefile, pyproject metadata, dependency management, or formatter/linter tooling.
+    - >-
+      `make demo`, which remains an m2 milestone concern rather than a per-slice gate.
+
+acceptance:
+  - id: ACC-AGENT-SCENE-SNAPSHOT
+    description: >-
+      A representative `/vision/agent_scene` mapping builds a contract-valid `PilotObservation`
+      snapshot containing the requested objective, observed timestamp, task phase, robot pose,
+      localization confidence/age, visible objects, visible tags, bridge health, and manipulator
+      state.
+  - id: ACC-POSE-HEADING-ALIASES
+    description: >-
+      Tests prove robot and tag poses accept `yaw_rad`, `heading_rad`, `heading`, and `heading_deg`
+      style source fields and always emit contract `heading_rad` values without changing the
+      contract model.
+  - id: ACC-FALLBACK-PAYLOADS
+    description: >-
+      When agent-scene input is unavailable, fallback payloads for scene map, object tracks,
+      telemetry, bridge status, task plan, and operator status can build a contract-valid snapshot
+      through the same public API.
+  - id: ACC-OBJECT-TAG-MAPPING
+    description: >-
+      Visible object and visible tag tests cover stable IDs, labels or families, confidence, tag
+      pose, optional object image boxes, object status filtering, and conservative handling of live
+      source metadata that is not represented by the current contract.
+  - id: ACC-STALE-UNKNOWN-EVIDENCE
+    description: >-
+      Missing, stale, or ambiguous bridge, telemetry, object, tag, and localization evidence is
+      surfaced as existing unknown/stale/empty contract values and never as fabricated confidence,
+      pose, heartbeat, held-object, or healthy bridge state.
+  - id: ACC-OBJECTIVE-REQUIRED
+    description: >-
+      Missing or blank objectives are rejected before or during snapshot construction, matching the
+      existing `build_observation_snapshot` contract behavior.
+  - id: ACC-ROS-FREE-IMPORT
+    description: >-
+      Tests prove `pilot.live_observation` imports and its pure mapping API can be exercised on a
+      development machine without `rclpy`, ROS message packages, or `vexy_ros` installed.
+  - id: ACC-OBSERVATION-BUILDER-PRESERVED
+    description: >-
+      Existing observation-builder tests remain green and the new mapper delegates final sorting,
+      truncation, and validation to `ObservationCache` plus `build_observation_snapshot`.
+  - id: ACC-REGRESSION-GATES
+    description: >-
+      The required repo gates `uv sync`, `make test`, `make validate`, and `make lint` pass, with a
+      focused pilot test command run during implementation.
+
+decisions:
+  - id: DEC-PURE-MAPPER-ONLY
+    status: closed
+    decision: >-
+      Implement this slice as pure payload-to-observation mapping in `pilot/src/pilot/live_observation.py`
+      with no ROS subscriptions, no CLI, and no motion-producing behavior.
+    rationale: >-
+      The slice explicitly narrows PM3 to deterministic mapping helpers and import-safety tests; the
+      broader live observe CLI and ROS wiring are later PM3 work.
+    grounds: >-
+      `.ai-sdd/features/pm3-live-observation/slices/live-payload-mapping.md` What this slice
+      delivers, Requirements, and Out of scope; PM3 requirements In Scope and Proposed Decisions
+      PM3-002 and PM3-003; `.ai-sdd/conventions/pilot.md` Boundary rules.
+  - id: DEC-AGENT-SCENE-FIRST-FALLBACKS
+    status: closed
+    decision: >-
+      Treat `/vision/agent_scene` as the preferred input and use `/vision/scene_map`,
+      `/vision/object_tracks`, `/vex/telemetry`, `/vex/bridge_status`, `/task_plan/current`, and
+      `/operator/status` mappings only as fallback or supplementation sources.
+    rationale: >-
+      The ROS-side `agent_scene_node` already compacts the same underlying read-only JSON topics for
+      agent use, while fallback inputs keep the mapper useful when that node is unavailable.
+    grounds: >-
+      PM3 requirements Proposed Decision PM3-001; `robot/ros2-runtime/src/vexy_ros/agent_scene.py`;
+      `robot/ros2-runtime/src/vexy_ros/agent_scene_node.py`; MASTER_REQUIREMENTS Components
+      "Online-control harness" and "Live hardware sources".
+  - id: DEC-CONTRACT-OWNED-OUTPUT
+    status: closed
+    decision: >-
+      Output only existing `contracts.PilotObservation` component models by constructing an
+      `ObservationCache` and delegating final snapshot creation to `build_observation_snapshot`;
+      do not add fields for object pose, uncertainty, age, reachability, source, or localization
+      source when the current contract has no such field.
+    rationale: >-
+      `contracts/` is the sole schema owner and the current pilot contract exposes compact object,
+      tag, localization, manipulator, and bridge fields. This slice must map conservatively rather
+      than expanding the contract from `pilot`.
+    grounds: >-
+      MASTER_REQUIREMENTS Components boundary rule and Tech stacks `pilot`; PM3 requirements
+      Constraints; observation-builder requirements Constraints and Decision OB-003;
+      `contracts/src/contracts/pilot.py`; `.ai-sdd/schemas/task-telemetry.schema.yaml`,
+      `.ai-sdd/schemas/self-model.schema.yaml`, and `.ai-sdd/schemas/parts-catalog.schema.yaml`.
+  - id: DEC-HEADING-NORMALIZATION
+    status: closed
+    decision: >-
+      Normalize live pose headings to radians using source aliases in this precedence:
+      `heading_rad`, `yaw_rad`, `heading`, then `heading_deg` converted with `math.radians`; leave
+      pose unknown when x/y coordinates are not available.
+    rationale: >-
+      ROS-side scene payloads currently use `yaw_rad` plus `heading_deg`, while the contract model
+      requires `heading_rad`; accepting common aliases keeps the mapper robust without coupling to
+      ROS message classes.
+    grounds: >-
+      live-payload-mapping slice Requirements; `robot/ros2-runtime/src/vexy_ros/agent_scene.py`
+      `_pose_payload`; `robot/ros2-runtime/src/vexy_ros/vision_map.py` `Pose2D.to_json` and
+      `pose_from_mapping`; `contracts/src/contracts/pilot.py` `Pose2D`.
+  - id: DEC-UNKNOWNS-NOT-INFERRED
+    status: closed
+    decision: >-
+      Missing or stale source values must become explicit existing unknown/stale contract values:
+      `unknown_localization`, `unknown_manipulator`, `stale_bridge`, empty object/tag lists, or
+      `None` optional fields, with no optimistic confidence or healthy bridge defaults.
+    rationale: >-
+      The online pilot must reason from uncertainty rather than fabricated state, and PM3 requires
+      stale or unavailable live inputs to remain visible in the snapshot boundary.
+    grounds: >-
+      PM3 requirements Acceptance and Constraints; observation-builder requirements Decision OB-005;
+      `.ai-sdd/conventions/pilot.md` Boundary rules; `pilot/src/pilot/observation.py`.
+  - id: DEC-FILE-BOUNDARY
+    status: closed
+    decision: >-
+      Implementation may touch only `pilot/src/pilot/live_observation.py`,
+      `pilot/src/pilot/__init__.py`, and `pilot/tests/test_live_observation.py`.
+    rationale: >-
+      The slice is scoped to a new pilot mapper, optional additive exports, and focused tests; all
+      contract and ROS runtime surfaces are read-only context for this work.
+    grounds: >-
+      live-payload-mapping slice Files to create / change and Out of scope; plan-feature skill file
+      boundary rules; PM3 requirements Constraints.
+  - id: DEC-GATE-SET
+    status: closed
+    decision: >-
+      The implementer must run `uv sync`, `make test`, `make validate`, and `make lint`, plus a
+      focused pilot live-observation pytest command while developing this slice.
+    rationale: >-
+      The worker skill requires the repo-level baseline gates; the focused pilot command gives fast
+      proof for the new mapper and ROS-free import behavior. `make demo` is intentionally excluded.
+    grounds: >-
+      plan-feature skill file tests requirement; MASTER_REQUIREMENTS Build / verify and Milestones
+      m2; live-payload-mapping slice Acceptance.
+
+files:
+  - pilot/src/pilot/live_observation.py
+  - pilot/src/pilot/__init__.py
+  - pilot/tests/test_live_observation.py
+
+tests:
+  - uv sync
+  - make test
+  - make validate
+  - make lint
+  - cd pilot && uv run pytest tests/test_live_observation.py tests/test_observation_builder.py
