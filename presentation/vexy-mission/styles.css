@@ -30,7 +30,7 @@
 
 html {
   scroll-behavior: smooth;
-  scroll-snap-type: y mandatory;
+  scroll-snap-type: none;
 }
 
 body {
@@ -457,7 +457,7 @@ a {
 .slide {
   position: relative;
   min-height: 100svh;
-  scroll-snap-align: start;
+  scroll-snap-align: none;
   padding: clamp(70px, 8vh, 88px) max(22px, calc((100vw - var(--max)) / 2)) clamp(38px, 6vh, 58px);
 }
 
