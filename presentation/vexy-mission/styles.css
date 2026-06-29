@@ -1836,9 +1836,9 @@ body.editing .speaker-layout > :first-child {
 }
 
 .david-slide {
-  gap: 14px;
-  padding-top: clamp(54px, 6.3vh, 66px);
-  padding-bottom: clamp(20px, 3.2vh, 30px);
+  gap: clamp(10px, 1.5vh, 16px);
+  padding-top: clamp(70px, 7vh, 82px);
+  padding-bottom: clamp(28px, 4vh, 42px);
 }
 
 .david-slide .speaker-layout {
@@ -1846,20 +1846,21 @@ body.editing .speaker-layout > :first-child {
 }
 
 .david-slide h2 {
-  font-size: clamp(24px, 2.9vw, 36px);
+  max-width: 1180px;
+  font-size: clamp(26px, 3.05vw, 42px);
 }
 
 .david-slide .big-copy {
-  max-width: 850px;
-  font-size: clamp(14px, 1.16vw, 17px);
+  max-width: 1240px;
+  font-size: clamp(14px, 1.08vw, 17px);
 }
 
 .generational-loop {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 10px;
   padding: 14px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .generational-loop::before {
@@ -1884,16 +1885,16 @@ body.editing .speaker-layout > :first-child {
 }
 
 .david-slide .generational-loop {
-  padding: 10px;
-}
-
-.david-slide .generational-loop article {
-  min-height: 108px;
   padding: 12px;
 }
 
+.david-slide .generational-loop article {
+  min-height: 142px;
+  padding: 14px;
+}
+
 .david-slide .research-lattice article {
-  min-height: 88px;
+  min-height: 104px;
   padding: 12px;
 }
 
@@ -1920,24 +1921,28 @@ body.editing .speaker-layout > :first-child {
 }
 
 .david-slide .generational-loop strong {
-  font-size: clamp(24px, 2.5vw, 34px);
+  font-size: clamp(24px, 2.25vw, 34px);
 }
 
 .david-slide .generational-loop p,
 .david-slide .research-lattice p {
   margin-bottom: 0;
-  font-size: 0.8rem;
-  line-height: 1.24;
+  font-size: 0.78rem;
+  line-height: 1.28;
 }
 
 .metric-graph article:nth-child(2n) {
   transform: translateY(24px);
 }
 
+.david-slide .metric-graph article:nth-child(2n) {
+  transform: none;
+}
+
 .research-lattice {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 10px;
 }
 
 .speaker-notes {
