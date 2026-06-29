@@ -1107,6 +1107,258 @@ const revealObserver = new IntersectionObserver(
   { threshold: 0.18, rootMargin: "0px 0px -12% 0px" }
 );
 
+function initializeVexyAsciiCanvases() {
+  const canvases = Array.from(document.querySelectorAll("[data-vexy-ascii-canvas]"));
+  if (!canvases.length) return;
+
+  canvases.forEach((canvas) => {
+    const ctx = canvas.getContext("2d", { alpha: false });
+    if (!ctx) return;
+
+    const glyphs = " ..,,::;;!!++**##%%@@";
+    let start = performance.now();
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function smoothstep(edge0, edge1, value) {
+      const t = clamp((value - edge0) / (edge1 - edge0), 0, 1);
+      return t * t * (3 - 2 * t);
+    }
+
+    function lineDistance(px, py, ax, ay, bx, by) {
+      const dx = bx - ax;
+      const dy = by - ay;
+      const len = dx * dx + dy * dy || 1;
+      const t = clamp(((px - ax) * dx + (py - ay) * dy) / len, 0, 1);
+      return Math.hypot(px - (ax + dx * t), py - (ay + dy * t));
+    }
+
+    function lineGlow(px, py, ax, ay, bx, by, width, strength) {
+      return Math.max(0, 1 - lineDistance(px, py, ax, ay, bx, by) / width) * strength;
+    }
+
+    function rectValue(px, py, cx, cy, w, h, edge, fill) {
+      const dx = Math.abs(px - cx) - w / 2;
+      const dy = Math.abs(py - cy) - h / 2;
+      const outside = Math.hypot(Math.max(dx, 0), Math.max(dy, 0));
+      const inside = Math.min(Math.max(dx, dy), 0);
+      const sd = outside + inside;
+      return (sd < 0 ? fill : 0) + (Math.abs(sd) < edge ? 0.9 : 0);
+    }
+
+    function ellipseValue(px, py, cx, cy, rx, ry, edge, fill) {
+      const nx = (px - cx) / rx;
+      const ny = (py - cy) / ry;
+      const radius = Math.sqrt(nx * nx + ny * ny);
+      return (radius < 1 ? fill * (1 - radius * 0.18) : 0) + (Math.abs(radius - 1) < edge ? 0.86 : 0);
+    }
+
+    function tagValue(px, py, cx, cy, size) {
+      const x = (px - cx) / size + 3.5;
+      const y = (py - cy) / size + 3.5;
+      if (x < 0 || x >= 7 || y < 0 || y >= 7) return 0;
+      const col = Math.floor(x);
+      const row = Math.floor(y);
+      const pattern = [
+        "1111111",
+        "1000101",
+        "1011101",
+        "1010101",
+        "1010111",
+        "1000001",
+        "1111111"
+      ];
+      return pattern[row][col] === "1" ? 1.08 : 0.08;
+    }
+
+    function binValue(px, py, cx, cy, w, h) {
+      let v = 0;
+      v += lineGlow(px, py, cx - w / 2, cy + h / 2, cx + w / 2, cy + h / 2, 0.5, 1);
+      v += lineGlow(px, py, cx - w / 2, cy - h / 2, cx - w / 2 + 0.45, cy + h / 2, 0.5, 0.92);
+      v += lineGlow(px, py, cx + w / 2, cy - h / 2, cx + w / 2 - 0.45, cy + h / 2, 0.5, 0.92);
+      v += lineGlow(px, py, cx - w / 2 - 0.4, cy - h / 2, cx + w / 2 + 0.4, cy - h / 2, 0.42, 0.72);
+      return v;
+    }
+
+    function robotPose(p) {
+      const carry = smoothstep(0.45, 0.72, p);
+      return {
+        x: 0.24 + carry * 0.42 + smoothstep(0.82, 0.92, p) * 0.05,
+        y: 0.58 - carry * 0.1,
+        clawClose: smoothstep(0.3, 0.43, p) * (1 - smoothstep(0.78, 0.88, p))
+      };
+    }
+
+    function robotValue(px, py, pose, width, height) {
+      const sx = (px - pose.x * width) / width;
+      const sy = (py - pose.y * height) / height;
+      let v = 0;
+      v += rectValue(sx, sy, 0, 0, 0.22, 0.095, 0.004, 0.34);
+      v += rectValue(sx, sy, -0.005, -0.075, 0.11, 0.058, 0.004, 0.28);
+      v += rectValue(sx, sy, -0.03, -0.145, 0.062, 0.047, 0.004, 0.26);
+      v += ellipseValue(sx, sy, -0.085, 0.075, 0.044, 0.056, 0.08, 0.54);
+      v += ellipseValue(sx, sy, 0.055, 0.078, 0.046, 0.057, 0.08, 0.54);
+      v += ellipseValue(sx, sy, 0.145, 0.066, 0.034, 0.047, 0.08, 0.35);
+      v += lineGlow(sx, sy, -0.11, -0.025, 0.15, -0.02, 0.006, 0.86);
+      v += lineGlow(sx, sy, -0.11, 0.018, 0.17, 0.018, 0.006, 0.78);
+      v += lineGlow(sx, sy, -0.04, -0.07, 0.14, 0.035, 0.0055, 0.72);
+      v += lineGlow(sx, sy, -0.145, 0.02, -0.245, -0.04 + pose.clawClose * 0.035, 0.006, 0.9);
+      v += lineGlow(sx, sy, -0.145, 0.045, -0.245, 0.102 - pose.clawClose * 0.04, 0.006, 0.9);
+      v += lineGlow(sx, sy, -0.03, -0.11, -0.03, -0.18, 0.004, 0.7);
+      v += ellipseValue(sx, sy, -0.03, -0.183, 0.015, 0.015, 0.2, 0.8);
+      return v;
+    }
+
+    function swarmValue(px, py, pose, p, width, height) {
+      const assemble = smoothstep(0.05, 0.29, p);
+      const fade = 1 - smoothstep(0.27, 0.4, p);
+      if (fade <= 0) return 0;
+      const nx = px / width;
+      const ny = py / height;
+      const flicker = 0.78 + Math.sin(nx * 39 + ny * 51 + p * 90) * 0.16;
+
+      function ix(startX, targetX) {
+        const looseness = 1 - assemble;
+        const spin = p * 26 + startX * 31 + targetX * 17;
+        return startX + (pose.x + targetX - startX) * assemble + Math.cos(spin) * 0.075 * looseness;
+      }
+
+      function iy(startY, targetY) {
+        const looseness = 1 - assemble;
+        const spin = p * 24 + startY * 19 + targetY * 23;
+        return startY + (pose.y + targetY - startY) * assemble + Math.sin(spin) * 0.065 * looseness;
+      }
+
+      let v = 0;
+      v += lineGlow(nx, ny, ix(0.17, -0.11), iy(0.26, -0.025), ix(0.42, 0.15), iy(0.26, -0.02), 0.0048, 1);
+      v += lineGlow(nx, ny, ix(0.18, -0.11), iy(0.31, 0.018), ix(0.44, 0.17), iy(0.32, 0.018), 0.0048, 0.92);
+      v += lineGlow(nx, ny, ix(0.21, -0.04), iy(0.21, -0.07), ix(0.47, 0.14), iy(0.35, 0.035), 0.004, 0.82);
+      v += ellipseValue(nx, ny, ix(0.2, -0.085), iy(0.72, 0.075), 0.036, 0.044, 0.08, 0.7);
+      v += ellipseValue(nx, ny, ix(0.35, 0.055), iy(0.72, 0.078), 0.038, 0.045, 0.08, 0.7);
+      v += ellipseValue(nx, ny, ix(0.44, 0.145), iy(0.66, 0.066), 0.03, 0.038, 0.08, 0.48);
+      v += rectValue(nx, ny, ix(0.37, 0), iy(0.22, 0), 0.096, 0.053, 0.004, 0.42);
+      v += rectValue(nx, ny, ix(0.5, -0.005), iy(0.2, -0.075), 0.078, 0.047, 0.004, 0.32);
+      v += rectValue(nx, ny, ix(0.53, -0.03), iy(0.35, -0.145), 0.052, 0.039, 0.004, 0.28);
+      v += lineGlow(nx, ny, ix(0.13, -0.145), iy(0.48, 0.02), ix(0.06, -0.245), iy(0.42, -0.04), 0.0048, 0.98);
+      v += lineGlow(nx, ny, ix(0.13, -0.145), iy(0.54, 0.045), ix(0.06, -0.245), iy(0.6, 0.102), 0.0048, 0.98);
+      return v * fade * flicker;
+    }
+
+    function ballPosition(p, pose, width, height) {
+      const startBall = { x: 0.37 * width, y: 0.67 * height };
+      const claw = { x: (pose.x - 0.245) * width, y: (pose.y + 0.03) * height };
+      const bin = { x: 0.81 * width, y: 0.72 * height };
+      if (p < 0.42) return startBall;
+      if (p < 0.74) return claw;
+      const drop = smoothstep(0.74, 0.9, p);
+      return {
+        x: claw.x + (bin.x - claw.x) * drop,
+        y: claw.y + (bin.y - claw.y) * drop + Math.sin(drop * Math.PI) * 14
+      };
+    }
+
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+      canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function labelCharAt(col, row, labels) {
+      for (const label of labels) {
+        if (row === label.row && col >= label.col && col < label.col + label.text.length) {
+          return label.text[col - label.col];
+        }
+      }
+      return "";
+    }
+
+    function draw(now) {
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      if (width < 2 || height < 2) {
+        requestAnimationFrame(draw);
+        return;
+      }
+
+      const elapsed = (now - start) / 1000;
+      const p = (elapsed % 10.5) / 10.5;
+      const pose = robotPose(p);
+      const cell = Math.max(4.8, Math.min(6.5, width / 126));
+      const cols = Math.floor(width / cell);
+      const rows = Math.floor(height / cell);
+      const fontSize = Math.max(5.6, cell * 1.08);
+      const labels = [
+        { col: 3, row: 5, text: "ENGINE:VEXY  CELL:007  COLOUR:RED  CHARSET:DOTS" },
+        { col: Math.floor(cols * 0.56), row: 6, text: p < 0.3 ? "SWARM -> BODY" : p < 0.48 ? "BODY -> GRAB" : p < 0.74 ? "GRAB -> CARRY" : "DROP -> RESET" },
+        { col: Math.floor(cols * 0.18), row: Math.floor(rows * 0.34), text: p < 0.34 ? "RAILS" : "VEXY" },
+        { col: Math.floor(cols * 0.34), row: Math.floor(rows * 0.69), text: "BALL" },
+        { col: Math.floor(cols * 0.74), row: Math.floor(rows * 0.29), text: "APRILTAG" },
+        { col: Math.floor(cols * 0.78), row: Math.floor(rows * 0.76), text: "BIN" }
+      ];
+      const ball = ballPosition(p, pose, width, height);
+
+      ctx.fillStyle = "#050101";
+      ctx.fillRect(0, 0, width, height);
+      ctx.font = `${fontSize}px "IBM Plex Mono", SFMono-Regular, ui-monospace, monospace`;
+      ctx.textBaseline = "top";
+
+      for (let row = 0; row < rows; row += 1) {
+        for (let col = 0; col < cols; col += 1) {
+          const label = labelCharAt(col, row, labels);
+          const x = (col + 0.5) * cell;
+          const y = (row + 0.5) * cell;
+          let v = 0;
+          const rx = x / width - 0.5;
+          const ry = y / height - 0.5;
+          v += Math.max(0, 1 - Math.hypot(rx * 1.62, ry * 1.25)) * 0.05;
+          v += Math.max(0, Math.sin(x * 0.035 + elapsed * 2.5) * Math.cos(y * 0.025 - elapsed * 1.7)) * 0.07;
+          v += (Math.sin((y + elapsed * 260) * 0.16) + 1) * 0.03;
+          v += lineGlow(x, y, 0.37 * width, 0.67 * height, 0.81 * width, 0.57 * height, 2.2, 0.22 * smoothstep(0.38, 0.84, p));
+          v += swarmValue(x, y, pose, p, width, height);
+          v += robotValue(x, y, pose, width, height) * smoothstep(0.18, 0.35, p);
+          v += tagValue(x, y, width * 0.79, height * 0.43, 8.5);
+          v += binValue(x, y, width * 0.82, height * 0.73, 60, 68);
+
+          const bd = Math.hypot(x - ball.x, y - ball.y);
+          if (bd < 25) v += (1 - bd / 25) * (p > 0.89 ? 0.45 : 1.05);
+          const grain = ((Math.sin(col * 12.9898 + row * 78.233 + Math.floor(elapsed * 34) * 5.121) * 43758.5453) % 1 + 1) % 1;
+          v += (grain - 0.5) * 0.15;
+
+          let glyph = " ";
+          let alpha = clamp(v, 0, 1.3);
+          if (label) {
+            glyph = label;
+            alpha = 0.86;
+          } else if (alpha > 0.035) {
+            glyph = glyphs[clamp(Math.floor(alpha * (glyphs.length - 1)), 0, glyphs.length - 1)];
+          }
+          if (glyph === " ") continue;
+          const red = 185 + Math.floor(clamp(alpha, 0, 1) * 70);
+          const opacity = clamp(0.16 + alpha * 0.78, 0.1, 0.94);
+          ctx.fillStyle = label ? "rgba(245,234,219,0.74)" : `rgba(${red}, ${Math.floor(red * 0.2)}, ${Math.floor(red * 0.15)}, ${opacity})`;
+          ctx.fillText(glyph, col * cell, row * cell);
+        }
+      }
+
+      requestAnimationFrame(draw);
+    }
+
+    const resizeObserver = new ResizeObserver(resize);
+    resizeObserver.observe(canvas);
+    resize();
+    requestAnimationFrame(draw);
+
+    canvas.addEventListener("dblclick", () => {
+      start = performance.now();
+    });
+  });
+}
+
+initializeVexyAsciiCanvases();
 slides.forEach((slide) => observer.observe(slide));
 revealItems.forEach((item) => revealObserver.observe(item));
 purgeDeprecatedReviewStorage();
