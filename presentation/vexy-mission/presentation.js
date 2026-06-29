@@ -1171,8 +1171,7 @@ window.addEventListener("keydown", (event) => {
   }
   if (!["ArrowDown", "ArrowUp", "PageDown", "PageUp"].includes(event.key)) return;
   if (document.body.classList.contains("video-locked")) {
-    event.preventDefault();
-    return;
+    unlockScrollAfterVideo();
   }
   const activeIndex = slides.findIndex((slide) => {
     const rect = slide.getBoundingClientRect();
@@ -1196,18 +1195,18 @@ window.addEventListener(
 
 window.addEventListener(
   "wheel",
-  (event) => {
+  () => {
     if (!document.body.classList.contains("video-locked")) return;
-    event.preventDefault();
+    unlockScrollAfterVideo();
   },
   { passive: false }
 );
 
 window.addEventListener(
   "touchmove",
-  (event) => {
+  () => {
     if (!document.body.classList.contains("video-locked")) return;
-    event.preventDefault();
+    unlockScrollAfterVideo();
   },
   { passive: false }
 );

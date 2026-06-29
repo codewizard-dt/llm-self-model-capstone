@@ -46,7 +46,7 @@ body {
 }
 
 body.video-locked {
-  overflow: hidden;
+  overflow: auto;
 }
 
 body.presentation-started .start-presentation {
