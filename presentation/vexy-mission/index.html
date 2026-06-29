@@ -589,47 +589,47 @@
         </video>
         <div class="cinema-shade"></div>
         <div class="film-card scroll-reveal" data-reveal>
-          <p class="eyebrow" data-edit-key="jake_film_eyebrow">Jake · evidence packet</p>
-          <h2 data-edit-key="jake_film_title">Prediction. Observation. Gap.</h2>
+          <p class="eyebrow" data-edit-key="jake_film_eyebrow">Jake · perception to proof</p>
+          <h2 data-edit-key="jake_film_title">Vision becomes evidence.</h2>
         </div>
       </section>
 
       <section id="jake" class="slide speaker-slide lovable-vibe" data-label="Jake" data-slide-id="jake" data-comment-surface data-owner="jake">
         <div class="speaker-kicker">
           <span>Jake · 2:00</span>
-          <span>Evidence packet and measurement</span>
+          <span>Perception, localization, and evidence</span>
         </div>
         <div class="speaker-layout scroll-reveal" data-transition data-reveal>
           <div>
-            <h2 data-edit-key="jake_title" data-owner="jake">A run matters only if it leaves behind evidence.</h2>
+            <h2 data-edit-key="jake_title" data-owner="jake">Perception turns motion into evidence.</h2>
             <p class="big-copy" data-edit-key="jake_copy">
-              Vexy needs a packet that says what was predicted, what was observed, what telemetry
-              came back, and where reality disagreed. That gap is the learning signal.
+              Vexy does not just need camera frames. It needs AprilTag localization, object positions,
+              scene state, and contract-valid evidence so the control loop and self-model can trust what the robot saw.
             </p>
           </div>
           <aside id="jake-insights" class="bullet-panel key-insights speaker-private" data-edit-only data-private-owner="jake" data-speaker-insights="Jake">
             <h3>Key insights</h3>
             <ul>
-              <li>The gap is the learning signal.</li>
-              <li>Sense means AprilTags, yellow ball detection, and object confidence.</li>
-              <li>Measure means predicted state versus observed outcome.</li>
-              <li>Structure keeps the LLM from inventing explanations.</li>
-              <li>The evidence packet turns a run into something the model can safely learn from.</li>
+              <li>AprilTags localize the robot in the workspace.</li>
+              <li>Yellow-ball and object detections become robot-relative and map-relative positions.</li>
+              <li>Scene summaries give the agent a compact view of the world.</li>
+              <li>MCAP/raw ROS observations export into contract-valid JSONL.</li>
+              <li>The gap is only useful when perception is localized and structured.</li>
             </ul>
           </aside>
         </div>
         <div class="mission-thread scroll-reveal" data-transition data-reveal>
           <span>Mission thread</span>
-          <p>Jake closes the loop: prediction, observation, gap, and update keep learning honest when reality pushes back.</p>
+          <p>Jake closes the loop: camera observations become localized scene evidence, then prediction, observation, gap, and update keep learning honest when reality pushes back.</p>
         </div>
         <div class="packet-board">
-          <article class="transition-card framer-transition scroll-reveal" data-transition data-diagram data-reveal><span>Expected</span><strong>What Vexy thought would happen</strong></article>
-          <article class="transition-card framer-transition scroll-reveal" data-transition data-diagram data-reveal><span>Observed</span><strong>What sensors and telemetry saw</strong></article>
-          <article class="transition-card framer-transition scroll-reveal" data-transition data-diagram data-reveal><span>Gap</span><strong>What reality proved different</strong></article>
+          <article class="transition-card framer-transition scroll-reveal" data-transition data-diagram data-reveal><span>Raw vision</span><strong>Camera frames, AprilTags, and object detections</strong></article>
+          <article class="transition-card framer-transition scroll-reveal" data-transition data-diagram data-reveal><span>Scene state</span><strong>Robot pose, object positions, and confidence</strong></article>
+          <article class="transition-card framer-transition scroll-reveal" data-transition data-diagram data-reveal><span>Evidence</span><strong>Telemetry, vision state, operator result, and gap</strong></article>
           <article class="transition-card framer-transition scroll-reveal" data-transition data-diagram data-reveal><span>Update</span><strong>What the self-model may revise</strong></article>
         </div>
         <section class="active-diagram-board liquid-glass scroll-reveal" data-transition data-reveal data-active-diagram-owner="Jake" aria-label="Selected Jake diagram">
-          <article class="active-diagram-panel is-selected" data-diagram-panel="jake-evidence-packet" data-diagram data-transition>
+          <article class="active-diagram-panel" data-diagram-panel="jake-evidence-packet" data-diagram data-transition hidden>
             <span>Selected diagram</span>
             <strong>Evidence Packet</strong>
             <p>A run becomes useful when command, vision, telemetry, predicted state, observed state, gap, and update all travel together as one inspectable packet.</p>
@@ -639,10 +639,10 @@
             <strong>Predicted · Observed · Gap Timeline</strong>
             <p>The timeline makes the learning signal plain: what Vexy expected, what reality measured, and where the two disagreed.</p>
           </article>
-          <article class="active-diagram-panel" data-diagram-panel="jake-vision-funnel" data-diagram data-transition hidden>
+          <article class="active-diagram-panel is-selected" data-diagram-panel="jake-vision-funnel" data-diagram data-transition>
             <span>Selected diagram</span>
-            <strong>Vision Funnel</strong>
-            <p>AprilTags, yellow ball detection, object confidence, camera pose, and scene observations become the perception layer that grounds the evidence packet.</p>
+            <strong>Perception to Proof</strong>
+            <p>AprilTags, yellow ball detection, object confidence, camera pose, and scene coordinates become the structured evidence that grounds the operator and self-model loop.</p>
           </article>
           <article class="active-diagram-panel" data-diagram-panel="jake-calibration-curve" data-diagram data-transition hidden>
             <span>Selected diagram</span>
@@ -658,26 +658,26 @@
         <div class="diagram-choice-shell scroll-reveal speaker-private" data-edit-only data-private-owner="jake" data-reveal data-diagram-owner="Jake">
           <div class="choice-heading">
             <span>Choose Jake diagram</span>
-            <strong>Selected: Evidence Packet</strong>
+            <strong>Selected: Perception to Proof</strong>
           </div>
           <div class="diagram-choice-grid">
-            <button class="diagram-choice-card is-selected" data-diagram-choice="jake-evidence-packet" type="button">Evidence packet</button>
+            <button class="diagram-choice-card" data-diagram-choice="jake-evidence-packet" type="button">Evidence packet</button>
             <button class="diagram-choice-card" data-diagram-choice="jake-gap-timeline" type="button">Predicted / observed / gap</button>
-            <button class="diagram-choice-card" data-diagram-choice="jake-vision-funnel" type="button">Vision funnel</button>
+            <button class="diagram-choice-card is-selected" data-diagram-choice="jake-vision-funnel" type="button">Perception to proof</button>
             <button class="diagram-choice-card" data-diagram-choice="jake-calibration-curve" type="button">Calibration curve</button>
             <button class="diagram-choice-card" data-diagram-choice="jake-jsonl-handoff" type="button">JSONL handoff</button>
           </div>
         </div>
         <aside class="copy-suggestions liquid-glass speaker-private" data-edit-only data-private-owner="jake" data-owner="jake">
           <h3>Suggested framing</h3>
-          <p>Say: "The gap is not a failure label. It is the learning signal that keeps the model grounded in the run."</p>
+          <p>Say: "Raw camera frames are not enough. The robot needs localized scene evidence before the model can learn from the run."</p>
         </aside>
         <details class="speaker-notes speaker-private" data-edit-only data-private-owner="jake">
           <summary>Jake speaking notes</summary>
           <p data-edit-key="jake_notes" data-owner="jake">
-            Jake can say: if Vexy expects to grab the yellow ball but the claw alignment is off,
-            that failure is not embarrassing. It is data. The evidence packet turns the run into
-            something the model can learn from.
+            Jake can say: the Pi camera gives us frames, but the system needs structured state:
+            where the robot is, where the AprilTag and yellow ball are, and how confident those observations are.
+            That scene evidence is what makes the later gap meaningful.
           </p>
         </details>
       </section>

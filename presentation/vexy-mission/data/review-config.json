@@ -75,14 +75,14 @@
       "name": "Jake",
       "ownerId": "jake",
       "sectionId": "jake",
-      "role": "Evidence packet, prediction versus observation, gap residuals, and measurement",
+      "role": "Perception-to-proof, AprilTag localization, scene coordinates, JSONL evidence, and measurement",
       "editKeys": ["jake_title", "jake_copy", "jake_notes"],
       "noteSuggestions": [
-        "Define the evidence packet: predicted, observed, telemetry, vision, gap, update.",
-        "Say the gap is not embarrassment; it is the learning signal.",
-        "Connect AprilTags and yellow-ball confidence to grounded observation."
+        "Define the perception path: camera frames, AprilTags, yellow-ball detections, scene coordinates, telemetry, JSONL.",
+        "Say raw vision is not enough; localized scene evidence makes the gap meaningful.",
+        "Connect AprilTags, yellow-ball confidence, and coordinate formatting to grounded observation."
       ],
-      "suggestion": "Make Jake's copy explain why a run only matters when it leaves behind structured evidence: predicted, observed, telemetry, vision, gap, and update."
+      "suggestion": "Make Jake's copy explain why a run only matters when raw perception becomes localized, structured evidence: AprilTags, object positions, scene state, telemetry, JSONL, gap, and update."
     }
   ]
 }

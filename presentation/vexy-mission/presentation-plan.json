@@ -61,7 +61,7 @@
       "id": "yellow-ball-tag",
       "path": "media/yellow_ball_apriltag.jpeg",
       "type": "image",
-      "role": "Yellow ball and AprilTag mission sample for Jake evidence explanation",
+      "role": "Yellow ball and AprilTag mission sample for Jake perception-to-proof explanation",
       "slideUse": "Part 9 supporting visual",
       "truthLabel": "Flow asset"
     },
@@ -69,7 +69,7 @@
       "id": "jake-opener",
       "path": "media/jake_holographic_screen.mp4",
       "type": "video",
-      "role": "Jake speaker entrance for evidence packet",
+      "role": "Jake speaker entrance for perception-to-proof",
       "slideUse": "Part 9 video",
       "truthLabel": "Flow asset"
     }
@@ -195,30 +195,30 @@
     {
       "speaker": "Jake",
       "duration": "2:00",
-      "title": "Evidence, prediction, observation, and gap",
+      "title": "Perception, localization, and proof",
       "topBullets": [
-        "The gap is the learning signal.",
-        "Sense means AprilTags, yellow ball detection, scene observations, and object confidence.",
-        "Measure means predicted state versus observed outcome.",
-        "The evidence packet has to be structured so the model cannot make things up.",
-        "Jake's section bridges robot runtime into the self-model loop."
+        "Raw camera frames become usable scene state.",
+        "AprilTags localize the robot in the workspace.",
+        "Yellow-ball and object detections become robot-relative and map-relative positions.",
+        "MCAP/raw ROS observations export into contract-valid JSONL.",
+        "Jake's section bridges perception into the self-model loop."
       ],
-      "summary": "Jake should explain the measurement layer. For Vexy to improve, every run needs to produce evidence: what the system expected, what the robot actually did, what sensors observed, and how far reality was from the prediction. This is where the project becomes more than a robotics demo.",
+      "summary": "Jake should explain the perception-to-proof layer. For Vexy to improve, raw camera and ROS observations have to become localized scene state: where the robot is, where the AprilTag and yellow ball are, how confident the observation is, and how that state becomes contract-valid evidence.",
       "details": [
-        "The yellow ball and AprilTag should become the friendly example of what Vexy has to sense before acting.",
-        "The evidence packet can include the command, camera observations, telemetry, expected state, actual state, and residual error.",
-        "Without structure, an LLM could generate explanations that sound plausible but are not grounded in the run.",
-        "The technical challenge is connecting hardware, vision, runtime behavior, contracts, and LLM reasoning."
+        "The yellow ball and AprilTag should become the friendly example of what Vexy has to localize before acting.",
+        "The evidence packet can include command, camera observations, scene-map coordinates, telemetry, expected state, actual state, and residual error.",
+        "Without localized structure, an LLM could generate explanations that sound plausible but are not grounded in the run.",
+        "The technical challenge is connecting hardware, vision, coordinate formatting, runtime behavior, contracts, and LLM reasoning."
       ],
       "speakingNotes": [
-        "Open with: 'The next layer is measurement. This is where the project becomes more than a robotics demo.'",
-        "Explain predicted versus observed in simple terms.",
-        "Use the yellow ball example: if Vexy expects to grab it but the claw alignment is off, that failure becomes evidence.",
-        "Say that commands, telemetry, observations, self-models, and residuals all need shape.",
-        "Explain that the model is not guessing; it receives a packet of evidence.",
-        "Handoff to the finale by saying the evidence packet is what lets Vexy improve without making unsupported claims."
+        "Open with: 'The next layer is perception-to-proof. The robot does not just need to see; it needs usable scene state.'",
+        "Explain AprilTag localization and object coordinates in simple terms.",
+        "Use the yellow ball example: seeing the ball is not enough; Vexy needs where it is relative to the robot and claw.",
+        "Say that camera observations, telemetry, scene maps, self-models, and residuals all need shape.",
+        "Explain that the model is not guessing; it receives localized evidence.",
+        "Handoff to the finale by saying structured scene evidence is what lets Vexy improve without making unsupported claims."
       ],
-      "strongLine": "A run matters only if it leaves behind evidence."
+      "strongLine": "Perception only matters when it becomes localized evidence."
     }
   ],
   "diagrams": [
@@ -582,8 +582,8 @@
         "Explain that contracts make robot behavior inspectable: valid, accepted, completed, rejected, stale, or faulted.",
         "Close with the strong line: 'The challenge is not motion. The challenge is trusted motion.'"
       ],
-      "transition": "The ack/fault receipt becomes a scan line over the yellow ball, AprilTag, and Jake evidence packet.",
-      "missionThread": "Erick bounded the motion with contracts, watchdogs, and ack/fault proof. Next, Jake turns each run into evidence the model can inspect."
+      "transition": "The ack/fault receipt becomes a scan line over the yellow ball, AprilTag, and Jake perception-to-proof layer.",
+      "missionThread": "Erick bounded the motion with contracts, watchdogs, and ack/fault proof. Next, Jake turns perception into evidence the model can inspect."
     },
     {
       "id": "scene-09-jake-video",
@@ -593,11 +593,11 @@
       "mediaId": "jake-opener",
       "fullscreen": true,
       "sound": true,
-      "headline": "Prediction. Observation. Gap.",
-      "copy": "Jake connects the yellow ball, AprilTag, telemetry, prediction, observation, and gap into one evidence packet. A run matters only if it leaves behind evidence the model can learn from.",
+      "headline": "Vision becomes evidence.",
+      "copy": "Jake connects the yellow ball, AprilTag localization, scene coordinates, telemetry, prediction, observation, and gap into one evidence trail. A run matters only if what the robot saw becomes evidence the model can learn from.",
       "visuals": [
         "Yellow ball and AprilTag image fills the left side with a red scan pass.",
-        "Right side shows a vertical evidence funnel: image, tag pose, object hint, command, telemetry, predicted, observed, gap.",
+        "Right side shows a vertical perception funnel: image, tag pose, object hint, scene coordinates, command, telemetry, predicted, observed, gap.",
         "Animated dots travel from the image into a contract-valid JSONL card.",
         "Fullscreen Jake holographic-screen clip with transcript highlights.",
         "Packet board showing Expected, Observed, Gap, and Update."
@@ -607,9 +607,9 @@
         "evidence-funnel"
       ],
       "speakerNotes": [
-        "Use the yellow ball and AprilTag as the concrete sensing example.",
-        "Explain predicted versus observed in simple terms.",
-        "Say the gap is not a failure label; it is the learning signal."
+        "Use the yellow ball and AprilTag as the concrete localization example.",
+        "Explain scene coordinates in simple terms.",
+        "Say the gap is only meaningful when perception is localized and structured."
       ],
       "transition": "The evidence packet resolves into the final moon hero frame with the whole team and Vexy."
     },

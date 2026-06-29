@@ -555,7 +555,7 @@
               <li>Bounded commands keep the LLM away from unsafe motor improvisation.</li>
               <li>Ack/fault states and evidence make motion measurable.</li>
             </ul>
-            <p>Closing line: Once motion is trustworthy, Jake can explain how the evidence packet turns a run into learning.</p>
+            <p>Closing line: Once motion is trustworthy, Jake can explain how perception becomes proof the model can learn from.</p>
           </aside>
         </div>
         <div class="copy-grid">
@@ -570,16 +570,16 @@
       <section class="speaker-panel" data-speaker-asset-owner="jake" hidden>
         <div class="purpose-grid">
           <article class="panel">
-            <p class="label">Jake · evidence packet</p>
-            <h2>The gap is the learning signal.</h2>
-            <p>Jake explains the measurement layer: each run needs prediction, observation, telemetry, vision state, gap, and update so the system can learn from evidence instead of vague narration.</p>
+            <p class="label">Jake · perception to proof</p>
+            <h2>Perception turns motion into evidence.</h2>
+            <p>Jake explains the perception layer: raw camera and ROS observations become AprilTag localization, object positions, scene state, and contract-valid evidence the robot and self-model loop can trust.</p>
             <ol class="notes-list">
-              <li>Open with measurement: this is where the project becomes more than a robotics demo.</li>
-              <li>Define the evidence packet: predicted, observed, telemetry, vision, gap, update.</li>
-              <li>Use the yellow ball: if the claw is off, the miss becomes evidence.</li>
-              <li>Explain AprilTags and vision as sensing before action.</li>
-              <li>Explain predicted versus observed in plain English.</li>
-              <li>Name the gap as the learning signal.</li>
+              <li>Open with perception: the robot does not just need to see; it needs usable scene state.</li>
+              <li>Name the stack: Pi camera, AprilTags, yellow-ball/object detections, object confidence, and ROS topics.</li>
+              <li>Explain AprilTag localization as the bridge from camera observations to workspace pose.</li>
+              <li>Explain coordinate normalization: detections become robot-relative and map-relative positions.</li>
+              <li>Explain scene summaries as the compact interface the agent can reason over.</li>
+              <li>Name JSONL export as the handoff from ROS evidence to the self-model loop.</li>
               <li>Structure keeps the LLM from inventing explanations.</li>
               <li>Connect to the critic gate before trusting the model update.</li>
               <li>Close: Vexy treats every run as evidence.</li>
@@ -588,21 +588,21 @@
           </article>
           <aside class="cheat-card">
             <p class="label">Simple note card</p>
-            <strong>A run matters only if it leaves behind evidence the model can inspect.</strong>
+            <strong>Perception turns raw camera data into scene evidence the model can inspect.</strong>
             <ul>
-              <li>Prediction and observation have to be compared.</li>
-              <li>Telemetry and vision state keep the story grounded.</li>
-              <li>The gap is the learning signal.</li>
+              <li>AprilTags localize the robot in the workspace.</li>
+              <li>Object detections become robot-relative and map-relative positions.</li>
+              <li>MCAP/raw ROS observations export into contract-valid JSONL.</li>
             </ul>
-            <p>Closing line: Together, the team showed how Vexy can move from body to model to proof.</p>
+            <p>Closing line: Once the scene is structured, the model can compare what it expected with what actually happened.</p>
           </aside>
         </div>
         <div class="copy-grid">
-          <article class="copy-version-card"><p class="label">Grounded Technical</p><strong>The evidence packet is the learning surface.</strong><p>Each run should carry prediction, command, observation, telemetry, vision state, gap, and update.</p><p class="meta">Talk track</p><p>A run is useful when the prediction, command, observation, telemetry, vision state, and gap all travel together.</p></article>
+          <article class="copy-version-card"><p class="label">Grounded Technical</p><strong>Perception turns motion into evidence.</strong><p>The robot needs vision in a format the control loop and self-model can trust: AprilTag localization, object positions, scene state, and contract-valid evidence exported from ROS topics.</p><p class="meta">Talk track</p><p>Raw frames are not enough. We need to know where the robot is, where the tag and yellow ball are, and how that state becomes evidence the model can inspect.</p></article>
           <article class="copy-version-card"><p class="label">Premium Mission</p><strong>The moon answers back.</strong><p>Vexy makes a prediction. The run answers. The gap guides the next attempt.</p><p class="meta">Talk track</p><p>The world answers back. The difference between expectation and run outcome tells the next version what to change.</p></article>
-          <article class="copy-version-card"><p class="label">Plain English</p><strong>The gap is how Vexy can learn.</strong><p>If Vexy thought one thing would happen and something else happened, that difference becomes useful information.</p><p class="meta">Talk track</p><p>Vexy needs receipts: what it thought, what happened, and what was different.</p></article>
-          <article class="copy-version-card"><p class="label">Technical Jargon</p><strong>Prediction-observation residuals ground the critic loop.</strong><p>Structured telemetry and vision observations produce a residual gap for the LLM generator, critic, and operator.</p><p class="meta">Talk track</p><p>The evidence packet gives everyone a shared record, so a model update has to be supported by run data.</p></article>
-          <article class="copy-version-card"><p class="label">Presenter Friendly</p><strong>A run only matters if it leaves evidence.</strong><p>Vexy can learn from the difference between expected outcome and measured outcome when that evidence is captured.</p><p class="meta">Talk track</p><p>If a run leaves no structured record, the model has nothing trustworthy to learn from.</p></article>
+          <article class="copy-version-card"><p class="label">Plain English</p><strong>Seeing only helps when the robot can use what it saw.</strong><p>The camera sees the world, but the system needs positions, confidence, and a scene map before that vision can guide action or learning.</p><p class="meta">Talk track</p><p>The camera gives us pictures. My part turns those pictures into usable facts: where the robot is, where the ball is, and what the run proved.</p></article>
+          <article class="copy-version-card"><p class="label">Technical Jargon</p><strong>Localized scene state grounds the residual gap.</strong><p>AprilTag pose, object indications, scene-map coordinates, telemetry, and JSONL export give the generator, critic, and operator a shared evidence record.</p><p class="meta">Talk track</p><p>The residual gap only means something if perception is localized and formatted. Scene maps and JSONL give everyone the same record of what the robot actually perceived.</p></article>
+          <article class="copy-version-card"><p class="label">Presenter Friendly</p><strong>The world has to become a usable scene.</strong><p>Vexy can only learn from a run when camera observations become structured scene evidence instead of a vague description.</p><p class="meta">Talk track</p><p>Vexy sees tags and a yellow ball, but the important part is making that scene measurable enough for the next command and model update.</p></article>
         </div>
       </section>
 
@@ -705,12 +705,12 @@
         erick: {
           name: "Erick",
           draft: "Erick note card: The challenge is not motion or action. The challenge is trusted motion. Bounded commands, ack/fault states, watchdogs, and evidence keep the LLM safe enough to reason.",
-          cheat: "Erick\nThe challenge is not motion or action. The challenge is trusted motion.\n- Real runs include slip, drift, camera errors, and object ambiguity.\n- Bounded commands keep the LLM away from unsafe motor improvisation.\n- Ack/fault states and evidence make motion measurable.\nClosing: Once motion is trustworthy, Jake can explain how the evidence packet turns a run into learning."
+          cheat: "Erick\nThe challenge is not motion or action. The challenge is trusted motion.\n- Real runs include slip, drift, camera errors, and object ambiguity.\n- Bounded commands keep the LLM away from unsafe motor improvisation.\n- Ack/fault states and evidence make motion measurable.\nClosing: Once motion is trustworthy, Jake can explain how perception becomes proof the model can learn from."
         },
         jake: {
           name: "Jake",
-          draft: "Jake note card: A run matters only if it leaves evidence. Prediction, observation, telemetry, vision state, gap, and update turn motion into a learning signal.",
-          cheat: "Jake\nA run matters only if it leaves behind evidence the model can inspect.\n- Prediction and observation have to be compared.\n- Telemetry and vision state keep the story grounded.\n- The gap is the learning signal.\nClosing: Together, the team showed how Vexy can move from body to model to proof."
+          draft: "Jake note card: Perception turns motion into evidence. AprilTag localization, object positions, scene state, telemetry, and JSONL export turn camera data into something the model can inspect.",
+          cheat: "Jake\nPerception turns raw camera data into scene evidence the model can inspect.\n- AprilTags localize the robot in the workspace.\n- Object detections become robot-relative and map-relative positions.\n- MCAP/raw ROS observations export into contract-valid JSONL.\nClosing: Once the scene is structured, the model can compare what it expected with what actually happened."
         }
       };
 
@@ -877,17 +877,17 @@
               "Bounded commands keep the LLM away from unsafe motor improvisation.",
               "Ack/fault states and evidence make motion measurable."
             ],
-            closingLine: "Once motion is trustworthy, Jake can explain how the evidence packet turns a run into learning."
+            closingLine: "Once motion is trustworthy, Jake can explain how perception becomes proof the model can learn from."
           }
         },
         jake: {
           notes: [
             "Open with the measurement claim: the next layer is where the project becomes more than a robotics demo.",
-            "Define the evidence packet: predicted state, observed state, telemetry, vision state, gap, and update.",
-            "Use the yellow ball example: if Vexy expects to grab it but the claw is off, the miss becomes evidence.",
-            "Explain the AprilTag and vision role: sensing grounds the run before action.",
-            "Explain predicted versus observed in plain English.",
-            "Name the gap as the learning signal, not just a failure label.",
+            "Define the perception pipeline: Pi camera frames, AprilTags, yellow-ball/object detections, object confidence, and ROS scene topics.",
+            "Explain localization: AprilTags turn camera observations into a workspace pose instead of a loose picture.",
+            "Explain coordinates: detections become robot-relative and map-relative positions before an operator or LLM can act on them.",
+            "Explain scene state: scene maps and object tracks compact the world into a usable interface for the agent.",
+            "Connect formatting to learning: MCAP/raw ROS observations export into contract-valid JSONL so the self-model loop can replay the run.",
             "Explain why structure matters: it keeps the LLM from inventing explanations after the fact.",
             "Connect to the critic gate: the model's explanation should be checked before it is trusted.",
             "Close the loop: Vexy treats every robot run as evidence.",
@@ -896,9 +896,9 @@
           copywritingVersions: [
             {
               label: "Grounded Technical",
-              headline: "The evidence packet is the learning surface.",
-              slideCopy: "Each run should carry prediction, command, observation, telemetry, vision state, gap, and update so the model can reason from proof.",
-              talkTrack: "The measurement layer is where the learning story becomes inspectable. A run is useful when the prediction, command, observation, telemetry, vision state, and gap all travel together as one evidence packet."
+              headline: "Perception turns motion into evidence.",
+              slideCopy: "The robot needs vision in a format the control loop and self-model can trust: AprilTag localization, object positions, scene state, and contract-valid evidence exported from ROS topics.",
+              talkTrack: "Raw frames are not enough. We need to know where the robot is, where the tag and yellow ball are, how confident the observation is, and how that state becomes evidence the model can inspect."
             },
             {
               label: "Premium Mission",
@@ -908,31 +908,31 @@
             },
             {
               label: "Plain English",
-              headline: "The gap is how Vexy can learn.",
-              slideCopy: "If Vexy thought one thing would happen and something else happened, that difference becomes useful information.",
-              talkTrack: "Plainly, Vexy needs receipts. It needs to know what it thought would happen, what actually happened, and what was different. That difference is the gap, and the gap is what makes learning possible."
+              headline: "Seeing only helps when the robot can use what it saw.",
+              slideCopy: "The camera sees the world, but the system needs positions, confidence, and a scene map before that vision can guide action or learning.",
+              talkTrack: "The camera gives us pictures. My part turns those pictures into usable facts: where the robot is, where the ball is, and what the run proved."
             },
             {
               label: "Technical Jargon",
-              headline: "Prediction-observation residuals ground the critic loop.",
-              slideCopy: "Structured telemetry and vision observations produce a residual gap that can be inspected by the LLM generator, critic, and operator.",
-              talkTrack: "Technically, we need prediction-observation residuals. The evidence packet gives the generator, critic, and operator a shared record, so the system can evaluate whether a model update is supported by actual run data."
+              headline: "Localized scene state grounds the residual gap.",
+              slideCopy: "AprilTag pose, object indications, scene-map coordinates, telemetry, and JSONL export give the generator, critic, and operator a shared evidence record.",
+              talkTrack: "The residual gap only means something if perception is localized and formatted. The scene map and JSONL handoff give the generator, critic, and operator the same record of what the robot actually perceived."
             },
             {
               label: "Presenter Friendly",
-              headline: "A run only matters if it leaves evidence.",
-              slideCopy: "Vexy can learn from the difference between expected outcome and measured outcome when that evidence is captured.",
-              talkTrack: "This section is the evidence story. If a run happens and leaves no structured record, the model has nothing trustworthy to learn from. The packet is what turns motion into a learning signal."
+              headline: "The world has to become a usable scene.",
+              slideCopy: "Vexy can only learn from a run when camera observations become structured scene evidence instead of a vague description.",
+              talkTrack: "Vexy sees tags and a yellow ball, but the important part is making that scene measurable enough for the next command and the next model update."
             }
           ],
           cheatSheet: {
-            oneLiner: "A run matters only if it leaves behind evidence the model can inspect.",
+            oneLiner: "Perception turns raw camera data into scene evidence the model can inspect.",
             bullets: [
-              "Prediction and observation have to be compared.",
-              "Telemetry and vision state keep the story grounded.",
-              "The gap is the learning signal."
+              "AprilTags localize the robot in the workspace.",
+              "Object detections become robot-relative and map-relative positions.",
+              "MCAP/raw ROS observations export into contract-valid JSONL."
             ],
-            closingLine: "Together, the team showed how Vexy can move from body to model to proof."
+            closingLine: "Once the scene is structured, the model can compare what it expected with what actually happened."
           }
         }
       };
