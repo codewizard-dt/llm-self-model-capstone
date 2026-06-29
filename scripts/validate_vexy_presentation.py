@@ -10,6 +10,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / "presentation" / "vexy-mission"
 
+ROOT_REQUIRED_FILES = [
+    ".github/workflows/presentation-validate.yml",
+]
+
 REQUIRED_FILES = [
     "README.md",
     "TEAM_EDIT_GUIDE.md",
@@ -90,6 +94,15 @@ REJECTED_TEXT = [
     "https://vexy-mission-presentation-plan-2026.vercel.app",
 ]
 
+ROOT_REQUIRED_TEXT = {
+    ".github/workflows/presentation-validate.yml": [
+        "name: Presentation validation",
+        "make presentation-validate",
+        "presentation/vexy-mission/**",
+        "scripts/validate_vexy_presentation.py",
+    ],
+}
+
 
 def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
@@ -97,6 +110,19 @@ def read_text(path: Path) -> str:
 
 def main() -> int:
     failures: list[str] = []
+
+    for relative_path in ROOT_REQUIRED_FILES:
+        path = ROOT / relative_path
+        if not path.is_file():
+            failures.append(f"missing required file: {relative_path}")
+
+    for relative_path, snippets in ROOT_REQUIRED_TEXT.items():
+        path = ROOT / relative_path
+        if path.is_file():
+            text = read_text(path)
+            for snippet in snippets:
+                if snippet not in text:
+                    failures.append(f"{relative_path} missing text: {snippet}")
 
     if not SITE.is_dir():
         failures.append(f"missing presentation directory: {SITE.relative_to(ROOT)}")
