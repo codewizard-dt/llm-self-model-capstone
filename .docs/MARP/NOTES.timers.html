@@ -1,0 +1,175 @@
+<!--
+Vexy Marp timer overlay
+
+Purpose:
+After regenerating .docs/MARP/NOTES.slides.html from Marp, reapply this timer
+overlay by inserting the <style> block before </head> and the <div> + <script>
+block before </body>.
+
+Behavior:
+- Two large timers sit side by side in the top-right corner.
+- The overall timer is the rightmost timer and has a 10:00 max.
+- Clicking the overall timer starts both timers and then locks the overall timer.
+- The speaker timer resets to 00:00 when clicked and immediately restarts.
+- Overall timer turns yellow at 7:30 and red at 10:00.
+- Speaker timer turns yellow at 2:00, then red and flashing at 2:30.
+-->
+
+<style id="vexy-timer-style">
+  #vexy-timers {
+    position: fixed;
+    top: 18px;
+    right: 18px;
+    z-index: 2147483647;
+    display: flex;
+    flex-direction: row;
+    gap: 18px;
+    align-items: flex-start;
+    pointer-events: auto;
+  }
+
+  #vexy-timers button {
+    min-width: 470px;
+    padding: 24px 32px;
+    border: 6px solid #f0f6fc;
+    border-radius: 16px;
+    background: #010409;
+    color: #f0f6fc;
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.62);
+    font: 800 68px/1.05 ui-monospace, SFMono-Regular, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+    letter-spacing: 0;
+    text-align: right;
+    cursor: pointer;
+  }
+
+  #vexy-overall-timer {
+    order: 2;
+    border-color: #f85149;
+    color: #ff7b72;
+  }
+
+  #vexy-overall-timer.is-warning {
+    border-color: #d29922;
+    color: #f2cc60;
+    background: #2d2100;
+  }
+
+  #vexy-overall-timer.is-expired {
+    border-color: #f85149;
+    color: #ffffff;
+    background: #da3633;
+  }
+
+  #vexy-overall-timer.is-locked {
+    cursor: default;
+  }
+
+  #vexy-presenter-timer {
+    order: 1;
+    border-color: #3fb950;
+    color: #7ee787;
+  }
+
+  #vexy-presenter-timer.is-warning {
+    border-color: #d29922;
+    color: #f2cc60;
+    background: #2d2100;
+  }
+
+  #vexy-presenter-timer.is-expired {
+    border-color: #f85149;
+    color: #ffffff;
+    background: #da3633;
+  }
+
+  #vexy-presenter-timer.is-flashing {
+    animation: vexy-timer-flash 0.7s steps(2, end) infinite;
+  }
+
+  @keyframes vexy-timer-flash {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.9); }
+  }
+
+  #vexy-timers .timer-label {
+    display: block;
+    margin-bottom: 8px;
+    color: #8b949e;
+    font: 700 26px/1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-align: left;
+  }
+</style>
+
+<div id="vexy-timers" aria-label="Presentation timers">
+  <button id="vexy-overall-timer" type="button" aria-label="Start overall ten minute timer">
+    <span class="timer-label">Overall / 10:00</span>
+    <span class="timer-value">00:00</span>
+  </button>
+  <button id="vexy-presenter-timer" type="button" aria-label="Reset presenter timer">
+    <span class="timer-label">Presenter</span>
+    <span class="timer-value">00:00</span>
+  </button>
+</div>
+
+<script id="vexy-timer-script">
+(() => {
+  const overallButton = document.getElementById('vexy-overall-timer');
+  const presenterButton = document.getElementById('vexy-presenter-timer');
+  const overallValue = overallButton.querySelector('.timer-value');
+  const presenterValue = presenterButton.querySelector('.timer-value');
+  const overallWarningMs = 7.5 * 60 * 1000;
+  const maxOverallMs = 10 * 60 * 1000;
+  const presenterWarningMs = 2 * 60 * 1000;
+  const presenterExpiredMs = 2.5 * 60 * 1000;
+  let overallStartedAt = null;
+  let presenterStartedAt = null;
+  let frameId = null;
+
+  const format = (ms) => {
+    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+    const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+    const seconds = String(totalSeconds % 60).padStart(2, '0');
+    return `${minutes}:${seconds}`;
+  };
+
+  const updateThresholdClasses = (elapsed, button, warningMs, expiredMs, flashWhenExpired = false) => {
+    const isExpired = elapsed >= expiredMs;
+    const isWarning = elapsed >= warningMs && !isExpired;
+    button.classList.toggle('is-warning', isWarning);
+    button.classList.toggle('is-expired', isExpired);
+    button.classList.toggle('is-flashing', flashWhenExpired && isExpired);
+  };
+
+  const tick = () => {
+    if (overallStartedAt !== null) {
+      const now = Date.now();
+      const overallElapsed = now - overallStartedAt;
+      const presenterElapsed = now - presenterStartedAt;
+      overallValue.textContent = format(overallElapsed);
+      presenterValue.textContent = format(presenterElapsed);
+      updateThresholdClasses(overallElapsed, overallButton, overallWarningMs, maxOverallMs);
+      updateThresholdClasses(presenterElapsed, presenterButton, presenterWarningMs, presenterExpiredMs, true);
+      frameId = window.requestAnimationFrame(tick);
+    }
+  };
+
+  overallButton.addEventListener('click', () => {
+    if (overallStartedAt !== null) return;
+    overallStartedAt = Date.now();
+    presenterStartedAt = overallStartedAt;
+    overallButton.classList.add('is-locked');
+    overallButton.setAttribute('aria-label', 'Overall timer started and locked');
+    tick();
+  });
+
+  presenterButton.addEventListener('click', () => {
+    if (overallStartedAt === null) return;
+    presenterStartedAt = Date.now();
+    presenterValue.textContent = '00:00';
+    presenterButton.classList.remove('is-warning', 'is-expired', 'is-flashing');
+    if (frameId === null) tick();
+  });
+})();
+</script>
