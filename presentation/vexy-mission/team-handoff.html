@@ -1,0 +1,715 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Vexy Mission Team Handoff</title>
+    <meta
+      name="description"
+      content="A sendable rehearsal and review packet for the 10-minute Vexy Mission presentation."
+    >
+    <style>
+      :root {
+        color-scheme: dark;
+        --black: #030202;
+        --ink: #0b0303;
+        --red: #ff3030;
+        --cream: #f5eadb;
+        --muted: rgba(245, 234, 219, 0.72);
+        --dim: rgba(245, 234, 219, 0.5);
+        --yellow: #ffd545;
+        --cyan: #72f0ff;
+        --line: rgba(255, 48, 48, 0.34);
+        --line-soft: rgba(245, 234, 219, 0.14);
+        --mono: "IBM Plex Mono", "SFMono-Regular", ui-monospace, monospace;
+        --display: "Avenir Next Condensed", "DIN Condensed", "Arial Narrow", Impact, sans-serif;
+        --body: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+        color: var(--cream);
+        background:
+          radial-gradient(circle at 70% 0%, rgba(255, 48, 48, 0.18), transparent 32%),
+          radial-gradient(circle at 12% 88%, rgba(114, 240, 255, 0.12), transparent 30%),
+          linear-gradient(180deg, #020101, #130505 48%, #030202);
+        font-family: var(--body);
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+        background:
+          linear-gradient(90deg, rgba(255, 48, 48, 0.06) 1px, transparent 1px),
+          linear-gradient(0deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+        background-size: 96px 96px, 4px 4px;
+        mask-image: linear-gradient(180deg, rgba(0,0,0,0.9), transparent 92%);
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .shell {
+        width: min(1180px, calc(100% - 40px));
+        margin: 0 auto;
+        padding: 44px 0 64px;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.72fr);
+        gap: 18px;
+        align-items: stretch;
+      }
+
+      .panel,
+      .speaker-card,
+      .direct-review-card,
+      .mission-strip-card,
+      .proof-card,
+      .phase-card,
+      .message-card {
+        border: 1px solid var(--line-soft);
+        border-radius: 8px;
+        background:
+          linear-gradient(145deg, rgba(255, 48, 48, 0.11), transparent 45%),
+          rgba(7, 2, 2, 0.78);
+        box-shadow: 0 32px 120px rgba(0, 0, 0, 0.36);
+        backdrop-filter: blur(24px) saturate(1.25);
+      }
+
+      .hero-copy {
+        min-height: 520px;
+        padding: clamp(28px, 5vw, 58px);
+        border-color: rgba(255, 213, 69, 0.44);
+        background:
+          linear-gradient(135deg, rgba(255, 213, 69, 0.12), rgba(255, 48, 48, 0.08) 42%, rgba(3, 2, 2, 0.72)),
+          rgba(7, 2, 2, 0.86);
+      }
+
+      .hero-media {
+        position: relative;
+        overflow: hidden;
+        min-height: 520px;
+      }
+
+      .hero-media img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        filter: brightness(1.05) contrast(1.1) saturate(1.04);
+      }
+
+      .hero-media::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+          linear-gradient(180deg, rgba(3, 2, 2, 0.1), rgba(3, 2, 2, 0.76)),
+          linear-gradient(90deg, rgba(3, 2, 2, 0.4), transparent);
+      }
+
+      .eyebrow,
+      .label,
+      .tag,
+      .speaker-card span,
+      .phase-card span {
+        color: var(--red);
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+
+      h1,
+      h2,
+      h3 {
+        font-family: var(--display);
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        max-width: 820px;
+        margin-top: 18px;
+        font-size: clamp(62px, 10vw, 126px);
+        line-height: 0.82;
+      }
+
+      h2 {
+        margin-top: 42px;
+        font-size: clamp(36px, 5.6vw, 68px);
+        line-height: 0.9;
+      }
+
+      h3 {
+        margin-top: 8px;
+        font-size: clamp(25px, 3vw, 36px);
+        line-height: 0.94;
+      }
+
+      p {
+        color: var(--muted);
+        line-height: 1.58;
+      }
+
+      .lead {
+        max-width: 760px;
+        margin-top: 22px;
+        color: var(--cream);
+        font-size: clamp(20px, 2vw, 28px);
+        font-weight: 800;
+        line-height: 1.18;
+      }
+
+      .link-row,
+      .truth-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 28px;
+      }
+
+      .button-link,
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 11px 13px;
+        background: rgba(3, 2, 2, 0.72);
+        text-decoration: none;
+      }
+
+      .button-link.primary {
+        border-color: rgba(255, 213, 69, 0.68);
+        color: var(--black);
+        background: var(--yellow);
+      }
+
+      .grid {
+        display: grid;
+        gap: 14px;
+      }
+
+      .speaker-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .direct-review-grid,
+      .handoff-mission-strip {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .proof-grid,
+      .phase-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .speaker-card,
+      .direct-review-card,
+      .mission-strip-card,
+      .proof-card,
+      .phase-card,
+      .message-card {
+        padding: 18px;
+      }
+
+      .handoff-mission-strip {
+        margin-top: 20px;
+      }
+
+      .mission-strip-card {
+        position: relative;
+        min-height: 154px;
+        overflow: hidden;
+        border-color: rgba(255, 213, 69, 0.24);
+      }
+
+      .mission-strip-card::before,
+      .direct-review-card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background: linear-gradient(120deg, rgba(255, 213, 69, 0.11), transparent 38%, rgba(114, 240, 255, 0.07));
+        opacity: 0.8;
+      }
+
+      .mission-strip-card > *,
+      .direct-review-card > * {
+        position: relative;
+        z-index: 1;
+      }
+
+      .direct-review-card {
+        position: relative;
+        display: grid;
+        gap: 14px;
+        min-height: 360px;
+        border-color: rgba(255, 213, 69, 0.28);
+        overflow: hidden;
+      }
+
+      .lane-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 46px;
+        border: 1px solid rgba(255, 213, 69, 0.72);
+        border-radius: 999px;
+        padding: 11px 14px;
+        color: var(--black);
+        background: var(--yellow);
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.1em;
+        text-align: center;
+        text-decoration: none;
+        text-transform: uppercase;
+      }
+
+      .review-steps {
+        display: grid;
+        gap: 8px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .review-steps li {
+        border: 1px solid rgba(245, 234, 219, 0.12);
+        border-radius: 8px;
+        padding: 10px;
+        color: var(--cream);
+        background: rgba(0, 0, 0, 0.28);
+        font-family: var(--mono);
+        font-size: 0.7rem;
+        font-weight: 900;
+        letter-spacing: 0.1em;
+        line-height: 1.35;
+        text-transform: uppercase;
+      }
+
+      .speaker-card a {
+        display: block;
+        margin-top: 14px;
+        color: var(--cream);
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .speaker-card p,
+      .proof-card p,
+      .phase-card p {
+        margin-top: 10px;
+      }
+
+      .message-card {
+        margin-top: 18px;
+        border-color: rgba(114, 240, 255, 0.26);
+      }
+
+      .copy-ready-block {
+        border-color: rgba(255, 213, 69, 0.36);
+        background:
+          linear-gradient(145deg, rgba(255, 213, 69, 0.12), rgba(255, 48, 48, 0.08) 44%, transparent),
+          rgba(7, 2, 2, 0.82);
+      }
+
+      .message-card pre {
+        white-space: pre-wrap;
+        margin: 0;
+        color: var(--cream);
+        font-family: var(--mono);
+        font-size: 0.85rem;
+        line-height: 1.6;
+      }
+
+      .message-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+        margin: 14px 0 16px;
+      }
+
+      .copy-message-button {
+        border: 1px solid rgba(255, 213, 69, 0.72);
+        border-radius: 999px;
+        padding: 11px 14px;
+        color: var(--black);
+        background: var(--yellow);
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.1em;
+        cursor: pointer;
+        text-transform: uppercase;
+      }
+
+      #handoffCopyStatus {
+        color: var(--cyan);
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .checklist {
+        display: grid;
+        gap: 12px;
+        margin: 20px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .checklist li {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 10px;
+        align-items: start;
+        border: 1px solid rgba(245, 234, 219, 0.12);
+        border-radius: 8px;
+        padding: 12px;
+        background: rgba(0, 0, 0, 0.24);
+      }
+
+      .checklist li::before {
+        content: "";
+        width: 10px;
+        height: 10px;
+        margin-top: 6px;
+        border-radius: 999px;
+        background: var(--cyan);
+        box-shadow: 0 0 24px rgba(114, 240, 255, 0.45);
+      }
+
+      .split {
+        display: grid;
+        grid-template-columns: 0.9fr 1.1fr;
+        gap: 16px;
+        align-items: start;
+      }
+
+      footer {
+        margin-top: 46px;
+        color: var(--dim);
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      @media (max-width: 900px) {
+        .hero,
+        .split,
+        .speaker-grid,
+        .direct-review-grid,
+        .handoff-mission-strip,
+        .proof-grid,
+        .phase-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-copy,
+        .hero-media {
+          min-height: auto;
+        }
+
+        .hero-media {
+          min-height: 420px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div class="panel hero-copy">
+          <p class="eyebrow">Gauntlet Capstone · Team Handoff · 2026-06-29</p>
+          <h1>Vexy Mission Review Packet</h1>
+          <p class="lead">
+            This is the sendable teammate packet for the 10-minute Vexy Mission rehearsal.
+            Review your speaking lane, make private note edits, pin exact fixes, then send a
+            review link back to Grace.
+          </p>
+          <div class="link-row" aria-label="Primary links">
+            <a class="button-link primary" href="./">Open audience deck</a>
+            <a class="button-link" href="./?edit=1">Open review mode</a>
+            <a class="button-link" href="./speaker-assets.html">Open speaker assets</a>
+            <a class="button-link" href="./run-of-show.html">Open run of show</a>
+            <a class="button-link" href="./rehearsal-console.html">Open rehearsal console</a>
+            <a class="button-link" href="./shareback-proof.html">Open shareback proof</a>
+            <a class="button-link" href="./phase-execution.html">Open phase execution</a>
+            <a class="button-link" href="./demo-readiness.html">Open readiness</a>
+            <a class="button-link" href="./index.html">Local package deck</a>
+          </div>
+          <div class="truth-row" aria-label="Truth labels">
+            <span class="tag">Flow asset</span>
+            <span class="tag">Repo proof</span>
+            <span class="tag">Blocked until proven</span>
+          </div>
+        </div>
+        <figure class="panel hero-media" aria-label="Vexy final moon hero">
+          <img src="./media/team-final-hero.jpeg" alt="Vexy on the moon with the four-person mission crew behind it">
+        </figure>
+      </section>
+
+      <section>
+        <h2>Mission Spine</h2>
+        <p class="lead">
+          Body -> model -> proof. Grace grounds the body, David defines the learning loop,
+          Erick makes trusted motion possible, and Jake turns every run into an evidence packet.
+        </p>
+        <div class="handoff-mission-strip" aria-label="Four-part presentation spine">
+          <article class="mission-strip-card">
+            <p class="label">Grace</p>
+            <h3>Body</h3>
+            <p>VEX V5, Raspberry Pi, AprilTag, yellow ball, and the language self-model premise.</p>
+          </article>
+          <article class="mission-strip-card">
+            <p class="label">David Taylor</p>
+            <h3>Model</h3>
+            <p>Plan, execute, analyze telemetry, start over, then zoom out to the Generational Loop.</p>
+          </article>
+          <article class="mission-strip-card">
+            <p class="label">Erick</p>
+            <h3>Trusted Motion</h3>
+            <p>Bounded commands, ack/fault states, watchdogs, and motion that can be explained.</p>
+          </article>
+          <article class="mission-strip-card">
+            <p class="label">Jake</p>
+            <h3>Proof</h3>
+            <p>Prediction, observation, telemetry, vision, gap, and the evidence packet.</p>
+          </article>
+        </div>
+      </section>
+
+      <section>
+        <h2>Speaker Review Lanes</h2>
+        <p class="lead">Speaker order: Grace -> David Taylor -> Erick -> Jake.</p>
+        <div class="direct-review-grid">
+          <article class="direct-review-card" data-owner="grace">
+            <span>Grace · 2:00</span>
+            <h3>Premise</h3>
+            <p>Self-Modeling Machines, in Language. Real VEX V5 body, Raspberry Pi, AprilTag, yellow ball, and grab/pull/throw.</p>
+            <a class="lane-link" href="./?edit=1&owner=grace">Review Grace lane</a>
+            <ol class="review-steps">
+              <li>1. Open your lane</li>
+              <li>2. Click Review / Edit</li>
+              <li>3. Send back link</li>
+            </ol>
+          </article>
+          <article class="direct-review-card" data-owner="david">
+            <span>David Taylor · 2:00</span>
+            <h3>Learning Loop</h3>
+            <p>Plan, execute, analyze telemetry, start over. Generational Loop, research synthesis, and honest next proof.</p>
+            <a class="lane-link" href="./?edit=1&owner=david">Review David lane</a>
+            <ol class="review-steps">
+              <li>1. Open your lane</li>
+              <li>2. Click Review / Edit</li>
+              <li>3. Send back link</li>
+            </ol>
+          </article>
+          <article class="direct-review-card" data-owner="erick">
+            <span>Erick · 2:30</span>
+            <h3>Trusted Motion</h3>
+            <p>Bounded command vocabulary, ack/fault envelope, watchdogs, physical messiness, and evidence for every action.</p>
+            <a class="lane-link" href="./?edit=1&owner=erick">Review Erick lane</a>
+            <ol class="review-steps">
+              <li>1. Open your lane</li>
+              <li>2. Click Review / Edit</li>
+              <li>3. Send back link</li>
+            </ol>
+          </article>
+          <article class="direct-review-card" data-owner="jake">
+            <span>Jake · 2:00</span>
+            <h3>Evidence Packet</h3>
+            <p>Prediction, observation, telemetry, vision state, gap residuals, and why the gap becomes the learning signal.</p>
+            <a class="lane-link" href="./?edit=1&owner=jake">Review Jake lane</a>
+            <ol class="review-steps">
+              <li>1. Open your lane</li>
+              <li>2. Click Review / Edit</li>
+              <li>3. Send back link</li>
+            </ol>
+          </article>
+        </div>
+      </section>
+
+      <section class="split">
+        <div>
+          <h2>How To Review</h2>
+          <ul class="checklist">
+            <li><p>Open your direct review link and confirm the lower-left status says your name.</p></li>
+            <li><p>Click Review / Edit. The deck only becomes editable after this deliberate toggle.</p></li>
+            <li><p>Edit your private speaker notes and suggestions only if your section needs changes.</p></li>
+            <li><p>Use Pin a spot for exact visual fixes, spacing issues, awkward wording, or timing notes.</p></li>
+            <li><p>Click Mark my section ready, then Copy review link and send that link back to Grace.</p></li>
+          </ul>
+        </div>
+        <div>
+          <h2>What Is Proven</h2>
+          <div class="grid proof-grid">
+            <article class="proof-card">
+              <p class="label">Repo proof</p>
+              <h3>Tests</h3>
+              <p>The presentation eval and repo test suite pass against this package before deployment.</p>
+            </article>
+            <article class="proof-card">
+              <p class="label">Flow asset</p>
+              <h3>Visual Layer</h3>
+              <p>The public deck uses Flow videos, Flow stills, and the moon mission visual system.</p>
+            </article>
+            <article class="proof-card">
+              <p class="label">Blocked until proven</p>
+              <h3>Limits</h3>
+              <p>Live shared persistence requires a backend. Real robot run success is not claimed by this presentation page.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Presentation Phases</h2>
+        <div class="grid phase-grid">
+          <article class="phase-card">
+            <span>01</span>
+            <h3>Mission Open</h3>
+            <p>Fullscreen Vexy video with sound, then the premise: a robot that can be wrong can learn.</p>
+          </article>
+          <article class="phase-card">
+            <span>02</span>
+            <h3>Physical Body</h3>
+            <p>Grace grounds the story in the real VEX V5 robot and the language self-model premise.</p>
+          </article>
+          <article class="phase-card">
+            <span>03</span>
+            <h3>Learning Loop</h3>
+            <p>David explains plan, execute, telemetry analysis, and the larger Generational Loop.</p>
+          </article>
+          <article class="phase-card">
+            <span>04</span>
+            <h3>Trusted Motion</h3>
+            <p>Erick explains why safe commands and bounded vocabulary matter before the LLM can learn from runs.</p>
+          </article>
+          <article class="phase-card">
+            <span>05</span>
+            <h3>Evidence</h3>
+            <p>Jake explains prediction, observation, gap, and why the evidence packet keeps the model grounded.</p>
+          </article>
+          <article class="phase-card">
+            <span>06</span>
+            <h3>Finale</h3>
+            <p>The team closes on the moon hero and the honest next mission: more proof from reality.</p>
+          </article>
+        </div>
+      </section>
+
+      <section>
+        <h2>Copy This To The Team</h2>
+        <div class="message-card copy-ready-block">
+          <p class="label">Copy-ready Slack message</p>
+          <div class="message-actions">
+            <button id="copyHandoffSlack" class="copy-message-button" type="button">Copy Slack message</button>
+            <span id="handoffCopyStatus" aria-live="polite">Ready to copy.</span>
+          </div>
+          <pre id="handoffSlackMessage">Please review your Vexy section before rehearsal.
+
+Open your link, click Review / Edit, edit your private speaker notes, add pinned comments where something should change, then click Copy review link and send it back.
+
+Grace: ./?edit=1&owner=grace
+David Taylor: ./?edit=1&owner=david
+Erick: ./?edit=1&owner=erick
+Jake: ./?edit=1&owner=jake
+
+Audience view: ./
+Speaker assets: ./speaker-assets.html
+Rehearsal console: ./rehearsal-console.html
+Shareback proof: ./shareback-proof.html
+Phase execution: ./phase-execution.html</pre>
+          <p>During the live run-through, open <a href="./rehearsal-console.html">the rehearsal console</a> to track sound, video, handoff cues, and proof checks.</p>
+        </div>
+      </section>
+
+      <section>
+        <h2>Collaboration Limit</h2>
+        <p class="lead">
+          This is a static Vercel presentation. Edits save in your browser and can be sent back through
+          a shareable review link. Shared persistence requires a Vercel Function plus KV, Supabase,
+          Neon, or another database. The URL hash carries the database-free review packet.
+        </p>
+      </section>
+
+      <footer>
+        Vexy Mission · 10-minute rehearsal packet · Live alias verified separately from local preview
+      </footer>
+    </main>
+    <script>
+      const copyHandoffSlack = document.querySelector("#copyHandoffSlack");
+      const handoffSlackMessage = document.querySelector("#handoffSlackMessage");
+      const handoffCopyStatus = document.querySelector("#handoffCopyStatus");
+      const handoffBaseUrl = new URL("./", window.location.href);
+
+      function handoffUrl(path = "") {
+        return new URL(path, handoffBaseUrl).href;
+      }
+
+      function hydrateHandoffSlackMessage() {
+        handoffSlackMessage.textContent = `Please review your Vexy section before rehearsal.
+
+Open your link, click Review / Edit, edit your private speaker notes, add pinned comments where something should change, then click Copy review link and send it back.
+
+Grace: ${handoffUrl("?edit=1&owner=grace")}
+David Taylor: ${handoffUrl("?edit=1&owner=david")}
+Erick: ${handoffUrl("?edit=1&owner=erick")}
+Jake: ${handoffUrl("?edit=1&owner=jake")}
+
+Audience view: ${handoffUrl("")}
+Speaker assets: ${handoffUrl("speaker-assets.html")}
+Rehearsal console: ${handoffUrl("rehearsal-console.html")}
+Shareback proof: ${handoffUrl("shareback-proof.html")}
+Phase execution: ${handoffUrl("phase-execution.html")}`;
+      }
+
+      async function copyHandoffSlackMessage() {
+        await navigator.clipboard.writeText(handoffSlackMessage.textContent.trim());
+        handoffCopyStatus.textContent = "Copied handoff message.";
+      }
+
+      hydrateHandoffSlackMessage();
+      copyHandoffSlack.addEventListener("click", copyHandoffSlackMessage);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,36 @@
+name: Presentation validation
+
+on:
+  pull_request:
+    paths:
+      - "presentation/vexy-mission/**"
+      - "scripts/validate_vexy_presentation.py"
+      - "Makefile"
+      - ".github/workflows/presentation-validate.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "presentation/vexy-mission/**"
+      - "scripts/validate_vexy_presentation.py"
+      - "Makefile"
+      - ".github/workflows/presentation-validate.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  presentation-validate:
+    name: presentation package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate Vexy presentation package
+        run: make presentation-validate

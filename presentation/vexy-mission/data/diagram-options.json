@@ -1,0 +1,122 @@
+{
+  "selected": {
+    "Grace": "grace-hardware-stack",
+    "David Taylor": "david-generational-loop",
+    "Erick": "erick-trusted-motion-gates",
+    "Jake": "jake-evidence-packet"
+  },
+  "speakers": {
+    "Grace": [
+      {
+        "id": "grace-hardware-stack",
+        "title": "VEX Body To Language Model",
+        "rationale": "Best for Grace because it shows VEX V5 Brain, Smart Motors, red claw, Raspberry Pi, camera, AprilTag, yellow ball, telemetry, contracts, and LLM self-model as one system.",
+        "selected": true
+      },
+      {
+        "id": "grace-self-model-loop",
+        "title": "Self-Modeling Machines, in Language",
+        "rationale": "Shows imagined self, measured self, residual model, and revised self-model in the exact premise language."
+      },
+      {
+        "id": "grace-primitive-arc",
+        "title": "Grab, Pull, Throw Arc",
+        "rationale": "Makes the yellow ball demo concrete: grab is the safety net, pull is the calibration spine, throw is the hero primitive."
+      },
+      {
+        "id": "grace-two-loops",
+        "title": "Loop 1 And Loop 2",
+        "rationale": "Separates calibration on one body from future morphology redesign so the audience does not confuse current scope with future ambition."
+      },
+      {
+        "id": "grace-sense-act-measure-improve",
+        "title": "Sense, Act, Measure, Improve",
+        "rationale": "Simple enough for an opening explanation while still matching the repo's evidence-loop architecture."
+      }
+    ],
+    "David Taylor": [
+      {
+        "id": "david-generational-loop",
+        "title": "Generational Loop",
+        "rationale": "Best for David because it explains plan, execute, telemetry analysis, and future body redesign without re-explaining hardware.",
+        "selected": true
+      },
+      {
+        "id": "david-research-matrix",
+        "title": "Research Synthesis Matrix",
+        "rationale": "Compares numerical self-modeling, LLM morphology generation, LLM self-improvement, and the Vexy synthesis."
+      },
+      {
+        "id": "david-telemetry-to-redesign",
+        "title": "Telemetry To Redesign",
+        "rationale": "Shows motor samples, vision state, operator results, and evidence becoming a suggested next model."
+      },
+      {
+        "id": "david-honest-status",
+        "title": "Honest Status Ladder",
+        "rationale": "Helps David explain simple tasks, ball-in-bin progress, blockers, and future component redesign clearly."
+      },
+      {
+        "id": "david-what-is-novel",
+        "title": "What Is Novel",
+        "rationale": "A strong wrap-up diagram for the claim that the project combines readable self-modeling, telemetry, critique, and morphology."
+      }
+    ],
+    "Erick": [
+      {
+        "id": "erick-trusted-motion-gates",
+        "title": "Trusted Motion Gates",
+        "rationale": "Best for Erick because it shows intent moving through vocabulary, limits, watchdog, ack/fault, and evidence.",
+        "selected": true
+      },
+      {
+        "id": "erick-ack-fault-envelope",
+        "title": "Ack And Fault Envelope",
+        "rationale": "Makes the command contract visible: accepted, rejected, stale, completed, or faulted."
+      },
+      {
+        "id": "erick-llm-boundary-box",
+        "title": "LLM Boundary Box",
+        "rationale": "Shows that the LLM reasons over safe commands instead of directly improvising motor behavior."
+      },
+      {
+        "id": "erick-safety-failure-tree",
+        "title": "Physical Failure Tree",
+        "rationale": "Names wheel slip, motor drift, camera error, moving object, tag angle, and claw misalignment."
+      },
+      {
+        "id": "erick-proof-chain",
+        "title": "Proof Chain",
+        "rationale": "Ties each action to prediction, observation, proof, and explanation."
+      }
+    ],
+    "Jake": [
+      {
+        "id": "jake-evidence-packet",
+        "title": "Evidence Packet",
+        "rationale": "Best for Jake because it turns a run into command, vision, telemetry, predicted, observed, gap, and update.",
+        "selected": true
+      },
+      {
+        "id": "jake-gap-timeline",
+        "title": "Predicted, Observed, Gap Timeline",
+        "rationale": "Shows the exact chain from what Vexy expected to what reality proved different."
+      },
+      {
+        "id": "jake-vision-funnel",
+        "title": "Vision Funnel",
+        "rationale": "Explains AprilTags, yellow ball detection, object confidence, and scene observations."
+      },
+      {
+        "id": "jake-calibration-curve",
+        "title": "Calibration Curve",
+        "rationale": "Shows the robot's self-knowledge becoming measurable as prediction error trends down."
+      },
+      {
+        "id": "jake-jsonl-handoff",
+        "title": "JSONL Handoff",
+        "rationale": "Shows how captured evidence becomes a file the operator and LLM can inspect."
+      }
+    ]
+  }
+}

@@ -1,0 +1,643 @@
+{
+  "presentation": {
+    "title": "Vexy Mission Brief",
+    "format": "vertical-scroll-page",
+    "durationMinutes": 10,
+    "style": "X35 Self-Model Premise meets red/black moon mission, Plaud-style notes, Animos-inspired motion, and Lovable mission-control structure",
+    "missionInvitation": "The Vexy Mission: a robot with a readable self-model compares what it expects from its body against what reality proves, then uses that gap to make the next run smarter.",
+    "sourceTruth": [
+      "Self-Modeling Machines, in Language: an LLM orchestrator designs a real VEX robot to grab, pull, and throw, then corrects its own model from reality.",
+      "X35 Self-Model Premise: linguistic self-model, generator LLM, critic panel, robot reads its own body, residual model corrects, repeat.",
+      "Current Vexy demo design system: dark mission-control, large VEXY typography, proof labels, Sense / Act / Measure / Improve.",
+      "Plaud-style organization: every speaker moment gets a transcript-like summary, key points, action items, and a mind-map diagram.",
+      "Animos-inspired animation requirements come from https://animos.app/: staggered scroll reveals, kinetic typography, scan wipes, and premium motion timing.",
+      "Lovable presentation vibe comes from https://vexycapstone.lovable.app/: dark mission-control, cinematic red/black hierarchy, and confident technical copy.",
+      "Truth labels stay visible: Flow asset, Repo proof, Planned, Blocked, Presentation.",
+      "Vercel edit mode is ?edit=1 for local browser review; shared persistence requires a server-backed store."
+    ]
+  },
+  "media": [
+    {
+      "id": "vexy-intro",
+      "path": "media/vexy_identity_lock_trailer.mp4",
+      "type": "video",
+      "role": "Fullscreen Vexy mission opener",
+      "slideUse": "Part 1 video",
+      "truthLabel": "Flow asset"
+    },
+    {
+      "id": "grace-opener",
+      "path": "media/grace_mission_control.mp4",
+      "type": "video",
+      "role": "Grace speaker entrance",
+      "slideUse": "Part 3 video",
+      "truthLabel": "Flow asset"
+    },
+    {
+      "id": "mechanism-macro",
+      "path": "media/red_mechanism_macro_slide.mp4",
+      "type": "video",
+      "role": "Vexy hardware macro and component transition",
+      "slideUse": "Part 4 video/animation",
+      "truthLabel": "Flow asset"
+    },
+    {
+      "id": "david-opener",
+      "path": "media/david_mission_commander.mp4",
+      "type": "video",
+      "role": "David Taylor speaker entrance for learning loop and generational-loop framing",
+      "slideUse": "Part 5 video",
+      "truthLabel": "Flow asset"
+    },
+    {
+      "id": "erick-opener",
+      "path": "media/erick_mission_commands.mp4",
+      "type": "video",
+      "role": "Erick speaker entrance for trusted motion",
+      "slideUse": "Part 7 video",
+      "truthLabel": "Flow asset"
+    },
+    {
+      "id": "yellow-ball-tag",
+      "path": "media/yellow_ball_apriltag.jpeg",
+      "type": "image",
+      "role": "Yellow ball and AprilTag mission sample for Jake evidence explanation",
+      "slideUse": "Part 9 supporting visual",
+      "truthLabel": "Flow asset"
+    },
+    {
+      "id": "jake-opener",
+      "path": "media/jake_holographic_screen.mp4",
+      "type": "video",
+      "role": "Jake speaker entrance for evidence packet",
+      "slideUse": "Part 9 video",
+      "truthLabel": "Flow asset"
+    }
+  ],
+  "speakers": [
+    {
+      "name": "Grace",
+      "role": "Mission lead / premise",
+      "talksAbout": "What Vexy is, what it is made of, and why the project is about self-modeling rather than only movement.",
+      "voice": "Warm mission briefing, then grounded technical setup."
+    },
+    {
+      "name": "David Taylor",
+      "role": "Learning loop / research synthesis / next proof",
+      "talksAbout": "Why the small learning loop is not a claim, how the larger Generational Loop extends toward body redesign, and what research lanes Vexy combines.",
+      "voice": "Executive technical close: impressive, honest, blocker-aware."
+    },
+    {
+      "name": "Erick",
+      "role": "Trusted motion / control contracts",
+      "talksAbout": "Why the LLM must use bounded commands, strict contracts, ack/fault states, and evidence instead of direct motor improvisation.",
+      "voice": "Clear, careful, safety-first engineering."
+    },
+    {
+      "name": "Jake",
+      "role": "Evidence packet / measurement",
+      "talksAbout": "How prediction, observation, telemetry, vision, and gap residuals become the learning signal.",
+      "voice": "Connects robot runtime to the model-update story."
+    }
+  ],
+  "speakerScripts": [
+    {
+      "speaker": "Grace",
+      "duration": "2:00",
+      "title": "Self-Modeling Machines, in Language",
+      "topBullets": [
+        "Self-Modeling Machines, in Language: an LLM orchestrator designs a real robot to grab, pull, and throw, then corrects its own model from reality.",
+        "Vexy is a real VEX V5 robot, not an abstract AI demo: VEX V5 Brain, Smart Ports, Smart Motors, wheels, red claw, and a real manipulator body.",
+        "Raspberry Pi, Camera Module 3, AprilTag localization, and a yellow ball make the mission visible enough to measure.",
+        "Loop 1 is calibration: one body, many attempts, predicted capability converging toward measured capability.",
+        "Loop 2 is morphology: a future stretch where new shapes are re-authored, rebuilt, and reconciled.",
+        "Grace covers the physical premise; David Taylor will not cover the VEX hardware intro."
+      ],
+      "summary": "Grace should set the emotional and technical frame around the premise itself: Self-Modeling Machines, in Language. Vexy is a physical VEX V5 robot with a VEX V5 Brain, Smart Ports, Smart Motors, wheels, red claw mechanism, Raspberry Pi, Camera Module 3, AprilTag localization, and a yellow ball mission sample. The impressive part is not that the robot can move; it is that the team is building toward a robot that can compare its imagined self against its measured self and revise a readable self-model in language.",
+      "details": [
+        "VEX V5 matters because the platform is physical enough to be meaningful: metal structure, motors, wheels, claw, battery behavior, camera placement, and sensor noise all create real constraints.",
+        "Smart Ports and VEX control hardware make the robot a credible body for self-modeling because the system can reason about devices and telemetry instead of pretending the robot is a black box.",
+        "The premise is that the body doing the modeling and the body being modeled are the same object. That is why Vexy is more than a web page or video.",
+        "Grab, pull, and throw make the premise concrete: grab is the safety net, pull is the calibration spine, and throw is the hero primitive.",
+        "Language matters because a human can read the self-model, challenge it, and understand why it changed."
+      ],
+      "speakingNotes": [
+        "Open cleanly: 'A robot that can be wrong can learn.'",
+        "Say the exact premise: Self-Modeling Machines, in Language.",
+        "Explain that Vexy is a real robot: VEX V5 Brain, metal rails, wheels, front red claw, Smart Motors, Raspberry Pi, camera, AprilTags, and yellow ball mission sample.",
+        "Say that physical constraints are the point: friction, wheel slip, motor behavior, object detection, AprilTag angle, camera position, and a moving target all affect what the robot can actually do.",
+        "Introduce self-modeling machines in plain English: a robot has an internal account of what its body is and what it can do.",
+        "Explain the language twist: instead of only an opaque numerical model, Vexy's self-model should be structured and readable.",
+        "Name the two loops: Loop 1 calibrates one body across many attempts; Loop 2 is the morphology stretch where new shapes can be re-authored and tested.",
+        "Close by saying the mission is Sense, Act, Measure, Improve: Vexy senses the world, acts safely, measures the gap, and uses that evidence to improve."
+      ],
+      "strongLine": "Vexy is impressive because the robot is not just performing a task; it is becoming a system that can explain what reality taught it."
+    },
+    {
+      "speaker": "David Taylor",
+      "duration": "2:00",
+      "title": "The small learning loop and the Generational Loop",
+      "topBullets": [
+        "The small learning loop is not 'LLM says robot improved.' It is generate a plan, execute it, analyze telemetry, and start over.",
+        "The larger Generational Loop asks whether an LLM can redesign its own body and adapt to real-world conditions.",
+        "The research basis combines numerical self-modeling, LLM morphology generation, and LLM self-improvement.",
+        "Telemetry gives the model concrete evidence: motor samples, vision state, and operator results.",
+        "The honest status is that challenges restricted Vexy to simple tasks like putting the ball in the bin before moving toward redesigning component parts."
+      ],
+      "summary": "David should explain the research leap immediately after Grace sets up the robot. The small learning loop is not a vague claim that the LLM improved the robot; it is a concrete loop that generates a plan, executes the run, analyzes telemetry, and starts over. The larger Generational Loop is the more ambitious idea: an LLM that can eventually redesign its own body and adapt to real-world conditions. David should ground this in numerical self-modeling, LLM morphology generation, and LLM self-improvement while staying honest that Vexy was still constrained to simple tasks.",
+      "details": [
+        "Numerical self-modeling inspired the work, but it usually stays inside a sub-symbolic tensor that is not human readable.",
+        "LLM morphology generation inspired the redesign idea, but much of that work generates robot designs only in simulation.",
+        "LLM self-improvement inspired the control side because it can optimize control parameters on real hardware, but it does not include a self-model component.",
+        "The novel thing about this experiment is combining these ideas and adding morphology that the LLM itself can redesign.",
+        "Telemetry, including motor samples, vision state, and operator results, creates a feedback loop that gives the LLM enough information to reason about what went wrong and suggest improvements."
+      ],
+      "speakingNotes": [
+        "Open with: 'The small learning loop is not LLM says robot improved.'",
+        "Explain the concrete sequence: generate a plan, execute it, analyze telemetry, and start over.",
+        "Then zoom out to the Generational Loop: an LLM that can redesign its own body and adapt to conditions in the real world.",
+        "Ground the idea in prior work: numerical self-modeling, LLM morphology generation, and LLM self-improvement.",
+        "Be precise about what each prior lane is missing: sub-symbolic tensor readability, simulation-only morphology, or control parameters without a self-model.",
+        "Say that Vexy treats every run as evidence, using motor samples, vision state, and operator results to reason about what went wrong.",
+        "Close honestly: challenges restricted the robot to simple tasks, and Vexy was beginning to conquer putting the ball in the bin before the next step of redesigning component parts."
+      ],
+      "strongLine": "The breakthrough is not that the LLM says Vexy improved; it is that Vexy can use evidence from a run to reason about how its own body should change."
+    },
+    {
+      "speaker": "Erick",
+      "duration": "2:30",
+      "title": "The Hard Technical Problem",
+      "topBullets": [
+        "Real robot runs are messy: wheel slip, motor drift, camera errors, object ambiguity.",
+        "The challenge is not motion or action. The challenge is trusted motion.",
+        "Commands need strict contracts and bounded vocabulary to help the LLM stay bounded to the problem.",
+        "Every run needs evidence - prediction, observation, and proof. In some cases it means evidence from multiple sources.",
+        "The goal was to build a robot that moves and motion can be trusted, measured, and explained."
+      ],
+      "summary": "Erick should explain why the project is technically hard before the learning loop even begins. Making Vexy drive forward or grab something is only the first layer. The deeper problem is that an LLM cannot be allowed to invent low-level motor behavior. The system has to constrain robot action through safe commands, fixed vocabulary, limits, acknowledgments, faults, and evidence from the run.",
+      "details": [
+        "Making the robot move is one problem. Making it move safely, measure itself, and explain what changed is much harder.",
+        "The hard part of this project is not just getting Vexy to drive forward or grab something. That is already challenging, but it is only the first layer.",
+        "The real challenge is trusted motion. A robot lives in the physical world, and the physical world is messy. Wheels slip. Motors drift. The claw might not align perfectly. The camera can misread an object. An AprilTag might be at a weird angle. A yellow ball might move slightly between the moment Vexy sees it and the moment Vexy reaches for it.",
+        "So if we want Vexy to learn from a run, we cannot just say, 'the robot moved.' We need to know what actually happened, and whether the action was safe and valid.",
+        "To help the LLM we had to create a series of safe and well defined commands to offload all the details about controlling the robot directly at a very low level. This helped the LLM to focus on reasoning and generating safe commands that can be executed by the robot."
+      ],
+      "speakingNotes": [
+        "Open with the exact line: 'Making the robot move is one problem. Making it move safely, measure itself, and explain what changed is much harder.'",
+        "Name the failure modes quickly: wheel slip, motor drift, claw alignment, camera errors, AprilTag angle, and moving yellow ball.",
+        "Explain that if Vexy is going to learn, we need evidence from the run, not just a statement that the robot moved.",
+        "Say that the LLM must be bounded by strict command contracts so it can reason safely.",
+        "Explain that safe command vocabulary lets the low-level robot controls stay controlled while the LLM focuses on reasoning.",
+        "Close with: 'The goal was to build a robot that moves and motion can be trusted, measured, and explained.'"
+      ],
+      "strongLine": "The challenge is not motion or action. The challenge is trusted motion."
+    },
+    {
+      "speaker": "Jake",
+      "duration": "2:00",
+      "title": "Evidence, prediction, observation, and gap",
+      "topBullets": [
+        "The gap is the learning signal.",
+        "Sense means AprilTags, yellow ball detection, scene observations, and object confidence.",
+        "Measure means predicted state versus observed outcome.",
+        "The evidence packet has to be structured so the model cannot make things up.",
+        "Jake's section bridges robot runtime into the self-model loop."
+      ],
+      "summary": "Jake should explain the measurement layer. For Vexy to improve, every run needs to produce evidence: what the system expected, what the robot actually did, what sensors observed, and how far reality was from the prediction. This is where the project becomes more than a robotics demo.",
+      "details": [
+        "The yellow ball and AprilTag should become the friendly example of what Vexy has to sense before acting.",
+        "The evidence packet can include the command, camera observations, telemetry, expected state, actual state, and residual error.",
+        "Without structure, an LLM could generate explanations that sound plausible but are not grounded in the run.",
+        "The technical challenge is connecting hardware, vision, runtime behavior, contracts, and LLM reasoning."
+      ],
+      "speakingNotes": [
+        "Open with: 'The next layer is measurement. This is where the project becomes more than a robotics demo.'",
+        "Explain predicted versus observed in simple terms.",
+        "Use the yellow ball example: if Vexy expects to grab it but the claw alignment is off, that failure becomes evidence.",
+        "Say that commands, telemetry, observations, self-models, and residuals all need shape.",
+        "Explain that the model is not guessing; it receives a packet of evidence.",
+        "Handoff to the finale by saying the evidence packet is what lets Vexy improve without making unsupported claims."
+      ],
+      "strongLine": "A run matters only if it leaves behind evidence."
+    }
+  ],
+  "diagrams": [
+    {
+      "id": "mission-route",
+      "title": "Mission Route",
+      "type": "vertical moon path",
+      "description": "A red trajectory line moves from launch to lunar surface to Vexy self-model, marking the audience as the mission crew joining the loop."
+    },
+    {
+      "id": "component-stack",
+      "title": "Vexy Component Stack",
+      "type": "exploded stack / assembly diagram",
+      "description": "Chassis, wheels, red claw, VEX controller, Pi camera, yellow ribbon cable, AprilTag, yellow ball, telemetry, contracts, LLM, critics, and human gate stack into one system."
+    },
+    {
+      "id": "self-model-loop",
+      "title": "X35 Self-Model Loop",
+      "type": "closed loop",
+      "description": "Generator LLM writes self-model, critic panel attacks it, robot runs, robot reads body and environment, residual model corrects, and the next model is revised."
+    },
+    {
+      "id": "trusted-motion-gates",
+      "title": "Trusted Motion Gates",
+      "type": "gate sequence",
+      "description": "Intent passes through command vocabulary, TTL/clamps, watchdog, ack/fault receipt, and evidence capture."
+    },
+    {
+      "id": "evidence-funnel",
+      "title": "Evidence Funnel",
+      "type": "funnel",
+      "description": "Camera, AprilTag, yellow ball, motor telemetry, IMU, and command result become predicted, observed, and gap records."
+    },
+    {
+      "id": "calibration-curve",
+      "title": "Calibration Curve",
+      "type": "line chart",
+      "description": "Predicted-minus-measured capability error trends downward across Loop 1 cycles; this is the robot's self-knowledge made measurable."
+    },
+    {
+      "id": "critic-gate",
+      "title": "Critic Gate",
+      "type": "verdict board",
+      "description": "Physics, torque, geometry, command safety, and missing-evidence critics mark pass, flag, or blocked before human approval."
+    }
+  ],
+  "diagramChoices": {
+    "Grace": [
+      {
+        "id": "grace-hardware-stack",
+        "title": "VEX Body To Language Model",
+        "rationale": "Best default: shows VEX V5 Brain, Smart Ports, Smart Motors, red claw, Raspberry Pi, camera, AprilTag, yellow ball, telemetry, contracts, and LLM self-model as one system.",
+        "selected": true
+      },
+      {
+        "id": "grace-self-model-loop",
+        "title": "Self-Modeling Machines, in Language",
+        "rationale": "Shows imagined self, measured self, residual model, and revised self-model in the exact premise language."
+      },
+      {
+        "id": "grace-primitive-arc",
+        "title": "Grab, Pull, Throw Arc",
+        "rationale": "Makes the yellow ball demo concrete: grab is the safety net, pull is the calibration spine, throw is the hero primitive."
+      },
+      {
+        "id": "grace-two-loops",
+        "title": "Loop 1 And Loop 2",
+        "rationale": "Separates calibration on one body from future morphology redesign."
+      },
+      {
+        "id": "grace-sense-act-measure-improve",
+        "title": "Sense, Act, Measure, Improve",
+        "rationale": "Simple enough for an opening explanation while still matching the repo evidence-loop architecture."
+      }
+    ],
+    "David Taylor": [
+      {
+        "id": "david-generational-loop",
+        "title": "Generational Loop",
+        "rationale": "Best default: explains plan, execute, telemetry analysis, and future body redesign without re-explaining hardware.",
+        "selected": true
+      },
+      {
+        "id": "david-research-matrix",
+        "title": "Research Synthesis Matrix",
+        "rationale": "Compares numerical self-modeling, LLM morphology generation, LLM self-improvement, and the Vexy synthesis."
+      },
+      {
+        "id": "david-telemetry-to-redesign",
+        "title": "Telemetry To Redesign",
+        "rationale": "Shows motor samples, vision state, operator results, and evidence becoming a suggested next model."
+      },
+      {
+        "id": "david-honest-status",
+        "title": "Honest Status Ladder",
+        "rationale": "Explains simple tasks, ball-in-bin progress, blockers, and future component redesign clearly."
+      },
+      {
+        "id": "david-what-is-novel",
+        "title": "What Is Novel",
+        "rationale": "Supports the claim that the project combines readable self-modeling, telemetry, critique, and morphology."
+      }
+    ],
+    "Erick": [
+      {
+        "id": "erick-trusted-motion-gates",
+        "title": "Trusted Motion Gates",
+        "rationale": "Best default: shows intent moving through vocabulary, limits, watchdog, ack/fault, and evidence.",
+        "selected": true
+      },
+      {
+        "id": "erick-ack-fault-envelope",
+        "title": "Ack And Fault Envelope",
+        "rationale": "Makes the command contract visible: accepted, rejected, stale, completed, or faulted."
+      },
+      {
+        "id": "erick-llm-boundary-box",
+        "title": "LLM Boundary Box",
+        "rationale": "Shows that the LLM reasons over safe commands instead of directly improvising motor behavior."
+      },
+      {
+        "id": "erick-safety-failure-tree",
+        "title": "Physical Failure Tree",
+        "rationale": "Names wheel slip, motor drift, camera error, moving object, tag angle, and claw misalignment."
+      },
+      {
+        "id": "erick-proof-chain",
+        "title": "Proof Chain",
+        "rationale": "Ties each action to prediction, observation, proof, and explanation."
+      }
+    ],
+    "Jake": [
+      {
+        "id": "jake-evidence-packet",
+        "title": "Evidence Packet",
+        "rationale": "Best default: turns a run into command, vision, telemetry, predicted, observed, gap, and update.",
+        "selected": true
+      },
+      {
+        "id": "jake-gap-timeline",
+        "title": "Predicted, Observed, Gap Timeline",
+        "rationale": "Shows the chain from what Vexy expected to what reality proved different."
+      },
+      {
+        "id": "jake-vision-funnel",
+        "title": "Vision Funnel",
+        "rationale": "Explains AprilTags, yellow ball detection, object confidence, and scene observations."
+      },
+      {
+        "id": "jake-calibration-curve",
+        "title": "Calibration Curve",
+        "rationale": "Shows prediction error trending down as self-knowledge becomes measurable."
+      },
+      {
+        "id": "jake-jsonl-handoff",
+        "title": "JSONL Handoff",
+        "rationale": "Shows how captured evidence becomes a file the operator and LLM can inspect."
+      }
+    ]
+  },
+  "scenes": [
+    {
+      "id": "scene-01-open",
+      "kind": "video-opener",
+      "speaker": "Team",
+      "duration": "0:40",
+      "mediaId": "vexy-intro",
+      "fullscreen": true,
+      "sound": true,
+      "headline": "The Vexy Mission.",
+      "copy": "A robot that can be wrong can learn. Vexy compares what it expects from its own body against what a real run proves, then turns the gap into evidence for the next attempt.",
+      "visuals": [
+        "Fullscreen Vexy moon video with sound after Start Presentation click.",
+        "Red mission timer, subtle waveform, and large spaced GAUNTLET CAPSTONE type.",
+        "Overlay copy fades in only after the robot is visually established."
+      ],
+      "diagramRefs": [
+        "mission-route"
+      ],
+      "speakerNotes": [
+        "Let the video breathe for a few seconds before speaking.",
+        "Say: 'A robot that can be wrong can learn.'",
+        "Clarify that the cinematic layer is the invitation; the technical slides will show the evidence loop."
+      ],
+      "transition": "Video ends into a red scan wipe that becomes the first premise brief page, like a mission file opening."
+    },
+    {
+      "id": "scene-02-premise",
+      "kind": "brief-slide",
+      "speaker": "Grace",
+      "duration": "0:50",
+      "fullscreen": false,
+      "sound": false,
+      "headline": "Body -> model -> proof.",
+      "copy": "Grace makes the premise concrete: a VEX V5 body predicts in language, acts around the yellow ball and AprilTag, then lets a real run prove it right or wrong.",
+      "visuals": [
+        "Audience bridge slide with three clear listening cues: Body, Self-model, and Proof run.",
+        "X35 Self-Model Premise dossier styling with red stamps and black paper texture.",
+        "Loop cards for calibration, morphology, and the grab-pull-throw primitive arc."
+      ],
+      "diagramRefs": [
+        "self-model-loop",
+        "calibration-curve"
+      ],
+      "speakerNotes": [
+        "Tell the audience why this is real: Vexy predicts what its body can do, then measures what actually happened.",
+        "Connect Self-Modeling Machines, in Language to the physical VEX V5 body.",
+        "Make the yellow-ball and AprilTag proof run feel concrete rather than abstract."
+      ],
+      "transition": "The dossier text compresses into a mission badge, then expands into Grace's full-screen opener."
+    },
+    {
+      "id": "scene-03-grace-video",
+      "kind": "video-opener",
+      "speaker": "Grace",
+      "duration": "0:45",
+      "mediaId": "grace-opener",
+      "fullscreen": true,
+      "sound": true,
+      "headline": "What Vexy is. Why it matters.",
+      "copy": "Grace welcomes the room into the mission: Vexy is a real VEX robot with physical constraints, and the project is about turning robot action into self-knowledge.",
+      "visuals": [
+        "Fullscreen Grace mission-control clip with red lower-third.",
+        "Floating speaker profile: Mission Lead, Premise, Hardware Context.",
+        "Tiny transcript strip that highlights 'prediction', 'reality', and 'evidence'."
+      ],
+      "diagramRefs": [
+        "component-stack"
+      ],
+      "speakerNotes": [
+        "Start friendly: 'Vexy is both the robot and the research system around the robot.'",
+        "Mention the physical build: VEX chassis, metal rails, wheels, front claw, control hardware, and vision stack.",
+        "Frame the goal: Vexy should compare expectation against reality and learn from the gap."
+      ],
+      "transition": "As Grace finishes, her video shrinks into a speaker card while the Vexy component stack animates upward."
+    },
+    {
+      "id": "scene-04-components",
+      "kind": "animation-slide",
+      "speaker": "Grace",
+      "duration": "0:55",
+      "mediaId": "mechanism-macro",
+      "fullscreen": false,
+      "sound": false,
+      "headline": "The body and the model are the same object.",
+      "copy": "The audience should see Vexy as a physical robot plus an evidence system. The robot body, sensors, contracts, telemetry, LLM generator, critics, and human review all stack into one mission machine.",
+      "visuals": [
+        "Macro mechanism video sits behind an exploded component-stack diagram.",
+        "Components animate upward: chassis, wheels, red claw, Pi camera, yellow ribbon cable, AprilTag, yellow ball, telemetry, contracts, LLM, critics.",
+        "Each component has a one-word role: body, sensor, object, evidence, model, critique, approval."
+      ],
+      "diagramRefs": [
+        "component-stack",
+        "self-model-loop"
+      ],
+      "speakerNotes": [
+        "Say this is not abstract AI. It is AI reasoning attached to a physical machine.",
+        "Connect every component to a constraint: motors slip, cameras misread, claws miss, objects move.",
+        "Close with: 'The run only matters if it leaves evidence the model can inspect.'"
+      ],
+      "transition": "The component stack becomes the small learning loop, then opens David Taylor's research framing.",
+      "missionThread": "Grace grounded the body: VEX hardware makes the model accountable. Next, David turns that body into a learning loop."
+    },
+    {
+      "id": "scene-05-david-video",
+      "kind": "video-opener",
+      "speaker": "David Taylor",
+      "duration": "0:45",
+      "mediaId": "david-opener",
+      "fullscreen": true,
+      "sound": true,
+      "headline": "The small learning loop is not a slogan.",
+      "copy": "David Taylor reframes improvement as a real loop: generate a plan, execute it, analyze telemetry, then start over. The future stretch is the Generational Loop, where the LLM can redesign its own body.",
+      "visuals": [
+        "Fullscreen David Taylor mission-commander clip with Vexy telemetry and launch hologram motifs.",
+        "Red loop labels: plan, execute, analyze, start over.",
+        "Subtle research tags: numerical self-modeling, LLM morphology generation, LLM self-improvement."
+      ],
+      "diagramRefs": [
+        "calibration-curve",
+        "critic-gate"
+      ],
+      "speakerNotes": [
+        "Open with: the small learning loop is not LLM says robot improved.",
+        "Name the concrete sequence: plan, execute, analyze telemetry, start over.",
+        "Introduce the Generational Loop as future body redesign grounded in real-world evidence."
+      ],
+      "transition": "David Taylor's video resolves into a loop diagram showing telemetry flowing back into the next self-model."
+    },
+    {
+      "id": "scene-06-david-loop",
+      "kind": "technical-slide",
+      "speaker": "David Taylor",
+      "duration": "1:15",
+      "fullscreen": false,
+      "sound": false,
+      "headline": "Every run becomes evidence for the next model.",
+      "copy": "The small loop is plan, execute, analyze telemetry, and start over. The larger Generational Loop asks what happens when an LLM can redesign component parts, test them in the real world, and adapt from measured evidence.",
+      "visuals": [
+        "Four-step loop diagram: Generate plan, Execute run, Analyze evidence, Redesign self.",
+        "Research lattice comparing numerical self-modeling, LLM morphology generation, LLM self-improvement, and Vexy synthesis.",
+        "Honest-status card: simple ball-in-bin tasks first, component redesign later."
+      ],
+      "diagramRefs": [
+        "calibration-curve",
+        "critic-gate"
+      ],
+      "speakerNotes": [
+        "Explain that telemetry includes motor samples, vision state, and operator results.",
+        "Say prior work inspired Vexy, but each lane misses a piece: readability, real hardware morphology, or self-modeling.",
+        "Close honestly that challenges restricted Vexy to simple tasks before future morphology redesign."
+      ],
+      "transition": "The loop diagram tightens into a command gate, setting up Erick's trusted-motion section.",
+      "missionThread": "David defined learning as plan, execute, analyze telemetry, and start over. Next, Erick makes that motion trustworthy with bounded commands."
+    },
+    {
+      "id": "scene-07-erick-video",
+      "kind": "video-opener",
+      "speaker": "Erick",
+      "duration": "0:45",
+      "mediaId": "erick-opener",
+      "fullscreen": true,
+      "sound": true,
+      "headline": "The challenge is trusted motion.",
+      "copy": "Erick introduces the safety problem: making a robot move is not enough. The LLM has to stay bounded to safe commands, and each action needs proof.",
+      "visuals": [
+        "Fullscreen Erick astronaut/mission clip with red command-grid overlay.",
+        "Lower-third: Trusted Motion / Contracts / Safe Commands.",
+        "Animated gate icons pulse in sequence: vocabulary, TTL, clamps, watchdog, ack/fault."
+      ],
+      "diagramRefs": [
+        "trusted-motion-gates"
+      ],
+      "speakerNotes": [
+        "Use Erick's opening: 'Making the robot move is one problem. Making it move safely, measure itself, and explain what changed is much harder.'",
+        "Name physical messiness: wheel slip, motor drift, camera errors, AprilTag angle, and a moving yellow ball.",
+        "Explain that safe commands offload low-level robot control so the LLM can reason without improvising motor behavior."
+      ],
+      "transition": "The video freezes on Erick, then breaks into red gate panels for the contracts slide."
+    },
+    {
+      "id": "scene-08-erick-contracts",
+      "kind": "technical-slide",
+      "speaker": "Erick",
+      "duration": "1:25",
+      "fullscreen": false,
+      "sound": false,
+      "headline": "The LLM does not freestyle against motors.",
+      "copy": "The command layer should feel like mission control. Intent becomes a bounded command, the robot either acknowledges or faults it, and the run becomes evidence instead of a vague story.",
+      "visuals": [
+        "Trusted-motion gate diagram: intent -> vocabulary -> TTL/clamps -> watchdog -> ack/fault -> evidence.",
+        "Code-like command card with no real code overload: cmd, ttl_ms, bounds, status.",
+        "Plaud-style 'Key Takeaways' summary with three bullets."
+      ],
+      "diagramRefs": [
+        "trusted-motion-gates",
+        "evidence-funnel"
+      ],
+      "speakerNotes": [
+        "Say: 'A language model can reason, but it should not invent unsafe movement instructions.'",
+        "Explain that contracts make robot behavior inspectable: valid, accepted, completed, rejected, stale, or faulted.",
+        "Close with the strong line: 'The challenge is not motion. The challenge is trusted motion.'"
+      ],
+      "transition": "The ack/fault receipt becomes a scan line over the yellow ball, AprilTag, and Jake evidence packet.",
+      "missionThread": "Erick bounded the motion with contracts, watchdogs, and ack/fault proof. Next, Jake turns each run into evidence the model can inspect."
+    },
+    {
+      "id": "scene-09-jake-video",
+      "kind": "video-opener",
+      "speaker": "Jake",
+      "duration": "1:10",
+      "mediaId": "jake-opener",
+      "fullscreen": true,
+      "sound": true,
+      "headline": "Prediction. Observation. Gap.",
+      "copy": "Jake connects the yellow ball, AprilTag, telemetry, prediction, observation, and gap into one evidence packet. A run matters only if it leaves behind evidence the model can learn from.",
+      "visuals": [
+        "Yellow ball and AprilTag image fills the left side with a red scan pass.",
+        "Right side shows a vertical evidence funnel: image, tag pose, object hint, command, telemetry, predicted, observed, gap.",
+        "Animated dots travel from the image into a contract-valid JSONL card.",
+        "Fullscreen Jake holographic-screen clip with transcript highlights.",
+        "Packet board showing Expected, Observed, Gap, and Update."
+      ],
+      "diagramRefs": [
+        "calibration-curve",
+        "evidence-funnel"
+      ],
+      "speakerNotes": [
+        "Use the yellow ball and AprilTag as the concrete sensing example.",
+        "Explain predicted versus observed in simple terms.",
+        "Say the gap is not a failure label; it is the learning signal."
+      ],
+      "transition": "The evidence packet resolves into the final moon hero frame with the whole team and Vexy."
+    },
+    {
+      "id": "scene-10-close",
+      "kind": "closing-slide",
+      "speaker": "Team",
+      "duration": "1:30",
+      "fullscreen": false,
+      "sound": false,
+      "headline": "The next model has to answer to evidence.",
+      "copy": "The closing should feel friendly and confident without telling the audience what to think: we showed the robot body, bounded the action, captured evidence as the proof path, challenged the model, and named the next proof needed.",
+      "visuals": [
+        "Final moon hero frame with Vexy and the four-person mission crew.",
+        "Truth labels: Flow visual layer, Repo-backed premise, Run evidence required, Live success blocked until proven.",
+        "Closing message that states the evidence path plainly without implying the live robot loop is fully proven."
+      ],
+      "diagramRefs": [
+        "mission-route",
+        "critic-gate"
+      ],
+      "speakerNotes": [
+        "Say: 'Vexy treats every robot run as evidence.'",
+        "Restate the honest next milestone: connect real or replayed run evidence through the gap analyzer and critic gate.",
+        "Close: 'It is not just trying to move. It is trying to understand what happened, explain the gap, and improve from reality.'"
+      ],
+      "transition": "End on a static hero frame so the team can take questions without the page moving underneath them.",
+      "missionThread": "Jake closes the loop: prediction, observation, gap, and update keep learning honest when reality pushes back."
+    }
+  ]
+}

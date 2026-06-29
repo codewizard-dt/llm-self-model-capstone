@@ -1,0 +1,895 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Vexy Mission Rehearsal Console</title>
+    <meta
+      name="description"
+      content="Timed rehearsal console for the 10-minute Vexy Mission presentation, with scene checks, proof capture, and copyable rehearsal report."
+    >
+    <style>
+      :root {
+        color-scheme: dark;
+        --black: #030202;
+        --ink: #090303;
+        --red: #ff3030;
+        --cream: #f5eadb;
+        --muted: rgba(245, 234, 219, 0.72);
+        --dim: rgba(245, 234, 219, 0.5);
+        --cyan: #72f0ff;
+        --yellow: #ffd545;
+        --line: rgba(255, 48, 48, 0.32);
+        --line-soft: rgba(245, 234, 219, 0.14);
+        --mono: "IBM Plex Mono", "SFMono-Regular", ui-monospace, monospace;
+        --display: "Avenir Next Condensed", "DIN Condensed", "Arial Narrow", Impact, sans-serif;
+        --body: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+        --radius: 8px;
+        --max: 1240px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        color: var(--cream);
+        background:
+          radial-gradient(circle at 72% 8%, rgba(114, 240, 255, 0.12), transparent 28%),
+          radial-gradient(circle at 12% 88%, rgba(255, 48, 48, 0.16), transparent 34%),
+          linear-gradient(180deg, #020101, #100405 54%, #030202);
+        font-family: var(--body);
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+        background:
+          linear-gradient(90deg, rgba(255, 48, 48, 0.06) 1px, transparent 1px),
+          linear-gradient(0deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+        background-size: 96px 96px, 4px 4px;
+        mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.82), transparent 90%);
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .shell {
+        width: min(calc(100% - 36px), var(--max));
+        margin: 0 auto;
+        padding: 32px 0 56px;
+      }
+
+      .hero,
+      .control-deck,
+      .scene-card,
+      .proof-panel,
+      .speaker-signoff-section,
+      .signoff-card {
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius);
+        background:
+          linear-gradient(145deg, rgba(255, 48, 48, 0.1), transparent 45%),
+          rgba(9, 3, 3, 0.78);
+        box-shadow: 0 32px 110px rgba(0, 0, 0, 0.34);
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 360px;
+        gap: 20px;
+        align-items: stretch;
+        padding: 22px;
+      }
+
+      .eyebrow,
+      .label,
+      .button-link,
+      button,
+      .scene-id,
+      .time,
+      .proof-check {
+        font-family: var(--mono);
+        font-weight: 900;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow {
+        margin: 0 0 14px;
+        color: var(--red);
+        font-size: 0.72rem;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+
+      h1,
+      h2,
+      h3 {
+        font-family: var(--display);
+        line-height: 0.9;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        max-width: 780px;
+        font-size: clamp(52px, 8vw, 96px);
+      }
+
+      h2 {
+        font-size: clamp(36px, 5.4vw, 66px);
+      }
+
+      h3 {
+        font-size: clamp(25px, 3vw, 38px);
+      }
+
+      p,
+      li {
+        color: var(--muted);
+        line-height: 1.52;
+      }
+
+      .lead {
+        max-width: 760px;
+        margin-top: 16px;
+        color: var(--cream);
+        font-size: 1.05rem;
+      }
+
+      .link-row,
+      .button-row,
+      .proof-row,
+      .scene-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .link-row {
+        margin-top: 22px;
+      }
+
+      .button-link,
+      button {
+        border: 1px solid rgba(255, 48, 48, 0.42);
+        border-radius: 7px;
+        padding: 10px 12px;
+        color: var(--cream);
+        background: rgba(255, 48, 48, 0.1);
+        cursor: pointer;
+        font-size: 0.68rem;
+        text-decoration: none;
+      }
+
+      .primary,
+      button.primary {
+        border-color: rgba(255, 213, 69, 0.58);
+        background: rgba(255, 213, 69, 0.1);
+      }
+
+      .hero-aside {
+        display: grid;
+        gap: 12px;
+      }
+
+      .stat {
+        border: 1px solid rgba(114, 240, 255, 0.18);
+        border-radius: var(--radius);
+        padding: 16px;
+        background: rgba(3, 2, 2, 0.56);
+      }
+
+      .label {
+        display: block;
+        color: var(--red);
+        font-size: 0.66rem;
+      }
+
+      .stat strong {
+        display: block;
+        margin-top: 8px;
+        color: var(--cream);
+        font-family: var(--display);
+        font-size: 32px;
+        line-height: 0.92;
+        text-transform: uppercase;
+      }
+
+      .control-deck {
+        position: sticky;
+        top: 14px;
+        z-index: 5;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 18px;
+        align-items: center;
+        margin: 18px 0;
+        padding: 16px;
+        backdrop-filter: blur(22px) saturate(1.25);
+      }
+
+      .timer {
+        color: var(--yellow);
+        font-family: var(--mono);
+        font-size: clamp(34px, 5vw, 58px);
+        font-weight: 900;
+        letter-spacing: 0.02em;
+      }
+
+      .progress-shell {
+        height: 10px;
+        overflow: hidden;
+        border: 1px solid rgba(245, 234, 219, 0.16);
+        border-radius: 999px;
+        background: rgba(245, 234, 219, 0.08);
+      }
+
+      #rehearsalProgress {
+        display: block;
+        width: 0;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--red), var(--yellow), var(--cyan));
+        transition: width 220ms ease;
+      }
+
+      #rehearsalStatus {
+        margin-top: 8px;
+        color: var(--dim);
+        font-family: var(--mono);
+        font-size: 0.7rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .scene-list {
+        display: grid;
+        gap: 14px;
+      }
+
+      .scene-card {
+        display: grid;
+        grid-template-columns: 190px minmax(0, 1fr) minmax(260px, 330px);
+        gap: 18px;
+        padding: 18px;
+        transition:
+          border-color 240ms ease,
+          box-shadow 240ms ease,
+          transform 240ms ease;
+      }
+
+      .scene-card.is-current {
+        border-color: rgba(255, 213, 69, 0.72);
+        box-shadow: 0 34px 120px rgba(255, 48, 48, 0.14);
+        transform: translateY(-2px);
+      }
+
+      .scene-meta {
+        align-content: start;
+      }
+
+      .scene-id,
+      .time {
+        display: inline-flex;
+        border: 1px solid rgba(245, 234, 219, 0.14);
+        border-radius: 999px;
+        padding: 8px 10px;
+        color: var(--cream);
+        background: rgba(3, 2, 2, 0.52);
+        font-size: 0.62rem;
+      }
+
+      .time {
+        color: var(--yellow);
+      }
+
+      .scene-copy {
+        display: grid;
+        gap: 10px;
+      }
+
+      .scene-copy p {
+        max-width: 690px;
+      }
+
+      .proof-panel {
+        display: grid;
+        gap: 10px;
+        padding: 12px;
+        background: rgba(3, 2, 2, 0.48);
+      }
+
+      .speaker-signoff-section {
+        display: grid;
+        gap: 16px;
+        margin: 18px 0;
+        padding: 18px;
+        border-color: rgba(114, 240, 255, 0.26);
+        background:
+          linear-gradient(135deg, rgba(114, 240, 255, 0.1), rgba(255, 48, 48, 0.08) 48%, transparent),
+          rgba(9, 3, 3, 0.78);
+      }
+
+      .speaker-signoff-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .signoff-card {
+        display: grid;
+        gap: 10px;
+        padding: 14px;
+        background: rgba(3, 2, 2, 0.48);
+        transition:
+          border-color 220ms ease,
+          box-shadow 220ms ease,
+          transform 220ms ease;
+      }
+
+      .signoff-card.is-signed {
+        border-color: rgba(255, 213, 69, 0.62);
+        box-shadow: 0 22px 80px rgba(255, 213, 69, 0.08);
+        transform: translateY(-1px);
+      }
+
+      .signoff-card textarea {
+        min-height: 92px;
+        border: 1px solid rgba(245, 234, 219, 0.16);
+        border-radius: 7px;
+        padding: 10px;
+        color: var(--cream);
+        background: rgba(0, 0, 0, 0.3);
+        font-family: var(--body);
+        line-height: 1.4;
+        resize: vertical;
+      }
+
+      .signoff-card textarea:focus {
+        border-color: rgba(255, 213, 69, 0.74);
+        outline: none;
+        box-shadow: 0 0 0 5px rgba(255, 213, 69, 0.08);
+      }
+
+      #speakerSignoffStatus {
+        color: var(--cyan);
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .proof-check {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 9px;
+        align-items: center;
+        color: var(--muted);
+        font-size: 0.64rem;
+      }
+
+      .proof-check input {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--yellow);
+      }
+
+      .truth-note {
+        margin: 18px 0;
+        border: 1px solid rgba(255, 213, 69, 0.34);
+        border-radius: var(--radius);
+        padding: 16px;
+        background:
+          linear-gradient(90deg, rgba(255, 213, 69, 0.09), transparent 50%),
+          rgba(3, 2, 2, 0.62);
+      }
+
+      .truth-note strong {
+        color: var(--yellow);
+      }
+
+      @media (max-width: 980px) {
+        .hero,
+        .control-deck,
+        .scene-card,
+        .speaker-signoff-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .control-deck {
+          position: relative;
+          top: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Gauntlet Capstone · Rehearsal Proof</p>
+          <h1>Vexy Mission Rehearsal Console</h1>
+          <p class="lead">
+            Total 10:00. Speaker order: Grace -> David Taylor -> Erick -> Jake.
+            Use this during the live run-through to track timing, sound, video, handoff cues, and truth labels.
+          </p>
+          <div class="link-row" aria-label="Primary links">
+            <a class="button-link primary" href="./">Open audience deck</a>
+            <a class="button-link" href="./run-of-show.html">Open run of show</a>
+            <a class="button-link" href="./team-handoff.html">Open team handoff</a>
+            <a class="button-link" href="./demo-readiness.html">Open readiness</a>
+          </div>
+        </div>
+        <aside class="hero-aside" aria-label="Rehearsal proof summary">
+          <div class="stat"><span class="label">Scenes</span><strong>10</strong></div>
+          <div class="stat"><span class="label">Manual proof needed</span><strong>One live pass</strong></div>
+          <div class="stat"><span class="label">Do not overclaim</span><strong>Truth labels</strong></div>
+        </aside>
+      </section>
+
+      <section class="control-deck" aria-label="Rehearsal controls">
+        <div>
+          <span class="label">Elapsed</span>
+          <div id="rehearsalTimer" class="timer">00:00</div>
+        </div>
+        <div>
+          <span class="label">10-minute progress</span>
+          <div class="progress-shell" aria-hidden="true"><span id="rehearsalProgress"></span></div>
+          <p id="rehearsalStatus">Ready. Start when the opening video begins.</p>
+        </div>
+        <div class="button-row">
+          <button id="startRehearsal" class="primary" type="button">Start rehearsal</button>
+          <button id="copyRehearsalReport" type="button">Copy rehearsal report</button>
+          <button id="resetRehearsal" type="button">Reset rehearsal</button>
+        </div>
+      </section>
+
+      <div class="truth-note">
+        <p><strong>No live robot success claim without evidence.</strong> This console proves rehearsal readiness only. Real robot claims still need run telemetry, operator result, or video proof.</p>
+      </div>
+
+      <section class="speaker-signoff-section" aria-labelledby="speaker-signoff-heading">
+        <div>
+          <p class="eyebrow" id="speaker-signoff-heading">Speaker signoffs</p>
+          <h2>Close the live pass cleanly.</h2>
+          <p>
+            Phase 5 stays manual-required until the live rehearsal is done and each speaker confirms
+            timing, handoff, notes, and the truth boundary.
+          </p>
+        </div>
+        <div id="speakerSignoffGrid" class="speaker-signoff-grid">
+          <article class="signoff-card" data-signoff-owner="grace">
+            <span class="label">Grace</span>
+            <label class="proof-check"><input type="checkbox" data-signoff-key="timing">Timing confirmed</label>
+            <label class="proof-check"><input type="checkbox" data-signoff-key="handoff">Handoff confirmed</label>
+            <label class="proof-check"><input type="checkbox" data-signoff-key="notes">Notes ready</label>
+            <label class="proof-check"><input type="checkbox" data-signoff-key="truth">Truth boundary confirmed</label>
+            <textarea data-signoff-note-owner="grace" placeholder="Grace rehearsal note or timing correction."></textarea>
+          </article>
+          <article class="signoff-card" data-signoff-owner="david">
+            <span class="label">David Taylor</span>
+            <label class="proof-check"><input type="checkbox" data-signoff-key="timing">Timing confirmed</label>
+            <label class="proof-check"><input type="checkbox" data-signoff-key="handoff">Handoff confirmed</label>
+            <label class="proof-check"><input type="checkbox" data-signoff-key="notes">Notes ready</label>
+            <label class="proof-check"><input type="checkbox" data-signoff-key="truth">Truth boundary confirmed</label>
+            <textarea data-signoff-note-owner="david" placeholder="David Taylor rehearsal note or timing correction."></textarea>
+          </article>
+          <article class="signoff-card" data-signoff-owner="erick">
+            <span class="label">Erick</span>
+            <label class="proof-check"><input type="checkbox" data-signoff-key="timing">Timing confirmed</label>
+            <label class="proof-check"><input type="checkbox" data-signoff-key="handoff">Handoff confirmed</label>
+            <label class="proof-check"><input type="checkbox" data-signoff-key="notes">Notes ready</label>
+            <label class="proof-check"><input type="checkbox" data-signoff-key="truth">Truth boundary confirmed</label>
+            <textarea data-signoff-note-owner="erick" placeholder="Erick rehearsal note or timing correction."></textarea>
+          </article>
+          <article class="signoff-card" data-signoff-owner="jake">
+            <span class="label">Jake</span>
+            <label class="proof-check"><input type="checkbox" data-signoff-key="timing">Timing confirmed</label>
+            <label class="proof-check"><input type="checkbox" data-signoff-key="handoff">Handoff confirmed</label>
+            <label class="proof-check"><input type="checkbox" data-signoff-key="notes">Notes ready</label>
+            <label class="proof-check"><input type="checkbox" data-signoff-key="truth">Truth boundary confirmed</label>
+            <textarea data-signoff-note-owner="jake" placeholder="Jake rehearsal note or timing correction."></textarea>
+          </article>
+        </div>
+        <div class="button-row">
+          <button id="copySpeakerSignoffRequest" type="button">Copy signoff request</button>
+          <button id="copySpeakerSignoffPacket" class="primary" type="button">Copy signoff packet</button>
+        </div>
+        <p id="speakerSignoffStatus" aria-live="polite">0 / 4 speaker signoffs complete.</p>
+      </section>
+
+      <section aria-label="Interactive scene rehearsal checklist">
+        <div class="scene-list">
+          <article class="scene-card" data-scene-id="scene-01-open" data-duration="40">
+            <div class="scene-meta"><span class="scene-id">scene-01-open</span><span class="time">0:40</span></div>
+            <div class="scene-copy"><h3>The Vexy Mission</h3><p>Fullscreen moon intro. Let the video breathe, then say: A robot that can be wrong can learn.</p></div>
+            <div class="proof-panel">
+              <label class="proof-check"><input type="checkbox" data-check-key="sound">Sound checked</label>
+              <label class="proof-check"><input type="checkbox" data-check-key="video">Video played</label>
+              <label class="proof-check"><input type="checkbox" data-check-key="handoff">Speaker handoff</label>
+              <label class="proof-check"><input type="checkbox" data-check-key="truth">Truth labels respected</label>
+            </div>
+          </article>
+
+          <article class="scene-card" data-scene-id="scene-02-premise" data-duration="50">
+            <div class="scene-meta"><span class="scene-id">scene-02-premise</span><span class="time">0:50</span></div>
+            <div class="scene-copy"><h3>Body -> model -> proof</h3><p>Grace sets up the mission premise: VEX V5 body, readable self-model, yellow-ball and AprilTag proof run.</p></div>
+            <div class="proof-panel">
+              <label class="proof-check"><input type="checkbox" data-check-key="sound">Sound checked</label>
+              <label class="proof-check"><input type="checkbox" data-check-key="video">Video played</label>
+              <label class="proof-check"><input type="checkbox" data-check-key="handoff">Speaker handoff</label>
+              <label class="proof-check"><input type="checkbox" data-check-key="truth">Truth labels respected</label>
+            </div>
+          </article>
+
+          <article class="scene-card" data-scene-id="scene-03-grace-video" data-duration="45">
+            <div class="scene-meta"><span class="scene-id">scene-03-grace-video</span><span class="time">0:45</span></div>
+            <div class="scene-copy"><h3>The robot has a real body</h3><p>Grace mission-control clip. Transition from cinematic mission to VEX hardware and language self-modeling.</p></div>
+            <div class="proof-panel">
+              <label class="proof-check"><input type="checkbox" data-check-key="sound">Sound checked</label>
+              <label class="proof-check"><input type="checkbox" data-check-key="video">Video played</label>
+              <label class="proof-check"><input type="checkbox" data-check-key="handoff">Speaker handoff</label>
+              <label class="proof-check"><input type="checkbox" data-check-key="truth">Truth labels respected</label>
+            </div>
+          </article>
+
+          <article class="scene-card" data-scene-id="scene-04-components" data-duration="55">
+            <div class="scene-meta"><span class="scene-id">scene-04-components</span><span class="time">0:55</span></div>
+            <div class="scene-copy"><h3>The body and the model meet</h3><p>Macro mechanism video plus component stack: VEX body, Pi vision, contracts, telemetry, LLM, critic gate.</p></div>
+            <div class="proof-panel">
+              <label class="proof-check"><input type="checkbox" data-check-key="sound">Sound checked</label>
+              <label class="proof-check"><input type="checkbox" data-check-key="video">Video played</label>
+              <label class="proof-check"><input type="checkbox" data-check-key="handoff">Speaker handoff</label>
+              <label class="proof-check"><input type="checkbox" data-check-key="truth">Truth labels respected</label>
+            </div>
+          </article>
+
+          <article class="scene-card" data-scene-id="scene-05-david-video" data-duration="45">
+            <div class="scene-meta"><span class="scene-id">scene-05-david-video</span><span class="time">0:45</span></div>
+            <div class="scene-copy"><h3>The small learning loop</h3><p>David commander clip. The small loop is plan, execute, analyze telemetry, and start over.</p></div>
+            <div class="proof-panel">
+              <label class="proof-check"><input type="checkbox" data-check-key="sound">Sound checked</label>
+              <label class="proof-check"><input type="checkbox" data-check-key="video">Video played</label>
+              <label class="proof-check"><input type="checkbox" data-check-key="handoff">Speaker handoff</label>
+              <label class="proof-check"><input type="checkbox" data-check-key="truth">Truth labels respected</label>
+            </div>
+          </article>
+
+          <article class="scene-card" data-scene-id="scene-06-david-loop" data-duration="75">
+            <div class="scene-meta"><span class="scene-id">scene-06-david-loop</span><span class="time">1:15</span></div>
+            <div class="scene-copy"><h3>The small learning loop is not a slogan</h3><p>Generational Loop and research lattice. Keep the future-body-redesign claim honest and evidence-bound.</p></div>
+            <div class="proof-panel">
+              <label class="proof-check"><input type="checkbox" data-check-key="sound">Sound checked</label>
+              <label class="proof-check"><input type="checkbox" data-check-key="video">Video played</label>
+              <label class="proof-check"><input type="checkbox" data-check-key="handoff">Speaker handoff</label>
+              <label class="proof-check"><input type="checkbox" data-check-key="truth">Truth labels respected</label>
+            </div>
+          </article>
+
+          <article class="scene-card" data-scene-id="scene-07-erick-video" data-duration="45">
+            <div class="scene-meta"><span class="scene-id">scene-07-erick-video</span><span class="time">0:45</span></div>
+            <div class="scene-copy"><h3>The hard technical problem</h3><p>Erick mission-command clip. Making the robot move is one problem; making motion trustworthy is harder.</p></div>
+            <div class="proof-panel">
+              <label class="proof-check"><input type="checkbox" data-check-key="sound">Sound checked</label>
+              <label class="proof-check"><input type="checkbox" data-check-key="video">Video played</label>
+              <label class="proof-check"><input type="checkbox" data-check-key="handoff">Speaker handoff</label>
+              <label class="proof-check"><input type="checkbox" data-check-key="truth">Truth labels respected</label>
+            </div>
+          </article>
+
+          <article class="scene-card" data-scene-id="scene-08-erick-contracts" data-duration="85">
+            <div class="scene-meta"><span class="scene-id">scene-08-erick-contracts</span><span class="time">1:25</span></div>
+            <div class="scene-copy"><h3>The LLM does not freestyle against motors</h3><p>Trusted motion gates: bounded vocabulary, TTL/clamps, watchdogs, ack/fault states, and evidence.</p></div>
+            <div class="proof-panel">
+              <label class="proof-check"><input type="checkbox" data-check-key="sound">Sound checked</label>
+              <label class="proof-check"><input type="checkbox" data-check-key="video">Video played</label>
+              <label class="proof-check"><input type="checkbox" data-check-key="handoff">Speaker handoff</label>
+              <label class="proof-check"><input type="checkbox" data-check-key="truth">Truth labels respected</label>
+            </div>
+          </article>
+
+          <article class="scene-card" data-scene-id="scene-09-jake-video" data-duration="70">
+            <div class="scene-meta"><span class="scene-id">scene-09-jake-video</span><span class="time">1:10</span></div>
+            <div class="scene-copy"><h3>Prediction. Observation. Gap.</h3><p>Yellow ball, AprilTag, and Jake evidence clip. A run matters only if it leaves behind evidence.</p></div>
+            <div class="proof-panel">
+              <label class="proof-check"><input type="checkbox" data-check-key="sound">Sound checked</label>
+              <label class="proof-check"><input type="checkbox" data-check-key="video">Video played</label>
+              <label class="proof-check"><input type="checkbox" data-check-key="handoff">Speaker handoff</label>
+              <label class="proof-check"><input type="checkbox" data-check-key="truth">Truth labels respected</label>
+            </div>
+          </article>
+
+          <article class="scene-card" data-scene-id="scene-10-close" data-duration="90">
+            <div class="scene-meta"><span class="scene-id">scene-10-close</span><span class="time">1:30</span></div>
+            <div class="scene-copy"><h3>Vexy can learn when reality pushes back</h3><p>Final four-person moon hero. Stop for questions and avoid live-robot-success claims unless proof is shown.</p></div>
+            <div class="proof-panel">
+              <label class="proof-check"><input type="checkbox" data-check-key="sound">Sound checked</label>
+              <label class="proof-check"><input type="checkbox" data-check-key="video">Video played</label>
+              <label class="proof-check"><input type="checkbox" data-check-key="handoff">Speaker handoff</label>
+              <label class="proof-check"><input type="checkbox" data-check-key="truth">Truth labels respected</label>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const rehearsalStateStorageKey = "vexy-mission-rehearsal-state-v1";
+      const totalSeconds = 600;
+      const sceneCards = Array.from(document.querySelectorAll("[data-scene-id]"));
+      const timer = document.querySelector("#rehearsalTimer");
+      const progress = document.querySelector("#rehearsalProgress");
+      const statusLine = document.querySelector("#rehearsalStatus");
+      const startButton = document.querySelector("#startRehearsal");
+      const copyButton = document.querySelector("#copyRehearsalReport");
+      const resetButton = document.querySelector("#resetRehearsal");
+      const speakerSignoffCards = Array.from(document.querySelectorAll("[data-signoff-owner]"));
+      const speakerSignoffStatus = document.querySelector("#speakerSignoffStatus");
+      const copySpeakerSignoffRequestButton = document.querySelector("#copySpeakerSignoffRequest");
+      const copySpeakerSignoffPacketButton = document.querySelector("#copySpeakerSignoffPacket");
+      const signoffKeys = ["timing", "handoff", "notes", "truth"];
+      const signoffLabels = {
+        timing: "timing",
+        handoff: "handoff",
+        notes: "notes",
+        truth: "truth"
+      };
+      const speakerLabels = {
+        grace: "Grace",
+        david: "David Taylor",
+        erick: "Erick",
+        jake: "Jake"
+      };
+      let rehearsalInterval = null;
+
+      function readState() {
+        try {
+          return JSON.parse(localStorage.getItem(rehearsalStateStorageKey) || "{}");
+        } catch {
+          return {};
+        }
+      }
+
+      function writeState(state) {
+        localStorage.setItem(rehearsalStateStorageKey, JSON.stringify(state, null, 2));
+      }
+
+      function formatTime(seconds) {
+        const safe = Math.max(0, Math.floor(seconds));
+        const minutes = String(Math.floor(safe / 60)).padStart(2, "0");
+        const rest = String(safe % 60).padStart(2, "0");
+        return `${minutes}:${rest}`;
+      }
+
+      function sceneAtElapsed(elapsedSeconds) {
+        let cursor = 0;
+        for (const card of sceneCards) {
+          cursor += Number(card.dataset.duration || 0);
+          if (elapsedSeconds < cursor) return card;
+        }
+        return sceneCards[sceneCards.length - 1];
+      }
+
+      function updateTimer() {
+        const state = readState();
+        const elapsed = state.startedAt && state.running
+          ? Math.min(totalSeconds, (Date.now() - state.startedAt) / 1000)
+          : Number(state.elapsedSeconds || 0);
+        timer.textContent = formatTime(elapsed);
+        progress.style.width = `${Math.min(100, (elapsed / totalSeconds) * 100).toFixed(2)}%`;
+        sceneCards.forEach((card) => card.classList.toggle("is-current", card === sceneAtElapsed(elapsed)));
+        const current = document.querySelector(".scene-card.is-current");
+        statusLine.textContent = current
+          ? `Current: ${current.dataset.sceneId}. Keep speaker pacing tight and hand off cleanly.`
+          : "Ready. Start when the opening video begins.";
+      }
+
+      function startRehearsal() {
+        const state = readState();
+        const elapsedSeconds = Number(state.elapsedSeconds || 0);
+        writeState({
+          ...state,
+          running: true,
+          startedAt: Date.now() - elapsedSeconds * 1000
+        });
+        window.clearInterval(rehearsalInterval);
+        rehearsalInterval = window.setInterval(updateTimer, 500);
+        updateTimer();
+      }
+
+      function toggleSceneCheck(event) {
+        const input = event.currentTarget;
+        const card = input.closest("[data-scene-id]");
+        const state = readState();
+        const checks = state.checks || {};
+        checks[card.dataset.sceneId] = {
+          ...(checks[card.dataset.sceneId] || {}),
+          [input.dataset.checkKey]: input.checked
+        };
+        writeState({ ...state, checks });
+      }
+
+      function applyStoredChecks() {
+        const checks = readState().checks || {};
+        sceneCards.forEach((card) => {
+          const sceneChecks = checks[card.dataset.sceneId] || {};
+          card.querySelectorAll("[data-check-key]").forEach((input) => {
+            input.checked = Boolean(sceneChecks[input.dataset.checkKey]);
+          });
+        });
+      }
+
+      function completedSignoffKeys(owner, state = readState()) {
+        const signoff = state.speakerSignoffs?.[owner] || {};
+        return signoffKeys.filter((key) => signoff[key]);
+      }
+
+      function updateSpeakerSignoffStatus() {
+        const state = readState();
+        let completed = 0;
+        speakerSignoffCards.forEach((card) => {
+          const owner = card.dataset.signoffOwner;
+          const isSigned = completedSignoffKeys(owner, state).length === signoffKeys.length;
+          card.classList.toggle("is-signed", isSigned);
+          if (isSigned) completed += 1;
+        });
+        speakerSignoffStatus.textContent = `${completed} / 4 speaker signoffs complete.`;
+      }
+
+      function toggleSpeakerSignoff(event) {
+        const input = event.currentTarget;
+        const card = input.closest("[data-signoff-owner]");
+        const owner = card.dataset.signoffOwner;
+        const state = readState();
+        const speakerSignoffs = state.speakerSignoffs || {};
+        speakerSignoffs[owner] = {
+          ...(speakerSignoffs[owner] || {}),
+          [input.dataset.signoffKey]: input.checked
+        };
+        writeState({ ...state, speakerSignoffs });
+        updateSpeakerSignoffStatus();
+      }
+
+      function updateSpeakerSignoffNote(event) {
+        const input = event.currentTarget;
+        const owner = input.dataset.signoffNoteOwner;
+        const state = readState();
+        const speakerSignoffNotes = state.speakerSignoffNotes || {};
+        speakerSignoffNotes[owner] = input.value.trim();
+        writeState({ ...state, speakerSignoffNotes });
+      }
+
+      function applyStoredSpeakerSignoffs() {
+        const state = readState();
+        const speakerSignoffs = state.speakerSignoffs || {};
+        const speakerSignoffNotes = state.speakerSignoffNotes || {};
+        speakerSignoffCards.forEach((card) => {
+          const owner = card.dataset.signoffOwner;
+          card.querySelectorAll("[data-signoff-key]").forEach((input) => {
+            input.checked = Boolean(speakerSignoffs[owner]?.[input.dataset.signoffKey]);
+          });
+          const note = card.querySelector("[data-signoff-note-owner]");
+          note.value = speakerSignoffNotes[owner] || "";
+        });
+        updateSpeakerSignoffStatus();
+      }
+
+      function checkedLabelsForScene(card) {
+        return Array.from(card.querySelectorAll("[data-check-key]:checked")).map((input) =>
+          input.closest("label").textContent.trim()
+        );
+      }
+
+      async function copyRehearsalReport() {
+        const lines = [
+          "Vexy Mission Rehearsal Report",
+          `Generated: ${new Date().toISOString()}`,
+          "Total 10:00",
+          "Speaker order: Grace -> David Taylor -> Erick -> Jake",
+          ""
+        ];
+        sceneCards.forEach((card) => {
+          const labels = checkedLabelsForScene(card);
+          lines.push(`${card.dataset.sceneId} (${card.querySelector(".time").textContent.trim()}): ${labels.length ? labels.join(", ") : "no checks yet"}`);
+        });
+        lines.push("");
+        lines.push(...speakerSignoffPacketLines(readState()));
+        lines.push("");
+        lines.push("Reminder: No live robot success claim without evidence.");
+        await navigator.clipboard.writeText(lines.join("\n"));
+        statusLine.textContent = "Copied rehearsal report. Send it with the team shareback.";
+      }
+
+      function speakerSignoffPacketLines(state = readState()) {
+        const notes = state.speakerSignoffNotes || {};
+        return [
+          "Vexy Mission Speaker Signoff Packet",
+          ...Object.entries(speakerLabels).map(([owner, label]) => {
+            const completed = completedSignoffKeys(owner, state).map((key) => signoffLabels[key]);
+            const note = notes[owner] ? ` | note: ${notes[owner]}` : "";
+            return `${label}: ${completed.length ? completed.join(", ") : "missing"}${note}`;
+          }),
+          "Phase 5 stays manual-required until the live rehearsal is done and speaker confirmations are returned."
+        ];
+      }
+
+      async function copySpeakerSignoffRequest() {
+        const lines = [
+          "Vexy Mission Speaker Signoff Request",
+          "",
+          "Please confirm your rehearsal lane after the live pass with sound.",
+          "Speaker order: Grace -> David Taylor -> Erick -> Jake",
+          "",
+          "For your section, confirm:",
+          "- Timing confirmed",
+          "- Handoff confirmed",
+          "- Notes ready",
+          "- Truth boundary confirmed",
+          "",
+          "Phase 5 stays manual-required until the live rehearsal is done and speaker confirmations are returned."
+        ];
+        await navigator.clipboard.writeText(lines.join("\n"));
+        speakerSignoffStatus.textContent = "Copied speaker signoff request.";
+      }
+
+      async function copySpeakerSignoffPacket() {
+        await navigator.clipboard.writeText(speakerSignoffPacketLines(readState()).join("\n"));
+        updateSpeakerSignoffStatus();
+      }
+
+      function resetRehearsal() {
+        localStorage.removeItem(rehearsalStateStorageKey);
+        sceneCards.forEach((card) => {
+          card.classList.remove("is-current");
+          card.querySelectorAll("[data-check-key]").forEach((input) => {
+            input.checked = false;
+          });
+        });
+        speakerSignoffCards.forEach((card) => {
+          card.classList.remove("is-signed");
+          card.querySelectorAll("[data-signoff-key]").forEach((input) => {
+            input.checked = false;
+          });
+          card.querySelector("[data-signoff-note-owner]").value = "";
+        });
+        window.clearInterval(rehearsalInterval);
+        timer.textContent = "00:00";
+        progress.style.width = "0";
+        statusLine.textContent = "Ready. Start when the opening video begins.";
+        speakerSignoffStatus.textContent = "0 / 4 speaker signoffs complete.";
+      }
+
+      startButton.addEventListener("click", startRehearsal);
+      copyButton.addEventListener("click", copyRehearsalReport);
+      resetButton.addEventListener("click", resetRehearsal);
+      sceneCards.forEach((card) => {
+        card.querySelectorAll("[data-check-key]").forEach((input) => {
+          input.addEventListener("change", toggleSceneCheck);
+        });
+      });
+      speakerSignoffCards.forEach((card) => {
+        card.querySelectorAll("[data-signoff-key]").forEach((input) => {
+          input.addEventListener("change", toggleSpeakerSignoff);
+        });
+        card.querySelector("[data-signoff-note-owner]").addEventListener("input", updateSpeakerSignoffNote);
+      });
+      copySpeakerSignoffRequestButton.addEventListener("click", copySpeakerSignoffRequest);
+      copySpeakerSignoffPacketButton.addEventListener("click", copySpeakerSignoffPacket);
+      applyStoredChecks();
+      applyStoredSpeakerSignoffs();
+      updateTimer();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Vexy-Deck",
+          "value": "vexy-mission-review-v2"
+        }
+      ]
+    }
+  ]
+}
