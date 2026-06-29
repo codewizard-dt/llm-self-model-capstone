@@ -42,7 +42,7 @@ Sources:
 1. Grace default: VEX body to language model, connecting VEX V5 Brain, Smart Ports, Smart Motors, red claw, Raspberry Pi, camera, AprilTag, yellow ball, telemetry, contracts, and LLM self-model.
 2. David default: Generational Loop, connecting plan, execute, analyze telemetry, and future body redesign.
 3. Erick default: trusted motion gates, connecting intent, bounded vocabulary, limits, watchdog, ack/fault, and evidence.
-4. Jake default: evidence packet, connecting command, vision, telemetry, predicted, observed, gap, and update.
+4. Jake default: perception to proof, connecting AprilTags, yellow-ball detection, scene coordinates, telemetry, JSONL evidence, predicted, observed, gap, and update.
 5. Each speaker must have five diagram choices so teammates can swap the visual without rewriting the whole slide.
 
 ## Speaker Flow
@@ -50,7 +50,7 @@ Sources:
 1. Grace: Self-Modeling Machines, in Language; what Vexy is physically; why VEX V5 matters; Raspberry Pi/AprilTags/yellow ball; Loop 1, Loop 2, grab, pull, and throw.
 2. David Taylor: the small learning loop and the larger Generational Loop.
 3. Erick: trusted motion, bounded commands, and why safe physical action is hard.
-4. Jake: evidence packet, prediction versus observation, and the gap as the learning signal.
+4. Jake: perception-to-proof, AprilTag localization, coordinate formatting, JSONL evidence, and the gap as the learning signal.
 
 ## Reject Gates
 

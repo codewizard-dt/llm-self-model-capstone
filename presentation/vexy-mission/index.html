@@ -615,14 +615,14 @@
         </div>
         <aside class="copy-suggestions liquid-glass speaker-private" data-edit-only data-private-owner="jake" data-owner="jake">
           <h3>Suggested framing</h3>
-          <p>Say: "The gap is not a failure label. It is the learning signal that keeps the model grounded in the run."</p>
+          <p>Say: "Raw camera frames are not enough. The robot needs localized scene evidence before the model can learn from the run."</p>
         </aside>
         <details class="speaker-notes speaker-private" data-edit-only data-private-owner="jake">
           <summary>Jake speaking notes</summary>
           <p data-edit-key="jake_notes" data-owner="jake">
-            Jake can say: if Vexy expects to grab the yellow ball but the claw alignment is off,
-            that failure is not embarrassing. It is data. The evidence packet turns the run into
-            something the model can learn from.
+            Jake can say: the Pi camera gives us frames, but the system needs structured state:
+            where the robot is, where the AprilTag and yellow ball are, and how confident those observations are.
+            That scene evidence is what makes the later gap meaningful.
           </p>
         </details>
       </section>
