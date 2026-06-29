@@ -1,714 +1,840 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Vexy Mission Presentation</title>
-    <meta
-      name="description"
-      content="The sendable Vexy capstone presentation: a red and black moon-mission story about VEX V5, trusted motion, evidence packets, and language self-modeling."
-    >
-    <link rel="stylesheet" href="./styles.css?v=audience-cleanup-2026-06-29">
-  </head>
-  <body>
-    <a class="skip-link" href="#mission-open">Skip to presentation</a>
-    <button id="startPresentation" class="start-presentation" type="button">
-      <span>Play with sound</span>
-    </button>
-    <div class="edit-toolbar" aria-label="Presentation edit tools">
-      <button id="editPresentation" type="button" aria-pressed="false">Review / Edit</button>
-      <button id="pinComment" type="button" aria-pressed="false">Pin a spot</button>
-      <label class="owner-select-label" for="speakerOwner">Editing as</label>
-      <select id="speakerOwner" aria-label="Choose editable speaker owner">
-        <option value="unassigned">Choose your name</option>
-        <option value="grace">Grace</option>
-        <option value="david">David Taylor</option>
-        <option value="erick">Erick</option>
-        <option value="jake">Jake</option>
-      </select>
-      <button id="toggleSuggestions" type="button">Suggestions</button>
-      <button id="copyReviewLink" type="button" disabled>Copy review link</button>
-      <details id="reviewToolsMenu" class="review-tools-menu">
-        <summary>Advanced tools</summary>
-        <div class="review-tools-popover">
-          <button id="copyEdits" type="button" disabled>Copy edits JSON</button>
-          <button id="copyReviewMarkdown" type="button" disabled>Copy review MD</button>
-          <button id="exportReviewPacket" type="button" disabled>Export review packet</button>
-          <button id="importReviewPacket" type="button">Import review packet</button>
-          <input id="importReviewPacketFile" type="file" accept="application/json" hidden>
-          <button id="downloadEditedHtml" type="button" disabled>Download edited HTML</button>
-          <button id="resetEdits" type="button" disabled>Reset edits</button>
-        </div>
-      </details>
-      <span id="editStatus" aria-live="polite">View mode</span>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vexy Mission Presentation</title>
+  <meta name="description"
+    content="The sendable Vexy capstone presentation: a red and black moon-mission story about VEX V5, trusted motion, evidence packets, and language self-modeling.">
+  <link rel="stylesheet" href="./styles.css?v=audience-cleanup-2026-06-29">
+</head>
+
+<body>
+  <a class="skip-link" href="#mission-open">Skip to presentation</a>
+  <button id="startPresentation" class="start-presentation" type="button">
+    <span>Play with sound</span>
+  </button>
+  <div class="edit-toolbar" aria-label="Presentation edit tools">
+    <button id="editPresentation" type="button" aria-pressed="false">Review / Edit</button>
+    <button id="pinComment" type="button" aria-pressed="false">Pin a spot</button>
+    <label class="owner-select-label" for="speakerOwner">Editing as</label>
+    <select id="speakerOwner" aria-label="Choose editable speaker owner">
+      <option value="unassigned">Choose your name</option>
+      <option value="grace">Grace</option>
+      <option value="david">David Taylor</option>
+      <option value="erick">Erick</option>
+      <option value="jake">Jake</option>
+    </select>
+    <button id="toggleSuggestions" type="button">Suggestions</button>
+    <button id="copyReviewLink" type="button" disabled>Copy review link</button>
+    <details id="reviewToolsMenu" class="review-tools-menu">
+      <summary>Advanced tools</summary>
+      <div class="review-tools-popover">
+        <button id="copyEdits" type="button" disabled>Copy edits JSON</button>
+        <button id="copyReviewMarkdown" type="button" disabled>Copy review MD</button>
+        <button id="exportReviewPacket" type="button" disabled>Export review packet</button>
+        <button id="importReviewPacket" type="button">Import review packet</button>
+        <input id="importReviewPacketFile" type="file" accept="application/json" hidden>
+        <button id="downloadEditedHtml" type="button" disabled>Download edited HTML</button>
+        <button id="resetEdits" type="button" disabled>Reset edits</button>
+      </div>
+    </details>
+    <span id="editStatus" aria-live="polite">View mode</span>
+  </div>
+  <section id="reviewLauncher" class="review-lane-launcher" aria-live="polite">
+    <p class="eyebrow">Private review lane</p>
+    <h2><span id="reviewLauncherName">Choose your speaker</span> review lane</h2>
+    <p>
+      Click <strong>Review / Edit</strong> when you are ready. The deck will open your private notes,
+      diagram choices, pin comments, suggestions, ready check, and Copy review link.
+    </p>
+  </section>
+  <div id="pinModeBanner" class="pin-mode-banner" data-edit-only hidden aria-live="polite">
+    <strong>Pinning mode</strong>
+    <span>Click the exact slide spot that needs a fix, then write the note in the drawer.</span>
+    <button id="cancelPinModeButton" type="button">Cancel</button>
+  </div>
+  <aside id="reviewDrawer" class="review-drawer" aria-label="Pinned comments and copy suggestions">
+    <div class="drawer-head">
+      <p class="eyebrow">Review console · Vercel edit mode</p>
+      <button id="closeReviewDrawer" type="button" aria-label="Close review drawer">Close</button>
     </div>
-    <section id="reviewLauncher" class="review-lane-launcher" aria-live="polite">
-      <p class="eyebrow">Private review lane</p>
-      <h2><span id="reviewLauncherName">Choose your speaker</span> review lane</h2>
-      <p>
-        Click <strong>Review / Edit</strong> when you are ready. The deck will open your private notes,
-        diagram choices, pin comments, suggestions, ready check, and Copy review link.
-      </p>
+    <p class="drawer-copy">
+      Use <strong>?edit=1</strong> for teammate review. Comments and edits save locally in this browser;
+      use <strong>Copy review link</strong> to send a database-free shareable review link with the
+      review packet embedded in the URL hash. Shared live persistence still requires a Vercel Function
+      plus a small KV/database store.
+    </p>
+    <section id="reviewFocusCard" class="review-focus-card" data-edit-only aria-live="polite">
+      <p class="eyebrow">Review lane</p>
+      <h3 id="reviewFocusTitle">Choose your speaker</h3>
+      <p id="reviewFocusCopy">Pick your name to see the exact review path and what still needs to be sent back.</p>
+      <ol id="reviewChecklist" class="review-checklist"></ol>
     </section>
-    <div id="pinModeBanner" class="pin-mode-banner" data-edit-only hidden aria-live="polite">
-      <strong>Pinning mode</strong>
-      <span>Click the exact slide spot that needs a fix, then write the note in the drawer.</span>
-      <button id="cancelPinModeButton" type="button">Cancel</button>
-    </div>
-    <aside id="reviewDrawer" class="review-drawer" aria-label="Pinned comments and copy suggestions">
-      <div class="drawer-head">
-        <p class="eyebrow">Review console · Vercel edit mode</p>
-        <button id="closeReviewDrawer" type="button" aria-label="Close review drawer">Close</button>
+    <ol id="reviewRail" class="review-rail" aria-label="Teammate review steps">
+      <li><strong>1. Choose your name</strong><span>Lock the deck to your speaking part before editing.</span></li>
+      <li><strong>2. Edit, pin, pick</strong><span>Rewrite copy, pin exact comments, and select one diagram for your
+          slide.</span></li>
+      <li><strong>3. Send back review packet</strong><span>Use Copy review link for a fast handoff, or export JSON for
+          larger reviews.</span></li>
+    </ol>
+    <div id="speakerQuickLinks" class="speaker-quick-links" data-edit-only>
+      <h3>Speaker quick links</h3>
+      <p>Send one of these so each teammate opens directly in their own review lane.</p>
+      <div>
+        <a href="?edit=1&owner=grace">Grace</a>
+        <a href="?edit=1&owner=david">David Taylor</a>
+        <a href="?edit=1&owner=erick">Erick</a>
+        <a href="?edit=1&owner=jake">Jake</a>
       </div>
-      <p class="drawer-copy">
-        Use <strong>?edit=1</strong> for teammate review. Comments and edits save locally in this browser;
-        use <strong>Copy review link</strong> to send a database-free shareable review link with the
-          review packet embedded in the URL hash. Shared live persistence still requires a Vercel Function
-          plus a small KV/database store.
+      <a id="teamHandoffPage" class="handoff-page-link" href="./team-handoff.html" target="_blank" rel="noopener">Open
+        team handoff</a>
+      <a id="speakerAssetsPage" class="handoff-page-link" href="./speaker-assets.html" target="_blank"
+        rel="noopener">Open speaker assets</a>
+      <a id="runOfShowPage" class="handoff-page-link" href="./run-of-show.html" target="_blank" rel="noopener">Open run
+        of show</a>
+      <a id="readinessPage" class="handoff-page-link" href="./demo-readiness.html" target="_blank" rel="noopener">Open
+        readiness</a>
+      <button id="copyTeamHandoff" type="button">Copy team handoff</button>
+    </div>
+    <div id="speakerReadyPanel" class="speaker-ready-panel" data-edit-only>
+      <h3>Ready check</h3>
+      <p>After reviewing your notes and pins, mark your section ready so Grace can see who is done.</p>
+      <button id="markSpeakerReady" type="button">Mark my section ready</button>
+      <div id="speakerReadyList" class="speaker-ready-list" aria-live="polite"></div>
+    </div>
+    <div id="pinComposer" class="pin-composer" hidden>
+      <label for="pinCommentText">What should change here?</label>
+      <textarea id="pinCommentText" rows="4" aria-describedby="pinComposerMeta"></textarea>
+      <small id="pinComposerMeta">No pin selected yet.</small>
+      <div class="pin-composer-actions">
+        <button id="savePinComment" type="button">Save pin</button>
+        <button id="cancelPinComment" type="button">Cancel</button>
+      </div>
+    </div>
+    <div id="suggestionPanel" class="suggestion-panel">
+      <h3>Speaker guidance</h3>
+      <p>Select a speaker or pin a slide to see targeted suggestions.</p>
+    </div>
+    <div id="suggestionBank" class="suggestion-bank" data-edit-only>
+      <h3>Add to speaker notes</h3>
+      <p>Choose your name, then add a suggested line to your private speaker notes.</p>
+    </div>
+    <div id="commentList" class="comment-list" aria-live="polite"></div>
+  </aside>
+
+  <header class="topbar" aria-label="Presentation controls">
+    <a class="brand" href="#mission-open"><span></span>Vexy Mission</a>
+    <nav aria-label="Presentation sections">
+      <a href="#mission-open">Open</a>
+      <a href="#premise">Premise</a>
+      <a href="#grace">Grace</a>
+      <a href="#david">David</a>
+      <a href="#erick">Erick</a>
+      <a href="#jake">Jake</a>
+    </nav>
+    <div class="progress-shell" aria-hidden="true"><span id="progressBar"></span></div>
+  </header>
+
+  <main id="deck">
+    <section id="mission-open" class="slide hero-video" data-label="Open" data-slide-id="mission-open"
+      data-comment-surface>
+      <video class="screen-video" data-presentation-video data-video-lock data-loop-after-copy autoplay muted controls
+        playsinline preload="metadata" poster="./contact/vexy_identity_lock_trailer.jpg">
+        <source src="./media/vexy_identity_lock_trailer.mp4" type="video/mp4">
+      </video>
+      <div class="cinema-shade"></div>
+      <div class="cleanse-scan" aria-hidden="true"></div>
+      <div class="hero-copy claw-anchor timed-copy" data-reveal>
+        <p class="eyebrow" data-edit-key="hero_eyebrow">Gauntlet Capstone · X35 Self-Model Premise</p>
+        <h1 data-edit-key="hero_title">The Vexy Mission</h1>
+        <p class="thesis" data-edit-key="hero_thesis">
+          A robot that can be wrong can learn.
         </p>
-      <section id="reviewFocusCard" class="review-focus-card" data-edit-only aria-live="polite">
-        <p class="eyebrow">Review lane</p>
-        <h3 id="reviewFocusTitle">Choose your speaker</h3>
-        <p id="reviewFocusCopy">Pick your name to see the exact review path and what still needs to be sent back.</p>
-        <ol id="reviewChecklist" class="review-checklist"></ol>
-      </section>
-      <ol id="reviewRail" class="review-rail" aria-label="Teammate review steps">
-        <li><strong>1. Choose your name</strong><span>Lock the deck to your speaking part before editing.</span></li>
-        <li><strong>2. Edit, pin, pick</strong><span>Rewrite copy, pin exact comments, and select one diagram for your slide.</span></li>
-        <li><strong>3. Send back review packet</strong><span>Use Copy review link for a fast handoff, or export JSON for larger reviews.</span></li>
-      </ol>
-      <div id="speakerQuickLinks" class="speaker-quick-links" data-edit-only>
-        <h3>Speaker quick links</h3>
-        <p>Send one of these so each teammate opens directly in their own review lane.</p>
+        <p class="hero-proof" data-edit-key="hero_proof">
+          Vexy is built to learn from reality: it compares what it expects from its own body against what a real run
+          proves.
+        </p>
+      </div>
+    </section>
+
+    <section id="premise" class="slide premise-slide lovable-vibe" data-label="Premise" data-slide-id="premise"
+      data-comment-surface data-owner="grace">
+      <div class="mission-scan" aria-hidden="true"></div>
+      <div class="premise-grid scroll-reveal animos-rise" data-transition data-reveal>
+        <div class="premise-copy">
+          <p class="eyebrow" data-edit-key="part1_eyebrow">Before Grace · mission premise</p>
+          <h2 class="kinetic-word" data-edit-key="part1_title">Body -> model -> proof.</h2>
+          <p class="slide-purpose" data-edit-key="part1_purpose">
+            What this slide sets up: Grace connects the VEX V5 body to a readable self-model,
+            then shows why the yellow ball and AprilTag make learning measurable. In plain terms,
+            Vexy predicts in language, then lets a real run prove it right or wrong.
+          </p>
+          <div class="premise-cues" aria-label="Grace section listening cues">
+            <span><strong>Body</strong><em>VEX V5 Brain, Smart Ports, motors, wheels, and red claw.</em></span>
+            <span><strong>Self-model</strong><em>Vexy predicts what its body can do in readable language.</em></span>
+            <span><strong>Proof run</strong><em>The run measures what actually happened with the ball and
+                tag.</em></span>
+          </div>
+          <p data-edit-key="part1_copy">
+            Self-Modeling Machines, in Language starts with a simple contract: the body makes a
+            prediction, the world pushes back, and the model revises. VEX V5, Raspberry Pi vision,
+            AprilTag pose, and the yellow ball make that claim testable on a real robot.
+          </p>
+        </div>
+        <div class="loop-brief liquid-glass" data-diagram data-transition>
+          <article>
+            <span>Loop 1</span>
+            <strong>Calibration</strong>
+            <p>One body, many cycles. Prediction error should shrink as Vexy reads its own runs.</p>
+          </article>
+          <article>
+            <span>Loop 2</span>
+            <strong>Morphology</strong>
+            <p>A future stretch where new shapes are re-authored, rebuilt, and reconciled.</p>
+          </article>
+          <article>
+            <span>Primitive arc</span>
+            <strong>Grab · Pull · Throw</strong>
+            <p>Grab is the safety net, pull is the calibration spine, throw is the hero move.</p>
+          </article>
+        </div>
+      </div>
+      <details class="speaker-notes speaker-private" data-edit-only data-private-owner="grace">
+        <summary>Speaker note</summary>
+        <p data-edit-key="part1_notes" data-owner="grace">
+          Keep this slide focused on the premise. David Taylor will not cover the VEX hardware intro;
+          Grace owns the physical body, the language self-model, the two loops, and the grab/pull/throw arc.
+        </p>
+      </details>
+    </section>
+
+    <section class="slide speaker-film" data-label="Grace" data-slide-id="grace-film" data-comment-surface
+      data-owner="grace">
+      <video class="screen-video" data-presentation-video data-video-lock autoplay muted controls playsinline
+        preload="metadata" poster="./contact/grace_mission_control.jpg">
+        <source src="./media/grace_mission_control.mp4" type="video/mp4">
+      </video>
+      <div class="cinema-shade"></div>
+      <div class="film-card scroll-reveal" data-reveal>
+        <p class="eyebrow" data-edit-key="grace_film_eyebrow">Grace · mission briefing</p>
+        <h2 data-edit-key="grace_film_title">The robot has a real body.</h2>
+      </div>
+    </section>
+
+    <section id="grace" class="slide speaker-slide grace-slide lovable-vibe" data-label="Grace" data-slide-id="grace"
+      data-comment-surface data-owner="grace">
+      <div class="speaker-kicker">
+        <span>Grace · 2:00</span>
+        <span data-edit-key="grace_kicker">What Vexy is and why VEX V5 makes this technically real</span>
+      </div>
+      <div class="speaker-layout scroll-reveal" data-transition data-reveal>
         <div>
-          <a href="?edit=1&owner=grace">Grace</a>
-          <a href="?edit=1&owner=david">David Taylor</a>
-          <a href="?edit=1&owner=erick">Erick</a>
-          <a href="?edit=1&owner=jake">Jake</a>
-        </div>
-        <a id="teamHandoffPage" class="handoff-page-link" href="./team-handoff.html" target="_blank" rel="noopener">Open team handoff</a>
-        <a id="speakerAssetsPage" class="handoff-page-link" href="./speaker-assets.html" target="_blank" rel="noopener">Open speaker assets</a>
-        <a id="runOfShowPage" class="handoff-page-link" href="./run-of-show.html" target="_blank" rel="noopener">Open run of show</a>
-        <a id="readinessPage" class="handoff-page-link" href="./demo-readiness.html" target="_blank" rel="noopener">Open readiness</a>
-        <button id="copyTeamHandoff" type="button">Copy team handoff</button>
-      </div>
-      <div id="speakerReadyPanel" class="speaker-ready-panel" data-edit-only>
-        <h3>Ready check</h3>
-        <p>After reviewing your notes and pins, mark your section ready so Grace can see who is done.</p>
-        <button id="markSpeakerReady" type="button">Mark my section ready</button>
-        <div id="speakerReadyList" class="speaker-ready-list" aria-live="polite"></div>
-      </div>
-      <div id="pinComposer" class="pin-composer" hidden>
-        <label for="pinCommentText">What should change here?</label>
-        <textarea id="pinCommentText" rows="4" aria-describedby="pinComposerMeta"></textarea>
-        <small id="pinComposerMeta">No pin selected yet.</small>
-        <div class="pin-composer-actions">
-          <button id="savePinComment" type="button">Save pin</button>
-          <button id="cancelPinComment" type="button">Cancel</button>
-        </div>
-      </div>
-      <div id="suggestionPanel" class="suggestion-panel">
-        <h3>Speaker guidance</h3>
-        <p>Select a speaker or pin a slide to see targeted suggestions.</p>
-      </div>
-      <div id="suggestionBank" class="suggestion-bank" data-edit-only>
-        <h3>Add to speaker notes</h3>
-        <p>Choose your name, then add a suggested line to your private speaker notes.</p>
-      </div>
-      <div id="commentList" class="comment-list" aria-live="polite"></div>
-    </aside>
-
-    <header class="topbar" aria-label="Presentation controls">
-      <a class="brand" href="#mission-open"><span></span>Vexy Mission</a>
-      <nav aria-label="Presentation sections">
-        <a href="#mission-open">Open</a>
-        <a href="#premise">Premise</a>
-        <a href="#grace">Grace</a>
-        <a href="#david">David</a>
-        <a href="#erick">Erick</a>
-        <a href="#jake">Jake</a>
-      </nav>
-      <div class="progress-shell" aria-hidden="true"><span id="progressBar"></span></div>
-    </header>
-
-    <main id="deck">
-      <section id="mission-open" class="slide hero-video" data-label="Open" data-slide-id="mission-open" data-comment-surface>
-        <video class="screen-video" data-presentation-video data-video-lock data-loop-after-copy autoplay muted controls playsinline preload="metadata" poster="./contact/vexy_identity_lock_trailer.jpg">
-          <source src="./media/vexy_identity_lock_trailer.mp4" type="video/mp4">
-        </video>
-        <div class="cinema-shade"></div>
-        <div class="cleanse-scan" aria-hidden="true"></div>
-        <div class="hero-copy claw-anchor timed-copy" data-reveal>
-          <p class="eyebrow" data-edit-key="hero_eyebrow">Gauntlet Capstone · X35 Self-Model Premise</p>
-          <h1 data-edit-key="hero_title">The Vexy Mission</h1>
-          <p class="thesis" data-edit-key="hero_thesis">
-            A robot that can be wrong can learn.
-          </p>
-          <p class="hero-proof" data-edit-key="hero_proof">
-            Vexy is built to learn from reality: it compares what it expects from its own body against what a real run proves.
+          <h2 class="kinetic-word" data-edit-key="grace_title" data-owner="grace">Vexy is a real body learning in
+            language.</h2>
+          <p class="big-copy" data-edit-key="grace_copy">
+            VEX V5 gives the project a physical body: VEX V5 Brain, Smart Ports, Smart Motors,
+            wheels, red claw mechanics, battery behavior, Raspberry Pi vision, AprilTag localization,
+            and a yellow ball mission sample. Those constraints are exactly what make the self-model meaningful.
           </p>
         </div>
-      </section>
-
-      <section id="premise" class="slide premise-slide lovable-vibe" data-label="Premise" data-slide-id="premise" data-comment-surface data-owner="grace">
-        <div class="mission-scan" aria-hidden="true"></div>
-        <div class="premise-grid scroll-reveal animos-rise" data-transition data-reveal>
-          <div class="premise-copy">
-            <p class="eyebrow" data-edit-key="part1_eyebrow">Before Grace · mission premise</p>
-            <h2 class="kinetic-word" data-edit-key="part1_title">Body -> model -> proof.</h2>
-            <p class="slide-purpose" data-edit-key="part1_purpose">
-              What this slide sets up: Grace connects the VEX V5 body to a readable self-model,
-              then shows why the yellow ball and AprilTag make learning measurable. In plain terms,
-              Vexy predicts in language, then lets a real run prove it right or wrong.
-            </p>
-            <div class="premise-cues" aria-label="Grace section listening cues">
-              <span><strong>Body</strong><em>VEX V5 Brain, Smart Ports, motors, wheels, and red claw.</em></span>
-              <span><strong>Self-model</strong><em>Vexy predicts what its body can do in readable language.</em></span>
-              <span><strong>Proof run</strong><em>The run measures what actually happened with the ball and tag.</em></span>
-            </div>
-            <p data-edit-key="part1_copy">
-              Self-Modeling Machines, in Language starts with a simple contract: the body makes a
-              prediction, the world pushes back, and the model revises. VEX V5, Raspberry Pi vision,
-              AprilTag pose, and the yellow ball make that claim testable on a real robot.
-            </p>
-          </div>
-          <div class="loop-brief liquid-glass" data-diagram data-transition>
-            <article>
-              <span>Loop 1</span>
-              <strong>Calibration</strong>
-              <p>One body, many cycles. Prediction error should shrink as Vexy reads its own runs.</p>
-            </article>
-            <article>
-              <span>Loop 2</span>
-              <strong>Morphology</strong>
-              <p>A future stretch where new shapes are re-authored, rebuilt, and reconciled.</p>
-            </article>
-            <article>
-              <span>Primitive arc</span>
-              <strong>Grab · Pull · Throw</strong>
-              <p>Grab is the safety net, pull is the calibration spine, throw is the hero move.</p>
-            </article>
-          </div>
-        </div>
-        <details class="speaker-notes speaker-private" data-edit-only data-private-owner="grace">
-          <summary>Speaker note</summary>
-          <p data-edit-key="part1_notes" data-owner="grace">
-            Keep this slide focused on the premise. David Taylor will not cover the VEX hardware intro;
-            Grace owns the physical body, the language self-model, the two loops, and the grab/pull/throw arc.
-          </p>
-        </details>
-      </section>
-
-      <section class="slide speaker-film" data-label="Grace" data-slide-id="grace-film" data-comment-surface data-owner="grace">
-        <video class="screen-video" data-presentation-video data-video-lock autoplay muted controls playsinline preload="metadata" poster="./contact/grace_mission_control.jpg">
-          <source src="./media/grace_mission_control.mp4" type="video/mp4">
-        </video>
-        <div class="cinema-shade"></div>
-        <div class="film-card scroll-reveal" data-reveal>
-          <p class="eyebrow" data-edit-key="grace_film_eyebrow">Grace · mission briefing</p>
-          <h2 data-edit-key="grace_film_title">The robot has a real body.</h2>
-        </div>
-      </section>
-
-      <section id="grace" class="slide speaker-slide grace-slide lovable-vibe" data-label="Grace" data-slide-id="grace" data-comment-surface data-owner="grace">
-        <div class="speaker-kicker">
-          <span>Grace · 2:00</span>
-          <span data-edit-key="grace_kicker">What Vexy is and why VEX V5 makes this technically real</span>
-        </div>
-        <div class="speaker-layout scroll-reveal" data-transition data-reveal>
-          <div>
-            <h2 class="kinetic-word" data-edit-key="grace_title" data-owner="grace">Vexy is a real body learning in language.</h2>
-            <p class="big-copy" data-edit-key="grace_copy">
-              VEX V5 gives the project a physical body: VEX V5 Brain, Smart Ports, Smart Motors,
-              wheels, red claw mechanics, battery behavior, Raspberry Pi vision, AprilTag localization,
-              and a yellow ball mission sample. Those constraints are exactly what make the self-model meaningful.
-            </p>
-          </div>
-          <aside id="grace-insights" class="bullet-panel key-insights speaker-private" data-edit-only data-private-owner="grace" data-speaker-insights="Grace">
-            <h3>Key insights</h3>
-            <ul>
-              <li>Self-Modeling Machines, in Language is the core premise.</li>
-              <li>Vexy is a physical VEX V5 robot, not an abstract AI demo.</li>
-              <li>The robot compares imagined self versus measured self.</li>
-              <li>Grab, pull, and throw make the premise visible on the yellow ball.</li>
-              <li>Loop 1 calibrates one body; Loop 2 is future morphology redesign.</li>
-              <li>Every claim about learning has to come from a run, a sensor, or an evidence packet.</li>
-            </ul>
-          </aside>
-        </div>
-        <div class="mission-thread scroll-reveal" data-transition data-reveal>
-          <span>Mission thread</span>
-          <p>Grace grounded the body: VEX hardware makes the model accountable. Next, David turns that body into a learning loop.</p>
-        </div>
-        <div class="hardware-assembly scroll-reveal stagger-reveal" data-transition data-reveal aria-label="Vexy component assembly diagram">
-          <article data-diagram><span>Body</span><strong>VEX V5 Brain</strong><p>Control hardware and program surface.</p></article>
-          <article data-diagram><span>Actuators</span><strong>Smart Motors</strong><p>Drive, arm, claw, torque and position evidence.</p></article>
-          <article data-diagram><span>Manipulator</span><strong>Red claw</strong><p>Grab the yellow ball; expose force and alignment limits.</p></article>
-          <article data-diagram><span>Vision</span><strong>Raspberry Pi</strong><p>Camera Module 3, AprilTag pose, and object hints.</p></article>
-          <article data-diagram><span>Evidence</span><strong>Telemetry + JSONL</strong><p>Predicted, observed, gap, and revision input.</p></article>
-        </div>
-        <div class="primitive-arc" data-transition>
-          <span data-diagram>Grab · safety net</span>
-          <span data-diagram>Pull · calibration spine</span>
-          <span data-diagram>Throw · hero primitive</span>
-        </div>
-        <section class="active-diagram-board liquid-glass scroll-reveal" data-transition data-reveal data-active-diagram-owner="Grace" aria-label="Selected Grace diagram">
-          <article class="active-diagram-panel is-selected" data-diagram-panel="grace-hardware-stack" data-diagram data-transition>
-            <span>Selected diagram</span>
-            <strong>VEX Body To Language Model</strong>
-            <p>VEX V5 Brain, Smart Ports, Smart Motors, red claw, Raspberry Pi vision, AprilTag marker, yellow ball, telemetry, contracts, and LLM self-model as one accountable system.</p>
-          </article>
-          <article class="active-diagram-panel" data-diagram-panel="grace-self-model-loop" data-diagram data-transition hidden>
-            <span>Selected diagram</span>
-            <strong>Self-Modeling Machines, in Language</strong>
-            <p>Imagined self, measured self, prediction error, residual model, and revised language self-model explain how a physical run can challenge the robot's own description.</p>
-          </article>
-          <article class="active-diagram-panel" data-diagram-panel="grace-primitive-arc" data-diagram data-transition hidden>
-            <span>Selected diagram</span>
-            <strong>Grab · Pull · Throw Arc</strong>
-            <p>The yellow ball turns the premise into visible behavior: grab is the safety net, pull is the calibration spine, and throw is the future hero primitive.</p>
-          </article>
-          <article class="active-diagram-panel" data-diagram-panel="grace-two-loops" data-diagram data-transition hidden>
-            <span>Selected diagram</span>
-            <strong>Loop 1 And Loop 2</strong>
-            <p>Loop 1 calibrates one known body from evidence. Loop 2 is the future morphology loop where the LLM can propose a redesigned body and test it again.</p>
-          </article>
-          <article class="active-diagram-panel" data-diagram-panel="grace-sense-act-measure-improve" data-diagram data-transition hidden>
-            <span>Selected diagram</span>
-            <strong>Sense · Act · Measure · Improve</strong>
-            <p>Vexy senses the tag and ball, acts through bounded robot commands, measures the result, and improves only when evidence proves what changed.</p>
-          </article>
-        </section>
-        <div class="diagram-choice-shell scroll-reveal speaker-private" data-edit-only data-private-owner="grace" data-reveal data-diagram-owner="Grace">
-          <div class="choice-heading">
-            <span>Choose Grace diagram</span>
-            <strong>Selected: VEX Body To Language Model</strong>
-          </div>
-          <div class="diagram-choice-grid">
-            <button class="diagram-choice-card is-selected" data-diagram-choice="grace-hardware-stack" type="button">VEX body to language model</button>
-            <button class="diagram-choice-card" data-diagram-choice="grace-self-model-loop" type="button">Self-model loop</button>
-            <button class="diagram-choice-card" data-diagram-choice="grace-primitive-arc" type="button">Grab / pull / throw</button>
-            <button class="diagram-choice-card" data-diagram-choice="grace-two-loops" type="button">Loop 1 vs Loop 2</button>
-            <button class="diagram-choice-card" data-diagram-choice="grace-sense-act-measure-improve" type="button">Sense / act / measure</button>
-          </div>
-        </div>
-        <aside class="copy-suggestions liquid-glass speaker-private" data-edit-only data-private-owner="grace" data-owner="grace">
-          <h3>Suggested framing</h3>
-          <p>Say: "Self-Modeling Machines, in Language. Vexy is not just moving a yellow ball; it is learning where its imagined body disagrees with the body reality measures."</p>
+        <aside id="grace-insights" class="bullet-panel key-insights speaker-private" data-edit-only
+          data-private-owner="grace" data-speaker-insights="Grace">
+          <h3>Key insights</h3>
+          <ul>
+            <li>Self-Modeling Machines, in Language is the core premise.</li>
+            <li>Vexy is a physical VEX V5 robot, not an abstract AI demo.</li>
+            <li>The robot compares imagined self versus measured self.</li>
+            <li>Grab, pull, and throw make the premise visible on the yellow ball.</li>
+            <li>Loop 1 calibrates one body; Loop 2 is future morphology redesign.</li>
+            <li>Every claim about learning has to come from a run, a sensor, or an evidence packet.</li>
+          </ul>
         </aside>
-        <details class="speaker-notes speaker-private" data-edit-only data-private-owner="grace">
-          <summary>Grace speaking notes</summary>
-          <p data-edit-key="grace_notes" data-owner="grace">
-            Open with the premise: "Self-Modeling Machines, in Language." Explain that Vexy is a
-            real VEX V5 robot: VEX V5 Brain, Smart Ports, Smart Motors, wheels, red claw, Raspberry Pi,
-            camera, AprilTags, and yellow ball. Then name the loops: Loop 1 calibration on one body;
-            Loop 2 future morphology redesign. Close with grab as the proof task, pull as the calibration
-            spine, and throw as the future capability arc.
+      </div>
+      <div class="mission-thread scroll-reveal" data-transition data-reveal>
+        <span>Mission thread</span>
+        <p>Grace grounded the body: VEX hardware makes the model accountable. Next, David turns that body into a
+          learning loop.</p>
+      </div>
+      <div class="hardware-assembly scroll-reveal stagger-reveal" data-transition data-reveal
+        aria-label="Vexy component assembly diagram">
+        <article data-diagram><span>Body</span><strong>VEX V5 Brain</strong>
+          <p>Control hardware and program surface.</p>
+        </article>
+        <article data-diagram><span>Actuators</span><strong>Smart Motors</strong>
+          <p>Drive, arm, claw, torque and position evidence.</p>
+        </article>
+        <article data-diagram><span>Manipulator</span><strong>Red claw</strong>
+          <p>Grab the yellow ball; expose force and alignment limits.</p>
+        </article>
+        <article data-diagram><span>Vision</span><strong>Raspberry Pi</strong>
+          <p>Camera Module 3, AprilTag pose, and object hints.</p>
+        </article>
+        <article data-diagram><span>Evidence</span><strong>Telemetry + JSONL</strong>
+          <p>Predicted, observed, gap, and revision input.</p>
+        </article>
+      </div>
+      <div class="primitive-arc" data-transition>
+        <span data-diagram>Grab · safety net</span>
+        <span data-diagram>Pull · calibration spine</span>
+        <span data-diagram>Throw · hero primitive</span>
+      </div>
+      <section class="active-diagram-board liquid-glass scroll-reveal" data-transition data-reveal
+        data-active-diagram-owner="Grace" aria-label="Selected Grace diagram">
+        <article class="active-diagram-panel is-selected" data-diagram-panel="grace-hardware-stack" data-diagram
+          data-transition>
+          <span>Selected diagram</span>
+          <strong>VEX Body To Language Model</strong>
+          <p>VEX V5 Brain, Smart Ports, Smart Motors, red claw, Raspberry Pi vision, AprilTag marker, yellow ball,
+            telemetry, contracts, and LLM self-model as one accountable system.</p>
+        </article>
+        <article class="active-diagram-panel" data-diagram-panel="grace-self-model-loop" data-diagram data-transition
+          hidden>
+          <span>Selected diagram</span>
+          <strong>Self-Modeling Machines, in Language</strong>
+          <p>Imagined self, measured self, prediction error, residual model, and revised language self-model explain how
+            a physical run can challenge the robot's own description.</p>
+        </article>
+        <article class="active-diagram-panel" data-diagram-panel="grace-primitive-arc" data-diagram data-transition
+          hidden>
+          <span>Selected diagram</span>
+          <strong>Grab · Pull · Throw Arc</strong>
+          <p>The yellow ball turns the premise into visible behavior: grab is the safety net, pull is the calibration
+            spine, and throw is the future hero primitive.</p>
+        </article>
+        <article class="active-diagram-panel" data-diagram-panel="grace-two-loops" data-diagram data-transition hidden>
+          <span>Selected diagram</span>
+          <strong>Loop 1 And Loop 2</strong>
+          <p>Loop 1 calibrates one known body from evidence. Loop 2 is the future morphology loop where the LLM can
+            propose a redesigned body and test it again.</p>
+        </article>
+        <article class="active-diagram-panel" data-diagram-panel="grace-sense-act-measure-improve" data-diagram
+          data-transition hidden>
+          <span>Selected diagram</span>
+          <strong>Sense · Act · Measure · Improve</strong>
+          <p>Vexy senses the tag and ball, acts through bounded robot commands, measures the result, and improves only
+            when evidence proves what changed.</p>
+        </article>
+      </section>
+      <div class="diagram-choice-shell scroll-reveal speaker-private" data-edit-only data-private-owner="grace"
+        data-reveal data-diagram-owner="Grace">
+        <div class="choice-heading">
+          <span>Choose Grace diagram</span>
+          <strong>Selected: VEX Body To Language Model</strong>
+        </div>
+        <div class="diagram-choice-grid">
+          <button class="diagram-choice-card is-selected" data-diagram-choice="grace-hardware-stack" type="button">VEX
+            body to language model</button>
+          <button class="diagram-choice-card" data-diagram-choice="grace-self-model-loop" type="button">Self-model
+            loop</button>
+          <button class="diagram-choice-card" data-diagram-choice="grace-primitive-arc" type="button">Grab / pull /
+            throw</button>
+          <button class="diagram-choice-card" data-diagram-choice="grace-two-loops" type="button">Loop 1 vs Loop
+            2</button>
+          <button class="diagram-choice-card" data-diagram-choice="grace-sense-act-measure-improve" type="button">Sense
+            / act / measure</button>
+        </div>
+      </div>
+      <aside class="copy-suggestions liquid-glass speaker-private" data-edit-only data-private-owner="grace"
+        data-owner="grace">
+        <h3>Suggested framing</h3>
+        <p>Say: "Self-Modeling Machines, in Language. Vexy is not just moving a yellow ball; it is learning where its
+          imagined body disagrees with the body reality measures."</p>
+      </aside>
+      <details class="speaker-notes speaker-private" data-edit-only data-private-owner="grace">
+        <summary>Grace speaking notes</summary>
+        <p data-edit-key="grace_notes" data-owner="grace">
+          Open with the premise: "Self-Modeling Machines, in Language." Explain that Vexy is a
+          real VEX V5 robot: VEX V5 Brain, Smart Ports, Smart Motors, wheels, red claw, Raspberry Pi,
+          camera, AprilTags, and yellow ball. Then name the loops: Loop 1 calibration on one body;
+          Loop 2 future morphology redesign. Close with grab as the proof task, pull as the calibration
+          spine, and throw as the future capability arc.
+        </p>
+      </details>
+    </section>
+
+    <section class="slide speaker-film" data-label="David" data-slide-id="david-film" data-comment-surface
+      data-owner="david">
+      <video class="screen-video" data-presentation-video data-video-lock autoplay muted controls playsinline
+        preload="metadata" poster="./contact/david_mission_commander.jpg">
+        <source src="./media/david_mission_commander.mp4" type="video/mp4">
+      </video>
+      <div class="cinema-shade"></div>
+      <div class="film-card scroll-reveal" data-reveal>
+        <p class="eyebrow" data-edit-key="david_film_eyebrow">David Taylor · learning loop</p>
+        <h2 data-edit-key="david_film_title">Learning is a loop, not a claim.</h2>
+      </div>
+    </section>
+
+    <section id="david" class="slide speaker-slide david-slide lovable-vibe david-flowchart-slide" data-label="David"
+      data-slide-id="david" data-comment-surface data-owner="david">
+      <div class="speaker-kicker">
+        <span>David Taylor · 2:00</span>
+        <span>Small learning loop, Generational Loop, and next proof</span>
+      </div>
+      <div class="david-flowchart-shell liquid-glass scroll-reveal" data-transition data-reveal data-diagram>
+        <div class="david-flowchart-copy">
+          <p class="eyebrow" data-edit-key="david_flowchart_eyebrow">DATA_WORKFLOW.md · Top-Level Nodes</p>
+          <h2 data-edit-key="david_title" data-owner="david">The small learning loop</h2>
+          <p class="big-copy" data-edit-key="david_copy">
+            Telemetry, evidence, gap analysis, self-model generation, critic approval, and operator commands form one
+            closed data loop.
           </p>
-        </details>
-      </section>
+        </div>
+        <div class="top-level-flowchart" aria-label="DATA_WORKFLOW.md Top-Level Nodes flowchart">
+          <svg class="flowchart-edges" viewBox="0 0 1280 720" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <marker id="flow-arrow-neutral" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5"
+                orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z" fill="#aeb1b8"></path>
+              </marker>
+              <marker id="flow-arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5"
+                orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z" fill="#30a46c"></path>
+              </marker>
+              <marker id="flow-arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5"
+                orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z" fill="#e5484d"></path>
+              </marker>
+              <marker id="flow-arrow-gold" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5"
+                orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z" fill="#e0901a"></path>
+              </marker>
+            </defs>
+            <path class="flow-edge flow-edge-gold" d="M 136 338 C 158 318 166 318 188 338"
+              marker-end="url(#flow-arrow-gold)"></path>
+            <path class="flow-edge-pulse flow-pulse-gold" d="M 136 338 C 158 318 166 318 188 338"
+              style="animation-delay: 0s;"></path>
+            <path class="flow-edge flow-edge-red flow-edge-dashed" d="M 188 408 C 166 428 158 428 136 408"
+              marker-end="url(#flow-arrow-red)"></path>
+            <path class="flow-edge-pulse flow-pulse-red" d="M 188 408 C 166 428 158 428 136 408"
+              style="animation-delay: -0.35s;"></path>
+            <path class="flow-edge flow-edge-gold" d="M 296 370 C 320 370 344 370 346 370"
+              marker-end="url(#flow-arrow-gold)"></path>
+            <path class="flow-edge-pulse flow-pulse-gold" d="M 296 370 C 320 370 344 370 346 370"
+              style="animation-delay: -0.7s;"></path>
+            <path class="flow-edge flow-edge-gold" d="M 456 370 C 480 370 504 370 506 370"
+              marker-end="url(#flow-arrow-gold)"></path>
+            <path class="flow-edge-pulse flow-pulse-gold" d="M 456 370 C 480 370 504 370 506 370"
+              style="animation-delay: -1.05s;"></path>
+            <path class="flow-edge flow-edge-gold" d="M 616 370 C 640 370 664 370 666 370"
+              marker-end="url(#flow-arrow-gold)"></path>
+            <path class="flow-edge-pulse flow-pulse-gold" d="M 616 370 C 640 370 664 370 666 370"
+              style="animation-delay: -1.4s;"></path>
+            <path class="flow-edge flow-edge-gold" d="M 776 370 C 800 370 824 370 826 370"
+              marker-end="url(#flow-arrow-gold)"></path>
+            <path class="flow-edge-pulse flow-pulse-gold" d="M 776 370 C 800 370 824 370 826 370"
+              style="animation-delay: -1.75s;"></path>
+            <path class="flow-edge" d="M 936 370 C 960 370 984 370 986 370" marker-end="url(#flow-arrow-neutral)">
+            </path>
+            <path class="flow-edge-pulse flow-pulse-neutral" d="M 936 370 C 960 370 984 370 986 370"
+              style="animation-delay: -2.1s;"></path>
+            <path class="flow-edge flow-edge-green" d="M 1096 370 C 1120 370 1144 370 1146 370"
+              marker-end="url(#flow-arrow-green)"></path>
+            <path class="flow-edge-pulse flow-pulse-green" d="M 1096 370 C 1120 370 1144 370 1146 370"
+              style="animation-delay: -2.45s;"></path>
+            <path class="flow-edge flow-edge-red flow-edge-dashed" d="M 1201 424 C 1201 622 242 622 242 424"
+              marker-end="url(#flow-arrow-red)"></path>
+            <path class="flow-edge-pulse flow-pulse-red" d="M 1201 424 C 1201 622 242 622 242 424"
+              style="animation-delay: -2.8s;"></path>
+          </svg>
+          <span class="flow-label flow-label-gold" style="left: 12.7%; top: 37.5%;">ack + telemetry</span>
+          <span class="flow-label flow-label-red" style="left: 12.7%; top: 65%;">serial command</span>
+          <span class="flow-label flow-label-gold" style="left: 25.1%; top: 37.5%;">topic
+            pub/sub<br /><i>JSON</i></span>
+          <span class="flow-label flow-label-gold" style="left: 37.6%; top: 37.5%;">ContractLine<br />
+            <i>JSONL</i></span>
+          <span class="flow-label flow-label-gold" style="left: 50.1%; top: 37.5%;">Gap Analysis</span>
+          <span class="flow-label flow-label-gold"
+            style="left: 62.6%; top: 37.5%;">SelfModel<br /><i>candidate</i></span>
+          <span class="flow-label" style="left: 75.1%; top: 37.5%;">Self-model<br /><i>approved</i></span>
+          <span class="flow-label flow-label-green" style="left: 87.6%; top: 37.5%;">TaskEnvelope
+            <br /><i>JSON</i></span>
+          <span class="flow-label flow-label-red" style="left: 56.5%; top: 87%;">Control <br /><i>JSON</i></span>
 
-      <section class="slide speaker-film" data-label="David" data-slide-id="david-film" data-comment-surface data-owner="david">
-        <video class="screen-video" data-presentation-video data-video-lock autoplay muted controls playsinline preload="metadata" poster="./contact/david_mission_commander.jpg">
-          <source src="./media/david_mission_commander.mp4" type="video/mp4">
-        </video>
-        <div class="cinema-shade"></div>
-        <div class="film-card scroll-reveal" data-reveal>
-          <p class="eyebrow" data-edit-key="david_film_eyebrow">David Taylor · learning loop</p>
-          <h2 data-edit-key="david_film_title">Learning is a loop, not a claim.</h2>
+          <article class="flow-node flow-input" style="left: 2%; top: 45.8%; width: 8.6%; --role: #6b6e76;">
+            <span>Firmware</span><strong>V5 Brain firmware</strong>
+            <p>ack + telemetry JSON</p>
+          </article>
+          <article class="flow-node flow-subsystem" style="left: 14.7%; top: 45.8%; width: 8.6%; --role: #3b6ef6;">
+            <span>Bridge</span><strong>ROS VEX bridge</strong>
+            <p>topics + serial command</p>
+          </article>
+          <article class="flow-node flow-store" style="left: 27.2%; top: 45.8%; width: 8.6%; --role: #e0901a;">
+            <span>Evidence</span><strong>Evidence export</strong>
+            <p>ContractLine JSONL</p>
+          </article>
+          <article class="flow-node flow-subsystem" style="left: 39.7%; top: 45.8%; width: 8.6%; --role: #3b6ef6;">
+            <span>Analyzer</span><strong>Gap analyzer</strong>
+            <p>gap_summary</p>
+          </article>
+          <article class="flow-node flow-subsystem" style="left: 52.2%; top: 45.8%; width: 8.6%; --role: #3b6ef6;">
+            <span>Generator</span><strong>Self-model generator</strong>
+            <p>SelfModel candidate</p>
+          </article>
+          <article class="flow-node flow-gate" style="left: 64.7%; top: 45.8%; width: 8.6%; --role: #4f5a78;">
+            <span>Critic</span><strong>Critic panel</strong>
+            <p>approved report</p>
+          </article>
+          <article class="flow-node flow-output" style="left: 77.2%; top: 45.8%; width: 8.6%; --role: #30a46c;">
+            <span>Export</span><strong>Task Envelope export</strong>
+            <p>TaskEnvelope JSON</p>
+          </article>
+          <article class="flow-node flow-boundary" style="left: 89.7%; top: 45.8%; width: 8.6%; --role: #e5484d;">
+            <span>Operator</span><strong>ROS operator</strong>
+            <p>control JSON</p>
+          </article>
         </div>
-      </section>
+        <div class="flowchart-legend" aria-label="Flowchart legend">
+          <span><i style="background:#6b6e76"></i>Firmware</span>
+          <span><i style="background:#3b6ef6"></i>Subsystem</span>
+          <span><i style="background:#e0901a"></i>Evidence data</span>
+          <span><i style="background:#4f5a78"></i>Critic gate</span>
+          <span><i style="background:#30a46c"></i>Task export</span>
+          <span><i style="background:#e5484d"></i>Control loop</span>
+        </div>
+      </div>
+      <details class="speaker-notes speaker-private" data-edit-only data-private-owner="david">
+        <summary>David speaking notes</summary>
+        <p data-edit-key="david_notes" data-owner="david">
+          David should say: the small loop is not "LLM says robot improved." It is plan,
+          execute, analyze telemetry, and start over. Then zoom out to the Generational Loop:
+          what if an LLM could redesign its own body and adapt to the real world? Ground the
+          novelty in three inspirations: numerical self-modeling, which stays in a sub-symbolic
+          tensor; LLM morphology generation, which is mostly simulation; and LLM self-improvement,
+          which tunes control parameters on hardware without a self-model. The honest status is
+          that challenges restricted us to simple tasks, and Vexy was beginning to conquer putting
+          the ball in the bin. The next step would be letting Vexy redesign component parts into
+          new forms for increasingly complex tasks.
+        </p>
+      </details>
+    </section>
 
-      <section id="david" class="slide speaker-slide david-slide lovable-vibe" data-label="David" data-slide-id="david" data-comment-surface data-owner="david">
-        <div class="speaker-kicker">
-          <span>David Taylor · 2:00</span>
-          <span>Small learning loop, Generational Loop, and next proof</span>
+    <section class="slide mechanism-slide body-model-slide lovable-vibe" data-label="Architecture"
+      data-slide-id="body-becomes-model" data-comment-surface>
+      <video class="screen-video body-model-video" data-presentation-video data-loop-while-talking autoplay muted loop
+        controls playsinline preload="metadata" poster="./contact/red_mechanism_macro_slide.jpg">
+        <source src="./media/red_mechanism_macro_slide.mp4" type="video/mp4">
+      </video>
+      <div class="section-lockup scroll-reveal" data-reveal>
+        <p class="eyebrow" data-edit-key="architecture_eyebrow">Part 2 · The body becomes the model</p>
+        <h2 data-edit-key="architecture_title">The hardware and the language model have to meet in the middle.</h2>
+        <p data-edit-key="architecture_copy">
+          The demo is technically interesting because the robot is not just executing a script.
+          It is moving through a pipeline where hardware, perception, contracts, telemetry, evidence,
+          language, critics, and human approval all have a job.
+        </p>
+      </div>
+      <div class="stack-diagram scroll-reveal" data-transition data-reveal>
+        <div class="framer-transition" data-transition data-diagram>Physical VEX body</div>
+        <div class="framer-transition" data-transition data-diagram>Vision and AprilTag observations</div>
+        <div class="framer-transition" data-transition data-diagram>Bounded command contract</div>
+        <div class="framer-transition" data-transition data-diagram>Run evidence packet</div>
+        <div class="framer-transition" data-transition data-diagram>Language self-model</div>
+        <div class="framer-transition" data-transition data-diagram>Critic gate and approval</div>
+      </div>
+    </section>
+
+    <section class="slide speaker-film" data-label="Erick" data-slide-id="erick-film" data-comment-surface
+      data-owner="erick">
+      <video class="screen-video" data-presentation-video data-video-lock autoplay muted controls playsinline
+        preload="metadata" poster="./contact/erick_mission_commands.jpg">
+        <source src="./media/erick_mission_commands.mp4" type="video/mp4">
+      </video>
+      <div class="cinema-shade"></div>
+      <div class="film-card scroll-reveal" data-reveal>
+        <p class="eyebrow" data-edit-key="erick_film_eyebrow">Erick · hard technical problem</p>
+        <h2 data-edit-key="erick_film_title">The hard part is trusted motion.</h2>
+      </div>
+    </section>
+
+    <section id="erick" class="slide speaker-slide lovable-vibe" data-label="Erick" data-slide-id="erick"
+      data-comment-surface data-owner="erick">
+      <div class="speaker-kicker">
+        <span>Erick · 2:30</span>
+        <span>The Hard Technical Problem</span>
+      </div>
+      <div class="speaker-layout scroll-reveal" data-transition data-reveal>
+        <div>
+          <h2 data-edit-key="erick_title" data-owner="erick">Making the robot move is one problem. Making motion
+            trustworthy is harder.</h2>
+          <p class="big-copy" data-edit-key="erick_copy">
+            Trusted motion means every LLM intent has to pass through a command contract:
+            bounded vocabulary, limits, watchdogs, ack/fault states, and evidence capture.
+            The robot can move only in ways the runtime can validate and the learning loop can inspect.
+          </p>
         </div>
-        <div class="speaker-layout scroll-reveal" data-transition data-reveal>
-          <div>
-            <h2 data-edit-key="david_title" data-owner="david">The small learning loop is not a slogan.</h2>
-            <p class="big-copy" data-edit-key="david_copy">
-              It generates a plan, executes it, analyzes telemetry, and starts over. The larger
-              Generational Loop asks the bigger question: what if an LLM could redesign its own body
-              and adapt to conditions in the real world?
-            </p>
-          </div>
-          <aside id="david-insights" class="bullet-panel key-insights liquid-glass speaker-private" data-edit-only data-private-owner="david" data-speaker-insights="David Taylor">
-            <h3>Key insights</h3>
-            <ul>
-              <li>Learning means plan, execute, analyze telemetry, then start over.</li>
-              <li>The larger Generational Loop points toward body redesign, not only control tuning.</li>
-              <li>Prior work inspired the project, but each lane misses a piece Vexy tries to combine.</li>
-              <li>Telemetry includes motor samples, vision state, and operator results.</li>
-              <li>Vexy treats every run as evidence for what should change next.</li>
-            </ul>
-          </aside>
-        </div>
-        <div class="mission-thread scroll-reveal" data-transition data-reveal>
-          <span>Mission thread</span>
-          <p>David defined learning as plan, execute, analyze telemetry, and start over. Next, Erick makes that motion trustworthy with bounded commands.</p>
-        </div>
-        <div class="generational-loop metric-graph liquid-glass scroll-reveal" data-transition data-diagram data-reveal>
-          <article data-diagram>
-            <span>01</span>
-            <strong>Generate plan</strong>
-            <p>LLM proposes a bounded action plan.</p>
-          </article>
-          <article data-diagram>
-            <span>02</span>
-            <strong>Execute run</strong>
-            <p>Vexy attempts a simple task like putting the ball in the bin.</p>
-          </article>
-          <article data-diagram>
-            <span>03</span>
-            <strong>Analyze evidence</strong>
-            <p>Motor samples, vision state, and operator results expose the gap.</p>
-          </article>
-          <article data-diagram>
-            <span>04</span>
-            <strong>Redesign self</strong>
-            <p>The long-term loop would let future versions propose morphology changes, then test them against real-world evidence.</p>
-          </article>
-        </div>
-        <div class="research-lattice scroll-reveal" data-transition data-reveal>
-          <article class="transition-card framer-transition liquid-glass" data-transition data-diagram>
-            <span>Numerical self-modeling</span>
-            <p>Powerful but often locked inside a sub-symbolic tensor that humans cannot read.</p>
-          </article>
-          <article class="transition-card framer-transition liquid-glass" data-transition data-diagram>
-            <span>LLM morphology generation</span>
-            <p>LLMs can generate robot designs, but the work is usually in simulation.</p>
-          </article>
-          <article class="transition-card framer-transition liquid-glass" data-transition data-diagram>
-            <span>LLM self-improvement</span>
-            <p>Can optimize control parameters on real hardware, but without a self-model component.</p>
-          </article>
-          <article class="transition-card framer-transition liquid-glass" data-transition data-diagram>
-            <span>Vexy synthesis</span>
-            <p>Combines evidence, language self-modeling, and LLM-redesignable morphology.</p>
-          </article>
-        </div>
-        <section class="active-diagram-board liquid-glass scroll-reveal" data-transition data-reveal data-active-diagram-owner="David Taylor" aria-label="Selected David Taylor diagram">
-          <article class="active-diagram-panel is-selected" data-diagram-panel="david-generational-loop" data-diagram data-transition>
-            <span>Selected diagram</span>
-            <strong>Generational Loop</strong>
-            <p>Plan, execute, analyze telemetry, revise, and eventually redesign the body. This keeps David focused on learning loops instead of repeating the hardware intro.</p>
-          </article>
-          <article class="active-diagram-panel" data-diagram-panel="david-research-matrix" data-diagram data-transition hidden>
-            <span>Selected diagram</span>
-            <strong>Research Synthesis Matrix</strong>
-            <p>Numerical self-modeling gives adaptation, LLM morphology gives design generation, LLM self-improvement gives hardware tuning, and Vexy combines those ideas with readable evidence.</p>
-          </article>
-          <article class="active-diagram-panel" data-diagram-panel="david-telemetry-to-redesign" data-diagram data-transition hidden>
-            <span>Selected diagram</span>
-            <strong>Telemetry To Redesign</strong>
-            <p>Motor samples, vision state, operator results, and run outcome become the evidence that can justify a next model or a future morphology change.</p>
-          </article>
-          <article class="active-diagram-panel" data-diagram-panel="david-honest-status" data-diagram data-transition hidden>
-            <span>Selected diagram</span>
-            <strong>Honest Status Ladder</strong>
-            <p>Today: simple tasks and ball-in-bin progress. Next: stronger evidence loops. Future: component redesign for increasingly complex tasks.</p>
-          </article>
-          <article class="active-diagram-panel" data-diagram-panel="david-what-is-novel" data-diagram data-transition hidden>
-            <span>Selected diagram</span>
-            <strong>What Is Novel</strong>
-            <p>The novelty is combining a readable language self-model, real telemetry, critic review, and future morphology generation in one evidence-driven experiment.</p>
-          </article>
-        </section>
-        <div class="diagram-choice-shell scroll-reveal speaker-private" data-edit-only data-private-owner="david" data-reveal data-diagram-owner="David Taylor">
-          <div class="choice-heading">
-            <span>Choose David diagram</span>
-            <strong>Selected: Generational Loop</strong>
-          </div>
-          <div class="diagram-choice-grid">
-            <button class="diagram-choice-card is-selected" data-diagram-choice="david-generational-loop" type="button">Generational loop</button>
-            <button class="diagram-choice-card" data-diagram-choice="david-research-matrix" type="button">Research matrix</button>
-            <button class="diagram-choice-card" data-diagram-choice="david-telemetry-to-redesign" type="button">Telemetry to redesign</button>
-            <button class="diagram-choice-card" data-diagram-choice="david-honest-status" type="button">Honest status ladder</button>
-            <button class="diagram-choice-card" data-diagram-choice="david-what-is-novel" type="button">What is novel</button>
-          </div>
-        </div>
-        <aside class="copy-suggestions liquid-glass speaker-private" data-edit-only data-private-owner="david" data-owner="david">
-          <h3>Suggested framing</h3>
-          <p>Say: "The small loop is not LLM says robot improved. It is plan, execute, analyze telemetry, and start over."</p>
+        <aside id="erick-insights" class="bullet-panel key-insights speaker-private" data-edit-only
+          data-private-owner="erick" data-speaker-insights="Erick">
+          <h3>Key insights</h3>
+          <ul>
+            <li>The challenge is not motion or action. The challenge is trusted motion.</li>
+            <li>Commands need strict contracts and bounded vocabulary.</li>
+            <li>Every run needs prediction, observation, and proof.</li>
+            <li>The LLM reasons; it does not freestyle against motors.</li>
+            <li>Safe commands let robot control stay low-level while the LLM stays bounded to reasoning.</li>
+          </ul>
         </aside>
-        <details class="speaker-notes speaker-private" data-edit-only data-private-owner="david">
-          <summary>David speaking notes</summary>
-          <p data-edit-key="david_notes" data-owner="david">
-            David should say: the small loop is not "LLM says robot improved." It is plan,
-            execute, analyze telemetry, and start over. Then zoom out to the Generational Loop:
-            what if an LLM could redesign its own body and adapt to the real world? Ground the
-            novelty in three inspirations: numerical self-modeling, which stays in a sub-symbolic
-            tensor; LLM morphology generation, which is mostly simulation; and LLM self-improvement,
-            which tunes control parameters on hardware without a self-model. The honest status is
-            that challenges restricted us to simple tasks, and Vexy was beginning to conquer putting
-            the ball in the bin. The next step would be letting Vexy redesign component parts into
-            new forms for increasingly complex tasks.
+      </div>
+      <div class="mission-thread scroll-reveal" data-transition data-reveal>
+        <span>Mission thread</span>
+        <p>Erick bounded the motion with contracts, watchdogs, and ack/fault proof. Next, Jake turns each run into
+          evidence the model can inspect.</p>
+      </div>
+      <div class="gate-row scroll-reveal" data-transition data-reveal aria-label="Trusted motion gates">
+        <span data-diagram>Intent</span>
+        <span data-diagram>Vocabulary</span>
+        <span data-diagram>Limits</span>
+        <span data-diagram>Watchdog</span>
+        <span data-diagram>Ack or Fault</span>
+        <span data-diagram>Evidence</span>
+      </div>
+      <section class="active-diagram-board liquid-glass scroll-reveal" data-transition data-reveal
+        data-active-diagram-owner="Erick" aria-label="Selected Erick diagram">
+        <article class="active-diagram-panel is-selected" data-diagram-panel="erick-trusted-motion-gates" data-diagram
+          data-transition>
+          <span>Selected diagram</span>
+          <strong>Trusted Motion Gates</strong>
+          <p>Intent moves through bounded vocabulary, limits, watchdogs, ack or fault states, and evidence before anyone
+            claims the motion was safe or meaningful.</p>
+        </article>
+        <article class="active-diagram-panel" data-diagram-panel="erick-ack-fault-envelope" data-diagram data-transition
+          hidden>
+          <span>Selected diagram</span>
+          <strong>Ack And Fault Envelope</strong>
+          <p>Every command should land in a known state: accepted, rejected, stale, completed, or faulted. That envelope
+            keeps the LLM bounded.</p>
+        </article>
+        <article class="active-diagram-panel" data-diagram-panel="erick-llm-boundary-box" data-diagram data-transition
+          hidden>
+          <span>Selected diagram</span>
+          <strong>LLM Boundary Box</strong>
+          <p>The LLM reasons about safe command packets and expected outcomes; low-level motors, watchdogs, and timing
+            stay inside the robot control layer.</p>
+        </article>
+        <article class="active-diagram-panel" data-diagram-panel="erick-safety-failure-tree" data-diagram
+          data-transition hidden>
+          <span>Selected diagram</span>
+          <strong>Physical Failure Tree</strong>
+          <p>Wheel slip, motor drift, camera error, moving object, AprilTag angle, and claw misalignment are normal
+            real-world failure paths that the system has to name.</p>
+        </article>
+        <article class="active-diagram-panel" data-diagram-panel="erick-proof-chain" data-diagram data-transition
+          hidden>
+          <span>Selected diagram</span>
+          <strong>Proof Chain</strong>
+          <p>A trusted run connects prediction, command, observation, telemetry, proof, and explanation so the motion
+            can be measured instead of merely asserted.</p>
+        </article>
+      </section>
+      <div class="diagram-choice-shell scroll-reveal speaker-private" data-edit-only data-private-owner="erick"
+        data-reveal data-diagram-owner="Erick">
+        <div class="choice-heading">
+          <span>Choose Erick diagram</span>
+          <strong>Selected: Trusted Motion Gates</strong>
+        </div>
+        <div class="diagram-choice-grid">
+          <button class="diagram-choice-card is-selected" data-diagram-choice="erick-trusted-motion-gates"
+            type="button">Trusted gates</button>
+          <button class="diagram-choice-card" data-diagram-choice="erick-ack-fault-envelope" type="button">Ack / fault
+            envelope</button>
+          <button class="diagram-choice-card" data-diagram-choice="erick-llm-boundary-box" type="button">LLM
+            boundary</button>
+          <button class="diagram-choice-card" data-diagram-choice="erick-safety-failure-tree" type="button">Failure
+            tree</button>
+          <button class="diagram-choice-card" data-diagram-choice="erick-proof-chain" type="button">Proof chain</button>
+        </div>
+      </div>
+      <aside class="copy-suggestions liquid-glass speaker-private" data-edit-only data-private-owner="erick"
+        data-owner="erick">
+        <h3>Suggested framing</h3>
+        <p>Say: "The LLM can reason, but it does not freestyle against motors. Trusted motion means bounded commands
+          plus evidence."</p>
+      </aside>
+      <details class="speaker-notes speaker-private" data-edit-only data-private-owner="erick">
+        <summary>Erick speaking notes</summary>
+        <p data-edit-key="erick_notes" data-owner="erick">
+          Use the exact line: "Making the robot move is one problem. Making it move safely,
+          measure itself, and explain what changed is much harder." Erick's section is the command boundary:
+          the LLM proposes intent, but the robot runtime validates bounded command packets. Name the concrete
+          guardrails: vocabulary, limits, TTL/clamps, watchdogs, ack/fault states, and evidence capture.
+          Every command should resolve as accepted, rejected, stale, completed, or faulted. If a command has no evidence
+          trail, the model cannot safely learn from it. Close with: "The challenge is not motion
+          or action. The challenge is trusted motion."
+        </p>
+      </details>
+    </section>
+
+    <section class="slide sample-slide" data-label="Sense Before Action" data-slide-id="sense-before-action"
+      data-comment-surface data-owner="jake">
+      <img class="sample-image" src="./media/yellow_ball_apriltag.jpeg"
+        alt="Vexy near a yellow ball and AprilTag marker on a dark lunar surface">
+      <div class="sample-label scroll-reveal" data-reveal>
+        <p class="eyebrow" data-edit-key="part3_eyebrow">Part 3 · Sense before action</p>
+      </div>
+    </section>
+
+    <section class="slide speaker-film" data-label="Jake" data-slide-id="jake-film" data-comment-surface
+      data-owner="jake">
+      <video class="screen-video" data-presentation-video data-video-lock autoplay muted controls playsinline
+        preload="metadata" poster="./contact/jake_holographic_screen.jpg">
+        <source src="./media/jake_holographic_screen.mp4" type="video/mp4">
+      </video>
+      <div class="cinema-shade"></div>
+      <div class="film-card scroll-reveal" data-reveal>
+        <p class="eyebrow" data-edit-key="jake_film_eyebrow">Jake · evidence packet</p>
+        <h2 data-edit-key="jake_film_title">Prediction. Observation. Gap.</h2>
+      </div>
+    </section>
+
+    <section id="jake" class="slide speaker-slide lovable-vibe" data-label="Jake" data-slide-id="jake"
+      data-comment-surface data-owner="jake">
+      <div class="speaker-kicker">
+        <span>Jake · 2:00</span>
+        <span>Evidence packet and measurement</span>
+      </div>
+      <div class="speaker-layout scroll-reveal" data-transition data-reveal>
+        <div>
+          <h2 data-edit-key="jake_title" data-owner="jake">A run matters only if it leaves behind evidence.</h2>
+          <p class="big-copy" data-edit-key="jake_copy">
+            Vexy needs a packet that says what was predicted, what was observed, what telemetry
+            came back, and where reality disagreed. That gap is the learning signal.
           </p>
-        </details>
-      </section>
-
-      <section class="slide mechanism-slide body-model-slide lovable-vibe" data-label="Architecture" data-slide-id="body-becomes-model" data-comment-surface>
-        <video class="screen-video body-model-video" data-presentation-video data-loop-while-talking autoplay muted loop controls playsinline preload="metadata" poster="./contact/red_mechanism_macro_slide.jpg">
-          <source src="./media/red_mechanism_macro_slide.mp4" type="video/mp4">
-        </video>
-        <div class="section-lockup scroll-reveal" data-reveal>
-          <p class="eyebrow" data-edit-key="architecture_eyebrow">Part 2 · The body becomes the model</p>
-          <h2 data-edit-key="architecture_title">The hardware and the language model have to meet in the middle.</h2>
-          <p data-edit-key="architecture_copy">
-            The demo is technically interesting because the robot is not just executing a script.
-            It is moving through a pipeline where hardware, perception, contracts, telemetry, evidence,
-            language, critics, and human approval all have a job.
-          </p>
         </div>
-        <div class="stack-diagram scroll-reveal" data-transition data-reveal>
-          <div class="framer-transition" data-transition data-diagram>Physical VEX body</div>
-          <div class="framer-transition" data-transition data-diagram>Vision and AprilTag observations</div>
-          <div class="framer-transition" data-transition data-diagram>Bounded command contract</div>
-          <div class="framer-transition" data-transition data-diagram>Run evidence packet</div>
-          <div class="framer-transition" data-transition data-diagram>Language self-model</div>
-          <div class="framer-transition" data-transition data-diagram>Critic gate and approval</div>
-        </div>
-      </section>
-
-      <section class="slide speaker-film" data-label="Erick" data-slide-id="erick-film" data-comment-surface data-owner="erick">
-        <video class="screen-video" data-presentation-video data-video-lock autoplay muted controls playsinline preload="metadata" poster="./contact/erick_mission_commands.jpg">
-          <source src="./media/erick_mission_commands.mp4" type="video/mp4">
-        </video>
-        <div class="cinema-shade"></div>
-        <div class="film-card scroll-reveal" data-reveal>
-          <p class="eyebrow" data-edit-key="erick_film_eyebrow">Erick · hard technical problem</p>
-          <h2 data-edit-key="erick_film_title">The hard part is trusted motion.</h2>
-        </div>
-      </section>
-
-      <section id="erick" class="slide speaker-slide lovable-vibe" data-label="Erick" data-slide-id="erick" data-comment-surface data-owner="erick">
-        <div class="speaker-kicker">
-          <span>Erick · 2:30</span>
-          <span>The Hard Technical Problem</span>
-        </div>
-        <div class="speaker-layout scroll-reveal" data-transition data-reveal>
-          <div>
-            <h2 data-edit-key="erick_title" data-owner="erick">Making the robot move is one problem. Making motion trustworthy is harder.</h2>
-            <p class="big-copy" data-edit-key="erick_copy">
-              Trusted motion means every LLM intent has to pass through a command contract:
-              bounded vocabulary, limits, watchdogs, ack/fault states, and evidence capture.
-              The robot can move only in ways the runtime can validate and the learning loop can inspect.
-            </p>
-          </div>
-          <aside id="erick-insights" class="bullet-panel key-insights speaker-private" data-edit-only data-private-owner="erick" data-speaker-insights="Erick">
-            <h3>Key insights</h3>
-            <ul>
-              <li>The challenge is not motion or action. The challenge is trusted motion.</li>
-              <li>Commands need strict contracts and bounded vocabulary.</li>
-              <li>Every run needs prediction, observation, and proof.</li>
-              <li>The LLM reasons; it does not freestyle against motors.</li>
-              <li>Safe commands let robot control stay low-level while the LLM stays bounded to reasoning.</li>
-            </ul>
-          </aside>
-        </div>
-        <div class="mission-thread scroll-reveal" data-transition data-reveal>
-          <span>Mission thread</span>
-          <p>Erick bounded the motion with contracts, watchdogs, and ack/fault proof. Next, Jake turns each run into evidence the model can inspect.</p>
-        </div>
-        <div class="gate-row scroll-reveal" data-transition data-reveal aria-label="Trusted motion gates">
-          <span data-diagram>Intent</span>
-          <span data-diagram>Vocabulary</span>
-          <span data-diagram>Limits</span>
-          <span data-diagram>Watchdog</span>
-          <span data-diagram>Ack or Fault</span>
-          <span data-diagram>Evidence</span>
-        </div>
-        <section class="active-diagram-board liquid-glass scroll-reveal" data-transition data-reveal data-active-diagram-owner="Erick" aria-label="Selected Erick diagram">
-          <article class="active-diagram-panel is-selected" data-diagram-panel="erick-trusted-motion-gates" data-diagram data-transition>
-            <span>Selected diagram</span>
-            <strong>Trusted Motion Gates</strong>
-            <p>Intent moves through bounded vocabulary, limits, watchdogs, ack or fault states, and evidence before anyone claims the motion was safe or meaningful.</p>
-          </article>
-          <article class="active-diagram-panel" data-diagram-panel="erick-ack-fault-envelope" data-diagram data-transition hidden>
-            <span>Selected diagram</span>
-            <strong>Ack And Fault Envelope</strong>
-            <p>Every command should land in a known state: accepted, rejected, stale, completed, or faulted. That envelope keeps the LLM bounded.</p>
-          </article>
-          <article class="active-diagram-panel" data-diagram-panel="erick-llm-boundary-box" data-diagram data-transition hidden>
-            <span>Selected diagram</span>
-            <strong>LLM Boundary Box</strong>
-            <p>The LLM reasons about safe command packets and expected outcomes; low-level motors, watchdogs, and timing stay inside the robot control layer.</p>
-          </article>
-          <article class="active-diagram-panel" data-diagram-panel="erick-safety-failure-tree" data-diagram data-transition hidden>
-            <span>Selected diagram</span>
-            <strong>Physical Failure Tree</strong>
-            <p>Wheel slip, motor drift, camera error, moving object, AprilTag angle, and claw misalignment are normal real-world failure paths that the system has to name.</p>
-          </article>
-          <article class="active-diagram-panel" data-diagram-panel="erick-proof-chain" data-diagram data-transition hidden>
-            <span>Selected diagram</span>
-            <strong>Proof Chain</strong>
-            <p>A trusted run connects prediction, command, observation, telemetry, proof, and explanation so the motion can be measured instead of merely asserted.</p>
-          </article>
-        </section>
-        <div class="diagram-choice-shell scroll-reveal speaker-private" data-edit-only data-private-owner="erick" data-reveal data-diagram-owner="Erick">
-          <div class="choice-heading">
-            <span>Choose Erick diagram</span>
-            <strong>Selected: Trusted Motion Gates</strong>
-          </div>
-          <div class="diagram-choice-grid">
-            <button class="diagram-choice-card is-selected" data-diagram-choice="erick-trusted-motion-gates" type="button">Trusted gates</button>
-            <button class="diagram-choice-card" data-diagram-choice="erick-ack-fault-envelope" type="button">Ack / fault envelope</button>
-            <button class="diagram-choice-card" data-diagram-choice="erick-llm-boundary-box" type="button">LLM boundary</button>
-            <button class="diagram-choice-card" data-diagram-choice="erick-safety-failure-tree" type="button">Failure tree</button>
-            <button class="diagram-choice-card" data-diagram-choice="erick-proof-chain" type="button">Proof chain</button>
-          </div>
-        </div>
-        <aside class="copy-suggestions liquid-glass speaker-private" data-edit-only data-private-owner="erick" data-owner="erick">
-          <h3>Suggested framing</h3>
-          <p>Say: "The LLM can reason, but it does not freestyle against motors. Trusted motion means bounded commands plus evidence."</p>
+        <aside id="jake-insights" class="bullet-panel key-insights speaker-private" data-edit-only
+          data-private-owner="jake" data-speaker-insights="Jake">
+          <h3>Key insights</h3>
+          <ul>
+            <li>The gap is the learning signal.</li>
+            <li>Sense means AprilTags, yellow ball detection, and object confidence.</li>
+            <li>Measure means predicted state versus observed outcome.</li>
+            <li>Structure keeps the LLM from inventing explanations.</li>
+            <li>The evidence packet turns a run into something the model can safely learn from.</li>
+          </ul>
         </aside>
-        <details class="speaker-notes speaker-private" data-edit-only data-private-owner="erick">
-          <summary>Erick speaking notes</summary>
-          <p data-edit-key="erick_notes" data-owner="erick">
-            Use the exact line: "Making the robot move is one problem. Making it move safely,
-            measure itself, and explain what changed is much harder." Erick's section is the command boundary:
-            the LLM proposes intent, but the robot runtime validates bounded command packets. Name the concrete
-            guardrails: vocabulary, limits, TTL/clamps, watchdogs, ack/fault states, and evidence capture.
-            Every command should resolve as accepted, rejected, stale, completed, or faulted. If a command has no evidence trail, the model cannot safely learn from it. Close with: "The challenge is not motion
-            or action. The challenge is trusted motion."
-          </p>
-        </details>
+      </div>
+      <div class="mission-thread scroll-reveal" data-transition data-reveal>
+        <span>Mission thread</span>
+        <p>Jake closes the loop: prediction, observation, gap, and update keep learning honest when reality pushes back.
+        </p>
+      </div>
+      <div class="packet-board">
+        <article class="transition-card framer-transition scroll-reveal" data-transition data-diagram data-reveal>
+          <span>Expected</span><strong>What Vexy thought would happen</strong>
+        </article>
+        <article class="transition-card framer-transition scroll-reveal" data-transition data-diagram data-reveal>
+          <span>Observed</span><strong>What sensors and telemetry saw</strong>
+        </article>
+        <article class="transition-card framer-transition scroll-reveal" data-transition data-diagram data-reveal>
+          <span>Gap</span><strong>What reality proved different</strong>
+        </article>
+        <article class="transition-card framer-transition scroll-reveal" data-transition data-diagram data-reveal>
+          <span>Update</span><strong>What the self-model may revise</strong>
+        </article>
+      </div>
+      <section class="active-diagram-board liquid-glass scroll-reveal" data-transition data-reveal
+        data-active-diagram-owner="Jake" aria-label="Selected Jake diagram">
+        <article class="active-diagram-panel is-selected" data-diagram-panel="jake-evidence-packet" data-diagram
+          data-transition>
+          <span>Selected diagram</span>
+          <strong>Evidence Packet</strong>
+          <p>A run becomes useful when command, vision, telemetry, predicted state, observed state, gap, and update all
+            travel together as one inspectable packet.</p>
+        </article>
+        <article class="active-diagram-panel" data-diagram-panel="jake-gap-timeline" data-diagram data-transition
+          hidden>
+          <span>Selected diagram</span>
+          <strong>Predicted · Observed · Gap Timeline</strong>
+          <p>The timeline makes the learning signal plain: what Vexy expected, what reality measured, and where the two
+            disagreed.</p>
+        </article>
+        <article class="active-diagram-panel" data-diagram-panel="jake-vision-funnel" data-diagram data-transition
+          hidden>
+          <span>Selected diagram</span>
+          <strong>Vision Funnel</strong>
+          <p>AprilTags, yellow ball detection, object confidence, camera pose, and scene observations become the
+            perception layer that grounds the evidence packet.</p>
+        </article>
+        <article class="active-diagram-panel" data-diagram-panel="jake-calibration-curve" data-diagram data-transition
+          hidden>
+          <span>Selected diagram</span>
+          <strong>Calibration Curve</strong>
+          <p>Each run can lower prediction error only when the measured gap is captured, compared, and reused as
+            calibration evidence.</p>
+        </article>
+        <article class="active-diagram-panel" data-diagram-panel="jake-jsonl-handoff" data-diagram data-transition
+          hidden>
+          <span>Selected diagram</span>
+          <strong>JSONL Handoff</strong>
+          <p>Structured run records give the operator, critic, and LLM the same evidence trail instead of relying on
+            memory or vague narration.</p>
+        </article>
       </section>
+      <div class="diagram-choice-shell scroll-reveal speaker-private" data-edit-only data-private-owner="jake"
+        data-reveal data-diagram-owner="Jake">
+        <div class="choice-heading">
+          <span>Choose Jake diagram</span>
+          <strong>Selected: Evidence Packet</strong>
+        </div>
+        <div class="diagram-choice-grid">
+          <button class="diagram-choice-card is-selected" data-diagram-choice="jake-evidence-packet"
+            type="button">Evidence packet</button>
+          <button class="diagram-choice-card" data-diagram-choice="jake-gap-timeline" type="button">Predicted / observed
+            / gap</button>
+          <button class="diagram-choice-card" data-diagram-choice="jake-vision-funnel" type="button">Vision
+            funnel</button>
+          <button class="diagram-choice-card" data-diagram-choice="jake-calibration-curve" type="button">Calibration
+            curve</button>
+          <button class="diagram-choice-card" data-diagram-choice="jake-jsonl-handoff" type="button">JSONL
+            handoff</button>
+        </div>
+      </div>
+      <aside class="copy-suggestions liquid-glass speaker-private" data-edit-only data-private-owner="jake"
+        data-owner="jake">
+        <h3>Suggested framing</h3>
+        <p>Say: "The gap is not a failure label. It is the learning signal that keeps the model grounded in the run."
+        </p>
+      </aside>
+      <details class="speaker-notes speaker-private" data-edit-only data-private-owner="jake">
+        <summary>Jake speaking notes</summary>
+        <p data-edit-key="jake_notes" data-owner="jake">
+          Jake can say: if Vexy expects to grab the yellow ball but the claw alignment is off,
+          that failure is not embarrassing. It is data. The evidence packet turns the run into
+          something the model can learn from.
+        </p>
+      </details>
+    </section>
 
-      <section class="slide sample-slide" data-label="Sense Before Action" data-slide-id="sense-before-action" data-comment-surface data-owner="jake">
-        <img class="sample-image" src="./media/yellow_ball_apriltag.jpeg" alt="Vexy near a yellow ball and AprilTag marker on a dark lunar surface">
-        <div class="sample-label scroll-reveal" data-reveal>
-          <p class="eyebrow" data-edit-key="part3_eyebrow">Part 3 · Sense before action</p>
+    <section class="slide finale final-team-slide" data-label="Finale" data-slide-id="finale" data-comment-surface>
+      <img class="final-team-hero" src="./media/team-final-hero.jpeg"
+        alt="Vexy on the moon with the four-person mission crew behind it">
+      <div class="final-frame scroll-reveal" data-reveal>
+        <p class="eyebrow">Final message</p>
+        <h2 data-edit-key="finale_title">Thank you for joining the Vexy Mission.</h2>
+        <p data-edit-key="finale_copy">
+          Vexy connects a real VEX V5 robot to a language-based self-model.
+          Each run starts with a claim about the body, passes through bounded robot commands,
+          and comes back as evidence: telemetry, vision state, operator result, and gap.
+          The next model only earns trust after that evidence moves through the analyzer and critic gate.
+        </p>
+        <div class="truth-row" aria-label="Truth labels">
+          <span>Flow visual layer</span>
+          <span>Repo-backed premise</span>
+          <span>Run evidence required</span>
+          <span>Live success blocked until proven</span>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <section class="slide speaker-film" data-label="Jake" data-slide-id="jake-film" data-comment-surface data-owner="jake">
-        <video class="screen-video" data-presentation-video data-video-lock autoplay muted controls playsinline preload="metadata" poster="./contact/jake_holographic_screen.jpg">
-          <source src="./media/jake_holographic_screen.mp4" type="video/mp4">
-        </video>
-        <div class="cinema-shade"></div>
-        <div class="film-card scroll-reveal" data-reveal>
-          <p class="eyebrow" data-edit-key="jake_film_eyebrow">Jake · evidence packet</p>
-          <h2 data-edit-key="jake_film_title">Prediction. Observation. Gap.</h2>
-        </div>
-      </section>
+  </main>
 
-      <section id="jake" class="slide speaker-slide lovable-vibe" data-label="Jake" data-slide-id="jake" data-comment-surface data-owner="jake">
-        <div class="speaker-kicker">
-          <span>Jake · 2:00</span>
-          <span>Evidence packet and measurement</span>
-        </div>
-        <div class="speaker-layout scroll-reveal" data-transition data-reveal>
-          <div>
-            <h2 data-edit-key="jake_title" data-owner="jake">A run matters only if it leaves behind evidence.</h2>
-            <p class="big-copy" data-edit-key="jake_copy">
-              Vexy needs a packet that says what was predicted, what was observed, what telemetry
-              came back, and where reality disagreed. That gap is the learning signal.
-            </p>
-          </div>
-          <aside id="jake-insights" class="bullet-panel key-insights speaker-private" data-edit-only data-private-owner="jake" data-speaker-insights="Jake">
-            <h3>Key insights</h3>
-            <ul>
-              <li>The gap is the learning signal.</li>
-              <li>Sense means AprilTags, yellow ball detection, and object confidence.</li>
-              <li>Measure means predicted state versus observed outcome.</li>
-              <li>Structure keeps the LLM from inventing explanations.</li>
-              <li>The evidence packet turns a run into something the model can safely learn from.</li>
-            </ul>
-          </aside>
-        </div>
-        <div class="mission-thread scroll-reveal" data-transition data-reveal>
-          <span>Mission thread</span>
-          <p>Jake closes the loop: prediction, observation, gap, and update keep learning honest when reality pushes back.</p>
-        </div>
-        <div class="packet-board">
-          <article class="transition-card framer-transition scroll-reveal" data-transition data-diagram data-reveal><span>Expected</span><strong>What Vexy thought would happen</strong></article>
-          <article class="transition-card framer-transition scroll-reveal" data-transition data-diagram data-reveal><span>Observed</span><strong>What sensors and telemetry saw</strong></article>
-          <article class="transition-card framer-transition scroll-reveal" data-transition data-diagram data-reveal><span>Gap</span><strong>What reality proved different</strong></article>
-          <article class="transition-card framer-transition scroll-reveal" data-transition data-diagram data-reveal><span>Update</span><strong>What the self-model may revise</strong></article>
-        </div>
-        <section class="active-diagram-board liquid-glass scroll-reveal" data-transition data-reveal data-active-diagram-owner="Jake" aria-label="Selected Jake diagram">
-          <article class="active-diagram-panel is-selected" data-diagram-panel="jake-evidence-packet" data-diagram data-transition>
-            <span>Selected diagram</span>
-            <strong>Evidence Packet</strong>
-            <p>A run becomes useful when command, vision, telemetry, predicted state, observed state, gap, and update all travel together as one inspectable packet.</p>
-          </article>
-          <article class="active-diagram-panel" data-diagram-panel="jake-gap-timeline" data-diagram data-transition hidden>
-            <span>Selected diagram</span>
-            <strong>Predicted · Observed · Gap Timeline</strong>
-            <p>The timeline makes the learning signal plain: what Vexy expected, what reality measured, and where the two disagreed.</p>
-          </article>
-          <article class="active-diagram-panel" data-diagram-panel="jake-vision-funnel" data-diagram data-transition hidden>
-            <span>Selected diagram</span>
-            <strong>Vision Funnel</strong>
-            <p>AprilTags, yellow ball detection, object confidence, camera pose, and scene observations become the perception layer that grounds the evidence packet.</p>
-          </article>
-          <article class="active-diagram-panel" data-diagram-panel="jake-calibration-curve" data-diagram data-transition hidden>
-            <span>Selected diagram</span>
-            <strong>Calibration Curve</strong>
-            <p>Each run can lower prediction error only when the measured gap is captured, compared, and reused as calibration evidence.</p>
-          </article>
-          <article class="active-diagram-panel" data-diagram-panel="jake-jsonl-handoff" data-diagram data-transition hidden>
-            <span>Selected diagram</span>
-            <strong>JSONL Handoff</strong>
-            <p>Structured run records give the operator, critic, and LLM the same evidence trail instead of relying on memory or vague narration.</p>
-          </article>
-        </section>
-        <div class="diagram-choice-shell scroll-reveal speaker-private" data-edit-only data-private-owner="jake" data-reveal data-diagram-owner="Jake">
-          <div class="choice-heading">
-            <span>Choose Jake diagram</span>
-            <strong>Selected: Evidence Packet</strong>
-          </div>
-          <div class="diagram-choice-grid">
-            <button class="diagram-choice-card is-selected" data-diagram-choice="jake-evidence-packet" type="button">Evidence packet</button>
-            <button class="diagram-choice-card" data-diagram-choice="jake-gap-timeline" type="button">Predicted / observed / gap</button>
-            <button class="diagram-choice-card" data-diagram-choice="jake-vision-funnel" type="button">Vision funnel</button>
-            <button class="diagram-choice-card" data-diagram-choice="jake-calibration-curve" type="button">Calibration curve</button>
-            <button class="diagram-choice-card" data-diagram-choice="jake-jsonl-handoff" type="button">JSONL handoff</button>
-          </div>
-        </div>
-        <aside class="copy-suggestions liquid-glass speaker-private" data-edit-only data-private-owner="jake" data-owner="jake">
-          <h3>Suggested framing</h3>
-          <p>Say: "The gap is not a failure label. It is the learning signal that keeps the model grounded in the run."</p>
-        </aside>
-        <details class="speaker-notes speaker-private" data-edit-only data-private-owner="jake">
-          <summary>Jake speaking notes</summary>
-          <p data-edit-key="jake_notes" data-owner="jake">
-            Jake can say: if Vexy expects to grab the yellow ball but the claw alignment is off,
-            that failure is not embarrassing. It is data. The evidence packet turns the run into
-            something the model can learn from.
-          </p>
-        </details>
-      </section>
+  <div class="slide-counter" aria-live="polite">
+    <span id="currentSlide">01</span>
+    <span id="currentLabel">Open</span>
+  </div>
 
-      <section class="slide finale final-team-slide" data-label="Finale" data-slide-id="finale" data-comment-surface>
-        <img class="final-team-hero" src="./media/team-final-hero.jpeg" alt="Vexy on the moon with the four-person mission crew behind it">
-        <div class="final-frame scroll-reveal" data-reveal>
-          <p class="eyebrow">Final message</p>
-          <h2 data-edit-key="finale_title">Thank you for joining the Vexy Mission.</h2>
-          <p data-edit-key="finale_copy">
-            Vexy connects a real VEX V5 robot to a language-based self-model.
-            Each run starts with a claim about the body, passes through bounded robot commands,
-            and comes back as evidence: telemetry, vision state, operator result, and gap.
-            The next model only earns trust after that evidence moves through the analyzer and critic gate.
-          </p>
-          <div class="truth-row" aria-label="Truth labels">
-            <span>Flow visual layer</span>
-            <span>Repo-backed premise</span>
-            <span>Run evidence required</span>
-            <span>Live success blocked until proven</span>
-          </div>
-        </div>
-      </section>
+  <script src="./presentation.js?v=audience-cleanup-2026-06-29"></script>
+</body>
 
-    </main>
-
-    <div class="slide-counter" aria-live="polite">
-      <span id="currentSlide">01</span>
-      <span id="currentLabel">Open</span>
-    </div>
-
-    <script src="./presentation.js?v=audience-cleanup-2026-06-29"></script>
-  </body>
 </html>

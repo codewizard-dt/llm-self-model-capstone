@@ -115,7 +115,7 @@ body::before {
     linear-gradient(90deg, rgba(255, 48, 48, 0.06) 1px, transparent 1px),
     linear-gradient(0deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
   background-size: 96px 96px, 4px 4px;
-  mask-image: linear-gradient(180deg, rgba(0,0,0,0.8), transparent 88%);
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.8), transparent 88%);
 }
 
 .start-presentation {
@@ -303,11 +303,11 @@ body.editing .review-tools-menu {
   text-transform: uppercase;
 }
 
-.edit-toolbar > :not(#editPresentation):not(#editStatus) {
+.edit-toolbar> :not(#editPresentation):not(#editStatus) {
   display: none;
 }
 
-body.editing .edit-toolbar > :not(#editPresentation):not(#editStatus) {
+body.editing .edit-toolbar> :not(#editPresentation):not(#editStatus) {
   display: inline-flex;
 }
 
@@ -345,8 +345,8 @@ body::after {
   z-index: -1;
   pointer-events: none;
   background:
-    linear-gradient(115deg, transparent 0 38%, rgba(255,255,255,0.08) 42%, transparent 47%),
-    radial-gradient(circle at 50% 0%, rgba(255,255,255,0.08), transparent 34%);
+    linear-gradient(115deg, transparent 0 38%, rgba(255, 255, 255, 0.08) 42%, transparent 47%),
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.08), transparent 34%);
   mix-blend-mode: screen;
   opacity: 0.42;
 }
@@ -525,7 +525,7 @@ a {
   pointer-events: none;
   background:
     linear-gradient(90deg, transparent 0 34%, rgba(255, 48, 48, 0.2) 35%, transparent 36% 100%),
-    repeating-linear-gradient(90deg, rgba(255,48,48,0.08) 0 1px, transparent 1px 72px);
+    repeating-linear-gradient(90deg, rgba(255, 48, 48, 0.08) 0 1px, transparent 1px 72px);
   mix-blend-mode: screen;
   opacity: 0.42;
   animation: missionScan 8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
@@ -536,14 +536,25 @@ a {
   text-shadow: 0 0 46px rgba(255, 48, 48, 0.14);
 }
 
-.stagger-reveal > * {
+.stagger-reveal>* {
   animation: animosRise 820ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.stagger-reveal > *:nth-child(2) { animation-delay: 80ms; }
-.stagger-reveal > *:nth-child(3) { animation-delay: 160ms; }
-.stagger-reveal > *:nth-child(4) { animation-delay: 240ms; }
-.stagger-reveal > *:nth-child(5) { animation-delay: 320ms; }
+.stagger-reveal>*:nth-child(2) {
+  animation-delay: 80ms;
+}
+
+.stagger-reveal>*:nth-child(3) {
+  animation-delay: 160ms;
+}
+
+.stagger-reveal>*:nth-child(4) {
+  animation-delay: 240ms;
+}
+
+.stagger-reveal>*:nth-child(5) {
+  animation-delay: 320ms;
+}
 
 @keyframes animosRise {
   from {
@@ -551,6 +562,7 @@ a {
     transform: translateY(34px) scale(0.96);
     filter: blur(16px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -562,6 +574,7 @@ a {
   0% {
     background-position: -80vw 0, 0 0;
   }
+
   100% {
     background-position: 120vw 0, 72px 0;
   }
@@ -1038,23 +1051,29 @@ a {
   from {
     background-position: 0 0, 50% 50%, 0 0;
   }
+
   to {
     background-position: 18px -12px, 52% 49%, 0 0;
   }
 }
 
 @keyframes cleanseSweep {
-  0%, 44% {
+
+  0%,
+  44% {
     transform: skewX(-12deg) translateX(-120vw);
     opacity: 0;
   }
+
   52% {
     opacity: 1;
   }
+
   64% {
     transform: skewX(-12deg) translateX(145vw);
     opacity: 0;
   }
+
   100% {
     transform: skewX(-12deg) translateX(145vw);
     opacity: 0;
@@ -1062,16 +1081,21 @@ a {
 }
 
 @keyframes heroWordsSwim {
-  0%, 58% {
+
+  0%,
+  58% {
     opacity: 0;
     filter: blur(20px);
     transform: translateY(34px) scale(0.97);
   }
-  74%, 92% {
+
+  74%,
+  92% {
     opacity: 1;
     filter: blur(0);
     transform: translateY(0) scale(1);
   }
+
   100% {
     opacity: 0;
     filter: blur(16px);
@@ -1436,8 +1460,8 @@ p {
 
 .photo-shade {
   background:
-    linear-gradient(90deg, rgba(3,2,2,0.86), rgba(3,2,2,0.06) 54%, rgba(3,2,2,0.18)),
-    linear-gradient(180deg, rgba(3,2,2,0.02), rgba(3,2,2,0.86) 92%);
+    linear-gradient(90deg, rgba(3, 2, 2, 0.86), rgba(3, 2, 2, 0.06) 54%, rgba(3, 2, 2, 0.18)),
+    linear-gradient(180deg, rgba(3, 2, 2, 0.02), rgba(3, 2, 2, 0.86) 92%);
 }
 
 .photo-lockup {
@@ -1525,10 +1549,29 @@ p {
   background: rgba(3, 2, 2, 0.88);
 }
 
-.node-a { top: 42px; left: 16%; color: var(--cyan); }
-.node-b { top: 42px; right: 16%; color: var(--yellow); }
-.node-c { bottom: 42px; left: 14%; color: var(--cream); }
-.node-d { bottom: 42px; right: 14%; color: var(--red); }
+.node-a {
+  top: 42px;
+  left: 16%;
+  color: var(--cyan);
+}
+
+.node-b {
+  top: 42px;
+  right: 16%;
+  color: var(--yellow);
+}
+
+.node-c {
+  bottom: 42px;
+  left: 14%;
+  color: var(--cream);
+}
+
+.node-d {
+  bottom: 42px;
+  right: 14%;
+  color: var(--red);
+}
 
 .film-card {
   max-width: 780px;
@@ -1559,11 +1602,11 @@ p {
   align-items: start;
 }
 
-.speaker-layout > :first-child {
+.speaker-layout> :first-child {
   grid-column: 1 / -1;
 }
 
-body.editing .speaker-layout > :first-child {
+body.editing .speaker-layout> :first-child {
   grid-column: auto;
 }
 
@@ -1642,7 +1685,7 @@ body.editing .speaker-layout > :first-child {
   line-height: 1.52;
 }
 
-.bullet-panel li + li {
+.bullet-panel li+li {
   margin-top: 10px;
 }
 
@@ -2063,8 +2106,8 @@ body.editing .speaker-layout > :first-child {
   inset: 0;
   z-index: -2;
   background:
-    linear-gradient(90deg, rgba(3,2,2,0.26), transparent 50%, rgba(3,2,2,0.2)),
-    linear-gradient(180deg, rgba(3,2,2,0.02), rgba(3,2,2,0.52) 96%);
+    linear-gradient(90deg, rgba(3, 2, 2, 0.26), transparent 50%, rgba(3, 2, 2, 0.2)),
+    linear-gradient(180deg, rgba(3, 2, 2, 0.02), rgba(3, 2, 2, 0.52) 96%);
 }
 
 .sample-label {
@@ -2220,6 +2263,305 @@ figcaption {
   font-weight: 900;
 }
 
+.david-flowchart-slide {
+  align-content: center;
+  gap: 16px;
+}
+
+.david-flowchart-shell {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  min-height: min(76svh, 720px);
+  padding: clamp(16px, 2vw, 24px);
+  overflow: hidden;
+}
+
+.david-flowchart-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 28%, rgba(114, 240, 255, 0.13), transparent 28%),
+    radial-gradient(circle at 80% 16%, rgba(255, 213, 69, 0.1), transparent 28%),
+    linear-gradient(135deg, rgba(255, 48, 48, 0.12), transparent 40%);
+  opacity: 0.9;
+}
+
+.david-flowchart-copy,
+.top-level-flowchart,
+.flowchart-legend {
+  position: relative;
+  z-index: 2;
+}
+
+.david-flowchart-copy {
+  display: grid;
+  grid-template-columns: minmax(0, 0.7fr) minmax(280px, 0.3fr);
+  gap: 18px;
+  align-items: end;
+}
+
+.david-flowchart-copy .eyebrow {
+  grid-column: 1 / -1;
+  margin-bottom: -4px;
+}
+
+.david-flowchart-copy h2 {
+  max-width: 760px;
+  font-size: clamp(28px, 3.2vw, 42px);
+}
+
+.david-flowchart-copy .big-copy {
+  margin: 0;
+  max-width: 420px;
+  color: var(--muted);
+  font-size: clamp(13px, 1.04vw, 16px);
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.top-level-flowchart {
+  min-height: min(50svh, 470px);
+  border: 1px solid rgba(245, 234, 219, 0.13);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, rgba(245, 234, 219, 0.04) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(245, 234, 219, 0.03) 1px, transparent 1px),
+    rgba(3, 2, 2, 0.48);
+  background-size: 48px 48px, 48px 48px, auto;
+}
+
+.top-level-flowchart::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(3, 2, 2, 0), rgba(3, 2, 2, 0.16));
+}
+
+.flowchart-edges {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.flow-edge {
+  fill: none;
+  stroke: #aeb1b8;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 3px rgba(245, 234, 219, 0.2));
+}
+
+.flow-edge-pulse {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 4.4;
+  stroke-linecap: round;
+  stroke-dasharray: 42 150;
+  animation: flowEdgeComet 1.65s linear infinite;
+  filter:
+    drop-shadow(0 0 4px currentColor)
+    drop-shadow(0 0 10px currentColor);
+  opacity: 0.95;
+  pointer-events: none;
+}
+
+.flow-edge-dashed {
+  stroke-dasharray: 5 6;
+}
+
+.flow-edge-green {
+  stroke: #30a46c;
+}
+
+.flow-edge-red {
+  stroke: #e5484d;
+}
+
+.flow-edge-gold {
+  stroke: #e0901a;
+}
+
+.flow-pulse-neutral {
+  color: #aeb1b8;
+}
+
+.flow-pulse-green {
+  color: #30a46c;
+}
+
+.flow-pulse-red {
+  color: #e5484d;
+}
+
+.flow-pulse-gold {
+  color: #e0901a;
+}
+
+@keyframes flowEdgeComet {
+  from {
+    stroke-dashoffset: 192;
+    opacity: 0.25;
+  }
+
+  12%,
+  88% {
+    opacity: 1;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+    opacity: 0.25;
+  }
+}
+
+.flow-node {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 12.3%;
+  /* height: ; */
+  min-width: 0;
+  border: 1px solid rgba(245, 234, 219, 0.18);
+  border-radius: 12px;
+  padding: 6px 10px 6px 16px;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--role) 18%, transparent), transparent 58%),
+    rgba(245, 234, 219, 0.94);
+  box-shadow: 0 18px 52px rgba(0, 0, 0, 0.32);
+  color: #090303;
+}
+
+.flow-node::before {
+  content: "";
+  position: absolute;
+  inset: 8px auto 8px 0;
+  width: 4px;
+  border-radius: 999px;
+  background: var(--role);
+}
+
+.flow-node span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--role);
+  font-family: var(--body);
+  font-size: clamp(6px, 0.5vw, 8px);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.flow-node span::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--role);
+}
+
+.flow-node strong {
+  margin-top: 3px;
+  color: #090303;
+  font-family: var(--body);
+  font-size: clamp(9px, 0.74vw, 12px);
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.04;
+}
+
+.flow-node p {
+  margin: 1px 0 0;
+  color: rgba(9, 3, 3, 0.62);
+  font-size: clamp(7px, 0.56vw, 9px);
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.david-flowchart-slide .flow-node p {
+  display: none;
+}
+
+.david-flowchart-slide .flow-node strong {
+  font-size: clamp(10px, 0.86vw, 14px);
+}
+
+.flow-boundary {
+  background:
+    linear-gradient(145deg, rgba(229, 72, 77, 0.2), transparent 58%),
+    rgba(245, 234, 219, 0.96);
+}
+
+.flow-label {
+  position: absolute;
+  z-index: 3;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(245, 234, 219, 0.16);
+  border-radius: 999px;
+  padding: 6px 10px;
+  color: rgba(245, 234, 219, 0.78);
+  background: rgba(3, 2, 2, 0.82);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.26);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.flow-label-green {
+  color: #7ee787;
+}
+
+.flow-label-red {
+  color: #ff7b72;
+}
+
+.flow-label-gold {
+  color: #ffd545;
+}
+
+.flowchart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: clamp(9px, 0.7vw, 11px);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.flowchart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.flowchart-legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  box-shadow: 0 0 18px currentColor;
+}
+
 @media (max-width: 980px) {
   .topbar {
     grid-template-columns: 1fr;
@@ -2243,6 +2585,14 @@ figcaption {
     grid-template-columns: 1fr;
   }
 
+  .david-flowchart-copy {
+    grid-template-columns: 1fr;
+  }
+
+  .top-level-flowchart {
+    min-height: 520px;
+  }
+
   .active-diagram-panel p {
     grid-column: 1;
   }
@@ -2261,7 +2611,7 @@ figcaption {
   }
 
   .body-model-slide::after {
-    background: linear-gradient(180deg, rgba(3,2,2,0.32), rgba(3,2,2,0.82));
+    background: linear-gradient(180deg, rgba(3, 2, 2, 0.32), rgba(3, 2, 2, 0.82));
   }
 
   .hardware-assembly article:nth-child(2n),
@@ -2285,10 +2635,21 @@ figcaption {
     width: 130px;
   }
 
-  .node-a { left: 5%; }
-  .node-b { right: 5%; }
-  .node-c { left: 5%; }
-  .node-d { right: 5%; }
+  .node-a {
+    left: 5%;
+  }
+
+  .node-b {
+    right: 5%;
+  }
+
+  .node-c {
+    left: 5%;
+  }
+
+  .node-d {
+    right: 5%;
+  }
 }
 
 @media (max-width: 640px) {
@@ -2338,6 +2699,7 @@ figcaption {
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {
