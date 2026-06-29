@@ -3,7 +3,7 @@
     "Grace": "grace-hardware-stack",
     "David Taylor": "david-generational-loop",
     "Erick": "erick-trusted-motion-gates",
-    "Jake": "jake-evidence-packet"
+    "Jake": "jake-vision-funnel"
   },
   "speakers": {
     "Grace": [
@@ -94,8 +94,7 @@
       {
         "id": "jake-evidence-packet",
         "title": "Evidence Packet",
-        "rationale": "Best for Jake because it turns a run into command, vision, telemetry, predicted, observed, gap, and update.",
-        "selected": true
+        "rationale": "Shows how a complete run record carries command, vision, telemetry, predicted, observed, gap, and update."
       },
       {
         "id": "jake-gap-timeline",
@@ -104,8 +103,9 @@
       },
       {
         "id": "jake-vision-funnel",
-        "title": "Vision Funnel",
-        "rationale": "Explains AprilTags, yellow ball detection, object confidence, and scene observations."
+        "title": "Perception to Proof",
+        "rationale": "Best for Jake because it explains AprilTags, yellow ball detection, object confidence, scene coordinates, and contract-valid evidence.",
+        "selected": true
       },
       {
         "id": "jake-calibration-curve",

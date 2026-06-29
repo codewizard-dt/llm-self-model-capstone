@@ -55,6 +55,9 @@ REQUIRED_TEXT = {
     ],
     "README.md": [
         "Vercel Project Root Directory: `presentation/vexy-mission`",
+        "Current live URL",
+        "https://vexy-mission.vercel.app",
+        "GitHub integration gate",
         "Direct teammate edit links",
         "Grace",
         "David Taylor",
