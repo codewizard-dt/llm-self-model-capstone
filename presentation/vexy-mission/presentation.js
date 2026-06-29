@@ -79,7 +79,7 @@ const speakerSuggestions = {
   erick:
     "Erick should make trusted motion concrete: bounded vocabulary, command limits, watchdogs, ack/fault states, and evidence for every robot action.",
   jake:
-    "Jake should make the evidence packet feel inevitable: prediction, observation, telemetry, vision, gap, and update."
+    "Jake should make perception-to-proof feel inevitable: camera frames become AprilTag localization, object positions, scene state, JSONL evidence, and then prediction-observation gap."
 };
 
 const noteSuggestionBank = {
@@ -99,9 +99,9 @@ const noteSuggestionBank = {
     "Explain why strict command vocabulary lets the LLM reason without freelancing against motors."
   ],
   jake: [
-    "Define the evidence packet: predicted, observed, telemetry, vision, gap, update.",
-    "Say the gap is not embarrassment; it is the learning signal.",
-    "Connect AprilTags and yellow-ball confidence to grounded observation."
+    "Define the perception pipeline: camera frames, AprilTags, yellow-ball detection, object confidence, scene state.",
+    "Say raw vision is not enough; it has to become localized coordinates and contract-valid evidence.",
+    "Connect AprilTags, yellow-ball confidence, and JSONL export to the prediction-observation gap."
   ]
 };
 
@@ -133,8 +133,8 @@ const speakerCoverageMap = {
   ],
   jake: [
     {
-      topic: "evidence packet and prediction-observation gap",
-      tokens: ["evidence packet", "predicted", "observed", "telemetry", "vision state", "gap", "learning signal"]
+      topic: "perception-to-proof and prediction-observation gap",
+      tokens: ["apriltag", "yellow ball", "scene", "jsonl", "telemetry", "vision state", "gap", "learning signal"]
     }
   ]
 };

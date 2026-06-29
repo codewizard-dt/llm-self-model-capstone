@@ -104,11 +104,11 @@ Erick owns:
 
 Jake owns:
 
-- evidence packet
-- prediction versus observation
-- telemetry and vision state
-- gap/residual signal
-- why the model should only learn from evidence
+- perception-to-proof framing
+- AprilTag localization and yellow-ball/object observations
+- robot-relative and map-relative scene coordinates
+- MCAP/raw ROS evidence exported into contract-valid JSONL
+- why the gap only matters when perception is structured
 
 ## Vercel Preview Expectations
 
