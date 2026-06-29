@@ -12,6 +12,19 @@ Phase 5/6 execution dashboard.
 
 Vercel Project Root Directory: `presentation/vexy-mission`
 
+Current live URL: `https://vexy-mission.vercel.app`
+
+Current Vercel project: `gracexiyuan-2067s-projects/vexy-mission`
+
+Verified on 2026-06-29:
+
+- audience deck returns HTTP 200;
+- `media/grace_mission_control.mp4` returns HTTP 200;
+- `media/team-final-hero.jpeg` returns HTTP 200;
+- `team-handoff` returns HTTP 200;
+- `phase-execution` returns HTTP 200;
+- Vercel project root directory is set to `presentation/vexy-mission`.
+
 Recommended Vercel settings:
 
 - Framework Preset: `Other`
@@ -24,6 +37,29 @@ Recommended Vercel settings:
 Once Vercel is connected to this folder, teammates can update their own slides
 in this repo, push a branch, and use the Vercel preview for that branch without
 Grace manually rebuilding or uploading the presentation.
+
+## GitHub integration gate
+
+The live Vercel project exists and serves the deck, but automatic branch previews
+still require Vercel's GitHub integration to access the private repository
+`codewizard-dt/llm-self-model-capstone`.
+
+Attempted command:
+
+```bash
+vercel git connect https://github.com/codewizard-dt/llm-self-model-capstone --scope gracexiyuan-2067s-projects --yes
+```
+
+Current blocker:
+
+```text
+Failed to connect codewizard-dt/llm-self-model-capstone to project.
+Make sure there aren't any typos and that you have access to the repository if it's private.
+```
+
+To finish automatic teammate previews, authorize or install the Vercel GitHub
+app for this private repo, then connect the project to the repo with root
+directory `presentation/vexy-mission`.
 
 ## How To View Locally
 
