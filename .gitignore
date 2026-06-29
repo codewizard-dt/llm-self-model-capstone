@@ -174,3 +174,4 @@ robot/pi-runtime/models/
 robot/pi-runtime/captures/
 # brain (robot/v5-brain): PROS build artifacts are handled by robot/v5-brain/v5-test/.gitignore
 # ai-sdd:end
+.vercel

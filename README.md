@@ -70,6 +70,9 @@ HTML/CSS/JS site with Flow videos, speaker notes, teammate edit lanes,
 rehearsal tools, and Vercel-ready configuration.
 Teammate-owned edits and Vercel preview steps are documented in
 [`presentation/vexy-mission/TEAM_EDIT_GUIDE.md`](presentation/vexy-mission/TEAM_EDIT_GUIDE.md).
+The current live deployment is `https://vexy-mission.vercel.app`; automatic
+branch previews still require Vercel's GitHub integration to be authorized for
+this private repository.
 
 To preview locally:
 

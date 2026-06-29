@@ -30,7 +30,7 @@
 
 html {
   scroll-behavior: smooth;
-  scroll-snap-type: y mandatory;
+  scroll-snap-type: none;
 }
 
 body {
@@ -46,7 +46,7 @@ body {
 }
 
 body.video-locked {
-  overflow: hidden;
+  overflow: auto;
 }
 
 body.presentation-started .start-presentation {
@@ -457,7 +457,7 @@ a {
 .slide {
   position: relative;
   min-height: 100svh;
-  scroll-snap-align: start;
+  scroll-snap-align: none;
   padding: clamp(70px, 8vh, 88px) max(22px, calc((100vw - var(--max)) / 2)) clamp(38px, 6vh, 58px);
 }
 
@@ -1583,6 +1583,148 @@ body.editing .speaker-layout > :first-child {
   line-height: 1.22;
 }
 
+.grace-slide {
+  display: grid;
+  grid-template-columns: minmax(0, 0.94fr) minmax(430px, 1.06fr);
+  grid-template-rows: auto auto auto;
+  gap: 10px 22px;
+  align-content: center;
+  padding-top: clamp(58px, 7.4vh, 66px);
+  padding-bottom: 22px;
+}
+
+.grace-slide .speaker-layout {
+  grid-column: 1;
+  grid-row: 1;
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+
+.grace-slide .speaker-layout > :first-child,
+body.editing .grace-slide .speaker-layout > :first-child {
+  grid-column: auto;
+}
+
+.grace-slide h2 {
+  font-size: clamp(28px, 3.15vw, 48px);
+  max-width: 11.8em;
+}
+
+.grace-slide .big-copy {
+  max-width: 54ch;
+  font-size: clamp(14px, 1.18vw, 18px);
+  line-height: 1.35;
+}
+
+.grace-slide .hardware-assembly {
+  grid-column: 1;
+  grid-row: 2;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.grace-slide .hardware-assembly article {
+  min-height: 76px;
+  padding: 10px 11px;
+}
+
+.grace-slide .hardware-assembly span {
+  font-size: 0.58rem;
+}
+
+.grace-slide .hardware-assembly strong {
+  font-size: clamp(15px, 1.38vw, 20px);
+}
+
+.grace-slide .hardware-assembly p {
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+body:not(.editing) .grace-slide .primitive-arc,
+body:not(.editing) .grace-slide .active-diagram-board {
+  display: none;
+}
+
+.vexy-ascii-panel {
+  position: relative;
+  z-index: 2;
+  grid-column: 2;
+  grid-row: 1 / 3;
+  align-self: stretch;
+  height: min(570px, calc(100svh - 198px));
+  min-height: 410px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 48, 48, 0.36);
+  border-radius: 10px;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 48, 48, 0.1) 0 1px, transparent 1px 4px),
+    radial-gradient(circle at 46% 45%, rgba(255, 48, 48, 0.12), transparent 34%),
+    #050101;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 234, 219, 0.04),
+    inset 0 0 70px rgba(0, 0, 0, 0.62),
+    0 28px 88px rgba(0, 0, 0, 0.38);
+}
+
+.vexy-ascii-panel::before,
+.vexy-ascii-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.vexy-ascii-panel::before {
+  background:
+    linear-gradient(90deg, rgba(0,0,0,0.32), transparent 18%, transparent 82%, rgba(0,0,0,0.34)),
+    linear-gradient(0deg, rgba(0,0,0,0.42), transparent 16%, transparent 84%, rgba(0,0,0,0.28));
+}
+
+.vexy-ascii-panel::after {
+  background: repeating-linear-gradient(0deg, rgba(255, 64, 52, 0.12) 0 1px, transparent 1px 5px);
+  mix-blend-mode: screen;
+  opacity: 0.48;
+}
+
+.vexy-ascii-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.vexy-ascii-corner,
+.vexy-ascii-hud {
+  position: absolute;
+  z-index: 4;
+  color: rgba(245, 234, 219, 0.72);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.vexy-ascii-corner {
+  left: 18px;
+  top: 17px;
+}
+
+.vexy-ascii-hud {
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: rgba(255, 48, 48, 0.82);
+  letter-spacing: 0.12em;
+}
+
 .mission-thread {
   position: relative;
   z-index: 2;
@@ -1836,9 +1978,9 @@ body.editing .speaker-layout > :first-child {
 }
 
 .david-slide {
-  gap: 14px;
-  padding-top: clamp(54px, 6.3vh, 66px);
-  padding-bottom: clamp(20px, 3.2vh, 30px);
+  gap: clamp(10px, 1.5vh, 16px);
+  padding-top: clamp(70px, 7vh, 82px);
+  padding-bottom: clamp(28px, 4vh, 42px);
 }
 
 .david-slide .speaker-layout {
@@ -1846,20 +1988,21 @@ body.editing .speaker-layout > :first-child {
 }
 
 .david-slide h2 {
-  font-size: clamp(24px, 2.9vw, 36px);
+  max-width: 1180px;
+  font-size: clamp(26px, 3.05vw, 42px);
 }
 
 .david-slide .big-copy {
-  max-width: 850px;
-  font-size: clamp(14px, 1.16vw, 17px);
+  max-width: 1240px;
+  font-size: clamp(14px, 1.08vw, 17px);
 }
 
 .generational-loop {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 10px;
   padding: 14px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .generational-loop::before {
@@ -1884,16 +2027,16 @@ body.editing .speaker-layout > :first-child {
 }
 
 .david-slide .generational-loop {
-  padding: 10px;
-}
-
-.david-slide .generational-loop article {
-  min-height: 108px;
   padding: 12px;
 }
 
+.david-slide .generational-loop article {
+  min-height: 142px;
+  padding: 14px;
+}
+
 .david-slide .research-lattice article {
-  min-height: 88px;
+  min-height: 104px;
   padding: 12px;
 }
 
@@ -1920,24 +2063,28 @@ body.editing .speaker-layout > :first-child {
 }
 
 .david-slide .generational-loop strong {
-  font-size: clamp(24px, 2.5vw, 34px);
+  font-size: clamp(24px, 2.25vw, 34px);
 }
 
 .david-slide .generational-loop p,
 .david-slide .research-lattice p {
   margin-bottom: 0;
-  font-size: 0.8rem;
-  line-height: 1.24;
+  font-size: 0.78rem;
+  line-height: 1.28;
 }
 
 .metric-graph article:nth-child(2n) {
   transform: translateY(24px);
 }
 
+.david-slide .metric-graph article:nth-child(2n) {
+  transform: none;
+}
+
 .research-lattice {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 10px;
 }
 
 .speaker-notes {
@@ -2221,6 +2368,22 @@ figcaption {
 }
 
 @media (max-width: 980px) {
+  .grace-slide {
+    grid-template-columns: 1fr;
+  }
+
+  .grace-slide .speaker-layout,
+  .grace-slide .hardware-assembly,
+  .vexy-ascii-panel {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .vexy-ascii-panel {
+    height: min(70vh, 520px);
+    min-height: 320px;
+  }
+
   .topbar {
     grid-template-columns: 1fr;
   }
