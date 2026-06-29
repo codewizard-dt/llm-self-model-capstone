@@ -62,6 +62,25 @@ fails.
 5. [robot/README.md](robot/README.md) - entry point for the deployable robot
    runtime code.
 
+## Presentation Website
+
+The final Vexy mission presentation lives in
+[`presentation/vexy-mission`](presentation/vexy-mission/). It is a static
+HTML/CSS/JS site with Flow videos, speaker notes, teammate edit lanes,
+rehearsal tools, and Vercel-ready configuration.
+Teammate-owned edits and Vercel preview steps are documented in
+[`presentation/vexy-mission/TEAM_EDIT_GUIDE.md`](presentation/vexy-mission/TEAM_EDIT_GUIDE.md).
+
+To preview locally:
+
+```bash
+python3 -m http.server 8766 -b 127.0.0.1 -d presentation/vexy-mission
+```
+
+For Vercel, set the project root directory to `presentation/vexy-mission`.
+Direct teammate review lanes are available with `?edit=1&owner=grace`,
+`?edit=1&owner=david`, `?edit=1&owner=erick`, and `?edit=1&owner=jake`.
+
 ## Repo Map
 
 ```text

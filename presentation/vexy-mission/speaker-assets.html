@@ -1,0 +1,1252 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Vexy Speaker Assets</title>
+    <meta
+      name="description"
+      content="Editable speaker notes, copywriting alternatives, and cheat sheet cards for the Vexy Mission presentation."
+    >
+    <style>
+      :root {
+        color-scheme: dark;
+        --black: #030202;
+        --red: #ff3030;
+        --cream: #f5eadb;
+        --muted: rgba(245, 234, 219, 0.72);
+        --dim: rgba(245, 234, 219, 0.48);
+        --yellow: #ffd545;
+        --cyan: #72f0ff;
+        --line: rgba(255, 48, 48, 0.32);
+        --line-soft: rgba(245, 234, 219, 0.14);
+        --mono: "IBM Plex Mono", "SFMono-Regular", ui-monospace, monospace;
+        --display: "Avenir Next Condensed", "DIN Condensed", "Arial Narrow", Impact, sans-serif;
+        --body: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+        color: var(--cream);
+        background:
+          radial-gradient(circle at 78% 0%, rgba(255, 48, 48, 0.18), transparent 32%),
+          radial-gradient(circle at 12% 88%, rgba(114, 240, 255, 0.1), transparent 28%),
+          linear-gradient(180deg, #020101 0%, #140506 52%, #030202 100%);
+        font-family: var(--body);
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+        background:
+          linear-gradient(90deg, rgba(255, 48, 48, 0.06) 1px, transparent 1px),
+          linear-gradient(0deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+        background-size: 96px 96px, 4px 4px;
+        mask-image: linear-gradient(180deg, rgba(0,0,0,0.9), transparent 92%);
+      }
+
+      a {
+        color: inherit;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+
+      h1,
+      h2,
+      h3 {
+        font-family: var(--display);
+        letter-spacing: 0;
+        line-height: 0.92;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        max-width: 980px;
+        margin-top: 18px;
+        font-size: clamp(54px, 9vw, 116px);
+      }
+
+      h2 {
+        font-size: clamp(34px, 5vw, 62px);
+      }
+
+      h3 {
+        font-size: clamp(24px, 2.6vw, 34px);
+      }
+
+      p,
+      li {
+        color: var(--muted);
+        line-height: 1.56;
+      }
+
+      .shell {
+        width: min(1220px, calc(100% - 36px));
+        margin: 0 auto;
+        padding: 42px 0 72px;
+      }
+
+      .hero,
+      .panel,
+      .copy-version-card,
+      .cheat-card,
+      .draft-editor,
+      .packet-editor,
+      .asset-editor-card,
+      .copy-route-editor {
+        border: 1px solid var(--line-soft);
+        border-radius: 8px;
+        background:
+          linear-gradient(145deg, rgba(255, 48, 48, 0.11), transparent 45%),
+          rgba(7, 2, 2, 0.78);
+        box-shadow: 0 32px 120px rgba(0, 0, 0, 0.34);
+        backdrop-filter: blur(24px) saturate(1.25);
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(280px, 0.42fr);
+        gap: 20px;
+        padding: clamp(24px, 4vw, 50px);
+        border-color: rgba(255, 213, 69, 0.42);
+      }
+
+      .eyebrow,
+      .label,
+      label,
+      button,
+      select,
+      .meta {
+        color: var(--red);
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .lead {
+        max-width: 820px;
+        margin-top: 18px;
+        color: var(--cream);
+        font-size: clamp(18px, 2vw, 25px);
+        font-weight: 800;
+        line-height: 1.2;
+      }
+
+      .control-panel {
+        display: grid;
+        align-content: start;
+        gap: 12px;
+      }
+
+      select,
+      button,
+      .button-link {
+        border: 1px solid rgba(255, 213, 69, 0.54);
+        border-radius: 999px;
+        padding: 12px 14px;
+        color: var(--cream);
+        background: rgba(3, 2, 2, 0.74);
+        cursor: pointer;
+      }
+
+      button.primary {
+        color: var(--black);
+        background: var(--yellow);
+      }
+
+      .button-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+      }
+
+      #speakerAssetStatus {
+        color: var(--cyan);
+        font-family: var(--mono);
+        font-size: 0.78rem;
+        font-weight: 900;
+        letter-spacing: 0.1em;
+        line-height: 1.45;
+        text-transform: uppercase;
+      }
+
+      .speaker-panel {
+        margin-top: 22px;
+        display: grid;
+        gap: 18px;
+      }
+
+      .speaker-panel[hidden] {
+        display: none;
+      }
+
+      .purpose-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(320px, 0.44fr);
+        gap: 18px;
+      }
+
+      .panel,
+      .copy-version-card,
+      .cheat-card,
+      .draft-editor,
+      .packet-editor {
+        padding: 18px;
+      }
+
+      .notes-list {
+        display: grid;
+        gap: 10px;
+        margin: 18px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .notes-list li {
+        border: 1px solid rgba(245, 234, 219, 0.12);
+        border-radius: 8px;
+        padding: 11px 12px;
+        background: rgba(0, 0, 0, 0.22);
+      }
+
+      .copy-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .copy-version-card {
+        display: grid;
+        align-content: start;
+        min-height: 306px;
+        gap: 10px;
+      }
+
+      .copy-version-card strong,
+      .cheat-card strong {
+        display: block;
+        color: var(--cream);
+        font-size: 1.05rem;
+        line-height: 1.18;
+      }
+
+      .cheat-card {
+        border-color: rgba(255, 213, 69, 0.36);
+        background:
+          linear-gradient(145deg, rgba(255, 213, 69, 0.12), rgba(255, 48, 48, 0.08) 44%, transparent),
+          rgba(7, 2, 2, 0.82);
+      }
+
+      .cheat-card ul {
+        display: grid;
+        gap: 8px;
+        margin: 12px 0;
+        padding-left: 18px;
+      }
+
+      .draft-editor {
+        position: sticky;
+        top: 18px;
+        display: grid;
+        gap: 12px;
+      }
+
+      .editor-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 0.56fr) minmax(320px, 0.44fr);
+        gap: 18px;
+        margin-top: 22px;
+        align-items: start;
+      }
+
+      .packet-editor {
+        display: grid;
+        gap: 12px;
+        border-color: rgba(114, 240, 255, 0.28);
+        background:
+          linear-gradient(145deg, rgba(114, 240, 255, 0.1), rgba(255, 48, 48, 0.08) 48%, transparent),
+          rgba(7, 2, 2, 0.78);
+      }
+
+      #speakerAssetDraft,
+      #speakerAssetPacketImport,
+      .asset-input,
+      .asset-textarea {
+        min-height: 188px;
+        border: 1px solid rgba(114, 240, 255, 0.28);
+        border-radius: 8px;
+        padding: 14px;
+        color: var(--cream);
+        background: rgba(0, 0, 0, 0.32);
+        line-height: 1.55;
+        outline: none;
+      }
+
+      .asset-input {
+        width: 100%;
+        min-height: auto;
+        font: 800 1rem/1.3 var(--body);
+      }
+
+      .asset-textarea {
+        width: 100%;
+        min-height: 136px;
+        resize: vertical;
+        font: 600 0.92rem/1.45 var(--body);
+      }
+
+      #speakerAssetPacketImport {
+        width: 100%;
+        min-height: 210px;
+        resize: vertical;
+        font-family: var(--mono);
+        font-size: 0.78rem;
+      }
+
+      #speakerAssetDraft:focus,
+      #speakerAssetPacketImport:focus,
+      .asset-input:focus,
+      .asset-textarea:focus {
+        border-color: rgba(255, 213, 69, 0.74);
+        box-shadow: 0 0 0 6px rgba(255, 213, 69, 0.08);
+      }
+
+      .workspace-panel {
+        margin-top: 28px;
+        display: grid;
+        gap: 18px;
+      }
+
+      .workspace-head {
+        max-width: 980px;
+      }
+
+      .asset-editor-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(320px, 0.42fr);
+        gap: 18px;
+        align-items: start;
+      }
+
+      .asset-editor-card,
+      .copy-route-editor {
+        display: grid;
+        gap: 12px;
+        padding: 18px;
+      }
+
+      .copy-route-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .copy-route-editor {
+        min-height: 430px;
+        background:
+          linear-gradient(160deg, rgba(255, 213, 69, 0.1), transparent 38%),
+          rgba(7, 2, 2, 0.8);
+      }
+
+      .copy-route-editor label,
+      .asset-editor-card label {
+        display: grid;
+        gap: 8px;
+      }
+
+      .workspace-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+      }
+
+      #fullSpeakerPrepStatus {
+        color: var(--cyan);
+        font-family: var(--mono);
+        font-size: 0.78rem;
+        font-weight: 900;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .link-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 16px;
+      }
+
+      @media (max-width: 1060px) {
+        .hero,
+        .purpose-grid,
+        .copy-grid,
+        .editor-grid,
+        .asset-editor-grid,
+        .copy-route-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .draft-editor {
+          position: static;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Vexy Mission · speaker prep</p>
+          <h1>Vexy Speaker Assets</h1>
+          <p class="lead">
+            Full speaker notes, five copywriting routes, and one tiny cheat sheet card for each person.
+            Edits save locally in this browser so you can revise right on the page.
+          </p>
+          <div class="link-row">
+            <a class="button-link" href="./index.html?edit=1">Open deck review mode</a>
+            <a class="button-link" href="./team-handoff.html">Open team handoff</a>
+            <a class="button-link" href="./run-of-show.html">Open run of show</a>
+          </div>
+        </div>
+        <aside class="control-panel" aria-label="Speaker asset controls">
+          <label for="assetOwnerSelect">Editing speaker</label>
+          <select id="assetOwnerSelect">
+            <option value="grace">Grace</option>
+            <option value="david">David Taylor</option>
+            <option value="erick">Erick</option>
+            <option value="jake">Jake</option>
+          </select>
+          <label for="favoriteCopyRoute">Favorite copy route</label>
+          <select id="favoriteCopyRoute">
+            <option value="Grounded Technical">Grounded Technical</option>
+            <option value="Premium Mission">Premium Mission</option>
+            <option value="Plain English">Plain English</option>
+            <option value="Technical Jargon">Technical Jargon</option>
+            <option value="Presenter Friendly">Presenter Friendly</option>
+          </select>
+          <button id="copyCheatSheet" class="primary" type="button">Copy cheat sheet</button>
+          <button id="copySpeakerAssetPacket" type="button">Copy speaker packet</button>
+          <button id="resetSpeakerAssetDraft" type="button">Reset local draft</button>
+          <p id="speakerAssetStatus" aria-live="polite">
+            Saved locally in this browser. Use review links if another browser needs the edits.
+          </p>
+        </aside>
+      </section>
+
+      <section class="speaker-panel" data-speaker-asset-owner="grace">
+        <div class="purpose-grid">
+          <article class="panel">
+            <p class="label">Grace · premise</p>
+            <h2>Real body, readable self-model.</h2>
+            <p>Grace makes the premise concrete for the room: Vexy is not an abstract AI demo, it is a real VEX V5 robot whose physical body, sensors, claw, yellow ball task, and language self-model make the capstone technically real.</p>
+            <ol class="notes-list">
+              <li>Open with the simplest truth: a robot that can be wrong can learn.</li>
+              <li>Name the premise exactly: Self-Modeling Machines, in Language.</li>
+              <li>Explain that Vexy is the real robot body: VEX V5 Brain, Smart Ports, Smart Motors, metal rails, wheels, red claw, and battery-constrained hardware.</li>
+              <li>Add the perception stack: Raspberry Pi, Camera Module 3, AprilTag localization, and the yellow ball mission sample.</li>
+              <li>Define self-modeling in plain English: Vexy needs an internal account of what its own body is and what it can do.</li>
+              <li>Explain the language twist: the model should be readable enough for humans to challenge, not only an opaque tensor.</li>
+              <li>Connect the run: Vexy predicts in language, acts around the yellow ball and tag, then lets reality prove it right or wrong.</li>
+              <li>Name Loop 1 calibration and Loop 2 future morphology redesign.</li>
+              <li>Make the primitive arc memorable: grab, pull, throw.</li>
+              <li>Handoff to David: once the audience understands the body, David explains what learning means as a loop.</li>
+            </ol>
+          </article>
+          <aside class="cheat-card">
+            <p class="label">Simple note card</p>
+            <strong>Self-Modeling Machines, in Language means Vexy can compare its imagined body to what reality measures.</strong>
+            <ul>
+              <li>Vexy is a physical VEX V5 robot with a Raspberry Pi vision stack.</li>
+              <li>The yellow ball and AprilTag make the proof run concrete.</li>
+              <li>The goal is Sense, Act, Measure, Improve.</li>
+            </ul>
+            <p>Closing line: Once the body is real, David can explain how a run becomes a learning loop.</p>
+          </aside>
+        </div>
+        <div class="copy-grid">
+          <article class="copy-version-card"><p class="label">Grounded Technical</p><strong>A real VEX body makes the self-model accountable.</strong><p>Vexy turns the self-modeling premise into hardware: VEX V5 Brain, Smart Ports, Smart Motors, red claw, Raspberry Pi vision, AprilTag localization, and a yellow ball task that can prove the model wrong.</p><p class="meta">Talk track</p><p>The body matters because every motor, wheel, camera angle, claw motion, and yellow ball attempt gives the model a chance to be wrong in a measurable way.</p></article>
+          <article class="copy-version-card"><p class="label">Premium Mission</p><strong>The mission begins when the machine meets reality.</strong><p>Vexy enters the mission with a body, a camera, a claw, a ball, and a claim about itself. The world answers back.</p><p class="meta">Talk track</p><p>The cinematic version is Vexy on the moon. The truthful version is a real robot testing its own body against a real yellow ball, marker, and hardware limits.</p></article>
+          <article class="copy-version-card"><p class="label">Plain English</p><strong>Vexy learns by checking what it thought against what happened.</strong><p>Vexy tries a task, measures what happened, and uses the difference between expectation and reality as the start of learning.</p><p class="meta">Talk track</p><p>Vexy has an idea of what it can do, like reach for a yellow ball. The real world agrees or disagrees, and that disagreement tells Vexy what its self-model got wrong.</p></article>
+          <article class="copy-version-card"><p class="label">Technical Jargon</p><strong>Language self-modeling needs embodied error signals.</strong><p>The VEX V5 body converts the premise into predicted capability, bounded action, observed outcome, residual gap, and revised language model.</p><p class="meta">Talk track</p><p>Without the physical body, the self-model has no grounded error signal. Vexy needs prediction, action, observation, and a residual gap.</p></article>
+          <article class="copy-version-card"><p class="label">Presenter Friendly</p><strong>Vexy is where the idea becomes real.</strong><p>The robot body keeps the story honest. VEX V5 hardware, Raspberry Pi vision, the AprilTag, and yellow ball give Vexy something real to test.</p><p class="meta">Talk track</p><p>This section makes the premise feel real. Vexy is the robot, and the robot is what keeps the model honest.</p></article>
+        </div>
+      </section>
+
+      <section class="speaker-panel" data-speaker-asset-owner="david" hidden>
+        <div class="purpose-grid">
+          <article class="panel">
+            <p class="label">David Taylor · learning loop</p>
+            <h2>Learning is a loop, not a claim.</h2>
+            <p>David Taylor explains the research leap: the small loop is generate a plan, execute it, analyze telemetry, and start over; the larger Generational Loop asks how an LLM could eventually redesign its own body from real-world evidence.</p>
+            <ol class="notes-list">
+              <li>Open by separating truth from hype: the small learning loop is not "LLM says robot improved."</li>
+              <li>Name the sequence: generate a plan, execute it, analyze telemetry, and start over.</li>
+              <li>Explain the Generational Loop: an LLM could eventually redesign its own body.</li>
+              <li>Ground the idea in numerical self-modeling and the sub-symbolic tensor limitation.</li>
+              <li>Ground it in LLM morphology generation and the simulation limitation.</li>
+              <li>Ground it in LLM self-improvement and the missing self-model component.</li>
+              <li>Name the novelty: readable language self-modeling plus telemetry plus future morphology.</li>
+              <li>Name evidence sources: motor samples, vision state, operator results, and run outcome.</li>
+              <li>Stay honest about simple tasks and ball-in-bin progress.</li>
+              <li>Handoff to Erick: safe motion has to come before trusted learning.</li>
+            </ol>
+          </article>
+          <aside class="cheat-card">
+            <p class="label">Simple note card</p>
+            <strong>The small learning loop is plan, execute, analyze telemetry, and start over.</strong>
+            <ul>
+              <li>Numerical self-modeling is powerful but often not human-readable.</li>
+              <li>LLM morphology generation is promising but mostly simulation-bound.</li>
+              <li>Vexy points toward real hardware evidence plus future body redesign.</li>
+            </ul>
+            <p>Closing line: After the learning loop, Erick explains why safe bounded motion has to come first.</p>
+          </aside>
+        </div>
+        <div class="copy-grid">
+          <article class="copy-version-card"><p class="label">Grounded Technical</p><strong>Learning is plan, execute, telemetry, repeat.</strong><p>The small loop is concrete: generate a plan, run the robot, analyze motor samples, vision state, and operator results, then revise the next attempt.</p><p class="meta">Talk track</p><p>The learning loop is not a vibe. It is a sequence with a plan, a robot run, telemetry, operator results, and a next attempt.</p></article>
+          <article class="copy-version-card"><p class="label">Premium Mission</p><strong>Every mission gives the machine a new account of itself.</strong><p>Vexy treats each run as evidence. The small loop revises behavior; the larger loop imagines future body redesign.</p><p class="meta">Talk track</p><p>The robot does not just move and stop. It returns evidence about its own body, and that evidence can eventually shape the machine itself.</p></article>
+          <article class="copy-version-card"><p class="label">Plain English</p><strong>It tries, checks what happened, and tries smarter.</strong><p>Improvement means starting over with evidence, not simply saying the robot got better.</p><p class="meta">Talk track</p><p>Vexy tries something, checks what happened, and tries again with better information. That is a loop we can inspect.</p></article>
+          <article class="copy-version-card"><p class="label">Technical Jargon</p><strong>Readable morphology loops meet real telemetry.</strong><p>Vexy combines numerical self-modeling, LLM morphology generation, and LLM self-improvement in one hardware-grounded language experiment.</p><p class="meta">Talk track</p><p>The distinctive move is adding a readable language self-model grounded in telemetry from a real robot.</p></article>
+          <article class="copy-version-card"><p class="label">Presenter Friendly</p><strong>The loop is the proof.</strong><p>Vexy's learning claim is strongest when we can show the loop: plan, run, evidence, revision.</p><p class="meta">Talk track</p><p>We are not asking the audience to trust that the model improved. We are showing what proof the loop would need.</p></article>
+        </div>
+      </section>
+
+      <section class="speaker-panel" data-speaker-asset-owner="erick" hidden>
+        <div class="purpose-grid">
+          <article class="panel">
+            <p class="label">Erick · trusted motion</p>
+            <h2>The hard part is trusted motion.</h2>
+            <p>Erick explains the hard engineering problem: moving a robot is one layer, but trusted motion requires bounded commands, strict contracts, ack/fault states, watchdogs, and evidence from the run.</p>
+            <ol class="notes-list">
+              <li>Open with: making the robot move is one problem; making it move safely, measure itself, and explain what changed is harder.</li>
+              <li>Name wheel slip, motor drift, camera errors, object ambiguity, claw alignment, AprilTag angle, and a moving ball.</li>
+              <li>Say the problem is not motion or action; the problem is trusted motion.</li>
+              <li>Explain why the LLM cannot directly freestyle against motors.</li>
+              <li>Explain bounded vocabulary and safe command packets.</li>
+              <li>Name contract states: accepted, rejected, stale, completed, or faulted.</li>
+              <li>Explain watchdogs and limits as bounded-run guardrails.</li>
+              <li>Connect contracts to learning: no evidence trail means no safe learning.</li>
+              <li>Close with motion that can be trusted, measured, and explained.</li>
+              <li>Handoff to Jake: bounded motion becomes evidence.</li>
+            </ol>
+          </article>
+          <aside class="cheat-card">
+            <p class="label">Simple note card</p>
+            <strong>The challenge is not motion or action. The challenge is trusted motion.</strong>
+            <ul>
+              <li>Real runs include slip, drift, camera errors, and object ambiguity.</li>
+              <li>Bounded commands keep the LLM away from unsafe motor improvisation.</li>
+              <li>Ack/fault states and evidence make motion measurable.</li>
+            </ul>
+            <p>Closing line: Once motion is trustworthy, Jake can explain how the evidence packet turns a run into learning.</p>
+          </aside>
+        </div>
+        <div class="copy-grid">
+          <article class="copy-version-card"><p class="label">Grounded Technical</p><strong>Trusted motion starts with command contracts.</strong><p>The LLM reasons through bounded commands. The robot runtime handles limits, watchdogs, ack/fault states, and evidence so motion can be trusted.</p><p class="meta">Talk track</p><p>The LLM has to stay inside a command vocabulary the robot can validate. Every command has limits and every outcome has evidence.</p></article>
+          <article class="copy-version-card"><p class="label">Premium Mission</p><strong>Mission control does not improvise with motors.</strong><p>Before Vexy can learn from a run, the run has to be safe enough to trust.</p><p class="meta">Talk track</p><p>You do not improvise engine commands during launch. You define vocabulary, bound action, watch state, and decide what the mission proved.</p></article>
+          <article class="copy-version-card"><p class="label">Plain English</p><strong>The robot has to move in a way we can explain.</strong><p>If the robot slips, misses, or sees the wrong thing, the system needs to know that.</p><p class="meta">Talk track</p><p>It is not enough for Vexy to move. We need to know what command it tried and whether the result can be trusted.</p></article>
+          <article class="copy-version-card"><p class="label">Technical Jargon</p><strong>Bounded action schemas keep LLM control verifiable.</strong><p>Strict command vocabulary, ack/fault envelopes, timeouts, clamps, and telemetry create an inspectable execution boundary.</p><p class="meta">Talk track</p><p>The LLM reasons about intent and expected outcome, but execution needs validation, acknowledgement, fault handling, and telemetry.</p></article>
+          <article class="copy-version-card"><p class="label">Presenter Friendly</p><strong>The hard part is trusted motion.</strong><p>Vexy must move safely, measure itself, and explain what changed before the learning loop can trust the result.</p><p class="meta">Talk track</p><p>Moving is hard, but trusted motion is harder. We need safe commands and proof from the run.</p></article>
+        </div>
+      </section>
+
+      <section class="speaker-panel" data-speaker-asset-owner="jake" hidden>
+        <div class="purpose-grid">
+          <article class="panel">
+            <p class="label">Jake · evidence packet</p>
+            <h2>The gap is the learning signal.</h2>
+            <p>Jake explains the measurement layer: each run needs prediction, observation, telemetry, vision state, gap, and update so the system can learn from evidence instead of vague narration.</p>
+            <ol class="notes-list">
+              <li>Open with measurement: this is where the project becomes more than a robotics demo.</li>
+              <li>Define the evidence packet: predicted, observed, telemetry, vision, gap, update.</li>
+              <li>Use the yellow ball: if the claw is off, the miss becomes evidence.</li>
+              <li>Explain AprilTags and vision as sensing before action.</li>
+              <li>Explain predicted versus observed in plain English.</li>
+              <li>Name the gap as the learning signal.</li>
+              <li>Structure keeps the LLM from inventing explanations.</li>
+              <li>Connect to the critic gate before trusting the model update.</li>
+              <li>Close: Vexy treats every run as evidence.</li>
+              <li>Final handoff: body, learning loop, trusted motion, and evidence become the mission.</li>
+            </ol>
+          </article>
+          <aside class="cheat-card">
+            <p class="label">Simple note card</p>
+            <strong>A run matters only if it leaves behind evidence the model can inspect.</strong>
+            <ul>
+              <li>Prediction and observation have to be compared.</li>
+              <li>Telemetry and vision state keep the story grounded.</li>
+              <li>The gap is the learning signal.</li>
+            </ul>
+            <p>Closing line: Together, the team showed how Vexy can move from body to model to proof.</p>
+          </aside>
+        </div>
+        <div class="copy-grid">
+          <article class="copy-version-card"><p class="label">Grounded Technical</p><strong>The evidence packet is the learning surface.</strong><p>Each run should carry prediction, command, observation, telemetry, vision state, gap, and update.</p><p class="meta">Talk track</p><p>A run is useful when the prediction, command, observation, telemetry, vision state, and gap all travel together.</p></article>
+          <article class="copy-version-card"><p class="label">Premium Mission</p><strong>The moon answers back.</strong><p>Vexy makes a prediction. The run answers. The gap guides the next attempt.</p><p class="meta">Talk track</p><p>The world answers back. The difference between expectation and run outcome tells the next version what to change.</p></article>
+          <article class="copy-version-card"><p class="label">Plain English</p><strong>The gap is how Vexy can learn.</strong><p>If Vexy thought one thing would happen and something else happened, that difference becomes useful information.</p><p class="meta">Talk track</p><p>Vexy needs receipts: what it thought, what happened, and what was different.</p></article>
+          <article class="copy-version-card"><p class="label">Technical Jargon</p><strong>Prediction-observation residuals ground the critic loop.</strong><p>Structured telemetry and vision observations produce a residual gap for the LLM generator, critic, and operator.</p><p class="meta">Talk track</p><p>The evidence packet gives everyone a shared record, so a model update has to be supported by run data.</p></article>
+          <article class="copy-version-card"><p class="label">Presenter Friendly</p><strong>A run only matters if it leaves evidence.</strong><p>Vexy can learn from the difference between expected outcome and measured outcome when that evidence is captured.</p><p class="meta">Talk track</p><p>If a run leaves no structured record, the model has nothing trustworthy to learn from.</p></article>
+        </div>
+      </section>
+
+      <section id="speakerAssetWorkspace" class="workspace-panel" aria-labelledby="speakerAssetWorkspaceTitle">
+        <div class="workspace-head">
+          <p class="eyebrow">Editable Prep Workspace</p>
+          <h2 id="speakerAssetWorkspaceTitle">Make the changes right here.</h2>
+          <p class="lead">
+            Edit the full notes, all five copy routes, and the tiny note card directly on this page.
+            The changes autosave in this browser. To share them, copy the edited speaker assets packet.
+          </p>
+        </div>
+
+        <div class="asset-editor-grid">
+          <article class="asset-editor-card">
+            <label for="speakerAssetNotesEditor">Full speaker notes editor</label>
+            <textarea id="speakerAssetNotesEditor" class="asset-textarea" rows="12" spellcheck="true"></textarea>
+          </article>
+
+          <article class="asset-editor-card">
+            <p class="label">Cheat sheet editor</p>
+            <label for="speakerAssetCheatOneLiner">One-liner</label>
+            <input id="speakerAssetCheatOneLiner" class="asset-input" type="text">
+            <label for="speakerAssetCheatBullets">Three bullets, one per line</label>
+            <textarea id="speakerAssetCheatBullets" class="asset-textarea" rows="5" spellcheck="true"></textarea>
+            <label for="speakerAssetCheatClosing">Closing handoff line</label>
+            <textarea id="speakerAssetCheatClosing" class="asset-textarea" rows="3" spellcheck="true"></textarea>
+          </article>
+        </div>
+
+        <div>
+          <p class="label">Five editable copywriting routes</p>
+          <div id="speakerAssetCopyVersionList" class="copy-route-grid" aria-live="polite"></div>
+        </div>
+
+        <div class="workspace-actions">
+          <button id="copyEditedSpeakerAssets" class="primary" type="button">Copy edited speaker assets</button>
+          <p id="fullSpeakerPrepStatus" aria-live="polite">
+            Full prep workspace is loaded from the canonical notes.
+          </p>
+        </div>
+      </section>
+
+      <section class="editor-grid" aria-label="Portable speaker edit workflow">
+        <article class="draft-editor" aria-label="Editable speaker asset draft">
+          <p class="label">Direct editable draft</p>
+          <h2>Revise your note card here.</h2>
+          <p>
+            This draft is intentionally browser-local. It is the fastest way to edit right on the page.
+            To share across teammates, copy the portable speaker asset packet.
+          </p>
+          <div id="speakerAssetDraft" contenteditable="true" spellcheck="true"></div>
+        </article>
+        <article class="packet-editor" aria-label="Import returned speaker asset packet">
+          <p class="label">Portable static handoff</p>
+          <h2>Import a returned packet.</h2>
+          <p>
+            Paste an imported speaker asset packet here to restore a teammate's draft and favorite copy route.
+            This is still static-site sharing, not live shared persistence.
+          </p>
+          <textarea id="speakerAssetPacketImport" placeholder="Paste a Vexy Speaker Asset Packet here."></textarea>
+          <button id="importSpeakerAssetPacket" class="primary" type="button">Import speaker packet</button>
+        </article>
+      </section>
+    </main>
+
+    <script>
+      const speakerAssetStorageKey = "vexy-speaker-assets-drafts-v1";
+      const speakerAssetFavoriteStorageKey = "vexy-speaker-assets-favorites-v1";
+      const speakerAssetLiveEditStorageKey = "vexy-speaker-assets-live-edits-v1";
+      const speakerAssetStatus = document.querySelector("#speakerAssetStatus");
+      const assetOwnerSelect = document.querySelector("#assetOwnerSelect");
+      const favoriteCopyRoute = document.querySelector("#favoriteCopyRoute");
+      const speakerAssetDraft = document.querySelector("#speakerAssetDraft");
+      const speakerAssetPanels = Array.from(document.querySelectorAll("[data-speaker-asset-owner]"));
+      const speakerAssetNotesEditor = document.querySelector("#speakerAssetNotesEditor");
+      const speakerAssetCopyVersionList = document.querySelector("#speakerAssetCopyVersionList");
+      const speakerAssetCheatOneLiner = document.querySelector("#speakerAssetCheatOneLiner");
+      const speakerAssetCheatBullets = document.querySelector("#speakerAssetCheatBullets");
+      const speakerAssetCheatClosing = document.querySelector("#speakerAssetCheatClosing");
+      const copyEditedSpeakerAssets = document.querySelector("#copyEditedSpeakerAssets");
+      const fullSpeakerPrepStatus = document.querySelector("#fullSpeakerPrepStatus");
+      const copyCheatSheet = document.querySelector("#copyCheatSheet");
+      const copySpeakerAssetPacket = document.querySelector("#copySpeakerAssetPacket");
+      const resetSpeakerAssetDraft = document.querySelector("#resetSpeakerAssetDraft");
+      const speakerAssetPacketImport = document.querySelector("#speakerAssetPacketImport");
+      const importSpeakerAssetPacketButton = document.querySelector("#importSpeakerAssetPacket");
+
+      const speakerAssetDefaults = {
+        grace: {
+          name: "Grace",
+          draft: "Grace note card: Self-Modeling Machines, in Language. Vexy is a physical VEX V5 robot with Raspberry Pi vision, an AprilTag, and a yellow ball. The body predicts, the run proves, and the model revises.",
+          cheat: "Grace\nSelf-Modeling Machines, in Language means Vexy can compare its imagined body to what reality measures.\n- Vexy is a physical VEX V5 robot with a Raspberry Pi vision stack.\n- The yellow ball and AprilTag make the proof run concrete.\n- The goal is Sense, Act, Measure, Improve.\nClosing: Once the body is real, David can explain how a run becomes a learning loop."
+        },
+        david: {
+          name: "David Taylor",
+          draft: "David Taylor note card: The small learning loop is plan, execute, analyze telemetry, and start over. The larger Generational Loop asks whether the LLM can eventually redesign its body from real-world evidence.",
+          cheat: "David Taylor\nThe small learning loop is plan, execute, analyze telemetry, and start over.\n- Numerical self-modeling is powerful but often not human-readable.\n- LLM morphology generation is promising but mostly simulation-bound.\n- Vexy points toward real hardware evidence plus future body redesign.\nClosing: After the learning loop, Erick explains why safe bounded motion has to come first."
+        },
+        erick: {
+          name: "Erick",
+          draft: "Erick note card: The challenge is not motion or action. The challenge is trusted motion. Bounded commands, ack/fault states, watchdogs, and evidence keep the LLM safe enough to reason.",
+          cheat: "Erick\nThe challenge is not motion or action. The challenge is trusted motion.\n- Real runs include slip, drift, camera errors, and object ambiguity.\n- Bounded commands keep the LLM away from unsafe motor improvisation.\n- Ack/fault states and evidence make motion measurable.\nClosing: Once motion is trustworthy, Jake can explain how the evidence packet turns a run into learning."
+        },
+        jake: {
+          name: "Jake",
+          draft: "Jake note card: A run matters only if it leaves evidence. Prediction, observation, telemetry, vision state, gap, and update turn motion into a learning signal.",
+          cheat: "Jake\nA run matters only if it leaves behind evidence the model can inspect.\n- Prediction and observation have to be compared.\n- Telemetry and vision state keep the story grounded.\n- The gap is the learning signal.\nClosing: Together, the team showed how Vexy can move from body to model to proof."
+        }
+      };
+
+      const speakerPrepDefaults = {
+        grace: {
+          notes: [
+            "Open with the simplest truth: a robot that can be wrong can learn.",
+            "Name the premise exactly: Self-Modeling Machines, in Language.",
+            "Explain that Vexy is the real robot body: VEX V5 Brain, Smart Ports, Smart Motors, metal rails, wheels, red claw, and battery-constrained hardware.",
+            "Add the perception stack: Raspberry Pi, Camera Module 3, AprilTag localization, and the yellow ball mission sample.",
+            "Define self-modeling in plain English: Vexy needs an internal account of what its own body is and what it can do.",
+            "Explain the language twist: the model should be readable enough for humans to challenge, not only an opaque tensor.",
+            "Connect the run: Vexy predicts in language, acts around the yellow ball and tag, then lets reality prove it right or wrong.",
+            "Name the two loops: Loop 1 calibrates one body through repeated attempts; Loop 2 is the future morphology loop where body designs can change.",
+            "Make the primitive arc memorable: grab is the safety net, pull is the calibration spine, and throw is the future hero move.",
+            "Handoff to David: once the audience understands the body, David explains what learning means as a loop instead of a claim."
+          ],
+          copywritingVersions: [
+            {
+              label: "Grounded Technical",
+              headline: "A real VEX body makes the self-model accountable.",
+              slideCopy: "Vexy turns the self-modeling premise into hardware: VEX V5 Brain, Smart Ports, Smart Motors, red claw, Raspberry Pi vision, AprilTag localization, and a yellow ball task that can prove the model wrong.",
+              talkTrack: "The important thing to understand is that Vexy is not just an AI concept. It is a physical VEX V5 robot. The body matters because every motor, wheel, camera angle, claw motion, and yellow ball attempt gives the model a chance to be wrong in a measurable way."
+            },
+            {
+              label: "Premium Mission",
+              headline: "The mission begins when the machine meets reality.",
+              slideCopy: "Vexy enters the mission with a body, a camera, a claw, a ball, and a claim about itself. The world answers back, and that answer becomes the first step toward a language self-model.",
+              talkTrack: "The cinematic version is that Vexy rolls onto the moon. The truthful version is even cooler: a real robot is making a claim about its own body, then testing that claim against a real yellow ball, a real marker, and real hardware limits."
+            },
+            {
+              label: "Plain English",
+              headline: "Vexy is built to learn by checking what it thought against what happened.",
+              slideCopy: "Vexy has a body, sensors, and a claw. It tries a task, measures what happened, and can use the difference between expectation and reality as the start of learning.",
+              talkTrack: "In plain English, Vexy is trying to understand itself. It has an idea of what it can do, like reach for a yellow ball. Then the real world either agrees or disagrees. That disagreement is useful because it tells Vexy what its self-model got wrong."
+            },
+            {
+              label: "Technical Jargon",
+              headline: "Language self-modeling needs embodied error signals.",
+              slideCopy: "The VEX V5 body converts the self-model premise into an embodied loop: predicted capability, bounded action, observed outcome, residual gap, and revised language model.",
+              talkTrack: "The technical premise is embodied self-modeling in language. Vexy needs a predicted capability, an executed physical action, a sensor-backed observation, and a residual gap. Without the physical body, the self-model has no grounded error signal."
+            },
+            {
+              label: "Presenter Friendly",
+              headline: "Vexy is where the idea becomes real.",
+              slideCopy: "The robot body is what keeps the story honest. VEX V5 hardware, Raspberry Pi vision, the AprilTag, and the yellow ball give Vexy something real to test against.",
+              talkTrack: "This section makes the premise feel real. Vexy is the robot, and the robot is what keeps the model honest. When it tries to act in the world, the world pushes back, and that pushback is what makes learning possible."
+            }
+          ],
+          cheatSheet: {
+            oneLiner: "Self-Modeling Machines, in Language means Vexy can compare its imagined body to what reality measures.",
+            bullets: [
+              "Vexy is a physical VEX V5 robot with a Raspberry Pi vision stack.",
+              "The yellow ball and AprilTag make the proof run concrete.",
+              "The goal is Sense, Act, Measure, Improve."
+            ],
+            closingLine: "Once the body is real, David can explain how a run becomes a learning loop."
+          }
+        },
+        david: {
+          notes: [
+            "Open by separating truth from hype: the small learning loop is not 'LLM says robot improved.'",
+            "Name the actual sequence: generate a plan, execute it, analyze telemetry, and start over.",
+            "Explain the larger Generational Loop: what if an LLM could redesign its own body and adapt to real-world conditions?",
+            "Ground the idea in numerical self-modeling: powerful, but often locked in a sub-symbolic tensor humans cannot read.",
+            "Ground the idea in LLM morphology generation: LLMs can generate designs, but mostly in simulation.",
+            "Ground the idea in LLM self-improvement: control parameters can improve on hardware, but without a self-model component.",
+            "Explain the novelty: Vexy combines readable language self-modeling, real telemetry, critic review, and future morphology generation.",
+            "Name the evidence sources: motor samples, vision state, operator results, and run outcome.",
+            "Stay honest: challenges restricted the robot to simple tasks, and Vexy was beginning to conquer putting the ball in the bin.",
+            "Handoff to Erick: once learning is defined, the next question is how to make motion safe enough to trust."
+          ],
+          copywritingVersions: [
+            {
+              label: "Grounded Technical",
+              headline: "Learning is plan, execute, telemetry, repeat.",
+              slideCopy: "The small loop is concrete: generate a plan, run the robot, analyze motor samples, vision state, and operator results, then revise the next attempt.",
+              talkTrack: "The learning loop is not a vibe. It is a sequence. The system generates a plan, executes that plan on the robot, analyzes telemetry and operator results, and then uses that evidence to decide what should change on the next run."
+            },
+            {
+              label: "Premium Mission",
+              headline: "Every mission gives the machine a new account of itself.",
+              slideCopy: "Vexy treats each run as evidence. The small loop revises behavior; the larger Generational Loop imagines a future where the robot can redesign its own body.",
+              talkTrack: "The mission story is that every run sends something back. The robot does not just move and stop. It returns evidence about its own body, and the larger question is whether that evidence can eventually let an LLM redesign the machine itself."
+            },
+            {
+              label: "Plain English",
+              headline: "It tries, checks what happened, and tries smarter.",
+              slideCopy: "David's section explains that improvement means starting over with evidence, not simply saying the robot got better.",
+              talkTrack: "In simple terms, Vexy tries something, checks what happened, and tries again with better information. That is different from saying an AI magically improved. It is a loop we can inspect."
+            },
+            {
+              label: "Technical Jargon",
+              headline: "Readable morphology loops meet real telemetry.",
+              slideCopy: "Vexy combines numerical self-modeling, LLM morphology generation, and LLM self-improvement into one hardware-grounded language self-model experiment.",
+              talkTrack: "Technically, this combines three lanes that are usually separate: numerical self-modeling, LLM morphology generation, and hardware self-improvement. The distinctive move is adding a readable language self-model grounded in telemetry from a real robot."
+            },
+            {
+              label: "Presenter Friendly",
+              headline: "The loop is the proof.",
+              slideCopy: "Vexy's learning claim is strongest when we can show the loop: plan, run, evidence, revision.",
+              talkTrack: "My job is to make the learning claim precise. We are not asking the audience to trust that the model improved. We are showing what the loop would need: a plan, a run, telemetry, analysis, and a next attempt."
+            }
+          ],
+          cheatSheet: {
+            oneLiner: "The small learning loop is plan, execute, analyze telemetry, and start over.",
+            bullets: [
+              "Numerical self-modeling is powerful but often not human-readable.",
+              "LLM morphology generation is promising but mostly simulation-bound.",
+              "Vexy points toward real hardware evidence plus future body redesign."
+            ],
+            closingLine: "After the learning loop, Erick explains why safe bounded motion has to come first."
+          }
+        },
+        erick: {
+          notes: [
+            "Open with the exact idea: making the robot move is one problem; making it move safely, measure itself, and explain what changed is much harder.",
+            "Name the physical messiness: wheel slip, motor drift, camera errors, object ambiguity, claw alignment, AprilTag angle, and a moving ball.",
+            "Explain that the problem is not motion or action; the problem is trusted motion.",
+            "Say why the LLM cannot directly freelance against motors.",
+            "Explain bounded vocabulary: the LLM should generate safe command packets, not raw low-level motor improvisation.",
+            "Name contract states: accepted, rejected, stale, completed, or faulted.",
+            "Explain watchdogs and limits as the guardrails that keep a run bounded.",
+            "Connect contracts to learning: if a command has no evidence trail, the LLM cannot safely learn from it.",
+            "Use the strongest close: the goal was to build a robot whose motion can be trusted, measured, and explained.",
+            "Handoff to Jake: once motion is bounded, Jake shows how the run becomes evidence."
+          ],
+          copywritingVersions: [
+            {
+              label: "Grounded Technical",
+              headline: "Trusted motion starts with command contracts.",
+              slideCopy: "The LLM reasons through bounded commands. The robot runtime handles limits, watchdogs, ack/fault states, and evidence so motion can be trusted.",
+              talkTrack: "The core engineering problem is not just moving. The LLM has to stay inside a command vocabulary the robot can validate. That means every command has limits, every run has states, and every outcome has evidence."
+            },
+            {
+              label: "Premium Mission",
+              headline: "Mission control does not improvise with motors.",
+              slideCopy: "Before Vexy can learn from a run, the run has to be safe enough to trust: bounded intent, controlled action, measured outcome, and proof.",
+              talkTrack: "In the mission version of the story, this is mission control. You do not improvise engine commands during launch. You define the vocabulary, bound the action, watch the state, and only then decide what the mission proved."
+            },
+            {
+              label: "Plain English",
+              headline: "The robot has to move in a way we can explain.",
+              slideCopy: "If the robot slips, misses, or sees the wrong thing, the system needs to know that instead of pretending the command worked.",
+              talkTrack: "In plain English, it is not enough for Vexy to move. We need to know what command it tried, whether the command was safe, what actually happened, and whether the result can be trusted."
+            },
+            {
+              label: "Technical Jargon",
+              headline: "Bounded action schemas keep LLM control verifiable.",
+              slideCopy: "Strict command vocabulary, ack/fault envelopes, timeouts, clamps, and telemetry give the LLM an inspectable execution boundary.",
+              talkTrack: "Technically, the LLM needs a constrained action schema. It can reason about intent and expected outcome, but execution needs validation, acknowledgement, fault handling, timeouts, and telemetry so the robot never becomes an unbounded text-to-motor system."
+            },
+            {
+              label: "Presenter Friendly",
+              headline: "The hard part is trusted motion.",
+              slideCopy: "Vexy must move safely, measure itself, and explain what changed before the learning loop can trust the result.",
+              talkTrack: "This section is the hard engineering layer. Moving is hard, but trusted motion is harder. We need safe commands, proof from the run, and enough structure that the model learns from reality instead of inventing a story."
+            }
+          ],
+          cheatSheet: {
+            oneLiner: "The challenge is not motion or action. The challenge is trusted motion.",
+            bullets: [
+              "Real runs include slip, drift, camera errors, and object ambiguity.",
+              "Bounded commands keep the LLM away from unsafe motor improvisation.",
+              "Ack/fault states and evidence make motion measurable."
+            ],
+            closingLine: "Once motion is trustworthy, Jake can explain how the evidence packet turns a run into learning."
+          }
+        },
+        jake: {
+          notes: [
+            "Open with the measurement claim: the next layer is where the project becomes more than a robotics demo.",
+            "Define the evidence packet: predicted state, observed state, telemetry, vision state, gap, and update.",
+            "Use the yellow ball example: if Vexy expects to grab it but the claw is off, the miss becomes evidence.",
+            "Explain the AprilTag and vision role: sensing grounds the run before action.",
+            "Explain predicted versus observed in plain English.",
+            "Name the gap as the learning signal, not just a failure label.",
+            "Explain why structure matters: it keeps the LLM from inventing explanations after the fact.",
+            "Connect to the critic gate: the model's explanation should be checked before it is trusted.",
+            "Close the loop: Vexy treats every robot run as evidence.",
+            "Final handoff: the team showed body, learning loop, trusted motion, and evidence; the next mission is proving it on more real runs."
+          ],
+          copywritingVersions: [
+            {
+              label: "Grounded Technical",
+              headline: "The evidence packet is the learning surface.",
+              slideCopy: "Each run should carry prediction, command, observation, telemetry, vision state, gap, and update so the model can reason from proof.",
+              talkTrack: "The measurement layer is where the learning story becomes inspectable. A run is useful when the prediction, command, observation, telemetry, vision state, and gap all travel together as one evidence packet."
+            },
+            {
+              label: "Premium Mission",
+              headline: "The moon answers back.",
+              slideCopy: "Vexy makes a prediction. The run answers. The gap between those two becomes the signal that guides the next attempt.",
+              talkTrack: "In the mission story, the world answers back. Vexy expects one outcome, but the run gives us the real one. That difference is not a dead end. It is the message that tells the next version what to change."
+            },
+            {
+              label: "Plain English",
+              headline: "The gap is how Vexy can learn.",
+              slideCopy: "If Vexy thought one thing would happen and something else happened, that difference becomes useful information.",
+              talkTrack: "Plainly, Vexy needs receipts. It needs to know what it thought would happen, what actually happened, and what was different. That difference is the gap, and the gap is what makes learning possible."
+            },
+            {
+              label: "Technical Jargon",
+              headline: "Prediction-observation residuals ground the critic loop.",
+              slideCopy: "Structured telemetry and vision observations produce a residual gap that can be inspected by the LLM generator, critic, and operator.",
+              talkTrack: "Technically, we need prediction-observation residuals. The evidence packet gives the generator, critic, and operator a shared record, so the system can evaluate whether a model update is supported by actual run data."
+            },
+            {
+              label: "Presenter Friendly",
+              headline: "A run only matters if it leaves evidence.",
+              slideCopy: "Vexy can learn from the difference between expected outcome and measured outcome when that evidence is captured.",
+              talkTrack: "This section is the evidence story. If a run happens and leaves no structured record, the model has nothing trustworthy to learn from. The packet is what turns motion into a learning signal."
+            }
+          ],
+          cheatSheet: {
+            oneLiner: "A run matters only if it leaves behind evidence the model can inspect.",
+            bullets: [
+              "Prediction and observation have to be compared.",
+              "Telemetry and vision state keep the story grounded.",
+              "The gap is the learning signal."
+            ],
+            closingLine: "Together, the team showed how Vexy can move from body to model to proof."
+          }
+        }
+      };
+
+      function readDrafts() {
+        try {
+          return JSON.parse(localStorage.getItem(speakerAssetStorageKey) || "{}");
+        } catch {
+          return {};
+        }
+      }
+
+      function writeDrafts(drafts) {
+        localStorage.setItem(speakerAssetStorageKey, JSON.stringify(drafts, null, 2));
+      }
+
+      function readFavorites() {
+        try {
+          return JSON.parse(localStorage.getItem(speakerAssetFavoriteStorageKey) || "{}");
+        } catch {
+          return {};
+        }
+      }
+
+      function writeFavorites(favorites) {
+        localStorage.setItem(speakerAssetFavoriteStorageKey, JSON.stringify(favorites, null, 2));
+      }
+
+      function readLiveSpeakerAssetEdits() {
+        try {
+          return JSON.parse(localStorage.getItem(speakerAssetLiveEditStorageKey) || "{}");
+        } catch {
+          return {};
+        }
+      }
+
+      function writeLiveSpeakerAssetEdits(edits) {
+        localStorage.setItem(speakerAssetLiveEditStorageKey, JSON.stringify(edits, null, 2));
+      }
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, (character) => {
+          const entities = {
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            "\"": "&quot;",
+            "'": "&#039;"
+          };
+          return entities[character];
+        });
+      }
+
+      function cloneSpeakerPrep(value) {
+        return JSON.parse(JSON.stringify(value));
+      }
+
+      function defaultSpeakerPrep(owner = currentOwner()) {
+        return cloneSpeakerPrep(speakerPrepDefaults[owner] || speakerPrepDefaults.grace);
+      }
+
+      function speakerPrepForOwner(owner = currentOwner()) {
+        const defaults = defaultSpeakerPrep(owner);
+        const stored = readLiveSpeakerAssetEdits()[owner] || {};
+        return {
+          notesText: stored.notesText || defaults.notes.join("\n"),
+          copywritingVersions: Array.isArray(stored.copywritingVersions) && stored.copywritingVersions.length === 5
+            ? stored.copywritingVersions
+            : defaults.copywritingVersions,
+          cheatSheet: {
+            oneLiner: stored.cheatSheet?.oneLiner || defaults.cheatSheet.oneLiner,
+            bullets: Array.isArray(stored.cheatSheet?.bullets) && stored.cheatSheet.bullets.length
+              ? stored.cheatSheet.bullets
+              : defaults.cheatSheet.bullets,
+            closingLine: stored.cheatSheet?.closingLine || defaults.cheatSheet.closingLine
+          }
+        };
+      }
+
+      function renderCopyVersionEditors(copywritingVersions) {
+        speakerAssetCopyVersionList.innerHTML = copywritingVersions
+          .map((version, index) => `
+            <article class="copy-route-editor" data-copy-route-index="${index}">
+              <p class="label">${escapeHtml(version.label)}</p>
+              <label>
+                Headline
+                <input class="asset-input" data-copy-field="headline" type="text" value="${escapeHtml(version.headline)}">
+              </label>
+              <label>
+                Slide copy
+                <textarea class="asset-textarea" data-copy-field="slideCopy" rows="5" spellcheck="true">${escapeHtml(version.slideCopy)}</textarea>
+              </label>
+              <label>
+                Talk track
+                <textarea class="asset-textarea" data-copy-field="talkTrack" rows="7" spellcheck="true">${escapeHtml(version.talkTrack)}</textarea>
+              </label>
+            </article>
+          `)
+          .join("");
+      }
+
+      function loadLiveSpeakerAssetEditor(owner = currentOwner()) {
+        const prep = speakerPrepForOwner(owner);
+        speakerAssetNotesEditor.value = prep.notesText;
+        renderCopyVersionEditors(prep.copywritingVersions);
+        speakerAssetCheatOneLiner.value = prep.cheatSheet.oneLiner;
+        speakerAssetCheatBullets.value = prep.cheatSheet.bullets.join("\n");
+        speakerAssetCheatClosing.value = prep.cheatSheet.closingLine;
+        fullSpeakerPrepStatus.textContent = `Full prep workspace loaded for ${speakerAssetDefaults[owner].name}.`;
+      }
+
+      function currentCopyVersionEditors() {
+        return Array.from(document.querySelectorAll("[data-copy-route-index]")).map((card) => {
+          const index = Number(card.dataset.copyRouteIndex);
+          const defaults = defaultSpeakerPrep(currentOwner()).copywritingVersions[index];
+          return {
+            label: defaults.label,
+            headline: card.querySelector('[data-copy-field="headline"]')?.value.trim() || defaults.headline,
+            slideCopy: card.querySelector('[data-copy-field="slideCopy"]')?.value.trim() || defaults.slideCopy,
+            talkTrack: card.querySelector('[data-copy-field="talkTrack"]')?.value.trim() || defaults.talkTrack
+          };
+        });
+      }
+
+      function currentEditedSpeakerPrep() {
+        return {
+          notesText: speakerAssetNotesEditor.value.trim(),
+          copywritingVersions: currentCopyVersionEditors(),
+          cheatSheet: {
+            oneLiner: speakerAssetCheatOneLiner.value.trim(),
+            bullets: speakerAssetCheatBullets.value
+              .split("\n")
+              .map((line) => line.trim())
+              .filter(Boolean)
+              .slice(0, 3),
+            closingLine: speakerAssetCheatClosing.value.trim()
+          }
+        };
+      }
+
+      function saveLiveSpeakerAssetEdits() {
+        const owner = currentOwner();
+        const edits = readLiveSpeakerAssetEdits();
+        edits[owner] = currentEditedSpeakerPrep();
+        writeLiveSpeakerAssetEdits(edits);
+        fullSpeakerPrepStatus.textContent = `Saved full speaker prep for ${speakerAssetDefaults[owner].name}.`;
+        speakerAssetStatus.textContent = "Saved full speaker prep locally in this browser.";
+      }
+
+      function buildEditedSpeakerAssetPacket(owner = currentOwner()) {
+        const displayName = speakerAssetDefaults[owner].name;
+        const prep = currentEditedSpeakerPrep();
+        const copyRoutes = prep.copywritingVersions.flatMap((version) => [
+          `## ${version.label}`,
+          `Headline: ${version.headline}`,
+          `Slide copy: ${version.slideCopy}`,
+          `Talk track: ${version.talkTrack}`,
+          ""
+        ]);
+        return [
+          "Vexy Editable Speaker Assets",
+          `Owner: ${owner}`,
+          `Display name: ${displayName}`,
+          `Favorite copy route: ${favoriteCopyRoute.value}`,
+          "",
+          "# Full speaker notes",
+          prep.notesText,
+          "",
+          "# Five copywriting routes",
+          ...copyRoutes,
+          "# Cheat sheet",
+          prep.cheatSheet.oneLiner,
+          ...prep.cheatSheet.bullets.map((bullet) => `- ${bullet}`),
+          `Closing: ${prep.cheatSheet.closingLine}`,
+          "",
+          "Truth boundary: Static Vercel cannot synchronize edits across browsers without a backend store. This packet shares speaker prep only and is not proof of live robot success."
+        ].join("\n");
+      }
+
+      async function copyEditedSpeakerAssetPacket() {
+        saveLiveSpeakerAssetEdits();
+        saveFavoriteCopyRoute({ silent: true });
+        await navigator.clipboard.writeText(buildEditedSpeakerAssetPacket());
+        fullSpeakerPrepStatus.textContent = "Copied edited speaker assets packet.";
+        speakerAssetStatus.textContent = "Copied edited speaker assets packet.";
+      }
+
+      function currentOwner() {
+        return assetOwnerSelect.value || "grace";
+      }
+
+      function saveSpeakerAssetDraft() {
+        const owner = currentOwner();
+        const drafts = readDrafts();
+        drafts[owner] = speakerAssetDraft.textContent.trim();
+        writeDrafts(drafts);
+        speakerAssetStatus.textContent = "Saved locally in this browser.";
+      }
+
+      function saveFavoriteCopyRoute(options = {}) {
+        const owner = currentOwner();
+        const favorites = readFavorites();
+        favorites[owner] = favoriteCopyRoute.value;
+        writeFavorites(favorites);
+        if (!options.silent) speakerAssetStatus.textContent = "Saved favorite copy route locally.";
+      }
+
+      function loadSpeakerAssetDraft(owner = currentOwner()) {
+        const drafts = readDrafts();
+        speakerAssetDraft.textContent = drafts[owner] || speakerAssetDefaults[owner].draft;
+        speakerAssetStatus.textContent = "Saved locally in this browser. Use review links if another browser needs the edits.";
+      }
+
+      function loadFavoriteCopyRoute(owner = currentOwner()) {
+        const favorites = readFavorites();
+        favoriteCopyRoute.value = favorites[owner] || "Presenter Friendly";
+      }
+
+      function applySpeakerAssetOwner(owner = currentOwner(), options = {}) {
+        assetOwnerSelect.value = owner;
+        speakerAssetPanels.forEach((panel) => {
+          panel.hidden = panel.dataset.speakerAssetOwner !== owner;
+        });
+        loadSpeakerAssetDraft(owner);
+        loadFavoriteCopyRoute(owner);
+        loadLiveSpeakerAssetEditor(owner);
+        if (options.updateUrl && window.history?.replaceState) {
+          const url = new URL(window.location.href);
+          url.searchParams.set("owner", owner);
+          window.history.replaceState(null, "", url.toString());
+        }
+      }
+
+      async function copyCurrentCheatSheet() {
+        const owner = currentOwner();
+        await navigator.clipboard.writeText(speakerAssetDefaults[owner].cheat);
+        speakerAssetStatus.textContent = `Copied ${speakerAssetDefaults[owner].name}'s cheat sheet.`;
+      }
+
+      function buildSpeakerAssetPacket(owner = currentOwner()) {
+        const displayName = speakerAssetDefaults[owner].name;
+        return [
+          "Vexy Speaker Asset Packet",
+          `Owner: ${owner}`,
+          `Display name: ${displayName}`,
+          `Favorite copy route: ${favoriteCopyRoute.value}`,
+          "Draft:",
+          "---",
+          speakerAssetDraft.textContent.trim(),
+          "---",
+          "Truth boundary: this packet shares speaker notes only. It is not live shared persistence and it is not proof of live robot success."
+        ].join("\n");
+      }
+
+      async function copyCurrentSpeakerAssetPacket() {
+        saveSpeakerAssetDraft();
+        saveFavoriteCopyRoute({ silent: true });
+        await navigator.clipboard.writeText(buildSpeakerAssetPacket());
+        speakerAssetStatus.textContent = "Copied speaker asset packet.";
+      }
+
+      function parseSpeakerAssetPacket(packetText) {
+        const ownerMatch = packetText.match(/^Owner:\s*(\w+)/m);
+        const favoriteMatch = packetText.match(/^Favorite copy route:\s*(.+)$/m);
+        const draftMatch = packetText.match(/Draft:\s*\n---\n([\s\S]*?)\n---/);
+        const owner = ownerMatch?.[1];
+        if (!Object.hasOwn(speakerAssetDefaults, owner)) return null;
+        return {
+          owner,
+          favorite: favoriteMatch?.[1]?.trim() || "Presenter Friendly",
+          draft: draftMatch?.[1]?.trim() || speakerAssetDefaults[owner].draft
+        };
+      }
+
+      function importSpeakerAssetPacket() {
+        const parsed = parseSpeakerAssetPacket(speakerAssetPacketImport.value);
+        if (!parsed) {
+          speakerAssetStatus.textContent = "Could not import packet. Check the owner line.";
+          return;
+        }
+        const drafts = readDrafts();
+        drafts[parsed.owner] = parsed.draft;
+        writeDrafts(drafts);
+        const favorites = readFavorites();
+        favorites[parsed.owner] = parsed.favorite;
+        writeFavorites(favorites);
+        applySpeakerAssetOwner(parsed.owner, { updateUrl: true });
+        speakerAssetStatus.textContent = `Imported speaker asset packet for ${speakerAssetDefaults[parsed.owner].name}.`;
+      }
+
+      function resetCurrentDraft() {
+        const owner = currentOwner();
+        const drafts = readDrafts();
+        delete drafts[owner];
+        writeDrafts(drafts);
+        loadSpeakerAssetDraft(owner);
+      }
+
+      assetOwnerSelect.addEventListener("change", () => applySpeakerAssetOwner(currentOwner(), { updateUrl: true }));
+      favoriteCopyRoute.addEventListener("change", saveFavoriteCopyRoute);
+      speakerAssetDraft.addEventListener("input", saveSpeakerAssetDraft);
+      speakerAssetNotesEditor.addEventListener("input", saveLiveSpeakerAssetEdits);
+      speakerAssetCopyVersionList.addEventListener("input", saveLiveSpeakerAssetEdits);
+      speakerAssetCheatOneLiner.addEventListener("input", saveLiveSpeakerAssetEdits);
+      speakerAssetCheatBullets.addEventListener("input", saveLiveSpeakerAssetEdits);
+      speakerAssetCheatClosing.addEventListener("input", saveLiveSpeakerAssetEdits);
+      copyEditedSpeakerAssets.addEventListener("click", copyEditedSpeakerAssetPacket);
+      copyCheatSheet.addEventListener("click", copyCurrentCheatSheet);
+      copySpeakerAssetPacket.addEventListener("click", copyCurrentSpeakerAssetPacket);
+      resetSpeakerAssetDraft.addEventListener("click", resetCurrentDraft);
+      importSpeakerAssetPacketButton.addEventListener("click", importSpeakerAssetPacket);
+
+      const ownerFromUrl = new URLSearchParams(window.location.search).get("owner");
+      applySpeakerAssetOwner(Object.hasOwn(speakerAssetDefaults, ownerFromUrl) ? ownerFromUrl : "grace");
+    </script>
+  </body>
+</html>

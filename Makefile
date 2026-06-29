@@ -1,5 +1,5 @@
 # Delegate to per-vertical Makefiles. Add a vertical's target once its Makefile exists.
-.PHONY: sync validate test lint schema schema-check catalog catalog-check m1 m1-judge send-task rebuild-pi sync-pi
+.PHONY: sync validate test lint schema schema-check catalog catalog-check m1 m1-judge send-task rebuild-pi sync-pi presentation-validate
 PI_REPO ?= ~/llm-self-model-capstone
 PI_ROS_WS ?= ~/ros2_ws
 SEND_TASK_FILE := $(or $(FILE),$(word 2,$(MAKECMDGOALS)))
@@ -29,6 +29,7 @@ validate:
 	$(MAKE) -C self_model_generator validate
 	$(MAKE) -C pilot validate
 	$(MAKE) -C robot/ros2-runtime validate
+	$(MAKE) presentation-validate
 
 test:
 	$(MAKE) -C contracts test
@@ -63,6 +64,9 @@ send-task:
 
 sync-pi:
 	bash scripts/sync_pi_runtime.sh
+
+presentation-validate:
+	python3 scripts/validate_vexy_presentation.py
 
 rebuild-pi:
 	pip uninstall --break-system-packages -y vexy-ros || true

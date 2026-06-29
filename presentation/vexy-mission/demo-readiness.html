@@ -1,0 +1,650 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Vexy Mission Readiness Control</title>
+    <meta
+      name="description"
+      content="One-page readiness control board for the Vexy Mission demo presentation, links, proof commands, and remaining manual work."
+    >
+    <style>
+      :root {
+        color-scheme: dark;
+        --black: #030202;
+        --ink: #0b0303;
+        --red: #ff3030;
+        --cream: #f5eadb;
+        --muted: rgba(245, 234, 219, 0.72);
+        --dim: rgba(245, 234, 219, 0.5);
+        --yellow: #ffd545;
+        --cyan: #72f0ff;
+        --line: rgba(255, 48, 48, 0.34);
+        --line-soft: rgba(245, 234, 219, 0.14);
+        --mono: "IBM Plex Mono", "SFMono-Regular", ui-monospace, monospace;
+        --display: "Avenir Next Condensed", "DIN Condensed", "Arial Narrow", Impact, sans-serif;
+        --body: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+        color: var(--cream);
+        background:
+          radial-gradient(circle at 72% 3%, rgba(255, 48, 48, 0.18), transparent 32%),
+          radial-gradient(circle at 8% 88%, rgba(114, 240, 255, 0.12), transparent 30%),
+          linear-gradient(180deg, #020101, #130505 48%, #030202);
+        font-family: var(--body);
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+        background:
+          linear-gradient(90deg, rgba(255, 48, 48, 0.06) 1px, transparent 1px),
+          linear-gradient(0deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+        background-size: 96px 96px, 4px 4px;
+        mask-image: linear-gradient(180deg, rgba(0,0,0,0.92), transparent 94%);
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .shell {
+        width: min(1200px, calc(100% - 40px));
+        margin: 0 auto;
+        padding: 42px 0 70px;
+      }
+
+      .hero,
+      .phase-card,
+      .proof-card,
+      .route-card,
+      .status-card,
+      .notice-card,
+      .copy-card {
+        border: 1px solid var(--line-soft);
+        border-radius: 8px;
+        background:
+          linear-gradient(145deg, rgba(255, 48, 48, 0.11), transparent 48%),
+          rgba(7, 2, 2, 0.78);
+        box-shadow: 0 34px 120px rgba(0, 0, 0, 0.34);
+        backdrop-filter: blur(24px) saturate(1.25);
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(280px, 0.42fr);
+        gap: 18px;
+        min-height: 480px;
+        padding: clamp(28px, 5vw, 58px);
+        border-color: rgba(255, 213, 69, 0.42);
+        background:
+          linear-gradient(135deg, rgba(255, 213, 69, 0.12), rgba(255, 48, 48, 0.08) 44%, rgba(3, 2, 2, 0.78)),
+          rgba(7, 2, 2, 0.84);
+      }
+
+      .eyebrow,
+      .label,
+      .pill,
+      .status,
+      .phase-card span,
+      code {
+        color: var(--red);
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+
+      h1,
+      h2,
+      h3 {
+        font-family: var(--display);
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        max-width: 860px;
+        margin-top: 18px;
+        font-size: clamp(62px, 10vw, 128px);
+        line-height: 0.82;
+      }
+
+      h2 {
+        margin-top: 42px;
+        font-size: clamp(34px, 5vw, 66px);
+        line-height: 0.9;
+      }
+
+      h3 {
+        margin-top: 8px;
+        font-size: clamp(25px, 3vw, 38px);
+        line-height: 0.94;
+      }
+
+      p {
+        color: var(--muted);
+        line-height: 1.58;
+      }
+
+      .lead {
+        max-width: 780px;
+        margin-top: 20px;
+        color: var(--cream);
+        font-size: clamp(19px, 2vw, 27px);
+        font-weight: 800;
+        line-height: 1.2;
+      }
+
+      .hero-aside {
+        display: grid;
+        align-content: end;
+        gap: 12px;
+      }
+
+      .status-card,
+      .notice-card {
+        padding: 16px;
+      }
+
+      .status-card strong {
+        display: block;
+        margin-top: 8px;
+        color: var(--cream);
+        font-family: var(--display);
+        font-size: 32px;
+        text-transform: uppercase;
+      }
+
+      .link-row,
+      .pill-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 24px;
+      }
+
+      .button-link,
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 10px 12px;
+        background: rgba(3, 2, 2, 0.72);
+        text-decoration: none;
+      }
+
+      .button-link.primary {
+        border-color: rgba(255, 213, 69, 0.72);
+        color: var(--black);
+        background: var(--yellow);
+      }
+
+      .phase-grid,
+      .proof-grid,
+      .route-grid {
+        display: grid;
+        gap: 14px;
+        margin-top: 20px;
+      }
+
+      .phase-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .proof-grid,
+      .route-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .phase-card,
+      .proof-card,
+      .route-card {
+        padding: 18px;
+      }
+
+      .phase-card {
+        min-height: 230px;
+        border-color: rgba(245, 234, 219, 0.12);
+      }
+
+      .phase-card.is-ready {
+        border-color: rgba(114, 240, 255, 0.34);
+      }
+
+      .phase-card.is-manual {
+        border-color: rgba(255, 213, 69, 0.42);
+      }
+
+      .phase-card p,
+      .proof-card p,
+      .route-card p {
+        margin-top: 12px;
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .status::before {
+        content: "";
+        width: 9px;
+        height: 9px;
+        border-radius: 999px;
+        background: var(--cyan);
+        box-shadow: 0 0 18px rgba(114, 240, 255, 0.7);
+      }
+
+      .status.manual::before {
+        background: var(--yellow);
+        box-shadow: 0 0 18px rgba(255, 213, 69, 0.58);
+      }
+
+      .status.blocked::before {
+        background: var(--red);
+        box-shadow: 0 0 18px rgba(255, 48, 48, 0.58);
+      }
+
+      .proof-card code {
+        display: block;
+        margin-top: 12px;
+        overflow-wrap: anywhere;
+        color: var(--cream);
+        text-transform: none;
+        letter-spacing: 0.04em;
+      }
+
+      .truth-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 18px;
+      }
+
+      .copy-board {
+        margin-top: 38px;
+      }
+
+      .copy-board .lead {
+        max-width: 900px;
+        font-size: clamp(17px, 1.6vw, 22px);
+      }
+
+      .copy-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 18px;
+      }
+
+      .copy-card {
+        position: relative;
+        display: grid;
+        gap: 14px;
+        padding: 18px;
+        overflow: hidden;
+      }
+
+      .copy-card::before {
+        content: "";
+        position: absolute;
+        inset: -1px auto -1px -1px;
+        width: 4px;
+        background: linear-gradient(180deg, var(--yellow), var(--red));
+      }
+
+      .copy-card pre {
+        min-height: 220px;
+        margin: 0;
+        overflow: auto;
+        border: 1px solid rgba(245, 234, 219, 0.13);
+        border-radius: 8px;
+        padding: 14px;
+        color: rgba(245, 234, 219, 0.86);
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent),
+          rgba(0, 0, 0, 0.34);
+        font-family: var(--mono);
+        font-size: 0.76rem;
+        line-height: 1.58;
+        white-space: pre-wrap;
+      }
+
+      .copy-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .copy-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(255, 213, 69, 0.68);
+        border-radius: 999px;
+        padding: 10px 14px;
+        color: var(--black);
+        background: var(--yellow);
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+
+      #readinessCopyStatus {
+        color: var(--cyan);
+        font-family: var(--mono);
+        font-size: 0.78rem;
+        font-weight: 800;
+      }
+
+      .notice-card {
+        margin-top: 18px;
+        border-color: rgba(255, 213, 69, 0.38);
+        background:
+          linear-gradient(135deg, rgba(255, 213, 69, 0.1), rgba(255, 48, 48, 0.08)),
+          rgba(3, 2, 2, 0.78);
+      }
+
+      @media (max-width: 920px) {
+        .hero,
+        .phase-grid,
+        .proof-grid,
+        .route-grid,
+        .copy-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 620px) {
+        .shell {
+          width: min(100% - 28px, 1200px);
+        }
+
+        h1 {
+          font-size: 58px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Gauntlet Capstone · Readiness Board</p>
+          <h1>Vexy Mission Readiness Control</h1>
+          <p class="lead">
+            One page for the team: what is built, what is proven, what still needs a human review,
+            and which link to open before the 10-minute presentation.
+          </p>
+          <div class="link-row" aria-label="Primary demo links">
+            <a class="button-link primary" href="./">Open audience deck</a>
+            <a class="button-link" href="./?edit=1">Open review mode</a>
+            <a class="button-link" href="./team-handoff.html">Open team handoff</a>
+            <a class="button-link" href="./speaker-assets.html">Open speaker assets</a>
+            <a class="button-link" href="./run-of-show.html">Open run of show</a>
+            <a class="button-link" href="./rehearsal-console.html">Open rehearsal console</a>
+            <a class="button-link" href="./shareback-proof.html">Open shareback proof</a>
+            <a class="button-link" href="./phase-execution.html">Open phase execution</a>
+            <a class="button-link" href="./data/phase-audit.json">Open phase audit</a>
+          </div>
+          <div class="truth-row" aria-label="Truth labels">
+            <span class="pill">Flow asset</span>
+            <span class="pill">Repo proof</span>
+            <span class="pill">Blocked until proven</span>
+            <span class="pill">Not proof of live robot success</span>
+          </div>
+        </div>
+        <aside class="hero-aside" aria-label="Readiness summary">
+          <article class="status-card">
+            <span class="label">Package</span>
+            <strong>Sendable</strong>
+            <p>Deck, team handoff, run of show, review mode, and this readiness page are linked together.</p>
+          </article>
+          <article class="status-card">
+            <span class="label">Speaker order</span>
+            <strong>Grace -> David Taylor -> Erick -> Jake</strong>
+            <p>The route is fixed in the deck, run of show, and review docs.</p>
+          </article>
+          <article class="status-card">
+            <span class="label">Collaboration</span>
+            <strong>URL hash</strong>
+            <p>Review packets round-trip through links. shared persistence still requires a Vercel Function plus storage.</p>
+          </article>
+        </aside>
+      </section>
+
+      <section class="copy-board" aria-labelledby="execution-copy-heading">
+        <p class="eyebrow">Phase 5 and 6 execution copy</p>
+        <h2 id="execution-copy-heading">Send the next two messages</h2>
+        <p class="lead">
+          These messages do not prove completion. They make the remaining human proof easier:
+          a live rehearsal with sound, teammate review links, and real robot evidence only before any live robot claim.
+        </p>
+        <div class="copy-grid">
+          <article class="copy-card">
+            <span class="label">Phase 5 · Rehearsal</span>
+            <h3>Rehearsal call</h3>
+            <pre id="rehearsalCallMessage">Vexy Mission Rehearsal Call
+
+Phase 5 is manual-required until we do one live rehearsal with sound.
+Please open these before rehearsal:
+Audience deck: ./
+Speaker assets: ./speaker-assets
+Run of show: ./run-of-show
+Rehearsal console: ./rehearsal-console
+
+Speaker order: Grace -> David Taylor -> Erick -> Jake.
+Goal: confirm timing, video playback with sound, transitions, and handoff cues.</pre>
+            <div class="copy-actions">
+              <button class="copy-button" id="copyRehearsalCall" type="button" data-copy-target="rehearsalCallMessage" data-copy-success="Copied rehearsal call.">Copy rehearsal call</button>
+            </div>
+          </article>
+          <article class="copy-card">
+            <span class="label">Phase 6 · Shareback proof</span>
+            <h3>Proof collection</h3>
+            <pre id="proofCollectionMessage">Vexy Mission Proof Collection
+
+Phase 6 is manual-required until teammates send review links back to Grace and, only if we make a live robot claim, real robot evidence is attached.
+Please send back:
+- Your copied review link after checking your lane
+- Any timing or speaker-note corrections
+- Real robot evidence only if we are making a live robot claim
+
+Shareback proof board: ./shareback-proof
+
+Truth boundary: No live robot success claim without run evidence.</pre>
+            <div class="copy-actions">
+              <button class="copy-button" id="copyProofCollectionMessage" type="button" data-copy-target="proofCollectionMessage" data-copy-success="Copied proof collection message.">Copy proof collection</button>
+            </div>
+          </article>
+        </div>
+        <p id="readinessCopyStatus" aria-live="polite">Ready to copy.</p>
+      </section>
+
+      <section aria-labelledby="phase-heading">
+        <h2 id="phase-heading">All phases</h2>
+        <div class="phase-grid">
+          <article class="phase-card is-ready">
+            <span class="status">Ready</span>
+            <h3>Phase 1 · Story and source truth</h3>
+            <p>X35 premise, VEX V5 body, language self-model, yellow ball, AprilTag, and truth labels are present in the presentation package.</p>
+          </article>
+          <article class="phase-card is-ready">
+            <span class="status">Ready</span>
+            <h3>Phase 2 · Flow assets and video openers</h3>
+            <p>Flow-generated clips are wired into the deck as full-screen video moments with sound unlock and playback cleanup.</p>
+          </article>
+          <article class="phase-card is-ready">
+            <span class="status">Ready</span>
+            <h3>Phase 3 · Technical core and diagrams</h3>
+            <p>The deck shows hardware-to-model, trusted motion gates, evidence packet flow, and the learning loop.</p>
+          </article>
+          <article class="phase-card is-ready">
+            <span class="status">Ready</span>
+            <h3>Phase 4 · Speaker notes and review workflow</h3>
+            <p>Each teammate can open their lane, edit private notes, pin a slide comment, mark ready, and send a review link back.</p>
+          </article>
+          <article class="phase-card is-manual">
+            <span class="status manual">Manual rehearsal</span>
+            <h3>Phase 5 · Rehearsal and run of show</h3>
+            <p>The run of show totals 10:00. Humans still need to rehearse timing, transitions, and who advances after each video.</p>
+          </article>
+          <article class="phase-card is-manual">
+            <span class="status manual">Manual share</span>
+            <h3>Phase 6 · Ship, share, and proof</h3>
+            <p>The live Vercel alias is ready. Teammates must still send back review links because there is no shared database yet.</p>
+          </article>
+        </div>
+      </section>
+
+      <section aria-labelledby="proof-heading">
+        <h2 id="proof-heading">Proof commands</h2>
+        <div class="proof-grid">
+          <article class="proof-card">
+            <span class="label">Full repo suite</span>
+            <h3>Regression proof</h3>
+            <p>Runs the normal test suite, including the Vexy presentation browser review-link test.</p>
+            <code>npm test</code>
+          </article>
+          <article class="proof-card">
+            <span class="label">Browser collaboration</span>
+            <h3>Review-link proof</h3>
+            <p>Proves edit mode, Jake notes, pinned comments, ready state, copied review link, import, and playback cleanup.</p>
+            <code>npm run test:vexy:presentation-browser</code>
+          </article>
+          <article class="proof-card">
+            <span class="label">Static contract</span>
+            <h3>Presentation gates</h3>
+            <p>Checks required files, speaker order, video plan, truth labels, review mode, run of show, and readiness page links.</p>
+            <code>node scripts/evals/vexy-mission-presentation-plan-eval.mjs</code>
+          </article>
+          <article class="proof-card">
+            <span class="label">Live HTTP</span>
+            <h3>Deployment proof</h3>
+            <p>Confirms the live alias returns the Vexy deck from Vercel.</p>
+            <code>curl -I [current Vercel preview URL]</code>
+          </article>
+        </div>
+      </section>
+
+      <section aria-labelledby="route-heading">
+        <h2 id="route-heading">Presentation route</h2>
+        <div class="route-grid">
+          <article class="route-card">
+            <span class="label">Grace</span>
+            <h3>Body and premise</h3>
+            <p>Self-Modeling Machines, in Language; VEX V5 body; Raspberry Pi; AprilTag; yellow-ball proof run.</p>
+          </article>
+          <article class="route-card">
+            <span class="label">David Taylor</span>
+            <h3>Learning loop</h3>
+            <p>Plan, execute, analyze telemetry, start over; Generational Loop; honest status and future morphology redesign.</p>
+          </article>
+          <article class="route-card">
+            <span class="label">Erick</span>
+            <h3>Trusted motion</h3>
+            <p>Bounded commands, strict vocabulary, watchdogs, ack/fault states, and why real robot motion is hard.</p>
+          </article>
+          <article class="route-card">
+            <span class="label">Jake</span>
+            <h3>Evidence packet</h3>
+            <p>Prediction, observation, telemetry, vision state, gap, and why the model learns only from evidence.</p>
+          </article>
+        </div>
+        <article class="notice-card">
+          <span class="label">Honest limitation</span>
+          <p>
+            This presentation proves the demo artifact, story, collaboration workflow, and repository-backed gates.
+            It is not proof of live robot success unless a real run, telemetry, or operator evidence is shown during the demo.
+          </p>
+        </article>
+      </section>
+    </main>
+    <script>
+      const readinessCopyStatus = document.querySelector("#readinessCopyStatus");
+      const readinessBaseUrl = new URL("./", window.location.href);
+
+      function readinessUrl(path = "") {
+        return new URL(path, readinessBaseUrl).href;
+      }
+
+      const rehearsalCallMessage = document.querySelector("#rehearsalCallMessage");
+      if (rehearsalCallMessage) {
+        rehearsalCallMessage.textContent = `Vexy Mission Rehearsal Call
+
+Phase 5 is manual-required until we do one live rehearsal with sound.
+Please open these before rehearsal:
+Audience deck: ${readinessUrl("")}
+Speaker assets: ${readinessUrl("speaker-assets.html")}
+Run of show: ${readinessUrl("run-of-show.html")}
+Rehearsal console: ${readinessUrl("rehearsal-console.html")}
+
+Speaker order: Grace -> David Taylor -> Erick -> Jake.
+Goal: confirm timing, video playback with sound, transitions, and handoff cues.`;
+      }
+
+      const proofCollectionMessage = document.querySelector("#proofCollectionMessage");
+      if (proofCollectionMessage) {
+        proofCollectionMessage.textContent = `Vexy Mission Proof Collection
+
+Phase 6 is manual-required until teammates send review links back to Grace and, only if we make a live robot claim, real robot evidence is attached.
+Please send back:
+- Your copied review link after checking your lane
+- Any timing or speaker-note corrections
+- Real robot evidence only if we are making a live robot claim
+
+Shareback proof board: ${readinessUrl("shareback-proof.html")}
+
+Truth boundary: No live robot success claim without run evidence.`;
+      }
+
+      async function copyReadinessMessage(targetId, successText) {
+        const source = document.getElementById(targetId);
+        const message = source ? source.textContent.trim() : "";
+        if (!message) return;
+        try {
+          await navigator.clipboard.writeText(message);
+          if (readinessCopyStatus) readinessCopyStatus.textContent = successText;
+        } catch (error) {
+          if (readinessCopyStatus) readinessCopyStatus.textContent = "Copy failed. Select the message and copy manually.";
+        }
+      }
+
+      for (const button of document.querySelectorAll("[data-copy-target]")) {
+        button.addEventListener("click", () => {
+          copyReadinessMessage(button.dataset.copyTarget, button.dataset.copySuccess || "Copied.");
+        });
+      }
+    </script>
+  </body>
+</html>

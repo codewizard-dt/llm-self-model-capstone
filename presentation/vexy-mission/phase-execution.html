@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      name="description"
+      content="Phase 5/6 execution dashboard for the Vexy Mission presentation: live rehearsal, teammate review links, shareback proof, and conditional robot evidence."
+    >
+    <title>Vexy Mission Phase Execution</title>
+    <style>
+      :root {
+        --bg: #050202;
+        --panel: rgba(18, 7, 7, 0.78);
+        --line: rgba(255, 48, 48, 0.34);
+        --line-strong: rgba(255, 213, 69, 0.55);
+        --cream: #fff4e6;
+        --muted: rgba(255, 244, 230, 0.72);
+        --dim: rgba(255, 244, 230, 0.52);
+        --red: #ff3030;
+        --yellow: #ffd545;
+        --cyan: #72f0ff;
+        --radius: 8px;
+        --display: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+        --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        color-scheme: dark;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        color: var(--cream);
+        background:
+          linear-gradient(90deg, rgba(255, 48, 48, 0.06) 1px, transparent 1px),
+          linear-gradient(rgba(255, 48, 48, 0.04) 1px, transparent 1px),
+          radial-gradient(circle at 78% 12%, rgba(255, 48, 48, 0.22), transparent 30%),
+          radial-gradient(circle at 16% 80%, rgba(114, 240, 255, 0.1), transparent 28%),
+          var(--bg);
+        background-size: 48px 48px, 48px 48px, auto, auto, auto;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .shell {
+        width: min(1160px, calc(100% - 28px));
+        margin: 0 auto;
+        padding: 44px 0 64px;
+      }
+
+      .hero,
+      .grid,
+      .proof-grid,
+      .copy-grid,
+      .link-grid {
+        display: grid;
+        gap: 16px;
+      }
+
+      .hero {
+        grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+        align-items: end;
+        min-height: 56vh;
+      }
+
+      .panel,
+      .card,
+      .copy-card,
+      .proof-card {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background:
+          linear-gradient(135deg, rgba(255, 48, 48, 0.12), transparent 42%),
+          var(--panel);
+        box-shadow: 0 28px 90px rgba(0, 0, 0, 0.32);
+        backdrop-filter: blur(18px);
+      }
+
+      .panel {
+        padding: clamp(22px, 4vw, 40px);
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin: 0;
+        font-family: var(--display);
+        letter-spacing: 0;
+        line-height: 0.9;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        max-width: 900px;
+        font-size: clamp(58px, 9vw, 116px);
+      }
+
+      h2 {
+        font-size: clamp(34px, 5vw, 62px);
+      }
+
+      h3 {
+        font-size: clamp(24px, 3vw, 36px);
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .lead {
+        margin-top: 18px;
+        max-width: 760px;
+        color: var(--cream);
+        font-size: 1.05rem;
+      }
+
+      .eyebrow,
+      .label,
+      button,
+      .button-link {
+        font-family: var(--mono);
+        font-size: 0.68rem;
+        font-weight: 900;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow,
+      .label {
+        color: var(--red);
+      }
+
+      .hero .eyebrow {
+        margin-bottom: 14px;
+      }
+
+      .truth-list {
+        display: grid;
+        gap: 10px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .truth-list li {
+        border-left: 3px solid var(--yellow);
+        padding: 10px 12px;
+        color: var(--cream);
+        background: rgba(255, 213, 69, 0.08);
+      }
+
+      .link-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 24px;
+      }
+
+      .button-link,
+      button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 42px;
+        border: 1px solid rgba(255, 48, 48, 0.45);
+        border-radius: 7px;
+        padding: 10px 13px;
+        color: var(--cream);
+        background: rgba(255, 48, 48, 0.1);
+        text-decoration: none;
+        cursor: pointer;
+      }
+
+      .primary,
+      button.primary {
+        border-color: var(--line-strong);
+        background: rgba(255, 213, 69, 0.12);
+      }
+
+      section {
+        margin-top: 22px;
+      }
+
+      .grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .card,
+      .copy-card,
+      .proof-card {
+        padding: 18px;
+      }
+
+      .card {
+        display: grid;
+        gap: 12px;
+      }
+
+      .card ol,
+      .card ul {
+        display: grid;
+        gap: 9px;
+        margin: 0;
+        padding-left: 20px;
+        color: var(--muted);
+      }
+
+      .link-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .link-card {
+        display: grid;
+        gap: 12px;
+      }
+
+      .copy-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      pre {
+        min-height: 230px;
+        overflow: auto;
+        margin: 12px 0 0;
+        border: 1px solid rgba(255, 244, 230, 0.12);
+        border-radius: var(--radius);
+        padding: 14px;
+        color: var(--cream);
+        background: rgba(0, 0, 0, 0.42);
+        white-space: pre-wrap;
+        font: 0.78rem/1.55 var(--mono);
+      }
+
+      .copy-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 12px;
+      }
+
+      #phaseExecutionCopyStatus {
+        color: var(--dim);
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .proof-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      code {
+        display: block;
+        margin-top: 10px;
+        border: 1px solid rgba(114, 240, 255, 0.24);
+        border-radius: 6px;
+        padding: 10px;
+        color: var(--cyan);
+        background: rgba(114, 240, 255, 0.08);
+        white-space: normal;
+        word-break: break-word;
+      }
+
+      footer {
+        margin-top: 38px;
+        color: var(--dim);
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      @media (max-width: 900px) {
+        .hero,
+        .grid,
+        .copy-grid,
+        .proof-grid,
+        .link-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div class="panel">
+          <p class="eyebrow">Gauntlet Capstone · Phase 5/6</p>
+          <h1>Phase 5/6 Execution Dashboard</h1>
+          <p class="lead">
+            One page for the remaining human proof: run the presentation once with sound,
+            collect each teammate's review link, and attach robot evidence only if the demo
+            makes a live robot success claim.
+          </p>
+          <div class="link-row" aria-label="Primary execution links">
+            <a class="button-link primary" href="./">Open audience deck</a>
+            <a class="button-link" href="./team-handoff.html">Open team handoff</a>
+            <a class="button-link" href="./rehearsal-console.html">Open rehearsal console</a>
+            <a class="button-link" href="./shareback-proof.html">Open shareback proof</a>
+          </div>
+        </div>
+        <aside class="panel">
+          <p class="eyebrow">Truth boundary</p>
+          <ul class="truth-list">
+            <li>Phases 1-4 are software-ready.</li>
+            <li>Phase 5 needs a live rehearsal with sound.</li>
+            <li>Phase 6 needs returned review links.</li>
+            <li>Robot evidence is required only if the demo makes a live robot success claim.</li>
+            <li>No live robot success claim without run evidence.</li>
+          </ul>
+        </aside>
+      </section>
+
+      <section class="grid" aria-label="Phase execution steps">
+        <article class="card">
+          <p class="label">Phase 5 · Live rehearsal</p>
+          <h2>Run it once with sound.</h2>
+          <ol>
+            <li>Open the audience deck and click Play with sound.</li>
+            <li>Open the rehearsal console on a second screen.</li>
+            <li>Start the timer when the opening video begins.</li>
+            <li>Check sound, video, handoff cues, and truth-label proof per scene.</li>
+            <li>Copy the rehearsal report and speaker signoff packet.</li>
+          </ol>
+          <div class="link-row">
+            <a class="button-link primary" href="./rehearsal-console.html">Open rehearsal console</a>
+            <a class="button-link" href="./run-of-show.html">Open run of show</a>
+          </div>
+        </article>
+
+        <article class="card">
+          <p class="label">Phase 6 · Review links and proof</p>
+          <h2>Collect the return links.</h2>
+          <ol>
+            <li>Each teammate opens their direct review lane.</li>
+            <li>They check their notes, make edits, pin comments, and mark ready.</li>
+            <li>They click Copy review link and send it back to Grace.</li>
+            <li>Grace pastes all returned links into the shareback board.</li>
+            <li>Robot evidence is attached only if a live robot claim is being made.</li>
+          </ol>
+          <div class="link-row">
+            <a class="button-link primary" href="./shareback-proof.html">Open shareback proof</a>
+            <a class="button-link" href="./speaker-assets.html">Open speaker assets</a>
+          </div>
+        </article>
+      </section>
+
+      <section aria-label="Direct speaker review links">
+        <div class="link-grid">
+          <article class="card link-card">
+            <p class="label">Grace</p>
+            <h3>Premise and body</h3>
+            <a class="button-link primary" href="./?edit=1&owner=grace">Open Grace lane</a>
+          </article>
+          <article class="card link-card">
+            <p class="label">David Taylor</p>
+            <h3>Learning loop</h3>
+            <a class="button-link primary" href="./?edit=1&owner=david">Open David lane</a>
+          </article>
+          <article class="card link-card">
+            <p class="label">Erick</p>
+            <h3>Trusted motion</h3>
+            <a class="button-link primary" href="./?edit=1&owner=erick">Open Erick lane</a>
+          </article>
+          <article class="card link-card">
+            <p class="label">Jake</p>
+            <h3>Evidence packet</h3>
+            <a class="button-link primary" href="./?edit=1&owner=jake">Open Jake lane</a>
+          </article>
+        </div>
+      </section>
+
+      <section class="copy-grid" aria-label="Copyable execution messages">
+        <article class="copy-card">
+          <p class="label">Team launch</p>
+          <h3>Copy teammate launch message</h3>
+          <pre id="teammateLaunchMessage">Vexy Mission Phase 5/6 Launch
+
+Please review your section and send Grace your review link before rehearsal.
+
+Audience deck:
+./
+
+Direct review lanes:
+Grace: ./?edit=1&owner=grace
+David Taylor: ./?edit=1&owner=david
+Erick: ./?edit=1&owner=erick
+Jake: ./?edit=1&owner=jake
+
+What to do:
+1. Open your lane.
+2. Click Review / Edit.
+3. Check your speaker notes and slide copy.
+4. Add pinned comments where something should change.
+5. Click Mark my section ready.
+6. Click Copy review link and send it back to Grace.
+
+Truth boundary: this is presentation review. No live robot success claim without run evidence.</pre>
+          <div class="copy-actions">
+            <button class="primary" type="button" data-copy-target="teammateLaunchMessage" data-copy-success="Copied teammate launch message.">Copy teammate launch message</button>
+          </div>
+        </article>
+
+        <article class="copy-card">
+          <p class="label">Final proof</p>
+          <h3>Copy final proof checklist</h3>
+          <pre id="finalProofChecklist">Vexy Mission Final Proof Checklist
+
+Phase 5:
+- Live rehearsal completed with sound
+- Opening video plays full-screen
+- Speaker videos play with sound
+- Transitions and handoff cues checked
+- Rehearsal report copied from rehearsal console
+- Grace, David Taylor, Erick, and Jake confirm timing and notes
+
+Phase 6:
+- Grace review link returned
+- David Taylor review link returned
+- Erick review link returned
+- Jake review link returned
+- Shareback proof board has all returned links
+- Final shareback packet copied
+
+Robot truth boundary:
+- Robot evidence is required only if the demo makes a live robot success claim.
+- No live robot success claim without run evidence.
+- Slot 4 return-home claims require current robot or repo evidence proving that exact routine.</pre>
+          <div class="copy-actions">
+            <button class="primary" type="button" data-copy-target="finalProofChecklist" data-copy-success="Copied final proof checklist.">Copy final proof checklist</button>
+          </div>
+        </article>
+      </section>
+
+      <section class="proof-grid" aria-label="Proof and deploy commands">
+        <article class="proof-card">
+          <p class="label">Static eval</p>
+          <h3>Presentation contract</h3>
+          <p>Checks required files, speaker order, proof labels, review workflow, and this phase execution page.</p>
+          <code>node scripts/evals/vexy-mission-presentation-plan-eval.mjs</code>
+        </article>
+        <article class="proof-card">
+          <p class="label">Browser eval</p>
+          <h3>Review behavior</h3>
+          <p>Checks edit mode, copied links, shareback proof behavior, and playback cleanup.</p>
+          <code>npm run test:vexy:presentation-browser</code>
+        </article>
+        <article class="proof-card">
+          <p class="label">Deploy proof</p>
+          <h3>Live alias</h3>
+          <p>Deploy from the nested static package, then verify the Vercel alias.</p>
+          <code>cd presentation/vexy-mission && vercel deploy --prod --yes</code>
+        </article>
+      </section>
+
+      <footer>
+        Vexy Mission · Phase 5/6 execution dashboard · static-site review flow, not shared database persistence
+      </footer>
+    </main>
+
+    <script>
+      const phaseExecutionCopyStatus = document.createElement("p");
+      phaseExecutionCopyStatus.id = "phaseExecutionCopyStatus";
+      phaseExecutionCopyStatus.textContent = "Ready to copy.";
+      document.querySelector(".copy-grid")?.append(phaseExecutionCopyStatus);
+      const phaseExecutionBaseUrl = new URL("./", window.location.href);
+
+      function phaseExecutionUrl(path = "") {
+        return new URL(path, phaseExecutionBaseUrl).href;
+      }
+
+      const teammateLaunchMessage = document.querySelector("#teammateLaunchMessage");
+      if (teammateLaunchMessage) {
+        teammateLaunchMessage.textContent = `Vexy Mission Phase 5/6 Launch
+
+Please review your section and send Grace your review link before rehearsal.
+
+Audience deck:
+${phaseExecutionUrl("")}
+
+Direct review lanes:
+Grace: ${phaseExecutionUrl("?edit=1&owner=grace")}
+David Taylor: ${phaseExecutionUrl("?edit=1&owner=david")}
+Erick: ${phaseExecutionUrl("?edit=1&owner=erick")}
+Jake: ${phaseExecutionUrl("?edit=1&owner=jake")}
+
+What to do:
+1. Open your lane.
+2. Click Review / Edit.
+3. Check your speaker notes and slide copy.
+4. Add pinned comments where something should change.
+5. Click Mark my section ready.
+6. Click Copy review link and send it back to Grace.
+
+Truth boundary: this is presentation review. No live robot success claim without run evidence.`;
+      }
+
+      async function copyPhaseExecutionMessage(targetId, successText) {
+        const target = document.querySelector(`#${targetId}`);
+        if (!target) return;
+        try {
+          await navigator.clipboard.writeText(target.textContent.trim());
+          phaseExecutionCopyStatus.textContent = successText;
+        } catch {
+          phaseExecutionCopyStatus.textContent = "Copy failed. Select the message and copy manually.";
+        }
+      }
+
+      document.querySelectorAll("[data-copy-target]").forEach((button) => {
+        button.addEventListener("click", () => {
+          copyPhaseExecutionMessage(button.dataset.copyTarget, button.dataset.copySuccess || "Copied.");
+        });
+      });
+    </script>
+  </body>
+</html>

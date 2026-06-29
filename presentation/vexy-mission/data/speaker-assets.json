@@ -1,0 +1,238 @@
+{
+  "version": "vexy-speaker-assets-v1",
+  "updatedAt": "2026-06-29",
+  "speakers": [
+    {
+      "name": "Grace",
+      "ownerId": "grace",
+      "sectionPurpose": "Grace makes the premise concrete for the room: Vexy is not an abstract AI demo, it is a real VEX V5 robot whose physical body, sensors, claw, yellow ball task, and language self-model make the capstone technically real.",
+      "fullSpeakerNotes": [
+        "Open with the simplest truth: a robot that can be wrong can learn.",
+        "Name the premise exactly: Self-Modeling Machines, in Language.",
+        "Explain that Vexy is the real robot body: VEX V5 Brain, Smart Ports, Smart Motors, metal rails, wheels, red claw, and battery-constrained hardware.",
+        "Add the perception stack: Raspberry Pi, Camera Module 3, AprilTag localization, and the yellow ball mission sample.",
+        "Define self-modeling in plain English: Vexy needs an internal account of what its own body is and what it can do.",
+        "Explain the language twist: the model should be readable enough for humans to challenge, not only an opaque tensor.",
+        "Connect the run: Vexy predicts in language, acts around the yellow ball and tag, then lets reality prove it right or wrong.",
+        "Name the two loops: Loop 1 calibrates one body through repeated attempts; Loop 2 is the future morphology loop where body designs can change.",
+        "Make the primitive arc memorable: grab is the safety net, pull is the calibration spine, and throw is the future hero move.",
+        "Handoff to David: once the audience understands the body, David explains what learning means as a loop instead of a claim."
+      ],
+      "copywritingVersions": [
+        {
+          "label": "Grounded Technical",
+          "headline": "A real VEX body makes the self-model accountable.",
+          "slideCopy": "Vexy turns the self-modeling premise into hardware: VEX V5 Brain, Smart Ports, Smart Motors, red claw, Raspberry Pi vision, AprilTag localization, and a yellow ball task that can prove the model wrong.",
+          "talkTrack": "The important thing to understand is that Vexy is not just an AI concept. It is a physical VEX V5 robot. The body matters because every motor, wheel, camera angle, claw motion, and yellow ball attempt gives the model a chance to be wrong in a measurable way."
+        },
+        {
+          "label": "Premium Mission",
+          "headline": "The mission begins when the machine meets reality.",
+          "slideCopy": "Vexy enters the mission with a body, a camera, a claw, a ball, and a claim about itself. The world answers back, and that answer becomes the first step toward a language self-model.",
+          "talkTrack": "The cinematic version is that Vexy rolls onto the moon. The truthful version is even cooler: a real robot is making a claim about its own body, then testing that claim against a real yellow ball, a real marker, and real hardware limits."
+        },
+        {
+          "label": "Plain English",
+          "headline": "Vexy is built to learn by checking what it thought against what happened.",
+          "slideCopy": "Vexy has a body, sensors, and a claw. It tries a task, measures what happened, and can use the difference between expectation and reality as the start of learning.",
+          "talkTrack": "In plain English, Vexy is trying to understand itself. It has an idea of what it can do, like reach for a yellow ball. Then the real world either agrees or disagrees. That disagreement is useful because it tells Vexy what its self-model got wrong."
+        },
+        {
+          "label": "Technical Jargon",
+          "headline": "Language self-modeling needs embodied error signals.",
+          "slideCopy": "The VEX V5 body converts the self-model premise into an embodied loop: predicted capability, bounded action, observed outcome, residual gap, and revised language model.",
+          "talkTrack": "The technical premise is embodied self-modeling in language. Vexy needs a predicted capability, an executed physical action, a sensor-backed observation, and a residual gap. Without the physical body, the self-model has no grounded error signal."
+        },
+        {
+          "label": "Presenter Friendly",
+          "headline": "Vexy is where the idea becomes real.",
+          "slideCopy": "The robot body is what keeps the story honest. VEX V5 hardware, Raspberry Pi vision, the AprilTag, and the yellow ball give Vexy something real to test against.",
+          "talkTrack": "This section makes the premise feel real. Vexy is the robot, and the robot is what keeps the model honest. When it tries to act in the world, the world pushes back, and that pushback is what makes learning possible."
+        }
+      ],
+      "cheatSheet": {
+        "oneLiner": "Self-Modeling Machines, in Language means Vexy can compare its imagined body to what reality measures.",
+        "bullets": [
+          "Vexy is a physical VEX V5 robot with a Raspberry Pi vision stack.",
+          "The yellow ball and AprilTag make the proof run concrete.",
+          "The goal is Sense, Act, Measure, Improve."
+        ],
+        "closingLine": "Once the body is real, David can explain how a run becomes a learning loop."
+      }
+    },
+    {
+      "name": "David Taylor",
+      "ownerId": "david",
+      "sectionPurpose": "David Taylor explains the research leap: the small loop is generate a plan, execute it, analyze telemetry, and start over; the larger Generational Loop asks how an LLM could eventually redesign its own body from real-world evidence.",
+      "fullSpeakerNotes": [
+        "Open by separating truth from hype: the small learning loop is not 'LLM says robot improved.'",
+        "Name the actual sequence: generate a plan, execute it, analyze telemetry, and start over.",
+        "Explain the larger Generational Loop: what if an LLM could redesign its own body and adapt to real-world conditions?",
+        "Ground the idea in numerical self-modeling: powerful, but often locked in a sub-symbolic tensor humans cannot read.",
+        "Ground the idea in LLM morphology generation: LLMs can generate designs, but mostly in simulation.",
+        "Ground the idea in LLM self-improvement: control parameters can improve on hardware, but without a self-model component.",
+        "Explain the novelty: Vexy combines readable language self-modeling, real telemetry, critic review, and future morphology generation.",
+        "Name the evidence sources: motor samples, vision state, operator results, and run outcome.",
+        "Stay honest: challenges restricted the robot to simple tasks, and Vexy was beginning to conquer putting the ball in the bin.",
+        "Handoff to Erick: once learning is defined, the next question is how to make motion safe enough to trust."
+      ],
+      "copywritingVersions": [
+        {
+          "label": "Grounded Technical",
+          "headline": "Learning is plan, execute, telemetry, repeat.",
+          "slideCopy": "The small loop is concrete: generate a plan, run the robot, analyze motor samples, vision state, and operator results, then revise the next attempt.",
+          "talkTrack": "The learning loop is not a vibe. It is a sequence. The system generates a plan, executes that plan on the robot, analyzes telemetry and operator results, and then uses that evidence to decide what should change on the next run."
+        },
+        {
+          "label": "Premium Mission",
+          "headline": "Every mission gives the machine a new account of itself.",
+          "slideCopy": "Vexy treats each run as evidence. The small loop revises behavior; the larger Generational Loop imagines a future where the robot can redesign its own body.",
+          "talkTrack": "The mission story is that every run sends something back. The robot does not just move and stop. It returns evidence about its own body, and the larger question is whether that evidence can eventually let an LLM redesign the machine itself."
+        },
+        {
+          "label": "Plain English",
+          "headline": "It tries, checks what happened, and tries smarter.",
+          "slideCopy": "David's section explains that improvement means starting over with evidence, not simply saying the robot got better.",
+          "talkTrack": "In simple terms, Vexy tries something, checks what happened, and tries again with better information. That is different from saying an AI magically improved. It is a loop we can inspect."
+        },
+        {
+          "label": "Technical Jargon",
+          "headline": "Readable morphology loops meet real telemetry.",
+          "slideCopy": "Vexy combines numerical self-modeling, LLM morphology generation, and LLM self-improvement into one hardware-grounded language self-model experiment.",
+          "talkTrack": "Technically, this combines three lanes that are usually separate: numerical self-modeling, LLM morphology generation, and hardware self-improvement. The distinctive move is adding a readable language self-model grounded in telemetry from a real robot."
+        },
+        {
+          "label": "Presenter Friendly",
+          "headline": "The loop is the proof.",
+          "slideCopy": "Vexy's learning claim is strongest when we can show the loop: plan, run, evidence, revision.",
+          "talkTrack": "My job is to make the learning claim precise. We are not asking the audience to trust that the model improved. We are showing what the loop would need: a plan, a run, telemetry, analysis, and a next attempt."
+        }
+      ],
+      "cheatSheet": {
+        "oneLiner": "The small learning loop is plan, execute, analyze telemetry, and start over.",
+        "bullets": [
+          "Numerical self-modeling is powerful but often not human-readable.",
+          "LLM morphology generation is promising but mostly simulation-bound.",
+          "Vexy points toward real hardware evidence plus future body redesign."
+        ],
+        "closingLine": "After the learning loop, Erick explains why safe bounded motion has to come first."
+      }
+    },
+    {
+      "name": "Erick",
+      "ownerId": "erick",
+      "sectionPurpose": "Erick explains the hard engineering problem: moving a robot is one layer, but trusted motion requires bounded commands, strict contracts, ack/fault states, watchdogs, and evidence from the run.",
+      "fullSpeakerNotes": [
+        "Open with the exact idea: making the robot move is one problem; making it move safely, measure itself, and explain what changed is much harder.",
+        "Name the physical messiness: wheel slip, motor drift, camera errors, object ambiguity, claw alignment, AprilTag angle, and a moving ball.",
+        "Explain that the problem is not motion or action; the problem is trusted motion.",
+        "Say why the LLM cannot directly freelance against motors.",
+        "Explain bounded vocabulary: the LLM should generate safe command packets, not raw low-level motor improvisation.",
+        "Name contract states: accepted, rejected, stale, completed, or faulted.",
+        "Explain watchdogs and limits as the guardrails that keep a run bounded.",
+        "Connect contracts to learning: if a command has no evidence trail, the LLM cannot safely learn from it.",
+        "Use the strongest close: the goal was to build a robot whose motion can be trusted, measured, and explained.",
+        "Handoff to Jake: once motion is bounded, Jake shows how the run becomes evidence."
+      ],
+      "copywritingVersions": [
+        {
+          "label": "Grounded Technical",
+          "headline": "Trusted motion starts with command contracts.",
+          "slideCopy": "The LLM reasons through bounded commands. The robot runtime handles limits, watchdogs, ack/fault states, and evidence so motion can be trusted.",
+          "talkTrack": "The core engineering problem is not just moving. The LLM has to stay inside a command vocabulary the robot can validate. That means every command has limits, every run has states, and every outcome has evidence."
+        },
+        {
+          "label": "Premium Mission",
+          "headline": "Mission control does not improvise with motors.",
+          "slideCopy": "Before Vexy can learn from a run, the run has to be safe enough to trust: bounded intent, controlled action, measured outcome, and proof.",
+          "talkTrack": "In the mission version of the story, this is mission control. You do not improvise engine commands during launch. You define the vocabulary, bound the action, watch the state, and only then decide what the mission proved."
+        },
+        {
+          "label": "Plain English",
+          "headline": "The robot has to move in a way we can explain.",
+          "slideCopy": "If the robot slips, misses, or sees the wrong thing, the system needs to know that instead of pretending the command worked.",
+          "talkTrack": "In plain English, it is not enough for Vexy to move. We need to know what command it tried, whether the command was safe, what actually happened, and whether the result can be trusted."
+        },
+        {
+          "label": "Technical Jargon",
+          "headline": "Bounded action schemas keep LLM control verifiable.",
+          "slideCopy": "Strict command vocabulary, ack/fault envelopes, timeouts, clamps, and telemetry give the LLM an inspectable execution boundary.",
+          "talkTrack": "Technically, the LLM needs a constrained action schema. It can reason about intent and expected outcome, but execution needs validation, acknowledgement, fault handling, timeouts, and telemetry so the robot never becomes an unbounded text-to-motor system."
+        },
+        {
+          "label": "Presenter Friendly",
+          "headline": "The hard part is trusted motion.",
+          "slideCopy": "Vexy must move safely, measure itself, and explain what changed before the learning loop can trust the result.",
+          "talkTrack": "This section is the hard engineering layer. Moving is hard, but trusted motion is harder. We need safe commands, proof from the run, and enough structure that the model learns from reality instead of inventing a story."
+        }
+      ],
+      "cheatSheet": {
+        "oneLiner": "The challenge is not motion or action. The challenge is trusted motion.",
+        "bullets": [
+          "Real runs include slip, drift, camera errors, and object ambiguity.",
+          "Bounded commands keep the LLM away from unsafe motor improvisation.",
+          "Ack/fault states and evidence make motion measurable."
+        ],
+        "closingLine": "Once motion is trustworthy, Jake can explain how the evidence packet turns a run into learning."
+      }
+    },
+    {
+      "name": "Jake",
+      "ownerId": "jake",
+      "sectionPurpose": "Jake explains the measurement layer: each run needs prediction, observation, telemetry, vision state, gap, and update so the system can learn from evidence instead of vague narration.",
+      "fullSpeakerNotes": [
+        "Open with the measurement claim: the next layer is where the project becomes more than a robotics demo.",
+        "Define the evidence packet: predicted state, observed state, telemetry, vision state, gap, and update.",
+        "Use the yellow ball example: if Vexy expects to grab it but the claw is off, the miss becomes evidence.",
+        "Explain the AprilTag and vision role: sensing grounds the run before action.",
+        "Explain predicted versus observed in plain English.",
+        "Name the gap as the learning signal, not just a failure label.",
+        "Explain why structure matters: it keeps the LLM from inventing explanations after the fact.",
+        "Connect to the critic gate: the model's explanation should be checked before it is trusted.",
+        "Close the loop: Vexy treats every robot run as evidence.",
+        "Final handoff: the team showed body, learning loop, trusted motion, and evidence; the next mission is proving it on more real runs."
+      ],
+      "copywritingVersions": [
+        {
+          "label": "Grounded Technical",
+          "headline": "The evidence packet is the learning surface.",
+          "slideCopy": "Each run should carry prediction, command, observation, telemetry, vision state, gap, and update so the model can reason from proof.",
+          "talkTrack": "The measurement layer is where the learning story becomes inspectable. A run is useful when the prediction, command, observation, telemetry, vision state, and gap all travel together as one evidence packet."
+        },
+        {
+          "label": "Premium Mission",
+          "headline": "The moon answers back.",
+          "slideCopy": "Vexy makes a prediction. The run answers. The gap between those two becomes the signal that guides the next attempt.",
+          "talkTrack": "In the mission story, the world answers back. Vexy expects one outcome, but the run gives us the real one. That difference is not a dead end. It is the message that tells the next version what to change."
+        },
+        {
+          "label": "Plain English",
+          "headline": "The gap is how Vexy can learn.",
+          "slideCopy": "If Vexy thought one thing would happen and something else happened, that difference becomes useful information.",
+          "talkTrack": "Plainly, Vexy needs receipts. It needs to know what it thought would happen, what actually happened, and what was different. That difference is the gap, and the gap is what makes learning possible."
+        },
+        {
+          "label": "Technical Jargon",
+          "headline": "Prediction-observation residuals ground the critic loop.",
+          "slideCopy": "Structured telemetry and vision observations produce a residual gap that can be inspected by the LLM generator, critic, and operator.",
+          "talkTrack": "Technically, we need prediction-observation residuals. The evidence packet gives the generator, critic, and operator a shared record, so the system can evaluate whether a model update is supported by actual run data."
+        },
+        {
+          "label": "Presenter Friendly",
+          "headline": "A run only matters if it leaves evidence.",
+          "slideCopy": "Vexy can learn from the difference between expected outcome and measured outcome when that evidence is captured.",
+          "talkTrack": "This section is the evidence story. If a run happens and leaves no structured record, the model has nothing trustworthy to learn from. The packet is what turns motion into a learning signal."
+        }
+      ],
+      "cheatSheet": {
+        "oneLiner": "A run matters only if it leaves behind evidence the model can inspect.",
+        "bullets": [
+          "Prediction and observation have to be compared.",
+          "Telemetry and vision state keep the story grounded.",
+          "The gap is the learning signal."
+        ],
+        "closingLine": "Together, the team showed how Vexy can move from body to model to proof."
+      }
+    }
+  ]
+}

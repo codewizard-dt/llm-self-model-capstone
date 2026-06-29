@@ -1,0 +1,208 @@
+{
+  "version": "vexy-mission-phase-audit-v1",
+  "updatedAt": "2026-06-29",
+  "package": "Vexy Mission Presentation",
+  "scope": "This audit proves the presentation artifact, teammate review workflow, static deployment, and repository-backed demo package. It does not prove live robot execution.",
+  "liveAlias": "configured by Vercel preview or production deployment",
+  "localUrl": "http://127.0.0.1:8766/",
+  "notProofOf": [
+    "live robot success",
+    "shared database collaboration",
+    "new robot telemetry from the VEX hardware",
+    "verified Slot 4 return-home behavior"
+  ],
+  "proofCommands": [
+    "node scripts/evals/vexy-mission-presentation-plan-eval.mjs",
+    "npm run test:vexy:presentation-browser",
+    "npm test",
+    "curl -I [current Vercel preview URL]"
+  ],
+  "phases": [
+    {
+      "id": "phase-01-story-source-truth",
+      "title": "Story and source truth",
+      "status": "ready",
+      "owner": "Grace",
+      "summary": "The presentation grounds the story in Self-Modeling Machines, in Language, the X35 premise, VEX V5 hardware, Raspberry Pi vision, AprilTag observations, yellow ball evidence, and explicit truth labels.",
+      "evidence": [
+        {
+          "type": "file",
+          "path": "presentation-plan.json",
+          "proves": "speaker scripts, source truth, and the approved 10-minute structure"
+        },
+        {
+          "type": "file",
+          "path": "index.html",
+          "proves": "visible deck copy and speaker order"
+        },
+        {
+          "type": "eval",
+          "command": "node scripts/evals/vexy-mission-presentation-plan-eval.mjs",
+          "proves": "required premise tokens and truth labels are present"
+        }
+      ]
+    },
+    {
+      "id": "phase-02-flow-assets-video-openers",
+      "title": "Flow assets and video openers",
+      "status": "ready",
+      "owner": "Grace",
+      "summary": "The deck uses Flow-generated videos and stills as the public visual layer, with browser-safe sound unlock and fullscreen video cleanup.",
+      "evidence": [
+        {
+          "type": "file",
+          "path": "media/vexy_identity_lock_trailer.mp4",
+          "proves": "fullscreen Vexy opener exists in the package"
+        },
+        {
+          "type": "file",
+          "path": "media/grace_mission_control.mp4",
+          "proves": "Grace speaker video exists in the package"
+        },
+        {
+          "type": "browser-eval",
+          "command": "npm run test:vexy:presentation-browser",
+          "proves": "presentation playback hides review UI and unlocks video mode"
+        }
+      ]
+    },
+    {
+      "id": "phase-03-technical-core-diagrams",
+      "title": "Technical core and diagrams",
+      "status": "ready",
+      "owner": "Grace, David Taylor, Erick, Jake",
+      "summary": "The deck shows the hardware body, self-model premise, learning loop, trusted motion gates, evidence packet, and selectable diagram options for each speaker.",
+      "evidence": [
+        {
+          "type": "file",
+          "path": "data/diagram-options.json",
+          "proves": "five diagram options per speaker are defined"
+        },
+        {
+          "type": "file",
+          "path": "index.html",
+          "proves": "active diagram boards and technical sections render in the deck"
+        },
+        {
+          "type": "eval",
+          "command": "node scripts/evals/vexy-mission-presentation-plan-eval.mjs",
+          "proves": "diagram counts, technical terms, and speaker sections are enforced"
+        }
+      ]
+    },
+    {
+      "id": "phase-04-speaker-review-workflow",
+      "title": "Speaker notes and review workflow",
+      "status": "ready",
+      "owner": "All speakers",
+      "summary": "Each teammate has a direct review lane, private speaker notes, five copywriting versions, a simple cheat sheet card, note suggestions, pin comments, diagram choices, ready checks, review-link export/import, and a sendable handoff page.",
+      "evidence": [
+        {
+          "type": "file",
+          "path": "team-handoff.html",
+          "proves": "direct review cards and one-click copy-ready Slack message exist"
+        },
+        {
+          "type": "file",
+          "path": "speaker-assets.html",
+          "proves": "all four speakers can review notes, five copy options, and a cheat sheet, edit a browser-local draft in place, choose a favorite copy route, and copy or import a portable speaker asset packet"
+        },
+        {
+          "type": "file",
+          "path": "data/speaker-assets.json",
+          "proves": "speaker notes, copywriting versions, and cheat sheets are captured as source data"
+        },
+        {
+          "type": "file",
+          "path": "presentation.js",
+          "proves": "review mode, pin comments, export/import, and speaker filtering are implemented"
+        },
+        {
+          "type": "browser-eval",
+          "command": "npm run test:vexy:presentation-browser",
+          "proves": "review link round-trips notes, pins, diagram choices, ready state, handoff copy, and playback cleanup"
+        }
+      ]
+    },
+    {
+      "id": "phase-05-rehearsal",
+      "title": "Rehearsal and run of show",
+      "status": "manual-required",
+      "owner": "Grace, David Taylor, Erick, Jake",
+      "summary": "The run-of-show page totals 10:00 and the rehearsal console lets the team time the run-through, check sound/video/handoff/truth-label proof, and copy a rehearsal report. The team still needs a live rehearsal with sound and speaker confirmation.",
+      "evidence": [
+        {
+          "type": "file",
+          "path": "run-of-show.html",
+          "proves": "scene order and timing are documented"
+        },
+        {
+          "type": "file",
+          "path": "rehearsal-console.html",
+          "proves": "timed rehearsal, proof-check console, and speaker signoff packet workflow exist for the live run-through"
+        },
+        {
+          "type": "file",
+          "path": "demo-readiness.html",
+          "proves": "copy-ready rehearsal call exists, with Phase 5 still marked manual-required until a live rehearsal with sound happens"
+        },
+        {
+          "type": "eval",
+          "command": "npm run test:vexy:presentation-browser",
+          "proves": "rehearsal console can start, persist proof checks, and copy a report"
+        },
+        {
+          "type": "manual",
+          "proofNeeded": "each speaker confirms timing after a real rehearsal"
+        }
+      ]
+    },
+    {
+      "id": "phase-06-share-proof",
+      "title": "Ship, share, and proof",
+      "status": "manual-required",
+      "owner": "Grace",
+      "summary": "The capstone repo package is Vercel-ready, the team handoff is sendable, and the shareback proof board can bulk-parse returned review links, collect rehearsal notes, make robot evidence conditional on live-robot claims, and copy a targeted missing-proof nudge. Teammates must still send links back, and any live robot claim still needs real run evidence.",
+      "evidence": [
+        {
+          "type": "deploy-path",
+          "path": "presentation/vexy-mission",
+          "proves": "audience deck can be deployed from the capstone repo Vercel root"
+        },
+        {
+          "type": "deploy-path",
+          "path": "presentation/vexy-mission/team-handoff.html",
+          "proves": "team handoff page is included in the deployable package"
+        },
+        {
+          "type": "file",
+          "path": "shareback-proof.html",
+          "proves": "returned review links can be bulk-parsed by owner, and rehearsal report text, conditional robot evidence, missing-proof nudges, and final shareback packets can be managed locally"
+        },
+        {
+          "type": "file",
+          "path": "demo-readiness.html",
+          "proves": "copy-ready proof collection message exists, with Phase 6 still marked manual-required until teammates send review links and robot evidence is attached for any live robot claim"
+        },
+        {
+          "type": "manual",
+          "proofNeeded": "teammates return review links and any live robot run evidence is attached separately"
+        }
+      ]
+    }
+  ],
+  "nextHumanActions": [
+    "teammates send review links back to Grace",
+    "run one live rehearsal with sound enabled",
+    "decide whether to add backend persistence for shared comments",
+    "attach real robot run telemetry before claiming live robot success"
+  ],
+  "blockedUntilBackend": [
+    "shared persistence requires a Vercel Function plus KV, Supabase, Neon, or another database",
+    "multi-user live comments cannot sync across browsers with static localStorage alone"
+  ],
+  "blockedUntilRobotEvidence": [
+    "live robot success claims require a real run, telemetry, operator result, or video proof",
+    "Slot 4 return-home claims require current repo or robot evidence proving that exact routine"
+  ]
+}

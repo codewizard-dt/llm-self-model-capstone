@@ -1,0 +1,88 @@
+{
+  "deckVersion": "vexy-mission-review-v2",
+  "sourceTruth": [
+    "vex-v5-self-model-premise.pdf",
+    "MASTER_REQUIREMENTS.md",
+    "AGENTS.md",
+    "wiki/knowledge/sources/vex-v5-classroom-starter-kit.md",
+    "wiki/knowledge/sources/camera-stack-startup.md",
+    "wiki/knowledge/sources/vision-stack-audit.md"
+  ],
+  "references": {
+    "animos": "https://animos.app/",
+    "lovable": "https://vexycapstone.lovable.app/"
+  },
+  "persistence": {
+    "current": "localStorage-export-import",
+    "portable": "database-free shareable review link stores the review packet in the URL hash",
+    "shared": "shared persistence requires Vercel Functions plus KV, Supabase, Neon, or another database",
+    "reason": "A static Vercel page can preserve edits in one browser and export/import packets, but it cannot synchronize teammate comments across browsers without a server-backed store."
+  },
+  "vercel": {
+    "editMode": "?edit=1",
+    "speakerOwnerLinks": {
+      "grace": "?edit=1&owner=grace",
+      "david": "?edit=1&owner=david",
+      "erick": "?edit=1&owner=erick",
+      "jake": "?edit=1&owner=jake"
+    },
+    "viewMode": "public static presentation",
+    "teamHandoffTemplate": "Please review your Vexy section before rehearsal. Open your link, click Review / Edit, edit your private speaker notes, add pinned comments where something should change, then click Copy review link and send it back.",
+    "readyChecklist": ["grace", "david", "erick", "jake"],
+    "handoff": "Open the deployed URL with ?edit=1&owner=<speaker>, click Review / Edit, pin comments, edit copy, then copy a shareable review link or export the review packet."
+  },
+  "speakers": [
+    {
+      "name": "Grace",
+      "ownerId": "grace",
+      "sectionId": "grace",
+      "role": "Premise, physical VEX body, and why the self-model is language-grounded",
+      "editKeys": ["grace_title", "grace_copy", "grace_notes"],
+      "noteSuggestions": [
+        "Open by naming the premise: Self-Modeling Machines, in Language.",
+        "Point to VEX V5, Raspberry Pi, AprilTag, and the yellow ball as the physical grounding.",
+        "Close by saying grab, pull, and throw make the learning loop visible."
+      ],
+      "suggestion": "Make the opening explicitly about Self-Modeling Machines, in Language, then show how VEX V5, Raspberry Pi, AprilTags, and the yellow ball make the premise physical."
+    },
+    {
+      "name": "David Taylor",
+      "ownerId": "david",
+      "sectionId": "david",
+      "role": "Small learning loop, Generational Loop, research synthesis, and honest future path",
+      "editKeys": ["david_title", "david_copy", "david_notes"],
+      "noteSuggestions": [
+        "Say the small loop is plan, execute, analyze telemetry, then start over.",
+        "Explain the Generational Loop as the future body-redesign layer.",
+        "Frame the novelty as combining self-modeling, LLM morphology, and hardware evidence."
+      ],
+      "suggestion": "Keep David out of the hardware intro. David explains why the learning loop is evidence-driven and how it connects prior self-modeling, LLM morphology, and hardware self-improvement research."
+    },
+    {
+      "name": "Erick",
+      "ownerId": "erick",
+      "sectionId": "erick",
+      "role": "Trusted motion, bounded commands, ack/fault states, and safety evidence",
+      "editKeys": ["erick_title", "erick_copy", "erick_notes"],
+      "noteSuggestions": [
+        "Use the phrase trusted motion: bounded commands plus evidence.",
+        "Name the real-world messiness: slip, drift, camera errors, and moving targets.",
+        "Explain why strict command vocabulary lets the LLM reason without freelancing against motors."
+      ],
+      "suggestion": "Make Erick's copy about trusted motion: the LLM reasons, but robot motion goes through bounded contracts, watchdogs, clamps, and proof."
+    },
+    {
+      "name": "Jake",
+      "ownerId": "jake",
+      "sectionId": "jake",
+      "role": "Evidence packet, prediction versus observation, gap residuals, and measurement",
+      "editKeys": ["jake_title", "jake_copy", "jake_notes"],
+      "noteSuggestions": [
+        "Define the evidence packet: predicted, observed, telemetry, vision, gap, update.",
+        "Say the gap is not embarrassment; it is the learning signal.",
+        "Connect AprilTags and yellow-ball confidence to grounded observation."
+      ],
+      "suggestion": "Make Jake's copy explain why a run only matters when it leaves behind structured evidence: predicted, observed, telemetry, vision, gap, and update."
+    }
+  ]
+}
